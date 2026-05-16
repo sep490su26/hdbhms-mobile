@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'forgot_password_page.dart';
 import 'home_screen.dart';
+import 'identity_verification_page.dart';
 import '../theme/app_colors.dart';
 import '../widgets/auth_text_field.dart';
 
@@ -223,7 +224,17 @@ class _LoginCard extends StatelessWidget {
             child: ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (context) => const HomeScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => IdentityVerificationPage(
+                      onCompleted: () {
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (context) => const HomeScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 );
               },
               style: ElevatedButton.styleFrom(

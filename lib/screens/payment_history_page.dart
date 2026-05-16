@@ -383,20 +383,28 @@ class _HistoryBottomNavigation extends StatelessWidget {
               ),
             ],
           ),
-          child: const Row(
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _BottomNavItem(icon: Icons.home_outlined, label: 'Home'),
               _BottomNavItem(
+                icon: Icons.home_outlined,
+                label: 'Home',
+                onTap: () =>
+                    Navigator.of(context).popUntil((route) => route.isFirst),
+              ),
+              const _BottomNavItem(
                 icon: Icons.receipt_long_rounded,
                 label: 'Bills',
                 isSelected: true,
               ),
-              _BottomNavItem(
+              const _BottomNavItem(
                 icon: Icons.support_agent_outlined,
                 label: 'Support',
               ),
-              _BottomNavItem(icon: Icons.person_outline, label: 'Profile'),
+              const _BottomNavItem(
+                icon: Icons.person_outline,
+                label: 'Profile',
+              ),
             ],
           ),
         ),
@@ -410,40 +418,48 @@ class _BottomNavItem extends StatelessWidget {
     required this.icon,
     required this.label,
     this.isSelected = false,
+    this.onTap,
   });
 
   final IconData icon;
   final String label;
   final bool isSelected;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final color = isSelected ? AppColors.deepBlue : AppColors.bodyText;
 
-    return SizedBox(
-      width: 62,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 56,
-            height: 28,
-            decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFFA7B4FF) : Colors.transparent,
-              borderRadius: BorderRadius.circular(999),
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 62,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 56,
+              height: 28,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? const Color(0xFFA7B4FF)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Icon(icon, color: color, size: 22),
             ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
-              height: 14 / 11,
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
+                height: 14 / 11,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
