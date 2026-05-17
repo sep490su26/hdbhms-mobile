@@ -1,0 +1,826 @@
+import 'package:flutter/material.dart';
+
+import '../config/api_config.dart';
+import '../models/tenant_profile_model.dart';
+import '../services/auth_service.dart';
+import '../services/home_service.dart';
+import '../services/tenant_profile_service.dart';
+import '../theme/app_colors.dart';
+import 'bill_selection_page.dart';
+
+class TenantProfileScreen extends StatefulWidget {
+  const TenantProfileScreen({
+    super.key,
+    this.profileService = const TenantProfileService(),
+    this.authService = const AuthService(),
+    this.homeService = const HomeService(),
+  });
+
+  final TenantProfileService profileService;
+  final AuthService authService;
+  final HomeService homeService;
+
+  @override
+  State<TenantProfileScreen> createState() => _TenantProfileScreenState();
+}
+
+class _TenantProfileScreenState extends State<TenantProfileScreen> {
+  late Future<TenantProfileResponse> _profileFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _profileFuture = _loadProfile();
+  }
+
+  Future<TenantProfileResponse> _loadProfile() {
+    return widget.profileService.getMyProfile();
+  }
+
+  Future<void> _refresh() async {
+    final future = _loadProfile();
+    setState(() {
+      _profileFuture = future;
+    });
+    await future;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 390),
+            child: Column(
+              children: [
+                const _ProfileHeader(),
+                Expanded(
+                  child: FutureBuilder<TenantProfileResponse>(
+                    future: _profileFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.deepBlue,
+                          ),
+                        );
+                      }
+
+                      if (snapshot.hasError) {
+                        final error = snapshot.error;
+                        return _ProfileErrorState(
+                          message: _messageForError(error),
+                          onRetry: () {
+                            setState(() {
+                              _profileFuture = _loadProfile();
+                            });
+                          },
+                        );
+                      }
+
+                      final profile = snapshot.data;
+                      if (profile == null) {
+                        return _ProfileErrorState(
+                          message: 'Chưa có hồ sơ cá nhân',
+                          onRetry: () {
+                            setState(() {
+                              _profileFuture = _loadProfile();
+                            });
+                          },
+                        );
+                      }
+
+                      return RefreshIndicator(
+                        color: AppColors.deepBlue,
+                        onRefresh: _refresh,
+                        child: _ProfileContent(profile: profile),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      bottomNavigationBar: const _ProfileBottomNavigation(),
+    );
+  }
+}
+
+class _ProfileHeader extends StatelessWidget {
+  const _ProfileHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.fromLTRB(4, 0, 13, 0),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.cardBorder.withValues(alpha: 0.6),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            icon: const Icon(
+              Icons.arrow_back_rounded,
+              color: AppColors.deepBlue,
+              size: 24,
+            ),
+            tooltip: 'Trở về',
+          ),
+          const Expanded(
+            child: Text(
+              'Hồ sơ cá nhân',
+              style: TextStyle(
+                color: AppColors.deepBlue,
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                height: 18 / 14,
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: () {},
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            icon: const Icon(
+              Icons.notifications_none_rounded,
+              color: AppColors.inputText,
+              size: 22,
+            ),
+            tooltip: 'Thông báo',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileContent extends StatelessWidget {
+  const _ProfileContent({required this.profile});
+
+  final TenantProfileResponse profile;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(14, 16, 14, 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _ProfileSummaryCard(profile: profile),
+          const SizedBox(height: 16),
+          _InfoSectionCard(
+            icon: Icons.badge_outlined,
+            title: 'Thông tin cá nhân',
+            children: [
+              _ReadOnlyField(
+                label: 'Họ và tên',
+                value: profile.person.fullName,
+              ),
+              _ReadOnlyField(label: 'SĐT', value: profile.person.phone),
+              _ReadOnlyField(label: 'Email', value: profile.person.email),
+              _ReadOnlyField(
+                label: 'Địa chỉ thường trú',
+                value: profile.person.permanentAddress,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _IdentitySection(document: profile.identityDocument),
+          const SizedBox(height: 16),
+          _EmergencyContactsSection(contacts: profile.emergencyContacts),
+          const SizedBox(height: 16),
+          _VehiclesSection(vehicles: profile.vehicles),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileSummaryCard extends StatelessWidget {
+  const _ProfileSummaryCard({required this.profile});
+
+  final TenantProfileResponse profile;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 17),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _display(profile.person.fullName),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.deepBlue,
+              fontSize: 17,
+              fontWeight: FontWeight.w900,
+              height: 22 / 17,
+            ),
+          ),
+          const SizedBox(height: 7),
+          Row(
+            children: [
+              const Icon(
+                Icons.apartment_outlined,
+                color: AppColors.deepBlue,
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                profile.status.isEmpty ? 'Chưa cập nhật' : profile.status,
+                style: const TextStyle(
+                  color: AppColors.bodyText,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  height: 17 / 13,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IdentitySection extends StatelessWidget {
+  const _IdentitySection({required this.document});
+
+  final IdentityDocumentDto? document;
+
+  @override
+  Widget build(BuildContext context) {
+    return _InfoSectionCard(
+      icon: Icons.credit_card_rounded,
+      title: 'Giấy tờ tùy thân',
+      children: [
+        _ReadOnlyField(label: 'Loại giấy tờ', value: document?.docType ?? ''),
+        _ReadOnlyField(label: 'Số giấy tờ', value: document?.docNumber ?? ''),
+        _ReadOnlyField(
+          label: 'Ngày cấp',
+          value: document?.issuedDate == null
+              ? ''
+              : _formatDate(document!.issuedDate!),
+        ),
+        _ReadOnlyField(label: 'Nơi cấp', value: document?.issuedPlace ?? ''),
+      ],
+    );
+  }
+}
+
+class _EmergencyContactsSection extends StatelessWidget {
+  const _EmergencyContactsSection({required this.contacts});
+
+  final List<EmergencyContactDto> contacts;
+
+  @override
+  Widget build(BuildContext context) {
+    return _InfoSectionCard(
+      icon: Icons.contact_emergency_outlined,
+      title: 'Thông tin người thân',
+      children: contacts.isEmpty
+          ? const [_EmptyText('Chưa có liên hệ khẩn cấp')]
+          : [
+              for (var i = 0; i < contacts.length; i++) ...[
+                if (i > 0) const _InlineDivider(),
+                _ReadOnlyField(label: 'Họ tên', value: contacts[i].fullName),
+                _ReadOnlyField(
+                  label: 'Quan hệ',
+                  value: contacts[i].relationship,
+                ),
+                _ReadOnlyField(
+                  label: 'Số điện thoại',
+                  value: contacts[i].phone,
+                ),
+              ],
+            ],
+    );
+  }
+}
+
+class _VehiclesSection extends StatelessWidget {
+  const _VehiclesSection({required this.vehicles});
+
+  final List<VehicleDto> vehicles;
+
+  @override
+  Widget build(BuildContext context) {
+    return _InfoSectionCard(
+      icon: Icons.two_wheeler_rounded,
+      title: 'Thông tin xe',
+      children: vehicles.isEmpty
+          ? const [_EmptyText('Chưa có phương tiện')]
+          : [
+              for (var i = 0; i < vehicles.length; i++) ...[
+                if (i > 0) const _InlineDivider(),
+                _ReadOnlyField(
+                  label: 'Loại xe',
+                  value: _vehicleTypeLabel(vehicles[i].vehicleType),
+                ),
+                _ReadOnlyField(
+                  label: 'Biển số xe',
+                  value: vehicles[i].licensePlate,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Ảnh xe thực tế',
+                  style: TextStyle(
+                    color: AppColors.bodyText,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    height: 15 / 11,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _VehicleImage(vehicle: vehicles[i]),
+              ],
+            ],
+    );
+  }
+}
+
+class _InfoSectionCard extends StatelessWidget {
+  const _InfoSectionCard({
+    required this.icon,
+    required this.title,
+    required this.children,
+  });
+
+  final IconData icon;
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(17, 18, 17, 18),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: AppColors.deepBlue, size: 20),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.inputText,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    height: 20 / 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Divider(color: Color(0xFFC6C5D4), height: 1),
+          const SizedBox(height: 14),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _ReadOnlyField extends StatelessWidget {
+  const _ReadOnlyField({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 11),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: const TextStyle(
+              color: AppColors.bodyText,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              height: 14 / 10,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            _display(value),
+            style: const TextStyle(
+              color: AppColors.inputText,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              height: 17 / 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VehicleImage extends StatelessWidget {
+  const _VehicleImage({required this.vehicle});
+
+  final VehicleDto vehicle;
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = _resolveImageUrl(vehicle.imageUrl);
+    if (imageUrl.isEmpty) {
+      return const _EmptyImage();
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: ValueKey('vehicle-image-${vehicle.id ?? vehicle.licensePlate}'),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => VehicleImagePreviewPage(
+                imageUrl: imageUrl,
+                title: _display(vehicle.licensePlate),
+              ),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(6),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Image.network(
+              imageUrl,
+              fit: BoxFit.cover,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) {
+                  return child;
+                }
+                return Container(
+                  color: const Color(0xFFEDECF1),
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.deepBlue,
+                      strokeWidth: 2,
+                    ),
+                  ),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) => const _EmptyImage(),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyImage extends StatelessWidget {
+  const _EmptyImage();
+
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 16 / 9,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFEDECF1),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: const Color(0xFFDAD8E0)),
+        ),
+        child: const Center(
+          child: Text(
+            'Chưa có ảnh phương tiện',
+            style: TextStyle(
+              color: AppColors.bodyText,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class VehicleImagePreviewPage extends StatelessWidget {
+  const VehicleImagePreviewPage({
+    super.key,
+    required this.imageUrl,
+    required this.title,
+  });
+
+  final String imageUrl;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(title),
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          minScale: 0.8,
+          maxScale: 4,
+          child: Image.network(
+            imageUrl,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) => const Text(
+              'Không tải được ảnh',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileErrorState extends StatelessWidget {
+  const _ProfileErrorState({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      color: AppColors.deepBlue,
+      onRefresh: () async => onRetry(),
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(24),
+        children: [
+          const SizedBox(height: 120),
+          const Icon(
+            Icons.person_search_rounded,
+            color: AppColors.deepBlue,
+            size: 44,
+          ),
+          const SizedBox(height: 14),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppColors.inputText,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Center(
+            child: ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Tải lại'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.deepBlue,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyText extends StatelessWidget {
+  const _EmptyText(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+        color: AppColors.bodyText,
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+        height: 18 / 13,
+      ),
+    );
+  }
+}
+
+class _InlineDivider extends StatelessWidget {
+  const _InlineDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.only(bottom: 14),
+      child: Divider(color: Color(0xFFE3E1E6), height: 1),
+    );
+  }
+}
+
+class _ProfileBottomNavigation extends StatelessWidget {
+  const _ProfileBottomNavigation();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      heightFactor: 1,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 390),
+        child: Container(
+          height: 74,
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+            border: Border.all(
+              color: AppColors.cardBorder.withValues(alpha: 0.7),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _BottomNavItem(
+                icon: Icons.home_outlined,
+                label: 'Home',
+                onTap: () =>
+                    Navigator.of(context).popUntil((route) => route.isFirst),
+              ),
+              _BottomNavItem(
+                icon: Icons.receipt_long_outlined,
+                label: 'Bills',
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const BillSelectionPage(),
+                    ),
+                  );
+                },
+              ),
+              const _BottomNavItem(
+                icon: Icons.support_agent_outlined,
+                label: 'Support',
+              ),
+              const _BottomNavItem(
+                icon: Icons.person_rounded,
+                label: 'Profile',
+                isSelected: true,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BottomNavItem extends StatelessWidget {
+  const _BottomNavItem({
+    required this.icon,
+    required this.label,
+    this.isSelected = false,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isSelected ? AppColors.deepBlue : AppColors.bodyText;
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 68,
+        child: isSelected
+            ? Container(
+                height: 50,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFA7B4FF),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, color: color, size: 21),
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        color: AppColors.deepBlue,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        height: 14 / 12,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, color: color, size: 22),
+                  const SizedBox(height: 3),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      height: 14 / 12,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+BoxDecoration _cardDecoration() {
+  return BoxDecoration(
+    color: AppColors.surface,
+    borderRadius: BorderRadius.circular(8),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.06),
+        blurRadius: 14,
+        offset: const Offset(0, 5),
+      ),
+    ],
+  );
+}
+
+String _display(String? value) {
+  final trimmed = value?.trim() ?? '';
+  return trimmed.isEmpty ? 'Chưa cập nhật' : trimmed;
+}
+
+String _formatDate(DateTime date) {
+  return '${date.day.toString().padLeft(2, '0')}/'
+      '${date.month.toString().padLeft(2, '0')}/'
+      '${date.year}';
+}
+
+String _vehicleTypeLabel(String value) {
+  return switch (value.trim().toUpperCase()) {
+    'MOTORBIKE' => 'Xe máy',
+    'CAR' => 'Ô tô',
+    'BICYCLE' => 'Xe đạp',
+    _ => _display(value),
+  };
+}
+
+String _resolveImageUrl(String value) {
+  final url = value.trim();
+  if (url.isEmpty) {
+    return '';
+  }
+  final uri = Uri.tryParse(url);
+  if (uri != null && uri.hasScheme) {
+    return url;
+  }
+
+  final baseUri = Uri.parse(ApiConfig.baseUrl);
+  if (url.startsWith('/')) {
+    return baseUri.replace(path: url).toString();
+  }
+  final base = ApiConfig.baseUrl.endsWith('/')
+      ? ApiConfig.baseUrl.substring(0, ApiConfig.baseUrl.length - 1)
+      : ApiConfig.baseUrl;
+  return '$base/$url';
+}
+
+String _messageForError(Object? error) {
+  if (error is TenantProfileException) {
+    return error.message;
+  }
+  return 'Không tải được hồ sơ, vui lòng thử lại';
+}

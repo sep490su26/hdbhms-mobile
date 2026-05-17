@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import 'tenant_profile_screen.dart';
 
 class PaymentHistoryPage extends StatelessWidget {
   const PaymentHistoryPage({super.key});
@@ -401,9 +402,16 @@ class _HistoryBottomNavigation extends StatelessWidget {
                 icon: Icons.support_agent_outlined,
                 label: 'Support',
               ),
-              const _BottomNavItem(
+              _BottomNavItem(
                 icon: Icons.person_outline,
                 label: 'Profile',
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const TenantProfileScreen(),
+                    ),
+                  );
+                },
               ),
             ],
           ),

@@ -1,13 +1,24 @@
 import 'package:flutter/material.dart';
 
+import '../models/onboarding_state.dart';
+import '../services/auth_service.dart';
+import '../services/home_service.dart';
+import '../theme/app_colors.dart';
+import '../widgets/auth_text_field.dart';
+import 'change_password_page.dart';
 import 'forgot_password_page.dart';
 import 'home_screen.dart';
 import 'identity_verification_page.dart';
-import '../theme/app_colors.dart';
-import '../widgets/auth_text_field.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  const LoginPage({
+    super.key,
+    this.authService = const AuthService(),
+    this.homeService = const HomeService(),
+  });
+
+  final AuthService authService;
+  final HomeService homeService;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -16,12 +27,13 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   late final TextEditingController _idController;
   late final TextEditingController _passwordController;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _idController = TextEditingController(text: 'resident@complex.com');
-    _passwordController = TextEditingController(text: 'password123');
+    _passwordController = TextEditingController(text: '12345678');
   }
 
   @override
@@ -29,6 +41,77 @@ class _LoginPageState extends State<LoginPage> {
     _idController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    final id = _idController.text.trim();
+    final password = _passwordController.text;
+
+    if (id.isEmpty) {
+      _showMessage('Vui lòng nhập ID');
+      return;
+    }
+
+    if (password.isEmpty) {
+      _showMessage('Vui lòng nhập mật khẩu');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await widget.authService.login(
+        phoneOrEmail: id,
+        password: password,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      _goToNextStep(response.onboarding);
+    } on AuthException catch (error) {
+      if (mounted) {
+        _showMessage(error.message);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _goToNextStep(OnboardingState onboarding) {
+    final page = switch (onboarding.nextStep) {
+      OnboardingState.changePassword => ChangePasswordPage(
+        authService: widget.authService,
+        homeService: widget.homeService,
+        isRequired: true,
+      ),
+      OnboardingState.identityVerification => IdentityVerificationPage(
+        isRequired: true,
+        authService: widget.authService,
+        homeService: widget.homeService,
+      ),
+      _ => HomeScreen(
+        authService: widget.authService,
+        homeService: widget.homeService,
+      ),
+    };
+
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (context) => page));
   }
 
   @override
@@ -70,6 +153,8 @@ class _LoginPageState extends State<LoginPage> {
                             height: cardHeight,
                             idController: _idController,
                             passwordController: _passwordController,
+                            isLoading: _isLoading,
+                            onLogin: _handleLogin,
                           ),
                         ),
                       ),
@@ -144,11 +229,15 @@ class _LoginCard extends StatelessWidget {
     required this.height,
     required this.idController,
     required this.passwordController,
+    required this.isLoading,
+    required this.onLogin,
   });
 
   final double height;
   final TextEditingController idController;
   final TextEditingController passwordController;
+  final bool isLoading;
+  final VoidCallback onLogin;
 
   @override
   Widget build(BuildContext context) {
@@ -193,13 +282,15 @@ class _LoginCard extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const ForgotPasswordPage(),
-                  ),
-                );
-              },
+              onPressed: isLoading
+                  ? null
+                  : () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const ForgotPasswordPage(),
+                        ),
+                      );
+                    },
               style: TextButton.styleFrom(
                 foregroundColor: AppColors.deepBlue,
                 padding: EdgeInsets.zero,
@@ -222,38 +313,53 @@ class _LoginCard extends StatelessWidget {
             width: double.infinity,
             height: 58,
             child: ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (context) => IdentityVerificationPage(
-                      onCompleted: () {
-                        Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(
-                            builder: (context) => const HomeScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                );
-              },
+              onPressed: isLoading ? null : onLogin,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.darkBlue,
+                disabledBackgroundColor: AppColors.darkBlue.withValues(
+                  alpha: 0.72,
+                ),
                 foregroundColor: Colors.white,
+                disabledForegroundColor: Colors.white,
                 elevation: 0,
                 shadowColor: Colors.black.withValues(alpha: 0.1),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: const Text(
-                'Đăng nhập',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  height: 28 / 20,
-                ),
-              ),
+              child: isLoading
+                  ? const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          'Đang đăng nhập...',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            height: 24 / 16,
+                          ),
+                        ),
+                      ],
+                    )
+                  : const Text(
+                      'Đăng nhập',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        height: 28 / 20,
+                      ),
+                    ),
             ),
           ),
         ],

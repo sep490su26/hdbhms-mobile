@@ -1,6 +1,8 @@
+import 'api_config.dart';
+
 class AppConfig {
   const AppConfig._();
 
   static const appName = 'HDBHMS Mobile';
-  static const apiBaseUrl = 'http://localhost:8080/api/v1';
+  static String get apiBaseUrl => ApiConfig.baseUrl;
 }

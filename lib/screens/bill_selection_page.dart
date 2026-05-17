@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import 'payment_history_page.dart';
 import 'qr_payment_page.dart';
+import 'tenant_profile_screen.dart';
 
 class BillSelectionPage extends StatelessWidget {
   const BillSelectionPage({super.key});
@@ -497,9 +498,16 @@ class _BillBottomNavigation extends StatelessWidget {
                 icon: Icons.support_agent_outlined,
                 label: 'Support',
               ),
-              const _BottomNavItem(
+              _BottomNavItem(
                 icon: Icons.person_outline,
                 label: 'Profile',
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const TenantProfileScreen(),
+                    ),
+                  );
+                },
               ),
             ],
           ),

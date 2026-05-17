@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../models/identity_image_file.dart';
+import '../models/onboarding_state.dart';
+import '../services/auth_service.dart';
 import '../services/file_upload_service.dart';
+import '../services/home_service.dart';
+import '../services/identity_service.dart';
 import '../theme/app_colors.dart';
+import 'home_screen.dart';
 
 enum IdentityDocumentStep {
   portrait,
@@ -27,11 +32,19 @@ enum IdentityDocumentStep {
 class IdentityVerificationPage extends StatefulWidget {
   const IdentityVerificationPage({
     super.key,
-    this.fileUploadService = const MockFileUploadService(),
+    this.fileUploadService,
+    this.identityService,
+    this.authService = const AuthService(),
+    this.homeService = const HomeService(),
+    this.isRequired = false,
     this.onCompleted,
   });
 
-  final FileUploadService fileUploadService;
+  final FileUploadService? fileUploadService;
+  final IdentityService? identityService;
+  final AuthService authService;
+  final HomeService homeService;
+  final bool isRequired;
   final VoidCallback? onCompleted;
 
   @override
@@ -45,66 +58,88 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
   IdentityImageFile? _frontIdImage;
   IdentityImageFile? _backIdImage;
   IdentityDocumentStep? _loadingStep;
+  late final FileUploadService _fileUploadService;
+  late final IdentityService _identityService;
+  bool _isSubmitting = false;
 
   bool get _hasAllImages =>
       _portraitImage != null && _frontIdImage != null && _backIdImage != null;
 
   @override
+  void initState() {
+    super.initState();
+    _fileUploadService =
+        widget.fileUploadService ?? ImagePickerFileUploadService();
+    _identityService = widget.identityService ?? const IdentityService();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.deepBlue,
-        elevation: 0,
-        title: const Text(
-          'X\u00E1c th\u1EF1c danh t\u00EDnh',
-          style: TextStyle(
-            color: AppColors.deepBlue,
-            fontSize: 17,
-            fontWeight: FontWeight.w900,
+    return PopScope(
+      canPop: !widget.isRequired && !_isSubmitting,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          automaticallyImplyLeading: !widget.isRequired,
+          backgroundColor: AppColors.surface,
+          foregroundColor: AppColors.deepBlue,
+          elevation: 0,
+          title: const Text(
+            'X\u00E1c th\u1EF1c danh t\u00EDnh',
+            style: TextStyle(
+              color: AppColors.deepBlue,
+              fontSize: 17,
+              fontWeight: FontWeight.w900,
+            ),
           ),
+          actions: [
+            IconButton(
+              onPressed: () {},
+              icon: const Icon(Icons.help_outline_rounded, size: 21),
+              tooltip: 'Tr\u1EE3 gi\u00FAp',
+            ),
+          ],
         ),
-        actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.help_outline_rounded, size: 21),
-            tooltip: 'Tr\u1EE3 gi\u00FAp',
-          ),
-        ],
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 430),
-          child: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const _HeaderCopy(),
-                      const SizedBox(height: 18),
-                      _IdentityStepper(
-                        currentStep: _currentStep,
-                        portraitDone: _portraitImage != null,
-                        frontDone: _frontIdImage != null,
-                        backDone: _backIdImage != null,
-                        onStepSelected: _selectStep,
-                      ),
-                      const SizedBox(height: 18),
-                      _buildCurrentStepCard(),
-                    ],
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 430),
+            child: Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const _HeaderCopy(),
+                        const SizedBox(height: 18),
+                        _IdentityStepper(
+                          currentStep: _currentStep,
+                          portraitDone: _portraitImage != null,
+                          frontDone: _frontIdImage != null,
+                          backDone: _backIdImage != null,
+                          onStepSelected: _selectStep,
+                        ),
+                        const SizedBox(height: 18),
+                        _buildCurrentStepCard(),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              _BottomActionBar(
-                isEnabled: _hasAllImages && _loadingStep == null,
-                onBack: _handleBackStep,
-                onContinue: _handleContinue,
-              ),
-            ],
+                _BottomActionBar(
+                  isEnabled:
+                      _hasAllImages && _loadingStep == null && !_isSubmitting,
+                  isLoading: _isSubmitting,
+                  actionLabel: _currentStep == IdentityDocumentStep.confirm
+                      ? 'Xác nhận'
+                      : 'Tiếp tục',
+                  onBack: _handleBackStep,
+                  onContinue: () {
+                    _handleContinue();
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -192,6 +227,10 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
     };
 
     if (previousStep == null) {
+      if (widget.isRequired) {
+        _showMessage('Vui lòng hoàn tất định danh để tiếp tục');
+        return;
+      }
       Navigator.of(context).maybePop();
       return;
     }
@@ -210,14 +249,14 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
     });
 
     try {
-      final image = await widget.fileUploadService.pickIdentityImage(
+      final image = await _fileUploadService.pickIdentityImage(
         label: step.title,
         source: source,
       );
 
       if (!mounted) return;
 
-      if (widget.fileUploadService.isFileTooLarge(image)) {
+      if (_fileUploadService.isFileTooLarge(image)) {
         _showMessage(
           '\u1EA2nh qu\u00E1 l\u1EDBn, vui l\u00F2ng ch\u1ECDn \u1EA3nh kh\u00E1c',
         );
@@ -239,6 +278,12 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
             break;
         }
       });
+    } on FilePickerCanceledException {
+      return;
+    } catch (_) {
+      if (mounted) {
+        _showMessage('Không chọn được ảnh, vui lòng thử lại');
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -248,25 +293,64 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
     }
   }
 
-  void _handleContinue() {
+  Future<void> _handleContinue() async {
     final validationMessage = _validateImages();
     if (validationMessage != null) {
       _showMessage(validationMessage);
       return;
     }
 
-    setState(() {
-      _currentStep = IdentityDocumentStep.confirm;
-    });
-
-    if (widget.onCompleted != null) {
-      widget.onCompleted!();
+    if (_currentStep != IdentityDocumentStep.confirm) {
+      setState(() {
+        _currentStep = IdentityDocumentStep.confirm;
+      });
       return;
     }
 
-    _showMessage(
-      '\u0110\u00E3 \u0111\u1EE7 \u1EA3nh, chuy\u1EC3n sang b\u01B0\u1EDBc x\u00E1c nh\u1EADn',
-    );
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      final result = await _identityService.uploadIdentity(
+        portrait: _portraitImage!,
+        frontId: _frontIdImage!,
+        backId: _backIdImage!,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      if (widget.onCompleted != null) {
+        widget.onCompleted!();
+        return;
+      }
+
+      if (result.onboarding.nextStep == OnboardingState.home) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(
+              authService: widget.authService,
+              homeService: widget.homeService,
+            ),
+          ),
+        );
+        return;
+      }
+
+      _showMessage('Cập nhật định danh thành công');
+    } on IdentityException catch (error) {
+      if (mounted) {
+        _showMessage(error.message);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
   }
 
   String? _validateImages() {
@@ -488,7 +572,12 @@ class _ImageCaptureStepCard extends StatelessWidget {
           Stack(
             alignment: Alignment.center,
             children: [
-              preview,
+              imageFile == null
+                  ? preview
+                  : _SelectedImagePreview(
+                      file: imageFile!,
+                      isPortrait: step == IdentityDocumentStep.portrait,
+                    ),
               if (isLoading)
                 Positioned.fill(
                   child: DecoratedBox(
@@ -606,6 +695,36 @@ class _ImageMeta extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _SelectedImagePreview extends StatelessWidget {
+  const _SelectedImagePreview({required this.file, required this.isPortrait});
+
+  final IdentityImageFile file;
+  final bool isPortrait;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isPortrait) {
+      return Center(
+        child: ClipOval(
+          child: SizedBox(
+            width: 172,
+            height: 172,
+            child: Image.memory(file.bytes, fit: BoxFit.cover),
+          ),
+        ),
+      );
+    }
+
+    return AspectRatio(
+      aspectRatio: 1.6,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.memory(file.bytes, fit: BoxFit.cover),
+      ),
     );
   }
 }
@@ -890,11 +1009,15 @@ class _ReviewRow extends StatelessWidget {
 class _BottomActionBar extends StatelessWidget {
   const _BottomActionBar({
     required this.isEnabled,
+    required this.isLoading,
+    required this.actionLabel,
     required this.onBack,
     required this.onContinue,
   });
 
   final bool isEnabled;
+  final bool isLoading;
+  final String actionLabel;
   final VoidCallback onBack;
   final VoidCallback onContinue;
 
@@ -947,10 +1070,19 @@ class _BottomActionBar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text(
-                  'Ti\u1EBFp t\u1EE5c',
-                  style: TextStyle(fontWeight: FontWeight.w900),
-                ),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        actionLabel,
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
               ),
             ),
           ],
