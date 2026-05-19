@@ -216,6 +216,8 @@ const _identityPage = MaterialApp(
 );
 
 Future<void> login(WidgetTester tester) async {
+  await tester.enterText(find.byType(TextFormField).at(0), '0912000201');
+  await tester.enterText(find.byType(TextFormField).at(1), 'Changed@123');
   await tester.ensureVisible(find.byType(ElevatedButton).last);
   await tester.tap(find.byType(ElevatedButton).last);
   await tester.pumpAndSettle();
@@ -254,7 +256,9 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    expect(find.text('resident@complex.com'), findsWidgets);
+    expect(find.text('SỐ ĐIỆN THOẠI'), findsOneWidget);
+    expect(find.text('Nhập số điện thoại'), findsOneWidget);
+    expect(find.text('resident@complex.com'), findsNothing);
     expect(find.byType(TextFormField), findsNWidgets(2));
   });
 

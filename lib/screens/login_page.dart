@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/onboarding_state.dart';
 import '../services/auth_service.dart';
+import '../services/forgot_password_service.dart';
 import '../services/home_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/auth_text_field.dart';
@@ -15,10 +16,12 @@ class LoginPage extends StatefulWidget {
     super.key,
     this.authService = const AuthService(),
     this.homeService = const HomeService(),
+    this.forgotPasswordService = const ForgotPasswordService(),
   });
 
   final AuthService authService;
   final HomeService homeService;
+  final ForgotPasswordService forgotPasswordService;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -32,8 +35,8 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    _idController = TextEditingController(text: 'resident@complex.com');
-    _passwordController = TextEditingController(text: '12345678');
+    _idController = TextEditingController();
+    _passwordController = TextEditingController();
   }
 
   @override
@@ -48,7 +51,7 @@ class _LoginPageState extends State<LoginPage> {
     final password = _passwordController.text;
 
     if (id.isEmpty) {
-      _showMessage('Vui lòng nhập ID');
+      _showMessage('Vui lòng nhập số điện thoại');
       return;
     }
 
@@ -155,6 +158,8 @@ class _LoginPageState extends State<LoginPage> {
                             passwordController: _passwordController,
                             isLoading: _isLoading,
                             onLogin: _handleLogin,
+                            forgotPasswordService:
+                                widget.forgotPasswordService,
                           ),
                         ),
                       ),
@@ -231,6 +236,7 @@ class _LoginCard extends StatelessWidget {
     required this.passwordController,
     required this.isLoading,
     required this.onLogin,
+    required this.forgotPasswordService,
   });
 
   final double height;
@@ -238,6 +244,7 @@ class _LoginCard extends StatelessWidget {
   final TextEditingController passwordController;
   final bool isLoading;
   final VoidCallback onLogin;
+  final ForgotPasswordService forgotPasswordService;
 
   @override
   Widget build(BuildContext context) {
@@ -248,13 +255,6 @@ class _LoginCard extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.darkBlue.withValues(alpha: 0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -262,11 +262,11 @@ class _LoginCard extends StatelessWidget {
           const _Greeting(),
           const SizedBox(height: 24),
           AuthTextField(
-            label: 'ID',
-            hintText: 'resident@complex.com',
-            icon: Icons.mail_outline,
+            label: 'Số điện thoại',
+            hintText: 'Nhập số điện thoại',
+            icon: Icons.phone_outlined,
             controller: idController,
-            keyboardType: TextInputType.emailAddress,
+            keyboardType: TextInputType.phone,
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 16),
@@ -287,7 +287,9 @@ class _LoginCard extends StatelessWidget {
                   : () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (context) => const ForgotPasswordPage(),
+                          builder: (context) => ForgotPasswordPage(
+                            forgotPasswordService: forgotPasswordService,
+                          ),
                         ),
                       );
                     },

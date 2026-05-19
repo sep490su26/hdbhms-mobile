@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 
-import 'change_password_page.dart';
+import '../services/forgot_password_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/auth_text_field.dart';
+import 'forgot_password_otp_screen.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
-  const ForgotPasswordPage({super.key});
+  const ForgotPasswordPage({
+    super.key,
+    this.forgotPasswordService = const ForgotPasswordService(),
+  });
+
+  final ForgotPasswordService forgotPasswordService;
 
   @override
   State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
@@ -13,6 +19,7 @@ class ForgotPasswordPage extends StatefulWidget {
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   late final TextEditingController _emailController;
+  bool _isSending = false;
 
   @override
   void initState() {
@@ -24,6 +31,49 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   void dispose() {
     _emailController.dispose();
     super.dispose();
+  }
+
+  Future<void> _sendOtp() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      _showMessage('Vui lòng nhập email');
+      return;
+    }
+
+    setState(() {
+      _isSending = true;
+    });
+
+    try {
+      await widget.forgotPasswordService.sendForgotPasswordOtp(email);
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => ForgotPasswordOtpScreen(
+            email: email,
+            forgotPasswordService: widget.forgotPasswordService,
+          ),
+        ),
+      );
+    } on ForgotPasswordException catch (error) {
+      if (mounted) {
+        _showMessage(error.message);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSending = false;
+        });
+      }
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -69,28 +119,32 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                             width: double.infinity,
                             height: 60,
                             child: ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const ChangePasswordPage(),
-                                  ),
-                                );
-                              },
+                              onPressed: _isSending ? null : _sendOtp,
                               iconAlignment: IconAlignment.end,
-                              icon: const Icon(
-                                Icons.send_outlined,
-                                color: Colors.white,
-                                size: 19,
-                              ),
-                              label: const Text(
-                                'GỬI MÃ OTP',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w600,
-                                  height: 28 / 20,
-                                ),
-                              ),
+                              icon: _isSending
+                                  ? const SizedBox.shrink()
+                                  : const Icon(
+                                      Icons.send_outlined,
+                                      color: Colors.white,
+                                      size: 19,
+                                    ),
+                              label: _isSending
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'GỬI MÃ OTP',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w600,
+                                        height: 28 / 20,
+                                      ),
+                                    ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.darkBlue,
                                 foregroundColor: Colors.white,
