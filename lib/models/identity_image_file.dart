@@ -8,6 +8,7 @@ class IdentityImageFile {
     required this.sizeInBytes,
     required this.source,
     required this.bytes,
+    this.path,
     this.mimeType,
   });
 
@@ -17,6 +18,7 @@ class IdentityImageFile {
   final int sizeInBytes;
   final IdentityImageSource source;
   final Uint8List bytes;
+  final String? path;
   final String? mimeType;
 }
 

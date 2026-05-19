@@ -1,4 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
 import '../models/tenant_profile_model.dart';
@@ -7,6 +11,7 @@ import '../services/home_service.dart';
 import '../services/tenant_profile_service.dart';
 import '../theme/app_colors.dart';
 import 'bill_selection_page.dart';
+import 'lease_contract_screen.dart';
 
 class TenantProfileScreen extends StatefulWidget {
   const TenantProfileScreen({
@@ -180,6 +185,8 @@ class _ProfileContent extends StatelessWidget {
         children: [
           _ProfileSummaryCard(profile: profile),
           const SizedBox(height: 16),
+          const _ContractEntrySection(),
+          const SizedBox(height: 16),
           _InfoSectionCard(
             icon: Icons.badge_outlined,
             title: 'Thông tin cá nhân',
@@ -259,6 +266,43 @@ class _ProfileSummaryCard extends StatelessWidget {
   }
 }
 
+class _ContractEntrySection extends StatelessWidget {
+  const _ContractEntrySection();
+
+  @override
+  Widget build(BuildContext context) {
+    return _InfoSectionCard(
+      icon: Icons.description_outlined,
+      title: 'Hợp đồng thuê phòng',
+      children: [
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const LeaseContractScreen(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.article_outlined, size: 20),
+            label: const Text('Xem hợp đồng'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.deepBlue,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _IdentitySection extends StatelessWidget {
   const _IdentitySection({required this.document});
 
@@ -279,7 +323,190 @@ class _IdentitySection extends StatelessWidget {
               : _formatDate(document!.issuedDate!),
         ),
         _ReadOnlyField(label: 'Nơi cấp', value: document?.issuedPlace ?? ''),
+        const SizedBox(height: 8),
+        _IdentityDocumentImages(document: document),
       ],
+    );
+  }
+}
+
+class _IdentityDocumentImages extends StatelessWidget {
+  const _IdentityDocumentImages({required this.document});
+
+  final IdentityDocumentDto? document;
+
+  @override
+  Widget build(BuildContext context) {
+    final frontUrl = document?.frontFileUrl ?? '';
+    final backUrl = document?.backFileUrl ?? '';
+
+    if (frontUrl.isEmpty && backUrl.isEmpty) {
+      return const _EmptyText('Chưa có ảnh CCCD');
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (frontUrl.isNotEmpty) ...[
+          const _ImageLabel('Ảnh CCCD mặt trước'),
+          _TenantProfileImage(imageUrl: frontUrl, title: 'CCCD mặt trước'),
+          const SizedBox(height: 12),
+        ],
+        if (backUrl.isNotEmpty) ...[
+          const _ImageLabel('Ảnh CCCD mặt sau'),
+          _TenantProfileImage(imageUrl: backUrl, title: 'CCCD mặt sau'),
+        ],
+      ],
+    );
+  }
+}
+
+class _ImageLabel extends StatelessWidget {
+  const _ImageLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text.toUpperCase(),
+        style: const TextStyle(
+          color: AppColors.bodyText,
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          height: 14 / 10,
+        ),
+      ),
+    );
+  }
+}
+
+class _TenantProfileImage extends StatefulWidget {
+  const _TenantProfileImage({required this.imageUrl, required this.title});
+
+  final String imageUrl;
+  final String title;
+
+  @override
+  State<_TenantProfileImage> createState() => _TenantProfileImageState();
+}
+
+class _TenantProfileImageState extends State<_TenantProfileImage> {
+  late Future<Uint8List> _imageFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _imageFuture = _loadImage();
+  }
+
+  Future<Uint8List> _loadImage() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(AuthService.accessTokenKey);
+    final response = await http.get(
+      Uri.parse(widget.imageUrl),
+      headers: {
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode != 200) {
+      throw const FormatException('Cannot load image');
+    }
+    return response.bodyBytes;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Uint8List>(
+      future: _imageFuture,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const _EmptyImage(text: 'Không tải được ảnh CCCD');
+        }
+
+        if (!snapshot.hasData) {
+          return const _LoadingImage();
+        }
+
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => _MemoryImagePreviewPage(
+                    imageBytes: snapshot.data!,
+                    title: widget.title,
+                  ),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(6),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Image.memory(snapshot.data!, fit: BoxFit.cover),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _LoadingImage extends StatelessWidget {
+  const _LoadingImage();
+
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 16 / 9,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFEDECF1),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: const Color(0xFFDAD8E0)),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(
+            color: AppColors.deepBlue,
+            strokeWidth: 2,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MemoryImagePreviewPage extends StatelessWidget {
+  const _MemoryImagePreviewPage({
+    required this.imageBytes,
+    required this.title,
+  });
+
+  final Uint8List imageBytes;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(title),
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          minScale: 0.8,
+          maxScale: 4,
+          child: Image.memory(imageBytes, fit: BoxFit.contain),
+        ),
+      ),
     );
   }
 }
@@ -498,7 +725,9 @@ class _VehicleImage extends StatelessWidget {
 }
 
 class _EmptyImage extends StatelessWidget {
-  const _EmptyImage();
+  const _EmptyImage({this.text = 'Chưa có ảnh phương tiện'});
+
+  final String text;
 
   @override
   Widget build(BuildContext context) {
@@ -510,10 +739,10 @@ class _EmptyImage extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: const Color(0xFFDAD8E0)),
         ),
-        child: const Center(
+        child: Center(
           child: Text(
-            'Chưa có ảnh phương tiện',
-            style: TextStyle(
+            text,
+            style: const TextStyle(
               color: AppColors.bodyText,
               fontSize: 12,
               fontWeight: FontWeight.w700,

@@ -25,7 +25,6 @@ class ChangePasswordPage extends StatefulWidget {
 }
 
 class _ChangePasswordPageState extends State<ChangePasswordPage> {
-  late final TextEditingController _oldPasswordController;
   late final TextEditingController _passwordController;
   late final TextEditingController _confirmPasswordController;
   bool _isLoading = false;
@@ -33,28 +32,21 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   @override
   void initState() {
     super.initState();
-    _oldPasswordController = TextEditingController();
     _passwordController = TextEditingController();
     _confirmPasswordController = TextEditingController();
   }
 
   @override
   void dispose() {
-    _oldPasswordController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
 
   Future<void> _handleChangePassword() async {
-    final oldPassword = _oldPasswordController.text;
     final newPassword = _passwordController.text;
     final confirmPassword = _confirmPasswordController.text;
-    final validationMessage = _validate(
-      oldPassword,
-      newPassword,
-      confirmPassword,
-    );
+    final validationMessage = _validate(newPassword, confirmPassword);
 
     if (validationMessage != null) {
       _showMessage(validationMessage);
@@ -66,11 +58,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     });
 
     try {
-      final onboarding = await widget.authService.changePassword(
-        oldPassword: oldPassword,
+      await widget.authService.changePassword(
         newPassword: newPassword,
         confirmPassword: confirmPassword,
       );
+      final onboarding = await widget.authService.fetchOnboarding();
 
       if (!mounted) {
         return;
@@ -90,23 +82,15 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     }
   }
 
-  String? _validate(
-    String oldPassword,
-    String newPassword,
-    String confirmPassword,
-  ) {
-    if (oldPassword.isEmpty) {
-      return 'Vui lòng nhập mật khẩu cũ';
-    }
+  String? _validate(String newPassword, String confirmPassword) {
     if (newPassword.isEmpty) {
       return 'Vui lòng nhập mật khẩu mới';
     }
     if (newPassword.length < 8) {
       return 'Mật khẩu mới phải có ít nhất 8 ký tự';
     }
-    if (!RegExp(r'[A-Za-z]').hasMatch(newPassword) ||
-        !RegExp(r'\d').hasMatch(newPassword)) {
-      return 'Mật khẩu mới phải có chữ và số';
+    if (!RegExp(r'\d').hasMatch(newPassword)) {
+      return 'Mật khẩu mới phải có ít nhất một chữ số';
     }
     if (confirmPassword.isEmpty) {
       return 'Vui lòng xác nhận mật khẩu mới';
@@ -119,7 +103,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
   void _goToNextStep(OnboardingState onboarding) {
     final page = switch (onboarding.nextStep) {
-      OnboardingState.identityVerification => IdentityVerificationPage(
+      OnboardingState.identityVerification => CompleteProfileUploadScreen(
         isRequired: true,
         authService: widget.authService,
         homeService: widget.homeService,
@@ -168,7 +152,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                             const _ChangePasswordIntro(),
                             const SizedBox(height: 32),
                             _ChangePasswordFormCard(
-                              oldPasswordController: _oldPasswordController,
                               passwordController: _passwordController,
                               confirmPasswordController:
                                   _confirmPasswordController,
@@ -269,14 +252,12 @@ class _ChangePasswordIntro extends StatelessWidget {
 
 class _ChangePasswordFormCard extends StatelessWidget {
   const _ChangePasswordFormCard({
-    required this.oldPasswordController,
     required this.passwordController,
     required this.confirmPasswordController,
     required this.isLoading,
     required this.onSubmit,
   });
 
-  final TextEditingController oldPasswordController;
   final TextEditingController passwordController;
   final TextEditingController confirmPasswordController;
   final bool isLoading;
@@ -303,17 +284,6 @@ class _ChangePasswordFormCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           AuthTextField(
-            label: 'Mật khẩu cũ',
-            hintText: 'Nhập mật khẩu tạm hiện tại',
-            controller: oldPasswordController,
-            obscureText: true,
-            textInputAction: TextInputAction.next,
-            hintColor: AppColors.hintText,
-            contentPadding: const EdgeInsets.fromLTRB(17, 18, 48, 18),
-            uppercaseLabel: false,
-          ),
-          const SizedBox(height: 24),
-          AuthTextField(
             label: 'Mật khẩu mới',
             hintText: 'Nhập mật khẩu mới',
             controller: passwordController,
@@ -335,7 +305,7 @@ class _ChangePasswordFormCard extends StatelessWidget {
             uppercaseLabel: false,
           ),
           const SizedBox(height: 24),
-          const _PasswordRequirements(),
+          _PasswordRequirements(passwordController: passwordController),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
@@ -377,54 +347,67 @@ class _ChangePasswordFormCard extends StatelessWidget {
 }
 
 class _PasswordRequirements extends StatelessWidget {
-  const _PasswordRequirements();
+  const _PasswordRequirements({required this.passwordController});
+
+  final TextEditingController passwordController;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.requirementBackground,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Yêu cầu mật khẩu:',
-            style: TextStyle(
-              color: AppColors.inputText,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              height: 16 / 12,
-              letterSpacing: 0.6,
-            ),
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: passwordController,
+      builder: (context, value, child) {
+        final password = value.text;
+        final hasMinimumLength = password.length >= 8;
+        final hasNumber = RegExp(r'\d').hasMatch(password);
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.requirementBackground,
+            borderRadius: BorderRadius.circular(8),
           ),
-          SizedBox(height: 8),
-          _RequirementItem(text: 'Tối thiểu 8 ký tự'),
-          SizedBox(height: 8),
-          _RequirementItem(text: 'Có ít nhất một chữ cái'),
-          SizedBox(height: 8),
-          _RequirementItem(text: 'Có ít nhất một chữ số'),
-        ],
-      ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Yêu cầu mật khẩu:',
+                style: TextStyle(
+                  color: AppColors.inputText,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  height: 16 / 12,
+                  letterSpacing: 0.6,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _RequirementItem(
+                text: 'Tối thiểu 8 ký tự',
+                isMet: hasMinimumLength,
+              ),
+              const SizedBox(height: 8),
+              _RequirementItem(text: 'Có ít nhất một chữ số', isMet: hasNumber),
+            ],
+          ),
+        );
+      },
     );
   }
 }
 
 class _RequirementItem extends StatelessWidget {
-  const _RequirementItem({required this.text});
+  const _RequirementItem({required this.text, required this.isMet});
 
   final String text;
+  final bool isMet;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Icon(
-          Icons.circle_outlined,
-          color: AppColors.cardBorder,
+        Icon(
+          isMet ? Icons.check_circle : Icons.circle_outlined,
+          color: isMet ? AppColors.deepBlue : AppColors.cardBorder,
           size: 15,
         ),
         const SizedBox(width: 8),

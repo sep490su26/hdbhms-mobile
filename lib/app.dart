@@ -30,7 +30,8 @@ class App extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       routes: {
-        '/identity-verification': (context) => const IdentityVerificationPage(),
+        '/identity-verification': (context) =>
+            const CompleteProfileUploadScreen(),
       },
       home: _AppRoot(
         authService: authService,
@@ -96,7 +97,7 @@ class _AppRootState extends State<_AppRoot> {
         homeService: widget.homeService,
         isRequired: true,
       ),
-      OnboardingState.identityVerification => IdentityVerificationPage(
+      OnboardingState.identityVerification => CompleteProfileUploadScreen(
         isRequired: true,
         authService: widget.authService,
         homeService: widget.homeService,

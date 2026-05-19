@@ -73,7 +73,6 @@ class AuthService {
   }
 
   Future<OnboardingState> changePassword({
-    required String oldPassword,
     required String newPassword,
     required String confirmPassword,
   }) async {
@@ -93,7 +92,6 @@ class AuthService {
               'Authorization': 'Bearer $token',
             },
             body: jsonEncode({
-              'old_password': oldPassword,
               'new_password': newPassword,
               'confirm_password': confirmPassword,
             }),

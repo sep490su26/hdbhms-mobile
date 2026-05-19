@@ -98,7 +98,7 @@ class _LoginPageState extends State<LoginPage> {
         homeService: widget.homeService,
         isRequired: true,
       ),
-      OnboardingState.identityVerification => IdentityVerificationPage(
+      OnboardingState.identityVerification => CompleteProfileUploadScreen(
         isRequired: true,
         authService: widget.authService,
         homeService: widget.homeService,

@@ -74,19 +74,33 @@ class IdentityDocumentDto {
     required this.docNumber,
     required this.issuedDate,
     required this.issuedPlace,
+    required this.frontFileUrl,
+    required this.backFileUrl,
   });
 
   final String docType;
   final String docNumber;
   final DateTime? issuedDate;
   final String issuedPlace;
+  final String frontFileUrl;
+  final String backFileUrl;
 
   factory IdentityDocumentDto.fromJson(Map<String, dynamic> json) {
     return IdentityDocumentDto(
       docType: json['doc_type']?.toString() ?? '',
-      docNumber: json['doc_number']?.toString() ?? '',
+      docNumber: _visibleDocNumber(json['doc_number']),
       issuedDate: DateTime.tryParse(json['issued_date']?.toString() ?? ''),
       issuedPlace: json['issued_place']?.toString() ?? '',
+      frontFileUrl: _firstString(json, [
+        'front_file_url',
+        'frontFileUrl',
+        'id_card_front_url',
+      ]),
+      backFileUrl: _firstString(json, [
+        'back_file_url',
+        'backFileUrl',
+        'id_card_back_url',
+      ]),
     );
   }
 }
@@ -162,4 +176,12 @@ String _firstString(Map<String, dynamic> json, List<String> keys) {
     }
   }
   return '';
+}
+
+String _visibleDocNumber(Object? value) {
+  final docNumber = value?.toString().trim() ?? '';
+  if (docNumber.toUpperCase().startsWith('PENDING-')) {
+    return '';
+  }
+  return docNumber;
 }

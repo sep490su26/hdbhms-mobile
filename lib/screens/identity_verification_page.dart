@@ -29,6 +29,18 @@ enum IdentityDocumentStep {
   }
 }
 
+class CompleteProfileUploadScreen extends IdentityVerificationPage {
+  const CompleteProfileUploadScreen({
+    super.key,
+    super.fileUploadService,
+    super.identityService,
+    super.authService,
+    super.homeService,
+    super.isRequired,
+    super.onCompleted,
+  });
+}
+
 class IdentityVerificationPage extends StatefulWidget {
   const IdentityVerificationPage({
     super.key,
@@ -65,6 +77,18 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
   bool get _hasAllImages =>
       _portraitImage != null && _frontIdImage != null && _backIdImage != null;
 
+  bool get _canContinue {
+    if (_loadingStep != null || _isSubmitting) {
+      return false;
+    }
+    return switch (_currentStep) {
+      IdentityDocumentStep.portrait => _portraitImage != null,
+      IdentityDocumentStep.frontId => _frontIdImage != null,
+      IdentityDocumentStep.backId => _backIdImage != null,
+      IdentityDocumentStep.confirm => _hasAllImages,
+    };
+  }
+
   @override
   void initState() {
     super.initState();
@@ -85,7 +109,7 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
           foregroundColor: AppColors.deepBlue,
           elevation: 0,
           title: const Text(
-            'X\u00E1c th\u1EF1c danh t\u00EDnh',
+            'Ho\u00E0n t\u1EA5t h\u1ED3 s\u01A1',
             style: TextStyle(
               color: AppColors.deepBlue,
               fontSize: 17,
@@ -127,8 +151,8 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
                   ),
                 ),
                 _BottomActionBar(
-                  isEnabled:
-                      _hasAllImages && _loadingStep == null && !_isSubmitting,
+                  showBackButton: _currentStep != IdentityDocumentStep.portrait,
+                  isEnabled: _canContinue,
                   isLoading: _isSubmitting,
                   actionLabel: _currentStep == IdentityDocumentStep.confirm
                       ? 'Xác nhận'
@@ -172,7 +196,7 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
           step: IdentityDocumentStep.frontId,
           imageFile: _frontIdImage,
           isLoading: _loadingStep == IdentityDocumentStep.frontId,
-          preview: const _IdCardPreview(label: 'M\u1EB6T TR\u01AF\u1EDAC C'),
+          preview: const _IdCardPreview(label: 'MẶT TRƯỚC'),
           instruction:
               '\u0110\u1EB7t CCCD n\u1EB1m trong khung, \u0111\u1EE7 4 g\u00F3c, ch\u1EEF r\u00F5 n\u00E9t, kh\u00F4ng b\u1ECB l\u00F3a s\u00E1ng.',
           onCapture: () => _pickImage(
@@ -256,10 +280,9 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
 
       if (!mounted) return;
 
-      if (_fileUploadService.isFileTooLarge(image)) {
-        _showMessage(
-          '\u1EA2nh qu\u00E1 l\u1EDBn, vui l\u00F2ng ch\u1ECDn \u1EA3nh kh\u00E1c',
-        );
+      final validationMessage = _fileUploadService.validateIdentityImage(image);
+      if (validationMessage != null) {
+        _showMessage(validationMessage);
         return;
       }
 
@@ -267,19 +290,24 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
         switch (step) {
           case IdentityDocumentStep.portrait:
             _portraitImage = image;
-            _currentStep = IdentityDocumentStep.frontId;
           case IdentityDocumentStep.frontId:
             _frontIdImage = image;
-            _currentStep = IdentityDocumentStep.backId;
           case IdentityDocumentStep.backId:
             _backIdImage = image;
-            _currentStep = IdentityDocumentStep.confirm;
           case IdentityDocumentStep.confirm:
             break;
         }
       });
     } on FilePickerCanceledException {
       return;
+    } on FilePickerPermissionDeniedException catch (error) {
+      if (mounted) {
+        _showMessage(
+          error.source == IdentityImageSource.camera
+              ? 'Không có quyền camera, vui lòng cấp quyền để chụp ảnh'
+              : 'Không có quyền truy cập thư viện ảnh, vui lòng cấp quyền để chọn ảnh',
+        );
+      }
     } catch (_) {
       if (mounted) {
         _showMessage('Không chọn được ảnh, vui lòng thử lại');
@@ -294,7 +322,9 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
   }
 
   Future<void> _handleContinue() async {
-    final validationMessage = _validateImages();
+    final validationMessage = _currentStep == IdentityDocumentStep.confirm
+        ? _validateImages()
+        : _validateCurrentStep();
     if (validationMessage != null) {
       _showMessage(validationMessage);
       return;
@@ -302,7 +332,7 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
 
     if (_currentStep != IdentityDocumentStep.confirm) {
       setState(() {
-        _currentStep = IdentityDocumentStep.confirm;
+        _currentStep = _nextStepAfterCurrent();
       });
       return;
     }
@@ -323,11 +353,18 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
       }
 
       if (widget.onCompleted != null) {
+        _showMessage('Hoàn tất hồ sơ thành công');
         widget.onCompleted!();
         return;
       }
 
-      if (result.onboarding.nextStep == OnboardingState.home) {
+      if (result.profileCompleted ||
+          result.onboarding.nextStep == OnboardingState.home) {
+        _showMessage('Hoàn tất hồ sơ thành công');
+        await Future<void>.delayed(const Duration(milliseconds: 600));
+        if (!mounted) {
+          return;
+        }
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => HomeScreen(
@@ -339,7 +376,11 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
         return;
       }
 
-      _showMessage('Cập nhật định danh thành công');
+      _showMessage(
+        result.message.isNotEmpty
+            ? result.message
+            : 'Hoàn tất hồ sơ thành công',
+      );
     } on IdentityException catch (error) {
       if (mounted) {
         _showMessage(error.message);
@@ -353,15 +394,36 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
     }
   }
 
+  IdentityDocumentStep _nextStepAfterCurrent() {
+    return switch (_currentStep) {
+      IdentityDocumentStep.portrait => IdentityDocumentStep.frontId,
+      IdentityDocumentStep.frontId => IdentityDocumentStep.backId,
+      IdentityDocumentStep.backId => IdentityDocumentStep.confirm,
+      IdentityDocumentStep.confirm => IdentityDocumentStep.confirm,
+    };
+  }
+
+  String? _validateCurrentStep() {
+    return switch (_currentStep) {
+      IdentityDocumentStep.portrait =>
+        _portraitImage == null ? 'Vui lòng thêm ảnh chân dung' : null,
+      IdentityDocumentStep.frontId =>
+        _frontIdImage == null ? 'Vui lòng thêm CCCD mặt trước' : null,
+      IdentityDocumentStep.backId =>
+        _backIdImage == null ? 'Vui lòng thêm CCCD mặt sau' : null,
+      IdentityDocumentStep.confirm => _validateImages(),
+    };
+  }
+
   String? _validateImages() {
     if (_portraitImage == null) {
-      return 'Vui l\u00F2ng th\u00EAm \u1EA3nh ch\u00E2n dung';
+      return 'Vui lòng upload đủ ảnh chân dung và 2 mặt CCCD';
     }
     if (_frontIdImage == null) {
-      return 'Vui l\u00F2ng th\u00EAm CCCD m\u1EB7t tr\u01B0\u1EDBc';
+      return 'Vui lòng upload đủ ảnh chân dung và 2 mặt CCCD';
     }
     if (_backIdImage == null) {
-      return 'Vui l\u00F2ng th\u00EAm CCCD m\u1EB7t sau';
+      return 'Vui lòng upload đủ ảnh chân dung và 2 mặt CCCD';
     }
     return null;
   }
@@ -946,16 +1008,22 @@ class _ReviewStepCard extends StatelessWidget {
           const SizedBox(height: 12),
           _ReviewRow(
             title: '\u1EA2nh ch\u00E2n dung',
+            image: portraitImage,
+            isPortrait: true,
             isReady: portraitImage != null,
             onEdit: () => onEditStep(IdentityDocumentStep.portrait),
           ),
           _ReviewRow(
             title: 'CCCD m\u1EB7t tr\u01B0\u1EDBc',
+            image: frontIdImage,
+            isPortrait: false,
             isReady: frontIdImage != null,
             onEdit: () => onEditStep(IdentityDocumentStep.frontId),
           ),
           _ReviewRow(
             title: 'CCCD m\u1EB7t sau',
+            image: backIdImage,
+            isPortrait: false,
             isReady: backIdImage != null,
             onEdit: () => onEditStep(IdentityDocumentStep.backId),
           ),
@@ -968,11 +1036,15 @@ class _ReviewStepCard extends StatelessWidget {
 class _ReviewRow extends StatelessWidget {
   const _ReviewRow({
     required this.title,
+    required this.image,
+    required this.isPortrait,
     required this.isReady,
     required this.onEdit,
   });
 
   final String title;
+  final IdentityImageFile? image;
+  final bool isPortrait;
   final bool isReady;
   final VoidCallback onEdit;
 
@@ -987,6 +1059,8 @@ class _ReviewRow extends StatelessWidget {
             color: isReady ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
             size: 20,
           ),
+          const SizedBox(width: 10),
+          _ReviewThumbnail(file: image, title: title, isPortrait: isPortrait),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -1006,8 +1080,82 @@ class _ReviewRow extends StatelessWidget {
   }
 }
 
+class _ReviewThumbnail extends StatelessWidget {
+  const _ReviewThumbnail({
+    required this.file,
+    required this.title,
+    required this.isPortrait,
+  });
+
+  final IdentityImageFile? file;
+  final String title;
+  final bool isPortrait;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = file == null
+        ? const Icon(
+            Icons.image_not_supported_outlined,
+            color: AppColors.cardBorder,
+            size: 22,
+          )
+        : Image.memory(file!.bytes, fit: BoxFit.cover);
+
+    final thumbnail = isPortrait
+        ? ClipOval(child: SizedBox(width: 44, height: 44, child: content))
+        : ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: SizedBox(width: 56, height: 40, child: content),
+          );
+
+    return InkWell(
+      onTap: file == null
+          ? null
+          : () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) =>
+                      _IdentityImagePreviewPage(title: title, file: file!),
+                ),
+              );
+            },
+      borderRadius: BorderRadius.circular(isPortrait ? 22 : 6),
+      child: thumbnail,
+    );
+  }
+}
+
+class _IdentityImagePreviewPage extends StatelessWidget {
+  const _IdentityImagePreviewPage({required this.title, required this.file});
+
+  final String title;
+  final IdentityImageFile file;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(title),
+      ),
+      body: SafeArea(
+        child: Center(
+          child: InteractiveViewer(
+            minScale: 0.8,
+            maxScale: 4,
+            child: Image.memory(file.bytes, fit: BoxFit.contain),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _BottomActionBar extends StatelessWidget {
   const _BottomActionBar({
+    required this.showBackButton,
     required this.isEnabled,
     required this.isLoading,
     required this.actionLabel,
@@ -1015,6 +1163,7 @@ class _BottomActionBar extends StatelessWidget {
     required this.onContinue,
   });
 
+  final bool showBackButton;
   final bool isEnabled;
   final bool isLoading;
   final String actionLabel;
@@ -1042,20 +1191,22 @@ class _BottomActionBar extends StatelessWidget {
         top: false,
         child: Row(
           children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: onBack,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.bodyText,
-                  minimumSize: const Size.fromHeight(48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+            if (showBackButton) ...[
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: onBack,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.bodyText,
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
+                  child: const Text('Tr\u1EDF v\u1EC1'),
                 ),
-                child: const Text('Tr\u1EDF v\u1EC1'),
               ),
-            ),
-            const SizedBox(width: 12),
+              const SizedBox(width: 12),
+            ],
             Expanded(
               flex: 2,
               child: ElevatedButton(

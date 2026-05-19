@@ -134,6 +134,8 @@ final _tenantProfile = TenantProfileResponse(
     docType: 'CCCD',
     docNumber: '036078008683',
     issuedDate: DateTime(2020, 4, 1),
+    frontFileUrl: '',
+    backFileUrl: '',
     issuedPlace: 'Cục CS QLHCVTTXH',
   ),
   vehicles: [
@@ -552,7 +554,7 @@ void main() {
     expect(find.text('0909009009'), findsOneWidget);
   });
 
-  testWidgets('identity verification requires three images before continuing', (
+  testWidgets('identity verification advances only after continuing manually', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(_identityPage);
@@ -563,20 +565,41 @@ void main() {
     );
     expect(tester.widget<ElevatedButton>(continueButton).onPressed, isNull);
 
-    await tester.ensureVisible(find.text('Ch\u1EE5p \u1EA3nh'));
-    await tester.tap(find.text('Ch\u1EE5p \u1EA3nh'));
+    await tester.ensureVisible(
+      find.widgetWithText(OutlinedButton, 'Ch\u1EE5p \u1EA3nh'),
+    );
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Ch\u1EE5p \u1EA3nh'));
+    await tester.pumpAndSettle();
+    expect(find.text('\u1EA2nh ch\u00E2n dung'), findsWidgets);
+    expect(tester.widget<ElevatedButton>(continueButton).onPressed, isNotNull);
+
+    await tester.tap(continueButton);
     await tester.pumpAndSettle();
     expect(find.text('CCCD m\u1EB7t tr\u01B0\u1EDBc'), findsWidgets);
     expect(tester.widget<ElevatedButton>(continueButton).onPressed, isNull);
 
-    await tester.ensureVisible(find.text('Ch\u1EE5p \u1EA3nh'));
-    await tester.tap(find.text('Ch\u1EE5p \u1EA3nh'));
+    await tester.ensureVisible(
+      find.widgetWithText(OutlinedButton, 'Ch\u1EE5p \u1EA3nh'),
+    );
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Ch\u1EE5p \u1EA3nh'));
+    await tester.pumpAndSettle();
+    expect(find.text('CCCD m\u1EB7t tr\u01B0\u1EDBc'), findsWidgets);
+    expect(tester.widget<ElevatedButton>(continueButton).onPressed, isNotNull);
+
+    await tester.tap(continueButton);
     await tester.pumpAndSettle();
     expect(find.text('CCCD m\u1EB7t sau'), findsWidgets);
     expect(tester.widget<ElevatedButton>(continueButton).onPressed, isNull);
 
-    await tester.ensureVisible(find.text('Ch\u1EE5p \u1EA3nh'));
-    await tester.tap(find.text('Ch\u1EE5p \u1EA3nh'));
+    await tester.ensureVisible(
+      find.widgetWithText(OutlinedButton, 'Ch\u1EE5p \u1EA3nh'),
+    );
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Ch\u1EE5p \u1EA3nh'));
+    await tester.pumpAndSettle();
+    expect(find.text('CCCD m\u1EB7t sau'), findsWidgets);
+    expect(tester.widget<ElevatedButton>(continueButton).onPressed, isNotNull);
+
+    await tester.tap(continueButton);
     await tester.pumpAndSettle();
     expect(find.text('X\u00E1c nh\u1EADn h\u1ED3 s\u01A1'), findsOneWidget);
     final confirmButton = find.widgetWithText(ElevatedButton, 'Xác nhận');
@@ -595,6 +618,9 @@ void main() {
 
     await tester.ensureVisible(find.text('Ch\u1EE5p \u1EA3nh'));
     await tester.tap(find.text('Ch\u1EE5p \u1EA3nh'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Ti\u1EBFp t\u1EE5c'));
     await tester.pumpAndSettle();
 
     expect(find.text('CCCD m\u1EB7t tr\u01B0\u1EDBc'), findsWidgets);

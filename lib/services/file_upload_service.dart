@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/identity_image_file.dart';
@@ -11,6 +10,8 @@ abstract class FileUploadService {
   });
 
   bool isFileTooLarge(IdentityImageFile file);
+
+  String? validateIdentityImage(IdentityImageFile file);
 }
 
 class ImagePickerFileUploadService implements FileUploadService {
@@ -21,19 +22,32 @@ class ImagePickerFileUploadService implements FileUploadService {
 
   final ImagePicker _picker;
   final int maxSizeInBytes;
+  static const _allowedExtensions = {'jpg', 'jpeg', 'png', 'heic'};
+  static const _allowedMimeTypes = {
+    'image/jpeg',
+    'image/png',
+    'image/heic',
+    'image/heif',
+  };
 
   @override
   Future<IdentityImageFile> pickIdentityImage({
     required String label,
     required IdentityImageSource source,
   }) async {
-    final image = await _picker.pickImage(
-      source: source == IdentityImageSource.camera
-          ? ImageSource.camera
-          : ImageSource.gallery,
-      imageQuality: 88,
-      maxWidth: 2200,
-    );
+    final XFile? image;
+    try {
+      image = await _picker.pickImage(
+        source: source == IdentityImageSource.camera
+            ? ImageSource.camera
+            : ImageSource.gallery,
+      );
+    } on PlatformException catch (error) {
+      if (_isPermissionError(error)) {
+        throw FilePickerPermissionDeniedException(source);
+      }
+      rethrow;
+    }
 
     if (image == null) {
       throw const FilePickerCanceledException();
@@ -47,6 +61,7 @@ class ImagePickerFileUploadService implements FileUploadService {
       sizeInBytes: bytes.length,
       source: source,
       bytes: bytes,
+      path: image.path,
       mimeType: image.mimeType,
     );
   }
@@ -55,10 +70,52 @@ class ImagePickerFileUploadService implements FileUploadService {
   bool isFileTooLarge(IdentityImageFile file) {
     return file.sizeInBytes > maxSizeInBytes;
   }
+
+  @override
+  String? validateIdentityImage(IdentityImageFile file) {
+    if (!_hasValidType(file)) {
+      return 'Định dạng ảnh không hợp lệ, vui lòng chụp lại';
+    }
+    if (isFileTooLarge(file)) {
+      return 'Ảnh quá lớn, vui lòng chụp lại';
+    }
+    return null;
+  }
+
+  bool _hasValidType(IdentityImageFile file) {
+    final extension = _extensionOf(file.name) ?? _extensionOf(file.path ?? '');
+    final mimeType = file.mimeType?.toLowerCase().trim();
+    final allowedExtension =
+        extension != null && _allowedExtensions.contains(extension);
+    final allowedMime =
+        mimeType == null ||
+        mimeType.isEmpty ||
+        _allowedMimeTypes.contains(mimeType);
+    return allowedExtension && allowedMime;
+  }
+
+  bool _isPermissionError(PlatformException error) {
+    final code = error.code.toLowerCase();
+    return code.contains('denied') || code.contains('restricted');
+  }
+
+  String? _extensionOf(String value) {
+    final dotIndex = value.lastIndexOf('.');
+    if (dotIndex < 0 || dotIndex == value.length - 1) {
+      return null;
+    }
+    return value.substring(dotIndex + 1).toLowerCase();
+  }
 }
 
 class FilePickerCanceledException implements Exception {
   const FilePickerCanceledException();
+}
+
+class FilePickerPermissionDeniedException implements Exception {
+  const FilePickerPermissionDeniedException(this.source);
+
+  final IdentityImageSource source;
 }
 
 class MockFileUploadService implements FileUploadService {
@@ -89,6 +146,14 @@ class MockFileUploadService implements FileUploadService {
   @override
   bool isFileTooLarge(IdentityImageFile file) {
     return file.sizeInBytes > maxSizeInBytes;
+  }
+
+  @override
+  String? validateIdentityImage(IdentityImageFile file) {
+    if (isFileTooLarge(file)) {
+      return 'Ảnh quá lớn, vui lòng chụp lại';
+    }
+    return null;
   }
 
   static Uint8List _transparentPngBytes() {

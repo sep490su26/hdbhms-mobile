@@ -6,8 +6,13 @@ import '../services/auth_service.dart';
 import '../services/home_service.dart';
 import '../services/tenant_profile_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/tenant_bottom_navigation.dart';
 import 'bill_selection_page.dart';
+import 'create_maintenance_ticket_screen.dart';
+import 'lease_contract_screen.dart';
 import 'login_page.dart';
+import 'maintenance_ticket_list_screen.dart';
+import 'property_rules_screen.dart';
 import 'tenant_profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -686,22 +691,57 @@ class _QuickActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+      childAspectRatio: 1.42,
       children: [
-        Expanded(
-          child: _QuickActionButton(
-            icon: Icons.warning_amber_rounded,
-            label: 'Báo cáo sự cố',
-            onTap: () => _showTodo(context, 'Màn báo sự cố chưa có'),
-          ),
+        _QuickActionButton(
+          icon: Icons.warning_amber_rounded,
+          label: 'Báo cáo sự cố',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const CreateMaintenanceTicketScreen(),
+              ),
+            );
+          },
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _QuickActionButton(
-            icon: Icons.description_outlined,
-            label: 'Xem hợp đồng',
-            onTap: () => _showTodo(context, 'Màn hợp đồng chưa có'),
-          ),
+        _QuickActionButton(
+          icon: Icons.description_outlined,
+          label: 'Xem hợp đồng',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const LeaseContractScreen(),
+              ),
+            );
+          },
+        ),
+        _QuickActionButton(
+          icon: Icons.rule_folder_outlined,
+          label: 'Nội quy nhà trọ',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const PropertyRulesScreen(),
+              ),
+            );
+          },
+        ),
+        _QuickActionButton(
+          icon: Icons.assignment_late_outlined,
+          label: 'Danh sách sự cố',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const MaintenanceTicketListScreen(),
+              ),
+            );
+          },
         ),
       ],
     );
@@ -769,129 +809,31 @@ class _HomeBottomNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      heightFactor: 1,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 390),
-        child: Container(
-          height: 74,
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-            border: Border.all(
-              color: AppColors.cardBorder.withValues(alpha: 0.7),
+    return TenantBottomNavigation(
+      activeTab: TenantBottomNavTab.home,
+      onBillsTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => const BillSelectionPage()),
+        );
+      },
+      onSupportTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const MaintenanceTicketListScreen(),
+          ),
+        );
+      },
+      onProfileTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => TenantProfileScreen(
+              authService: authService,
+              homeService: homeService,
+              profileService: profileService,
             ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const _BottomNavItem(
-                icon: Icons.home_rounded,
-                label: 'Home',
-                isSelected: true,
-              ),
-              _BottomNavItem(
-                icon: Icons.receipt_long_outlined,
-                label: 'Bills',
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const BillSelectionPage(),
-                    ),
-                  );
-                },
-              ),
-              _BottomNavItem(
-                icon: Icons.support_agent_outlined,
-                label: 'Support',
-                onTap: () => _showTodo(context, 'Màn hỗ trợ chưa có'),
-              ),
-              _BottomNavItem(
-                icon: Icons.person_outline,
-                label: 'Profile',
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => TenantProfileScreen(
-                        authService: authService,
-                        homeService: homeService,
-                        profileService: profileService,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BottomNavItem extends StatelessWidget {
-  const _BottomNavItem({
-    required this.icon,
-    required this.label,
-    this.isSelected = false,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool isSelected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isSelected ? AppColors.deepBlue : AppColors.bodyText;
-
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 68,
-        child: isSelected
-            ? Container(
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFA7B4FF),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(icon, color: color, size: 21),
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        color: AppColors.deepBlue,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                        height: 14 / 12,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, color: color, size: 22),
-                  const SizedBox(height: 3),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      height: 14 / 12,
-                    ),
-                  ),
-                ],
-              ),
-      ),
+        );
+      },
     );
   }
 }
