@@ -4,16 +4,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:hdbhms_mobile/app.dart';
 import 'package:hdbhms_mobile/models/home_summary_model.dart';
-import 'package:hdbhms_mobile/models/identity_image_file.dart';
 import 'package:hdbhms_mobile/models/login_response.dart';
 import 'package:hdbhms_mobile/models/onboarding_state.dart';
 import 'package:hdbhms_mobile/models/tenant_profile_model.dart';
-import 'package:hdbhms_mobile/screens/identity_verification_page.dart';
+import 'package:hdbhms_mobile/screens/change_password_page.dart';
 import 'package:hdbhms_mobile/screens/tenant_profile_screen.dart';
 import 'package:hdbhms_mobile/services/auth_service.dart';
-import 'package:hdbhms_mobile/services/file_upload_service.dart';
 import 'package:hdbhms_mobile/services/home_service.dart';
-import 'package:hdbhms_mobile/services/identity_service.dart';
 import 'package:hdbhms_mobile/services/tenant_profile_service.dart';
 
 class _FakeAuthService extends AuthService {
@@ -25,6 +22,48 @@ class _FakeAuthService extends AuthService {
     required String password,
   }) async {
     return _homeLoginResponse;
+  }
+}
+
+class _IdentityStepLoginAuthService extends AuthService {
+  const _IdentityStepLoginAuthService();
+
+  @override
+  Future<LoginResponse> login({
+    required String phoneOrEmail,
+    required String password,
+  }) async {
+    return _identityStepLoginResponse;
+  }
+}
+
+class _IdentityStepStartupAuthService extends AuthService {
+  const _IdentityStepStartupAuthService();
+
+  @override
+  Future<String?> get accessToken async => 'test-access-token';
+
+  @override
+  Future<OnboardingState> fetchOnboarding() async {
+    return _identityStepOnboarding;
+  }
+}
+
+class _IdentityStepAfterPasswordAuthService extends AuthService {
+  const _IdentityStepAfterPasswordAuthService();
+
+  @override
+  Future<OnboardingState> changePassword({
+    String? oldPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    return _identityStepOnboarding;
+  }
+
+  @override
+  Future<OnboardingState> fetchOnboarding() async {
+    return _identityStepOnboarding;
   }
 }
 
@@ -89,6 +128,35 @@ const _homeLoginResponse = LoginResponse(
     ),
   ],
   onboarding: _homeOnboarding,
+);
+const _identityStepOnboarding = OnboardingState(
+  userId: 1,
+  mustChangePassword: false,
+  identityCompleted: false,
+  nextStep: OnboardingState.identityVerification,
+);
+const _identityStepLoginResponse = LoginResponse(
+  accessToken: 'test-access-token',
+  refreshToken: 'test-refresh-token',
+  expiresIn: 900,
+  user: LoginUser(
+    id: 1,
+    fullName: 'Test User',
+    phone: '0900000000',
+    email: 'test@example.com',
+    status: 'ACTIVE',
+    mustChangePassword: false,
+    identityCompleted: false,
+  ),
+  tenants: [
+    LoginTenant(
+      tenantId: 1,
+      tenantName: 'Test Tenant',
+      role: 'TENANT',
+      propertyId: 1,
+    ),
+  ],
+  onboarding: _identityStepOnboarding,
 );
 const _homeSummary = HomeSummary(
   user: HomeUser(
@@ -188,31 +256,6 @@ const _tenantProfileWithNullVehicleImage = TenantProfileResponse(
     ),
   ],
   emergencyContacts: [],
-);
-
-class _FakeIdentityService extends IdentityService {
-  const _FakeIdentityService();
-
-  @override
-  Future<IdentityUploadResult> uploadIdentity({
-    required IdentityImageFile portrait,
-    required IdentityImageFile frontId,
-    required IdentityImageFile backId,
-  }) async {
-    return const IdentityUploadResult(
-      identityCompleted: true,
-      onboarding: _homeOnboarding,
-    );
-  }
-}
-
-const _identityPage = MaterialApp(
-  home: IdentityVerificationPage(
-    fileUploadService: MockFileUploadService(),
-    identityService: _FakeIdentityService(),
-    authService: _FakeAuthService(),
-    homeService: _FakeHomeService(),
-  ),
 );
 
 Future<void> login(WidgetTester tester) async {
@@ -558,80 +601,74 @@ void main() {
     expect(find.text('0909009009'), findsOneWidget);
   });
 
-  testWidgets('identity verification advances only after continuing manually', (
+  test('mobile onboarding maps identity verification step to home', () {
+    final onboarding = OnboardingState.fromJson(const {
+      'user_id': 1,
+      'must_change_password': false,
+      'identity_completed': false,
+      'next_step': OnboardingState.identityVerification,
+    });
+
+    expect(onboarding.nextStep, OnboardingState.home);
+  });
+
+  testWidgets('login ignores identity verification onboarding step', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(_identityPage);
-
-    final continueButton = find.widgetWithText(
-      ElevatedButton,
-      'Ti\u1EBFp t\u1EE5c',
+    await tester.pumpWidget(
+      const App(
+        authService: _IdentityStepLoginAuthService(),
+        homeService: _FakeHomeService(),
+      ),
     );
-    expect(tester.widget<ElevatedButton>(continueButton).onPressed, isNull);
+    await tester.pumpAndSettle();
 
-    await tester.ensureVisible(
-      find.widgetWithText(OutlinedButton, 'Ch\u1EE5p \u1EA3nh'),
+    await login(tester);
+
+    expect(find.text('XIN CH\u00C0O,'), findsOneWidget);
+    expect(find.text('Hoàn tất hồ sơ'), findsNothing);
+    expect(find.text('CCCD mặt trước'), findsNothing);
+  });
+
+  testWidgets('startup ignores cached identity verification onboarding step', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      const App(
+        authService: _IdentityStepStartupAuthService(),
+        homeService: _FakeHomeService(),
+      ),
     );
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Ch\u1EE5p \u1EA3nh'));
-    await tester.pumpAndSettle();
-    expect(find.text('\u1EA2nh ch\u00E2n dung'), findsWidgets);
-    expect(tester.widget<ElevatedButton>(continueButton).onPressed, isNotNull);
-
-    await tester.tap(continueButton);
-    await tester.pumpAndSettle();
-    expect(find.text('CCCD m\u1EB7t tr\u01B0\u1EDBc'), findsWidgets);
-    expect(tester.widget<ElevatedButton>(continueButton).onPressed, isNull);
-
-    await tester.ensureVisible(
-      find.widgetWithText(OutlinedButton, 'Ch\u1EE5p \u1EA3nh'),
-    );
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Ch\u1EE5p \u1EA3nh'));
-    await tester.pumpAndSettle();
-    expect(find.text('CCCD m\u1EB7t tr\u01B0\u1EDBc'), findsWidgets);
-    expect(tester.widget<ElevatedButton>(continueButton).onPressed, isNotNull);
-
-    await tester.tap(continueButton);
-    await tester.pumpAndSettle();
-    expect(find.text('CCCD m\u1EB7t sau'), findsWidgets);
-    expect(tester.widget<ElevatedButton>(continueButton).onPressed, isNull);
-
-    await tester.ensureVisible(
-      find.widgetWithText(OutlinedButton, 'Ch\u1EE5p \u1EA3nh'),
-    );
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Ch\u1EE5p \u1EA3nh'));
-    await tester.pumpAndSettle();
-    expect(find.text('CCCD m\u1EB7t sau'), findsWidgets);
-    expect(tester.widget<ElevatedButton>(continueButton).onPressed, isNotNull);
-
-    await tester.tap(continueButton);
-    await tester.pumpAndSettle();
-    expect(find.text('X\u00E1c nh\u1EADn h\u1ED3 s\u01A1'), findsOneWidget);
-    final confirmButton = find.widgetWithText(ElevatedButton, 'Xác nhận');
-    expect(tester.widget<ElevatedButton>(confirmButton).onPressed, isNotNull);
-
-    await tester.tap(confirmButton);
     await tester.pumpAndSettle();
 
     expect(find.text('XIN CH\u00C0O,'), findsOneWidget);
+    expect(find.text('Hoàn tất hồ sơ'), findsNothing);
+    expect(find.text('CCCD mặt trước'), findsNothing);
   });
 
-  testWidgets('identity verification back button returns to previous step', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(_identityPage);
+  testWidgets(
+    'change password goes straight home after identity step response',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: ChangePasswordPage(
+            authService: _IdentityStepAfterPasswordAuthService(),
+            homeService: _FakeHomeService(),
+            isRequired: true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Ch\u1EE5p \u1EA3nh'));
-    await tester.tap(find.text('Ch\u1EE5p \u1EA3nh'));
-    await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField).at(0), 'Changed123');
+      await tester.enterText(find.byType(TextFormField).at(1), 'Changed123');
+      await tester.ensureVisible(find.text('ĐỔI MẬT KHẨU'));
+      await tester.tap(find.text('ĐỔI MẬT KHẨU'));
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Ti\u1EBFp t\u1EE5c'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('CCCD m\u1EB7t tr\u01B0\u1EDBc'), findsWidgets);
-
-    await tester.tap(find.text('Tr\u1EDF v\u1EC1'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('\u1EA2nh ch\u00E2n dung'), findsWidgets);
-  });
+      expect(find.text('XIN CH\u00C0O,'), findsOneWidget);
+      expect(find.text('Hoàn tất hồ sơ'), findsNothing);
+      expect(find.text('CCCD mặt trước'), findsNothing);
+    },
+  );
 }

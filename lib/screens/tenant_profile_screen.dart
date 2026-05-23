@@ -12,6 +12,7 @@ import '../services/tenant_profile_service.dart';
 import '../theme/app_colors.dart';
 import 'bill_selection_page.dart';
 import 'lease_contract_screen.dart';
+import 'login_page.dart';
 
 class TenantProfileScreen extends StatefulWidget {
   const TenantProfileScreen({
@@ -48,6 +49,22 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
       _profileFuture = future;
     });
     await future;
+  }
+
+  Future<void> _handleLogout() async {
+    await AuthService.clearLocalSession();
+    if (!mounted) {
+      return;
+    }
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => LoginPage(
+          authService: widget.authService,
+          homeService: widget.homeService,
+        ),
+      ),
+      (route) => false,
+    );
   }
 
   @override
@@ -100,7 +117,10 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
                       return RefreshIndicator(
                         color: AppColors.deepBlue,
                         onRefresh: _refresh,
-                        child: _ProfileContent(profile: profile),
+                        child: _ProfileContent(
+                          profile: profile,
+                          onLogout: _handleLogout,
+                        ),
                       );
                     },
                   ),
@@ -171,9 +191,10 @@ class _ProfileHeader extends StatelessWidget {
 }
 
 class _ProfileContent extends StatelessWidget {
-  const _ProfileContent({required this.profile});
+  const _ProfileContent({required this.profile, required this.onLogout});
 
   final TenantProfileResponse profile;
+  final VoidCallback onLogout;
 
   @override
   Widget build(BuildContext context) {
@@ -209,7 +230,38 @@ class _ProfileContent extends StatelessWidget {
           _EmergencyContactsSection(contacts: profile.emergencyContacts),
           const SizedBox(height: 16),
           _VehiclesSection(vehicles: profile.vehicles),
+          const SizedBox(height: 16),
+          _LogoutButton(onLogout: onLogout),
         ],
+      ),
+    );
+  }
+}
+
+class _LogoutButton extends StatelessWidget {
+  const _LogoutButton({required this.onLogout});
+
+  final VoidCallback onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: OutlinedButton.icon(
+        onPressed: onLogout,
+        icon: const Icon(Icons.logout_rounded, size: 20),
+        label: const Text('Đăng xuất'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFFDC2626),
+          side: const BorderSide(color: Color(0xFFDC2626)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w900,
+            height: 18 / 14,
+          ),
+        ),
       ),
     );
   }

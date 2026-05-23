@@ -4,7 +4,6 @@ import 'config/app_config.dart';
 import 'models/onboarding_state.dart';
 import 'screens/change_password_page.dart';
 import 'screens/home_screen.dart';
-import 'screens/identity_verification_page.dart';
 import 'screens/login_page.dart';
 import 'services/auth_service.dart';
 import 'services/home_service.dart';
@@ -29,10 +28,6 @@ class App extends StatelessWidget {
       title: AppConfig.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      routes: {
-        '/identity-verification': (context) =>
-            const CompleteProfileUploadScreen(),
-      },
       home: _AppRoot(
         authService: authService,
         homeService: homeService,
@@ -96,11 +91,6 @@ class _AppRootState extends State<_AppRoot> {
         authService: widget.authService,
         homeService: widget.homeService,
         isRequired: true,
-      ),
-      OnboardingState.identityVerification => CompleteProfileUploadScreen(
-        isRequired: true,
-        authService: widget.authService,
-        homeService: widget.homeService,
       ),
       _ => HomeScreen(
         authService: widget.authService,

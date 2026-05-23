@@ -9,7 +9,6 @@ import '../widgets/auth_text_field.dart';
 import 'change_password_page.dart';
 import 'forgot_password_page.dart';
 import 'home_screen.dart';
-import 'identity_verification_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({
@@ -101,11 +100,6 @@ class _LoginPageState extends State<LoginPage> {
         homeService: widget.homeService,
         isRequired: true,
       ),
-      OnboardingState.identityVerification => CompleteProfileUploadScreen(
-        isRequired: true,
-        authService: widget.authService,
-        homeService: widget.homeService,
-      ),
       _ => HomeScreen(
         authService: widget.authService,
         homeService: widget.homeService,
@@ -158,8 +152,7 @@ class _LoginPageState extends State<LoginPage> {
                             passwordController: _passwordController,
                             isLoading: _isLoading,
                             onLogin: _handleLogin,
-                            forgotPasswordService:
-                                widget.forgotPasswordService,
+                            forgotPasswordService: widget.forgotPasswordService,
                           ),
                         ),
                       ),

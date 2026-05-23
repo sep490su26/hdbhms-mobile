@@ -16,11 +16,33 @@ class OnboardingState {
   final String nextStep;
 
   factory OnboardingState.fromJson(Map<String, dynamic> json) {
+    final mustChangePassword = json['must_change_password'] == true;
+    final rawNextStep = json['next_step']?.toString() ?? home;
+
     return OnboardingState(
       userId: int.tryParse(json['user_id']?.toString() ?? ''),
-      mustChangePassword: json['must_change_password'] == true,
+      mustChangePassword: mustChangePassword,
       identityCompleted: json['identity_completed'] == true,
-      nextStep: json['next_step']?.toString() ?? home,
+      nextStep: _mobileNextStep(
+        rawNextStep: rawNextStep,
+        mustChangePassword: mustChangePassword,
+      ),
     );
   }
+}
+
+String _mobileNextStep({
+  required String rawNextStep,
+  required bool mustChangePassword,
+}) {
+  if (mustChangePassword) {
+    return OnboardingState.changePassword;
+  }
+
+  // Identity verification disabled for mobile onboarding.
+  if (rawNextStep == OnboardingState.identityVerification) {
+    return OnboardingState.home;
+  }
+
+  return rawNextStep;
 }
