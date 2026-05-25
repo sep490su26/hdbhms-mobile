@@ -9,7 +9,8 @@ import '../theme/app_colors.dart';
 import '../widgets/tenant_bottom_navigation.dart';
 import 'bill_selection_page.dart';
 import 'create_maintenance_ticket_screen.dart';
-import 'lease_contract_screen.dart';
+import 'deposit_contract_list_screen.dart';
+import 'lease_contract_list_screen.dart';
 import 'login_page.dart';
 import 'maintenance_ticket_list_screen.dart';
 import 'property_rules_screen.dart';
@@ -712,11 +713,22 @@ class _QuickActions extends StatelessWidget {
         ),
         _QuickActionButton(
           icon: Icons.description_outlined,
-          label: 'Xem hợp đồng',
+          label: 'Xem danh sách hợp đồng',
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => const LeaseContractScreen(),
+                builder: (context) => const LeaseContractListScreen(),
+              ),
+            );
+          },
+        ),
+        _QuickActionButton(
+          icon: Icons.account_balance_wallet_outlined,
+          label: 'Xem danh sách HĐ cọc',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const DepositContractListScreen(),
               ),
             );
           },

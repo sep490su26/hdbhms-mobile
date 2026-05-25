@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
+import '../models/contract_list_item_model.dart';
 import '../models/lease_contract_model.dart';
 import 'auth_service.dart';
 
@@ -71,6 +72,115 @@ class LeaseContractService {
         throw const LeaseContractNotFoundException();
       }
 
+      throw LeaseContractException(_messageForError(response));
+    } on LeaseContractException {
+      rethrow;
+    } on TimeoutException {
+      throw const LeaseContractException('Không kết nối được máy chủ');
+    } on http.ClientException {
+      throw const LeaseContractException('Không kết nối được máy chủ');
+    } on FormatException {
+      throw const LeaseContractException('Không tải được dữ liệu hợp đồng');
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
+
+  Future<List<ContractListItem>> getMyContracts({int? tenantId}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(AuthService.accessTokenKey);
+    final currentTenantId = tenantId ?? prefs.getInt(AuthService.tenantIdKey);
+
+    if (token == null || token.isEmpty) {
+      throw const LeaseContractForbiddenException();
+    }
+    if (currentTenantId == null) {
+      throw const LeaseContractException('Không tìm thấy tenant hiện tại');
+    }
+
+    final client = _client ?? http.Client();
+    try {
+      final response = await client
+          .get(
+            Uri.parse(
+              '${ApiConfig.baseUrl}/tenants/$currentTenantId/contracts/my-list',
+            ),
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(_timeout);
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        final List<dynamic> list = body is List ? body : (body['data'] ?? []);
+        return list
+            .whereType<Map<String, dynamic>>()
+            .map(ContractListItem.fromJson)
+            .toList(growable: false);
+      }
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        throw const LeaseContractForbiddenException();
+      }
+      throw LeaseContractException(_messageForError(response));
+    } on LeaseContractException {
+      rethrow;
+    } on TimeoutException {
+      throw const LeaseContractException('Không kết nối được máy chủ');
+    } on http.ClientException {
+      throw const LeaseContractException('Không kết nối được máy chủ');
+    } on FormatException {
+      throw const LeaseContractException('Không tải được danh sách hợp đồng');
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
+
+  Future<LeaseContract> getContractById(int contractId, {int? tenantId}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(AuthService.accessTokenKey);
+    final currentTenantId = tenantId ?? prefs.getInt(AuthService.tenantIdKey);
+
+    if (token == null || token.isEmpty) {
+      throw const LeaseContractForbiddenException();
+    }
+    if (currentTenantId == null) {
+      throw const LeaseContractException('Không tìm thấy tenant hiện tại');
+    }
+
+    final client = _client ?? http.Client();
+    try {
+      final response = await client
+          .get(
+            Uri.parse(
+              '${ApiConfig.baseUrl}/tenants/$currentTenantId/contracts/$contractId',
+            ),
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(_timeout);
+
+      if (response.statusCode == 200) {
+        final body = _decodeBody(response.body);
+        final data = _contractPayload(body);
+        if (data == null) {
+          throw const LeaseContractNotFoundException();
+        }
+        return LeaseContract.fromJson(data);
+      }
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        throw const LeaseContractForbiddenException();
+      }
+      if (response.statusCode == 404) {
+        throw const LeaseContractNotFoundException();
+      }
       throw LeaseContractException(_messageForError(response));
     } on LeaseContractException {
       rethrow;

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../config/api_config.dart';
-import '../models/lease_contract_model.dart';
-import '../services/lease_contract_service.dart';
+import '../models/contract_list_item_model.dart';
+import '../services/deposit_contract_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/currency_formatter.dart';
 import '../widgets/tenant_bottom_navigation.dart';
@@ -11,47 +11,45 @@ import 'contract_pdf_viewer_screen.dart';
 import 'maintenance_ticket_list_screen.dart';
 import 'tenant_profile_screen.dart';
 
-class LeaseContractScreen extends StatefulWidget {
-  const LeaseContractScreen({
+class DepositContractDetailScreen extends StatefulWidget {
+  const DepositContractDetailScreen({
     super.key,
-    this.contractId,
-    this.contractService = const LeaseContractService(),
+    required this.depositId,
+    this.depositService = const DepositContractService(),
   });
 
-  final int? contractId;
-  final LeaseContractService contractService;
+  final int depositId;
+  final DepositContractService depositService;
 
   @override
-  State<LeaseContractScreen> createState() => _LeaseContractScreenState();
+  State<DepositContractDetailScreen> createState() =>
+      _DepositContractDetailScreenState();
 }
 
-class _LeaseContractScreenState extends State<LeaseContractScreen> {
-  late Future<LeaseContract> _contractFuture;
+class _DepositContractDetailScreenState
+    extends State<DepositContractDetailScreen> {
+  late Future<DepositContract> _depositFuture;
 
   @override
   void initState() {
     super.initState();
-    _contractFuture = _loadContract();
+    _depositFuture = _load();
   }
 
-  Future<LeaseContract> _loadContract() {
-    final id = widget.contractId;
-    if (id != null) {
-      return widget.contractService.getContractById(id);
-    }
-    return widget.contractService.getMyActiveContract();
+  Future<DepositContract> _load() {
+    return widget.depositService.getDepositById(widget.depositId);
   }
 
   void _retry() {
     setState(() {
-      _contractFuture = _loadContract();
+      _depositFuture = _load();
     });
   }
 
   Future<void> _refresh() async {
-    final future = _loadContract();
+    final future = _load();
     setState(() {
-      _contractFuture = future;
+      _depositFuture = future;
     });
     await future;
   }
@@ -66,35 +64,38 @@ class _LeaseContractScreenState extends State<LeaseContractScreen> {
             constraints: const BoxConstraints(maxWidth: 390),
             child: Column(
               children: [
-                const _ContractHeader(),
+                const _DetailHeader(),
                 Expanded(
-                  child: FutureBuilder<LeaseContract>(
-                    future: _contractFuture,
+                  child: FutureBuilder<DepositContract>(
+                    future: _depositFuture,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const _ContractLoadingState();
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.deepBlue,
+                          ),
+                        );
                       }
 
                       if (snapshot.hasError) {
-                        final error = snapshot.error;
-                        if (error is LeaseContractNotFoundException) {
-                          return _ContractEmptyState(onRetry: _retry);
-                        }
-                        return _ContractErrorState(
-                          message: _messageForError(error),
+                        return _ErrorState(
+                          message: _errorMessage(snapshot.error),
                           onRetry: _retry,
                         );
                       }
 
-                      final contract = snapshot.data;
-                      if (contract == null) {
-                        return _ContractEmptyState(onRetry: _retry);
+                      final deposit = snapshot.data;
+                      if (deposit == null) {
+                        return _ErrorState(
+                          message: 'Không tìm thấy HĐ cọc',
+                          onRetry: _retry,
+                        );
                       }
 
                       return RefreshIndicator(
                         color: AppColors.deepBlue,
                         onRefresh: _refresh,
-                        child: _ContractContent(contract: contract),
+                        child: _DepositContent(deposit: deposit),
                       );
                     },
                   ),
@@ -104,13 +105,20 @@ class _LeaseContractScreenState extends State<LeaseContractScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: const _ContractBottomNavigation(),
+      bottomNavigationBar: const _DepositBottomNavigation(),
     );
+  }
+
+  String _errorMessage(Object? error) {
+    if (error is DepositContractException) return error.message;
+    return 'Không tải được dữ liệu HĐ cọc';
   }
 }
 
-class _ContractHeader extends StatelessWidget {
-  const _ContractHeader();
+// ── Header ──
+
+class _DetailHeader extends StatelessWidget {
+  const _DetailHeader();
 
   @override
   Widget build(BuildContext context) {
@@ -138,7 +146,7 @@ class _ContractHeader extends StatelessWidget {
           ),
           const Expanded(
             child: Text(
-              'Thông tin hợp đồng',
+              'Thông tin HĐ cọc',
               style: TextStyle(
                 color: AppColors.deepBlue,
                 fontSize: 14,
@@ -164,10 +172,12 @@ class _ContractHeader extends StatelessWidget {
   }
 }
 
-class _ContractContent extends StatelessWidget {
-  const _ContractContent({required this.contract});
+// ── Content ──
 
-  final LeaseContract contract;
+class _DepositContent extends StatelessWidget {
+  const _DepositContent({required this.deposit});
+
+  final DepositContract deposit;
 
   @override
   Widget build(BuildContext context) {
@@ -177,109 +187,32 @@ class _ContractContent extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _ContractWarning(contract: contract),
-          _RoomHeroCard(contract: contract),
+          _RoomHeroCard(deposit: deposit),
           const SizedBox(height: 12),
-          _ContractInfoGrid(contract: contract),
+          _DepositInfoGrid(deposit: deposit),
           const SizedBox(height: 12),
-          _TermsSection(terms: contract.terms),
-          const SizedBox(height: 12),
-          _DocumentSection(contractFileUrl: contract.contractFileUrl),
+          _DocumentSection(contractFileUrl: deposit.contractFileUrl),
+          if (deposit.note.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _NoteSection(note: deposit.note),
+          ],
         ],
       ),
     );
   }
 }
 
-class _ContractWarning extends StatelessWidget {
-  const _ContractWarning({required this.contract});
-
-  final LeaseContract contract;
-
-  @override
-  Widget build(BuildContext context) {
-    final endDate = contract.endDate;
-    if (endDate == null) {
-      return const SizedBox.shrink();
-    }
-
-    final today = _dateOnly(DateTime.now());
-    final end = _dateOnly(endDate);
-    final remainingDays = end.difference(today).inDays;
-    final isExpired = remainingDays < 0;
-    final isExpiringSoon = remainingDays >= 0 && remainingDays <= 90;
-
-    if (!isExpired && !isExpiringSoon) {
-      return const SizedBox.shrink();
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFD8D5),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFFFA9A3)),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(
-              Icons.warning_amber_rounded,
-              color: Color(0xFFB00020),
-              size: 26,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isExpired
-                        ? 'HĐ đã hết hạn, vui lòng liên hệ quản lý'
-                        : 'HĐ sắp hết hạn, vui lòng phản hồi',
-                    style: const TextStyle(
-                      color: Color(0xFFB00020),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      height: 20 / 15,
-                    ),
-                  ),
-                  if (!isExpired) ...[
-                    const SizedBox(height: 7),
-                    Text(
-                      'Hợp đồng thuê phòng của bạn sẽ kết thúc vào ngày '
-                      '${_formatDate(endDate)}. Vui lòng liên hệ ban quản lý '
-                      'để gia hạn hoặc hoàn tất thủ tục trả phòng.',
-                      style: const TextStyle(
-                        color: Color(0xFFB00020),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        height: 17 / 12,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+// ── Room Hero Card ──
 
 class _RoomHeroCard extends StatelessWidget {
-  const _RoomHeroCard({required this.contract});
+  const _RoomHeroCard({required this.deposit});
 
-  final LeaseContract contract;
+  final DepositContract deposit;
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = _resolveResourceUrl(contract.room.imageUrl);
-    final roomName = _roomTitle(contract.room);
+    final imageUrl = _resolveResourceUrl(deposit.room.imageUrl);
+    final roomName = _roomTitle(deposit.room);
 
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
@@ -298,9 +231,7 @@ class _RoomHeroCard extends StatelessWidget {
                 errorBuilder: (context, error, stackTrace) =>
                     const _RoomPlaceholder(),
                 loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) {
-                    return child;
-                  }
+                  if (loadingProgress == null) return child;
                   return const _RoomPlaceholder();
                 },
               ),
@@ -327,7 +258,7 @@ class _RoomHeroCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _StatusBadge(status: contract.status),
+                        _StatusBadge(status: deposit.status),
                         const SizedBox(height: 7),
                         Text(
                           roomName,
@@ -345,7 +276,7 @@ class _RoomHeroCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    '${_formatMoney(contract.monthlyRent)}/tháng',
+                    _formatMoney(deposit.amount),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,
@@ -407,38 +338,42 @@ class _StatusBadge extends StatelessWidget {
   }
 }
 
-class _ContractInfoGrid extends StatelessWidget {
-  const _ContractInfoGrid({required this.contract});
+// ── Info Grid ──
 
-  final LeaseContract contract;
+class _DepositInfoGrid extends StatelessWidget {
+  const _DepositInfoGrid({required this.deposit});
+
+  final DepositContract deposit;
 
   @override
   Widget build(BuildContext context) {
     final items = [
+      _InfoGridItem(label: 'Mã HĐ cọc', value: deposit.depositCode),
+      _InfoGridItem(label: 'Mã phòng', value: deposit.room.roomCode),
       _InfoGridItem(
-        label: 'Chu kỳ',
-        value: contract.paymentCycleMonths == null
-            ? ''
-            : '${contract.paymentCycleMonths} tháng',
-      ),
-      _InfoGridItem(label: 'Bắt đầu', value: _formatDate(contract.startDate)),
-      _InfoGridItem(label: 'Kết thúc', value: _formatDate(contract.endDate)),
-      _InfoGridItem(
-        label: 'Diện tích',
-        value: contract.room.area == null
-            ? ''
-            : '${_formatNumber(contract.room.area!)} m²',
+        label: 'Số tiền cọc',
+        value: _formatMoney(deposit.amount),
       ),
       _InfoGridItem(
-        label: 'Bắt đầu tính tiền',
-        value: _formatDate(contract.rentStartDate),
+        label: 'Trạng thái',
+        value: _statusLabel(deposit.status),
       ),
       _InfoGridItem(
-        label: 'Tiền cọc',
-        value: _formatMoney(contract.depositAmount),
+        label: 'Ngày dọn vào (DK)',
+        value: _formatDate(deposit.expectedMoveInDate),
       ),
-      _InfoGridItem(label: 'Mã phòng', value: contract.room.roomCode),
-      _InfoGridItem(label: 'Trạng thái', value: _statusLabel(contract.status)),
+      _InfoGridItem(
+        label: 'Ngày ký HĐ (DK)',
+        value: _formatDate(deposit.expectedLeaseSignDate),
+      ),
+      _InfoGridItem(
+        label: 'HĐ cọc hết hạn',
+        value: _formatDate(deposit.depositExpiresAt),
+      ),
+      _InfoGridItem(
+        label: 'Ngày tạo',
+        value: _formatDate(deposit.createdAt),
+      ),
     ];
 
     return Container(
@@ -503,69 +438,7 @@ class _InfoGridItem extends StatelessWidget {
   }
 }
 
-class _TermsSection extends StatelessWidget {
-  const _TermsSection({required this.terms});
-
-  final List<String> terms;
-
-  @override
-  Widget build(BuildContext context) {
-    return _SectionCard(
-      title: 'Điều khoản chính',
-      icon: Icons.gavel_rounded,
-      child: terms.isEmpty
-          ? const _MutedText('Chưa có điều khoản hợp đồng')
-          : Column(
-              children: [
-                for (var i = 0; i < terms.length; i++) ...[
-                  if (i > 0) const SizedBox(height: 10),
-                  _TermTile(text: terms[i]),
-                ],
-              ],
-            ),
-    );
-  }
-}
-
-class _TermTile extends StatelessWidget {
-  const _TermTile({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F0F0),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.check_circle_outline_rounded,
-            color: AppColors.deepBlue,
-            size: 18,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                color: AppColors.bodyText,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                height: 17 / 12,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+// ── Document Section ──
 
 class _DocumentSection extends StatelessWidget {
   const _DocumentSection({required this.contractFileUrl});
@@ -579,14 +452,14 @@ class _DocumentSection extends StatelessWidget {
     return _SectionCard(
       title: 'Quản lý tài liệu',
       child: url.isEmpty
-          ? const _MutedText('Chưa có tài liệu hợp đồng')
+          ? const _MutedText('Chưa có tài liệu hợp đồng cọc')
           : SizedBox(
               width: double.infinity,
               height: 48,
               child: ElevatedButton.icon(
-                onPressed: () => _showContractFile(context, url),
+                onPressed: () => _showFile(context, url),
                 icon: const Icon(Icons.description_outlined, size: 20),
-                label: const Text('Xem hợp đồng'),
+                label: const Text('Xem HĐ cọc'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.deepBlue,
                   foregroundColor: Colors.white,
@@ -600,6 +473,33 @@ class _DocumentSection extends StatelessWidget {
     );
   }
 }
+
+// ── Note Section ──
+
+class _NoteSection extends StatelessWidget {
+  const _NoteSection({required this.note});
+
+  final String note;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      title: 'Ghi chú',
+      icon: Icons.notes_rounded,
+      child: Text(
+        note,
+        style: const TextStyle(
+          color: AppColors.bodyText,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          height: 18 / 13,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Shared widgets ──
 
 class _SectionCard extends StatelessWidget {
   const _SectionCard({required this.title, required this.child, this.icon});
@@ -667,105 +567,118 @@ class _MutedText extends StatelessWidget {
   }
 }
 
-class _ContractLoadingState extends StatelessWidget {
-  const _ContractLoadingState();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: CircularProgressIndicator(color: AppColors.deepBlue),
-    );
-  }
-}
-
-class _ContractEmptyState extends StatelessWidget {
-  const _ContractEmptyState({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return _StateMessage(
-      icon: Icons.description_outlined,
-      title: 'Bạn chưa có hợp đồng thuê phòng đang hiệu lực',
-      buttonLabel: 'Thử lại',
-      onRetry: onRetry,
-    );
-  }
-}
-
-class _ContractErrorState extends StatelessWidget {
-  const _ContractErrorState({required this.message, required this.onRetry});
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.message, required this.onRetry});
 
   final String message;
   final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
-    return _StateMessage(
-      icon: Icons.error_outline_rounded,
-      title: message,
-      buttonLabel: 'Thử lại',
-      onRetry: onRetry,
-    );
-  }
-}
-
-class _StateMessage extends StatelessWidget {
-  const _StateMessage({
-    required this.icon,
-    required this.title,
-    required this.buttonLabel,
-    required this.onRetry,
-  });
-
-  final IconData icon;
-  final String title;
-  final String buttonLabel;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return RefreshIndicator(
-      color: AppColors.deepBlue,
-      onRefresh: () async => onRetry(),
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
+    return Center(
+      child: Padding(
         padding: const EdgeInsets.all(24),
-        children: [
-          const SizedBox(height: 120),
-          Icon(icon, color: AppColors.deepBlue, size: 46),
-          const SizedBox(height: 14),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: AppColors.inputText,
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
-              height: 20 / 15,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline_rounded,
+                color: AppColors.deepBlue, size: 42),
+            const SizedBox(height: 14),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.inputText,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-          const SizedBox(height: 18),
-          Center(
-            child: ElevatedButton.icon(
+            const SizedBox(height: 18),
+            ElevatedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded),
-              label: Text(buttonLabel),
+              label: const Text('Thử lại'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.deepBlue,
                 foregroundColor: Colors.white,
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-class _ContractBottomNavigation extends StatelessWidget {
-  const _ContractBottomNavigation();
+// ── Helpers ──
+
+void _showFile(BuildContext context, String url) {
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (context) => ContractPdfViewerScreen(
+        pdfUrl: url,
+        title: 'Hợp đồng cọc',
+      ),
+    ),
+  );
+}
+
+String _display(String? value) {
+  final trimmed = value?.trim() ?? '';
+  return trimmed.isEmpty ? 'Chưa cập nhật' : trimmed;
+}
+
+String _formatDate(DateTime? date) {
+  if (date == null) return 'Chưa cập nhật';
+  return '${date.day.toString().padLeft(2, '0')}/'
+      '${date.month.toString().padLeft(2, '0')}/'
+      '${date.year}';
+}
+
+String _formatMoney(num? amount) {
+  if (amount == null) return 'Chưa cập nhật';
+  return CurrencyFormatter.vnd(amount).replaceAll(' đ', 'đ');
+}
+
+String _roomTitle(DepositRoom room) {
+  if (room.roomName.trim().isNotEmpty) return room.roomName.trim();
+  if (room.roomCode.trim().isNotEmpty) return 'Phòng ${room.roomCode.trim()}';
+  return 'Phòng cọc';
+}
+
+String _statusLabel(String status) {
+  return switch (status.trim().toUpperCase()) {
+    'CONFIRMED' => 'Đã xác nhận',
+    'PAID' => 'Đã thanh toán',
+    'PENDING_PAYMENT' => 'Chờ thanh toán',
+    'DRAFT' => 'Bản nháp',
+    'CONVERTED_TO_LEASE' => 'Đã chuyển HĐ thuê',
+    'EXTENDED' => 'Đã gia hạn',
+    'REFUNDED' => 'Đã hoàn tiền',
+    'FORFEITED' => 'Đã mất cọc',
+    'CANCELLED' => 'Đã hủy',
+    _ => _display(status),
+  };
+}
+
+String _resolveResourceUrl(String value) {
+  final url = value.trim();
+  if (url.isEmpty) return '';
+  final uri = Uri.tryParse(url);
+  if (uri != null && uri.hasScheme) return url;
+
+  final baseUri = Uri.parse(ApiConfig.baseUrl);
+  if (url.startsWith('/')) return baseUri.replace(path: url).toString();
+  final base = ApiConfig.baseUrl.endsWith('/')
+      ? ApiConfig.baseUrl.substring(0, ApiConfig.baseUrl.length - 1)
+      : ApiConfig.baseUrl;
+  return '$base/$url';
+}
+
+// ── Bottom Navigation ──
+
+class _DepositBottomNavigation extends StatelessWidget {
+  const _DepositBottomNavigation();
 
   @override
   Widget build(BuildContext context) {
@@ -796,92 +709,4 @@ class _ContractBottomNavigation extends StatelessWidget {
       },
     );
   }
-}
-
-void _showContractFile(BuildContext context, String url) {
-  Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (context) => ContractPdfViewerScreen(
-        pdfUrl: url,
-        title: 'Hợp đồng thuê phòng',
-      ),
-    ),
-  );
-}
-
-DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
-
-String _roomTitle(LeaseRoom room) {
-  if (room.roomName.trim().isNotEmpty) {
-    return room.roomName.trim();
-  }
-  if (room.roomCode.trim().isNotEmpty) {
-    return 'Phòng ${room.roomCode.trim()}';
-  }
-  return 'Phòng thuê';
-}
-
-String _display(String? value) {
-  final trimmed = value?.trim() ?? '';
-  return trimmed.isEmpty ? 'Chưa cập nhật' : trimmed;
-}
-
-String _formatDate(DateTime? date) {
-  if (date == null) {
-    return 'Chưa cập nhật';
-  }
-  return '${date.day.toString().padLeft(2, '0')}/'
-      '${date.month.toString().padLeft(2, '0')}/'
-      '${date.year}';
-}
-
-String _formatMoney(num? amount) {
-  if (amount == null) {
-    return 'Chưa cập nhật';
-  }
-  return CurrencyFormatter.vnd(amount).replaceAll(' đ', 'đ');
-}
-
-String _formatNumber(num value) {
-  if (value % 1 == 0) {
-    return value.toInt().toString();
-  }
-  return value.toStringAsFixed(1);
-}
-
-String _statusLabel(String status) {
-  return switch (status.trim().toUpperCase()) {
-    'ACTIVE' => 'Đang hiệu lực',
-    'EXPIRING_SOON' => 'Sắp hết hạn',
-    'EXPIRED' => 'Đã hết hạn',
-    'TERMINATED' => 'Đã chấm dứt',
-    _ => _display(status),
-  };
-}
-
-String _resolveResourceUrl(String value) {
-  final url = value.trim();
-  if (url.isEmpty) {
-    return '';
-  }
-  final uri = Uri.tryParse(url);
-  if (uri != null && uri.hasScheme) {
-    return url;
-  }
-
-  final baseUri = Uri.parse(ApiConfig.baseUrl);
-  if (url.startsWith('/')) {
-    return baseUri.replace(path: url).toString();
-  }
-  final base = ApiConfig.baseUrl.endsWith('/')
-      ? ApiConfig.baseUrl.substring(0, ApiConfig.baseUrl.length - 1)
-      : ApiConfig.baseUrl;
-  return '$base/$url';
-}
-
-String _messageForError(Object? error) {
-  if (error is LeaseContractException) {
-    return error.message;
-  }
-  return 'Không tải được dữ liệu hợp đồng';
 }

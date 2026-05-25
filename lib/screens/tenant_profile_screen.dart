@@ -11,7 +11,7 @@ import '../services/home_service.dart';
 import '../services/tenant_profile_service.dart';
 import '../theme/app_colors.dart';
 import 'bill_selection_page.dart';
-import 'lease_contract_screen.dart';
+import 'lease_contract_list_screen.dart';
 import 'login_page.dart';
 
 class TenantProfileScreen extends StatefulWidget {
@@ -334,12 +334,12 @@ class _ContractEntrySection extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => const LeaseContractScreen(),
+                  builder: (context) => const LeaseContractListScreen(),
                 ),
               );
             },
             icon: const Icon(Icons.article_outlined, size: 20),
-            label: const Text('Xem hợp đồng'),
+            label: const Text('Xem danh sách hợp đồng'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.deepBlue,
               foregroundColor: Colors.white,
