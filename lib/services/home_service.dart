@@ -22,36 +22,40 @@ class HomeService {
   const HomeService({http.Client? client}) : _client = client;
 
   final http.Client? _client;
-  static const _timeout = Duration(seconds: 10);
+  static const _timeout = Duration(seconds: 15);
+
+  Map<String, String> get _headers => {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Client-Type': 'mobile',
+      };
 
   Future<HomeSummary> fetchHomeSummary() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(AuthService.accessTokenKey);
-    final tenantId = prefs.getInt(AuthService.tenantIdKey);
 
     if (token == null || token.isEmpty) {
       throw const SessionExpiredException();
-    }
-    if (tenantId == null) {
-      throw const HomeException('Không tìm thấy tenant hiện tại');
     }
 
     final client = _client ?? http.Client();
     try {
       final response = await client
           .get(
-            Uri.parse('${ApiConfig.baseUrl}/tenants/$tenantId/mobile/home'),
+            Uri.parse('${ApiConfig.baseUrl}/mobile/home'),
             headers: {
-              'Accept': 'application/json',
+              ..._headers,
               'Authorization': 'Bearer $token',
             },
           )
           .timeout(_timeout);
 
       if (response.statusCode == 200) {
-        return HomeSummary.fromJson(_decodeBody(response.body));
+        final decoded = _decodeBody(response.body);
+        return HomeSummary.fromJson(decoded);
       }
-      if (response.statusCode == 401) {
+      
+      if (response.statusCode == 401 || response.statusCode == 403) {
         throw const SessionExpiredException();
       }
 
@@ -61,7 +65,7 @@ class HomeService {
     } on http.ClientException {
       throw const HomeException('Không kết nối được máy chủ');
     } on FormatException {
-      throw const HomeException('Không tải được dữ liệu Home');
+      throw const HomeException('Dữ liệu máy chủ không hợp lệ');
     } finally {
       if (_client == null) {
         client.close();
@@ -77,16 +81,18 @@ class HomeService {
         return message.toString();
       }
     } on FormatException {
-      // Fall through to generic message.
+      // Fall through
     }
-    return 'Không tải được dữ liệu Home';
+    return 'Lỗi tải dữ liệu (${response.statusCode})';
   }
 
   Map<String, dynamic> _decodeBody(String body) {
-    final decoded = jsonDecode(body);
-    if (decoded is Map<String, dynamic>) {
-      return decoded;
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      return {};
+    } catch (_) {
+      return {};
     }
-    throw const FormatException('Invalid response body');
   }
 }

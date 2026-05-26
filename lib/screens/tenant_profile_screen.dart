@@ -52,7 +52,7 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
   }
 
   Future<void> _handleLogout() async {
-    await AuthService.clearLocalSession();
+    await widget.authService.logout();
     if (!mounted) {
       return;
     }
@@ -843,6 +843,18 @@ class VehicleImagePreviewPage extends StatelessWidget {
   }
 }
 
+class _InlineDivider extends StatelessWidget {
+  const _InlineDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.only(bottom: 14),
+      child: Divider(color: Color(0xFFE5E5E5), height: 1),
+    );
+  }
+}
+
 class _ProfileErrorState extends StatelessWidget {
   const _ProfileErrorState({required this.message, required this.onRetry});
 
@@ -907,18 +919,6 @@ class _EmptyText extends StatelessWidget {
         fontWeight: FontWeight.w700,
         height: 18 / 13,
       ),
-    );
-  }
-}
-
-class _InlineDivider extends StatelessWidget {
-  const _InlineDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.only(bottom: 14),
-      child: Divider(color: Color(0xFFE3E1E6), height: 1),
     );
   }
 }

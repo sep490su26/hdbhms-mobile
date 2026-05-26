@@ -86,17 +86,26 @@ class _AppRootState extends State<_AppRoot> {
   }
 
   Widget _pageFor(OnboardingState onboarding) {
-    return switch (onboarding.nextStep) {
-      OnboardingState.changePassword => ChangePasswordPage(
-        authService: widget.authService,
-        homeService: widget.homeService,
-        isRequired: true,
-      ),
-      _ => HomeScreen(
+    if (onboarding.onBoardingCompleted) {
+      return HomeScreen(
         authService: widget.authService,
         homeService: widget.homeService,
         profileService: widget.profileService,
-      ),
+      );
+    }
+
+    final nextStep = onboarding.nextStep;
+    return switch (nextStep) {
+      OnboardingState.changePassword => ChangePasswordPage(
+          authService: widget.authService,
+          homeService: widget.homeService,
+          isRequired: true,
+        ),
+      _ => HomeScreen(
+          authService: widget.authService,
+          homeService: widget.homeService,
+          profileService: widget.profileService,
+        ),
     };
   }
 

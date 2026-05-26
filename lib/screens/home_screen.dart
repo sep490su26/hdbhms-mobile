@@ -229,7 +229,7 @@ class _HomeHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  summary.tenant.name.isEmpty ? 'Nhà trọ' : summary.tenant.name,
+                  (summary.tenant?.name.isEmpty ?? true) ? 'Nhà trọ' : summary.tenant!.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(

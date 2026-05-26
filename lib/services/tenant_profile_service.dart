@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
+import '../models/api_response.dart';
+import '../models/person_profile_model.dart';
 import '../models/tenant_profile_model.dart';
 import 'auth_service.dart';
 
@@ -29,12 +31,17 @@ class TenantProfileService {
   final http.Client? _client;
   static const _timeout = Duration(seconds: 10);
 
-  Future<TenantProfileResponse> getMyProfile({int? tenantId}) async {
+  Map<String, String> get _headers => {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Client-Type': 'mobile',
+      };
+
+  Future<TenantProfileResponse> getMyProfile() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(AuthService.accessTokenKey);
-    final currentTenantId = tenantId ?? prefs.getInt(AuthService.tenantIdKey);
 
-    if (token == null || token.isEmpty || currentTenantId == null) {
+    if (token == null || token.isEmpty) {
       throw const TenantProfileForbiddenException();
     }
 
@@ -42,37 +49,54 @@ class TenantProfileService {
     try {
       final response = await client
           .get(
-            Uri.parse(
-              '${ApiConfig.baseUrl}/tenants/$currentTenantId/me/profile',
-            ),
+            Uri.parse('${ApiConfig.baseUrl}/person-profiles/me'),
             headers: {
-              'Accept': 'application/json',
+              ..._headers,
               'Authorization': 'Bearer $token',
             },
           )
           .timeout(_timeout);
 
-      if (response.statusCode == 200) {
-        return TenantProfileResponse.fromJson(_decodeBody(response.body));
+      final apiResponse = ApiResponse<PersonProfileResponse>.fromJson(
+        _decodeBody(response.body),
+        (data) => PersonProfileResponse.fromJson(data as Map<String, dynamic>),
+      );
+
+      if (response.statusCode == 200 && apiResponse.data != null) {
+        final person = apiResponse.data!;
+        return TenantProfileResponse(
+          tenantProfileId: person.id,
+          status: 'ACTIVE', // Default for now
+          person: PersonProfileDto(
+            fullName: person.fullName,
+            phone: person.phone,
+            email: person.email,
+            permanentAddress: person.permanentAddress,
+          ),
+          identityDocument: null, // To be provided via later APIs
+          vehicles: [],           // To be provided via later APIs
+          emergencyContacts: [],  // To be provided via later APIs
+        );
       }
+      
       if (response.statusCode == 401 || response.statusCode == 403) {
         throw const TenantProfileForbiddenException();
       }
-      if (response.statusCode == 404 &&
-          _readCode(response.body) == 'PROFILE_NOT_FOUND') {
+      
+      if (response.statusCode == 404) {
         throw const TenantProfileNotFoundException();
       }
 
-      throw const TenantProfileException(
-        'Không tải được hồ sơ, vui lòng thử lại',
+      throw TenantProfileException(
+        apiResponse.message ?? 'Không tải được hồ sơ, vui lòng thử lại',
       );
     } on TimeoutException {
       throw const TenantProfileException(
-        'Không tải được hồ sơ, vui lòng thử lại',
+        'Không kết nối được máy chủ',
       );
     } on http.ClientException {
       throw const TenantProfileException(
-        'Không tải được hồ sơ, vui lòng thử lại',
+        'Không kết nối được máy chủ',
       );
     } on FormatException {
       throw const TenantProfileException(
@@ -85,20 +109,13 @@ class TenantProfileService {
     }
   }
 
-  String _readCode(String body) {
-    try {
-      final data = _decodeBody(body);
-      return data['code']?.toString() ?? '';
-    } on FormatException {
-      return '';
-    }
-  }
-
   Map<String, dynamic> _decodeBody(String body) {
-    final decoded = jsonDecode(body);
-    if (decoded is Map<String, dynamic>) {
-      return decoded;
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      return {};
+    } catch (_) {
+      return {};
     }
-    throw const FormatException('Invalid response body');
   }
 }
