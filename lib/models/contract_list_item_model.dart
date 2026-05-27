@@ -18,7 +18,7 @@ class ContractListItem {
       id: _asInt(json['id']) ?? 0,
       contractCode: _str(json, ['contract_code', 'contractCode', 'deposit_code', 'depositCode']),
       roomCode: _str(json, ['room_code', 'roomCode']),
-      signedAt: _date(json, ['signed_at', 'signedAt', 'created_at', 'createdAt']),
+      signedAt: _date(json, ['confirmed_at', 'confirmedAt', 'signed_at', 'signedAt', 'created_at', 'createdAt']),
       status: _str(json, ['status']),
     );
   }
@@ -63,7 +63,7 @@ class DepositContract {
       expectedMoveInDate: _date(json, ['expected_move_in_date', 'expectedMoveInDate']),
       expectedLeaseSignDate: _date(json, ['expected_lease_sign_date', 'expectedLeaseSignDate']),
       depositExpiresAt: _date(json, ['deposit_expires_at', 'depositExpiresAt']),
-      createdAt: _date(json, ['created_at', 'createdAt']),
+      createdAt: _date(json, ['created_at', 'createdAt', 'confirmedAt', 'confirmed_at']),
       note: _str(json, ['note']),
       contractFileUrl: _str(json, ['contract_file_url', 'contractFileUrl']),
     );

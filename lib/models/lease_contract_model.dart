@@ -13,6 +13,7 @@ class LeaseContract {
     required this.terms,
     required this.serviceFees,
     required this.contractFileUrl,
+    this.signedAt,
   });
 
   final int? id;
@@ -28,6 +29,7 @@ class LeaseContract {
   final List<String> terms;
   final List<LeaseServiceFee> serviceFees;
   final String contractFileUrl;
+  final DateTime? signedAt;
 
   double get expectedServiceFeeTotal =>
       serviceFees.fold<double>(0, (total, fee) => total + (fee.amount ?? 0));
@@ -81,6 +83,7 @@ class LeaseContract {
         'document_url',
         'documentUrl',
       ]),
+      signedAt: _firstDate(json, const ['signed_at', 'signedAt', 'confirmedAt']),
     );
   }
 }

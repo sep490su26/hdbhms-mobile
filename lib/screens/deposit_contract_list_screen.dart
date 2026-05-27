@@ -28,51 +28,44 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
   @override
   void initState() {
     super.initState();
-    _listFuture = widget.depositService.getMyDeposits();
+    _listFuture = _fetch();
+  }
+
+  Future<List<ContractListItem>> _fetch() {
+    return widget.depositService.getMyDeposits(
+      status: _selectedStatus,
+      signedFrom: _selectedDateRange?.start,
+      signedTo: _selectedDateRange?.end,
+    );
   }
 
   void _retry() {
     setState(() {
-      _listFuture = widget.depositService.getMyDeposits();
+      _listFuture = _fetch();
     });
   }
 
   Future<void> _refresh() async {
-    final future = widget.depositService.getMyDeposits();
+    final future = _fetch();
     setState(() {
       _listFuture = future;
     });
     await future;
   }
 
-  List<ContractListItem> _applyFilters(List<ContractListItem> items) {
-    return items.where((item) {
-      // Filter by status
-      if (_selectedStatus != null &&
-          item.status.trim().toUpperCase() != _selectedStatus) {
-        return false;
-      }
-      // Filter by signing date range
-      if (_selectedDateRange != null && item.signedAt != null) {
-        final d = item.signedAt!;
-        if (d.isBefore(_selectedDateRange!.start) ||
-            d.isAfter(
-              _selectedDateRange!.end.add(const Duration(days: 1)),
-            )) {
-          return false;
-        }
-      }
-      if (_selectedDateRange != null && item.signedAt == null) {
-        return false;
-      }
-      return true;
-    }).toList();
+  void _onFiltersChanged() {
+    setState(() {
+      _listFuture = _fetch();
+    });
   }
+
+
 
   void _clearFilters() {
     setState(() {
       _selectedStatus = null;
       _selectedDateRange = null;
+      _listFuture = _fetch();
     });
   }
 
@@ -88,9 +81,8 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
       initialDateRange: _selectedDateRange,
     );
     if (picked != null) {
-      setState(() {
-        _selectedDateRange = picked;
-      });
+      _selectedDateRange = picked;
+      _onFiltersChanged();
     }
   }
 
@@ -109,7 +101,10 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
                   selectedStatus: _selectedStatus,
                   selectedDateRange: _selectedDateRange,
                   hasActiveFilters: _hasActiveFilters,
-                  onStatusChanged: (v) => setState(() => _selectedStatus = v),
+                  onStatusChanged: (v) {
+                    _selectedStatus = v;
+                    _onFiltersChanged();
+                  },
                   onPickDateRange: _pickDateRange,
                   onClearFilters: _clearFilters,
                   statusOptions: _depositStatusOptions,
@@ -138,7 +133,7 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
                         return _EmptyState(onRetry: _retry);
                       }
 
-                      final filtered = _applyFilters(list);
+                      final filtered = list;
 
                       if (filtered.isEmpty) {
                         return _EmptyFilterState(onClear: _clearFilters);

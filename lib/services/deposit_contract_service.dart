@@ -25,25 +25,35 @@ class DepositContractService {
   final http.Client? _client;
   static const _timeout = Duration(seconds: 10);
 
-  Future<List<ContractListItem>> getMyDeposits({int? tenantId}) async {
+  Future<List<ContractListItem>> getMyDeposits({
+    String? status,
+    DateTime? signedFrom,
+    DateTime? signedTo,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(AuthService.accessTokenKey);
-    final currentTenantId = tenantId ?? prefs.getInt(AuthService.tenantIdKey);
 
     if (token == null || token.isEmpty) {
       throw const DepositContractException('Bạn không có quyền xem');
     }
-    if (currentTenantId == null) {
-      throw const DepositContractException('Không tìm thấy tenant hiện tại');
+
+    final queryParams = <String, String>{};
+    if (status != null) queryParams['status'] = status;
+    if (signedFrom != null) {
+      queryParams['signedFrom'] = signedFrom.toIso8601String();
     }
+    if (signedTo != null) {
+      queryParams['signedTo'] = signedTo.toIso8601String();
+    }
+
+    final uri = Uri.parse('${ApiConfig.baseUrl}/deposit-agreements/me')
+        .replace(queryParameters: queryParams);
 
     final client = _client ?? http.Client();
     try {
       final response = await client
           .get(
-            Uri.parse(
-              '${ApiConfig.baseUrl}/tenants/$currentTenantId/deposits/my-list',
-            ),
+            uri,
             headers: {
               'Accept': 'application/json',
               'Authorization': 'Bearer $token',
@@ -53,7 +63,21 @@ class DepositContractService {
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
-        final List<dynamic> list = body is List ? body : (body['data'] ?? []);
+        // Handle ApiResponse wrapper and PageResponse wrapper
+        dynamic listData = body;
+        if (body is Map<String, dynamic>) {
+          if (body.containsKey('data')) {
+            final data = body['data'];
+            if (data is Map<String, dynamic> && data.containsKey('data')) {
+              // It's a PageResponse
+              listData = data['data'];
+            } else {
+              listData = data;
+            }
+          }
+        }
+
+        final List<dynamic> list = listData is List ? listData : [];
         return list
             .whereType<Map<String, dynamic>>()
             .map(ContractListItem.fromJson)
@@ -86,16 +110,16 @@ class DepositContractService {
     if (token == null || token.isEmpty) {
       throw const DepositContractException('Bạn không có quyền xem');
     }
-    if (currentTenantId == null) {
-      throw const DepositContractException('Không tìm thấy tenant hiện tại');
-    }
+    // if (currentTenantId == null) {
+    //   throw const DepositContractException('Không tìm thấy tenant hiện tại');
+    // }
 
     final client = _client ?? http.Client();
     try {
       final response = await client
           .get(
             Uri.parse(
-              '${ApiConfig.baseUrl}/tenants/$currentTenantId/deposits/$depositId',
+              '${ApiConfig.baseUrl}/deposit-agreements/$depositId',
             ),
             headers: {
               'Accept': 'application/json',
