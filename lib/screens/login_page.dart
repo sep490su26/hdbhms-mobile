@@ -72,7 +72,6 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) {
         return;
       }
-
       if (response.onboarding != null) {
         _goToNextStep(response.onboarding!);
       } else {

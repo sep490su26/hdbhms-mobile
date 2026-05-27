@@ -15,11 +15,11 @@ class OnboardingAction {
 
   factory OnboardingAction.fromJson(Map<String, dynamic> json) {
     return OnboardingAction(
-      actionKey: json['actionKey']?.toString() ?? '',
+      actionKey: json['action_key']?.toString() ?? '',
       label: json['label']?.toString() ?? '',
       completed: json['completed'] == true,
       priority: (json['priority'] as num?)?.toInt() ?? 0,
-      actionUrl: json['actionUrl']?.toString(),
+      actionUrl: json['action_url']?.toString(),
     );
   }
 
@@ -31,5 +31,10 @@ class OnboardingAction {
       'priority': priority,
       'actionUrl': actionUrl,
     };
+  }
+
+  @override
+  String toString() {
+    return 'OnboardingAction{actionKey: $actionKey, label: $label, completed: $completed, priority: $priority, actionUrl: $actionUrl}';
   }
 }

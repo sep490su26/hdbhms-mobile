@@ -107,7 +107,7 @@ const _homeOnboarding = OnboardingState(
   actions: [],
 );
 const _homeLoginResponse = LoginResponse(
-  accessToken: 'test-access-token',
+  token: 'test-access-token',
   sessionId: 'test-session-id',
   role: 'TENANT',
   authorized: true,
@@ -126,7 +126,7 @@ const _identityStepOnboarding = OnboardingState(
   ],
 );
 const _identityStepLoginResponse = LoginResponse(
-  accessToken: 'test-access-token',
+  token: 'test-access-token',
   sessionId: 'test-session-id',
   role: 'TENANT',
   authorized: true,

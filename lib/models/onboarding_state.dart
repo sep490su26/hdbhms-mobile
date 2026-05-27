@@ -14,8 +14,8 @@ class OnboardingState {
   factory OnboardingState.fromJson(Map<String, dynamic> json) {
     final actionsJson = json['actions'];
     return OnboardingState(
-      userId: int.tryParse(json['userId']?.toString() ?? ''),
-      onBoardingCompleted: json['onBoardingCompleted'] == true,
+      userId: int.tryParse(json['user_id']?.toString() ?? ''),
+      onBoardingCompleted: json['on_boarding_completed'] == true,
       actions: actionsJson is List
           ? actionsJson
                 .whereType<Map<String, dynamic>>()
@@ -52,4 +52,9 @@ class OnboardingState {
   bool get identityCompleted => actions.any(
     (a) => a.actionKey == identityVerification && a.completed
   );
+
+  @override
+  String toString() {
+    return 'OnboardingState{userId: $userId, onBoardingCompleted: $onBoardingCompleted, actions: $actions}';
+  }
 }

@@ -2,14 +2,14 @@ import 'onboarding_state.dart';
 
 class LoginResponse {
   const LoginResponse({
-    required this.accessToken,
+    required this.token,
     required this.sessionId,
     required this.role,
     required this.authorized,
     this.onboarding,
   });
 
-  final String accessToken;
+  final String token;
   final String sessionId;
   final String role;
   final bool authorized;
@@ -17,7 +17,7 @@ class LoginResponse {
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
     return LoginResponse(
-      accessToken: json['token']?.toString() ?? '',
+      token: json['token']?.toString() ?? '',
       sessionId: json['sessionId']?.toString() ?? '',
       role: json['role']?.toString() ?? '',
       authorized: json['authorized'] == true,
@@ -32,7 +32,7 @@ class LoginResponse {
   // Backup copies to keep existing code from breaking immediately
   LoginResponse copyWith({OnboardingState? onboarding}) {
     return LoginResponse(
-      accessToken: accessToken,
+      token: token,
       sessionId: sessionId,
       role: role,
       authorized: authorized,
@@ -44,6 +44,11 @@ class LoginResponse {
   int get expiresIn => 3600;
   LoginUser get user => const LoginUser();
   List<LoginTenant> get tenants => const [];
+
+  @override
+  String toString() {
+    return 'LoginResponse{token: $token, sessionId: $sessionId, role: $role, authorized: $authorized, onboarding: $onboarding}';
+  }
 }
 
 class LoginUser {

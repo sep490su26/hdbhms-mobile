@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../config/api_config.dart';
 import '../models/api_response.dart';
 import '../models/login_response.dart';
@@ -65,11 +64,10 @@ class AuthService {
         }
 
         var loginResponse = apiResponse.data!;
-
         if (loginResponse.onboarding == null) {
           try {
             final onboarding = await _fetchOnboardingWithToken(
-              loginResponse.accessToken,
+              loginResponse.token,
             );
             loginResponse = loginResponse.copyWith(onboarding: onboarding);
           } catch (e) {
@@ -212,7 +210,7 @@ class AuthService {
   Future<void> _saveLoginData(LoginResponse response) async {
     final prefs = await SharedPreferences.getInstance();
 
-    await prefs.setString(accessTokenKey, response.accessToken);
+    await prefs.setString(accessTokenKey, response.token);
     await prefs.setString(refreshTokenKey, response.sessionId);
     await prefs.setString(roleKey, response.role);
 
@@ -270,13 +268,13 @@ class AuthService {
     try {
       final response = await client
           .patch(
-            Uri.parse('${ApiConfig.baseUrl}/auth/me/first-password'),
+            Uri.parse('${ApiConfig.baseUrl}/users/me/first-password'),
             headers: {
               ..._headers,
               'Authorization': 'Bearer $token',
             },
             body: jsonEncode({
-              'newPassword': newPassword,
+              'new_password': newPassword,
             }),
           )
           .timeout(_timeout);
