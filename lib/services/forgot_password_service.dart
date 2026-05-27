@@ -74,7 +74,7 @@ class ForgotPasswordService {
             },
             body: jsonEncode({
               'token': token.trim(),
-              'newPassword': newPassword,
+              'new_password': newPassword,
             }),
           )
           .timeout(_timeout);
