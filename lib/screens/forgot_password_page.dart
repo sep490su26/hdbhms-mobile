@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../services/forgot_password_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/auth_text_field.dart';
-import 'forgot_password_otp_screen.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({
@@ -20,6 +19,7 @@ class ForgotPasswordPage extends StatefulWidget {
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   late final TextEditingController _emailController;
   bool _isSending = false;
+  bool _emailSent = false;
 
   @override
   void initState() {
@@ -45,18 +45,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     });
 
     try {
-      await widget.forgotPasswordService.sendForgotPasswordOtp(email);
+      await widget.forgotPasswordService.requestResetPassword(email);
       if (!mounted) {
         return;
       }
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => ForgotPasswordOtpScreen(
-            email: email,
-            forgotPasswordService: widget.forgotPasswordService,
-          ),
-        ),
-      );
+      _showMessage('Đã gửi liên kết đặt lại mật khẩu! Vui lòng kiểm tra email.');
+      setState(() {
+        _emailSent = true;
+      });
     } on ForgotPasswordException catch (error) {
       if (mounted) {
         _showMessage(error.message);
@@ -113,13 +109,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                               19,
                             ),
                             prefixIconSize: 24,
+                            enabled: !_emailSent,
                           ),
                           const SizedBox(height: 24),
                           SizedBox(
                             width: double.infinity,
                             height: 60,
                             child: ElevatedButton.icon(
-                              onPressed: _isSending ? null : _sendOtp,
+                              onPressed: (_isSending || _emailSent) ? null : _sendOtp,
                               iconAlignment: IconAlignment.end,
                               icon: _isSending
                                   ? const SizedBox.shrink()
@@ -137,9 +134,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                         color: Colors.white,
                                       ),
                                     )
-                                  : const Text(
-                                      'GỬI MÃ OTP',
-                                      style: TextStyle(
+                                  : Text(
+                                      _emailSent ? 'ĐÃ GỬI LIÊN KẾT' : 'GỬI MÃ OTP',
+                                      style: const TextStyle(
                                         fontSize: 20,
                                         fontWeight: FontWeight.w600,
                                         height: 28 / 20,
@@ -158,6 +155,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                               ),
                             ),
                           ),
+                          if (_emailSent) ...[
+                            const SizedBox(height: 32),
+                            _SuccessMessage(email: _emailController.text.trim()),
+                          ],
                         ],
                       ),
                     ),
@@ -234,7 +235,7 @@ class _ForgotPasswordIntro extends StatelessWidget {
               letterSpacing: -0.52,
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
             'Vui lòng nhập email đã\nđăng ký để nhận mã OTP xác minh.',
             textAlign: TextAlign.center,
@@ -243,6 +244,71 @@ class _ForgotPasswordIntro extends StatelessWidget {
               fontSize: 16,
               fontWeight: FontWeight.w400,
               height: 24 / 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SuccessMessage extends StatelessWidget {
+  const _SuccessMessage({required this.email});
+
+  final String email;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.deepBlue.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.deepBlue.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.mark_email_read_outlined,
+            color: AppColors.deepBlue,
+            size: 48,
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Kiểm tra email của bạn',
+            style: TextStyle(
+              color: AppColors.deepBlue,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Chúng tôi đã gửi một liên kết đặt lại mật khẩu đến email:',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.bodyText.withValues(alpha: 0.8),
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            email,
+            style: const TextStyle(
+              color: AppColors.deepBlue,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Vui lòng nhấn vào liên kết trong email để tiếp tục.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.bodyText,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],

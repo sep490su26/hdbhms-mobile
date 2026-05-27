@@ -14,9 +14,6 @@ class HomeException implements Exception {
   final String message;
 }
 
-class SessionExpiredException extends HomeException {
-  const SessionExpiredException() : super('Phiên đăng nhập đã hết hạn');
-}
 
 class HomeService {
   const HomeService({http.Client? client}) : _client = client;

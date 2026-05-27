@@ -1,7 +1,11 @@
+import 'dart:typed_data';
+
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../models/file_metadata_model.dart';
 import '../models/identity_image_file.dart';
+import 'file_service.dart';
 
 abstract class FileUploadService {
   Future<IdentityImageFile> pickIdentityImage({
@@ -12,15 +16,23 @@ abstract class FileUploadService {
   bool isFileTooLarge(IdentityImageFile file);
 
   String? validateIdentityImage(IdentityImageFile file);
+
+  Future<FileMetadataResponse> upload(
+    IdentityImageFile file, {
+    required FileCategory category,
+  });
 }
 
 class ImagePickerFileUploadService implements FileUploadService {
   ImagePickerFileUploadService({
     ImagePicker? picker,
+    FileService? fileService,
     this.maxSizeInBytes = 10 * 1024 * 1024,
-  }) : _picker = picker ?? ImagePicker();
+  })  : _picker = picker ?? ImagePicker(),
+        _fileService = fileService ?? const FileService();
 
   final ImagePicker _picker;
+  final FileService _fileService;
   final int maxSizeInBytes;
   static const _allowedExtensions = {'jpg', 'jpeg', 'png', 'heic'};
   static const _allowedMimeTypes = {
@@ -82,6 +94,18 @@ class ImagePickerFileUploadService implements FileUploadService {
     return null;
   }
 
+  @override
+  Future<FileMetadataResponse> upload(
+    IdentityImageFile file, {
+    required FileCategory category,
+  }) async {
+    return _fileService.uploadSingle(
+      bytes: file.bytes,
+      fileName: file.name,
+      category: category,
+    );
+  }
+
   bool _hasValidType(IdentityImageFile file) {
     final extension = _extensionOf(file.name) ?? _extensionOf(file.path ?? '');
     final mimeType = file.mimeType?.toLowerCase().trim();
@@ -119,9 +143,13 @@ class FilePickerPermissionDeniedException implements Exception {
 }
 
 class MockFileUploadService implements FileUploadService {
-  const MockFileUploadService({this.maxSizeInBytes = 5 * 1024 * 1024});
+  const MockFileUploadService({
+    this.maxSizeInBytes = 5 * 1024 * 1024,
+    this.fileService = const FileService(),
+  });
 
   final int maxSizeInBytes;
+  final FileService fileService;
 
   @override
   Future<IdentityImageFile> pickIdentityImage({
@@ -154,6 +182,21 @@ class MockFileUploadService implements FileUploadService {
       return 'Ảnh quá lớn, vui lòng chụp lại';
     }
     return null;
+  }
+
+  @override
+  Future<FileMetadataResponse> upload(
+    IdentityImageFile file, {
+    required FileCategory category,
+  }) async {
+    await Future<void>.delayed(const Duration(seconds: 1));
+    return FileMetadataResponse(
+      fileId: DateTime.now().millisecondsSinceEpoch,
+      originalFileName: file.name,
+      url: 'https://example.com/mock-file.jpg',
+      uploaded: true,
+      message: 'Upload successful (Mock)',
+    );
   }
 
   static Uint8List _transparentPngBytes() {

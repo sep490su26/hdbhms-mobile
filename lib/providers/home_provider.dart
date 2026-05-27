@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/home_summary_model.dart';
+import '../services/auth_service.dart';
 import '../services/home_service.dart';
 
 class HomeProvider extends ChangeNotifier {

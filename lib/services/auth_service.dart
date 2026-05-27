@@ -15,6 +15,11 @@ class AuthException implements Exception {
   final String message;
 }
 
+class SessionExpiredException extends AuthException {
+  const SessionExpiredException([String message = 'Phiên đăng nhập đã hết hạn'])
+      : super(message);
+}
+
 class AuthService {
   const AuthService({http.Client? client}) : _client = client;
 
@@ -126,6 +131,11 @@ class AuthService {
         final onboarding = apiResponse.data!;
         await saveOnboarding(onboarding);
         return onboarding;
+      }
+
+      if (response.statusCode == 401) {
+        await AuthService.clearLocalSession();
+        throw const SessionExpiredException();
       }
 
       throw AuthException(

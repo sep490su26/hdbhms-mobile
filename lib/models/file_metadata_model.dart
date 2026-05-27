@@ -1,34 +1,65 @@
+
+enum FileCategory {
+  ID_CARD,
+  CONTRACT,
+  INVOICE,
+  MAINTENANCE,
+  OTHER;
+
+  String toJson() => name;
+}
+
 class FileMetadataResponse {
   const FileMetadataResponse({
-    required this.id,
-    required this.fileName,
-    required this.fileKey,
-    required this.fileUrl,
-    required this.fileType,
-    required this.size,
-    this.createdAt,
-    this.updatedAt,
+    required this.fileId,
+    required this.originalFileName,
+    required this.url,
+    required this.uploaded,
+    this.message,
   });
 
-  final int id;
-  final String fileName;
-  final String fileKey;
-  final String fileUrl;
-  final String fileType;
-  final int size;
-  final DateTime? createdAt;
-  final DateTime? updatedAt;
+  final int fileId;
+  final String originalFileName;
+  final String url;
+  final bool uploaded;
+  final String? message;
 
   factory FileMetadataResponse.fromJson(Map<String, dynamic> json) {
     return FileMetadataResponse(
-      id: (json['id'] as num?)?.toInt() ?? 0,
-      fileName: json['fileName']?.toString() ?? '',
-      fileKey: json['fileKey']?.toString() ?? '',
-      fileUrl: json['fileUrl']?.toString() ?? '',
-      fileType: json['fileType']?.toString() ?? '',
-      size: (json['size'] as num?)?.toInt() ?? 0,
-      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? ''),
-      updatedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? ''),
+      fileId: (json['fileId'] as num?)?.toInt() ?? 0,
+      originalFileName: json['originalFileName']?.toString() ?? '',
+      url: json['url']?.toString() ?? '',
+      uploaded: json['uploaded'] as bool? ?? false,
+      message: json['message']?.toString(),
+    );
+  }
+}
+
+class BatchFileResponse {
+  const BatchFileResponse({
+    required this.totalFiles,
+    required this.successfulUploads,
+    required this.failedUploads,
+    required this.fileMetadataResponse,
+    this.message,
+  });
+
+  final int totalFiles;
+  final int successfulUploads;
+  final int failedUploads;
+  final List<FileMetadataResponse> fileMetadataResponse;
+  final String? message;
+
+  factory BatchFileResponse.fromJson(Map<String, dynamic> json) {
+    return BatchFileResponse(
+      totalFiles: (json['totalFiles'] as num?)?.toInt() ?? 0,
+      successfulUploads: (json['successfulUploads'] as num?)?.toInt() ?? 0,
+      failedUploads: (json['failedUploads'] as num?)?.toInt() ?? 0,
+      fileMetadataResponse: (json['fileMetadataResponse'] as List<dynamic>?)
+              ?.map((e) => FileMetadataResponse.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      message: json['message']?.toString(),
     );
   }
 }

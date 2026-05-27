@@ -117,13 +117,15 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
                       return RefreshIndicator(
                         color: AppColors.deepBlue,
                         onRefresh: _refresh,
-                        child: _ProfileContent(
-                          profile: profile,
-                          onLogout: _handleLogout,
-                        ),
+                        child: _ProfileContent(profile: profile),
                       );
                     },
                   ),
+                ),
+                // Logout button is always visible, outside the FutureBuilder
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+                  child: _LogoutButton(onLogout: _handleLogout),
                 ),
               ],
             ),
@@ -191,16 +193,15 @@ class _ProfileHeader extends StatelessWidget {
 }
 
 class _ProfileContent extends StatelessWidget {
-  const _ProfileContent({required this.profile, required this.onLogout});
+  const _ProfileContent({required this.profile});
 
   final TenantProfileResponse profile;
-  final VoidCallback onLogout;
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(14, 16, 14, 28),
+      padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -230,8 +231,6 @@ class _ProfileContent extends StatelessWidget {
           _EmergencyContactsSection(contacts: profile.emergencyContacts),
           const SizedBox(height: 16),
           _VehiclesSection(vehicles: profile.vehicles),
-          const SizedBox(height: 16),
-          _LogoutButton(onLogout: onLogout),
         ],
       ),
     );
