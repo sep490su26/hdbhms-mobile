@@ -2,12 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
 import '../models/contract_list_item_model.dart';
 import '../models/lease_contract_model.dart';
-import 'auth_service.dart';
+import 'authenticated_client.dart';
 
 class LeaseContractException implements Exception {
   const LeaseContractException(this.message);
@@ -29,31 +28,17 @@ class LeaseContractService {
   const LeaseContractService({http.Client? client}) : _client = client;
 
   final http.Client? _client;
+  http.Client get _effectiveClient => _client ?? AuthenticatedClient();
   static const _timeout = Duration(seconds: 10);
 
   Future<LeaseContract> getMyActiveContract({int? tenantId}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(AuthService.accessTokenKey);
-    final currentTenantId = tenantId ?? prefs.getInt(AuthService.tenantIdKey);
-
-    if (token == null || token.isEmpty) {
-      throw const LeaseContractForbiddenException();
-    }
-    if (currentTenantId == null) {
-      throw const LeaseContractException('Không tìm thấy tenant hiện tại');
-    }
-
-    final client = _client ?? http.Client();
+    final client = _effectiveClient;
     try {
       final response = await client
           .get(
             Uri.parse(
               '${ApiConfig.baseUrl}/lease-contracts/me?status=ACTIVE&size=1',
             ),
-            headers: {
-              'Accept': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
           )
           .timeout(_timeout);
 
@@ -106,13 +91,6 @@ class LeaseContractService {
     DateTime? signedFrom,
     DateTime? signedTo,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(AuthService.accessTokenKey);
-
-    if (token == null || token.isEmpty) {
-      throw const LeaseContractForbiddenException();
-    }
-
     final queryParams = <String, String>{};
     if (status != null) queryParams['status'] = status;
     if (signedFrom != null) {
@@ -125,15 +103,11 @@ class LeaseContractService {
     final uri = Uri.parse('${ApiConfig.baseUrl}/lease-contracts/me')
         .replace(queryParameters: queryParams);
 
-    final client = _client ?? http.Client();
+    final client = _effectiveClient;
     try {
       final response = await client
           .get(
             uri,
-            headers: {
-              'Accept': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
           )
           .timeout(_timeout);
 
@@ -176,28 +150,13 @@ class LeaseContractService {
   }
 
   Future<LeaseContract> getContractById(int contractId, {int? tenantId}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(AuthService.accessTokenKey);
-    // final currentTenantId = tenantId ?? prefs.getInt(AuthService.tenantIdKey);
-
-    if (token == null || token.isEmpty) {
-      throw const LeaseContractForbiddenException();
-    }
-    // if (currentTenantId == null) {
-    //   throw const LeaseContractException('Không tìm thấy tenant hiện tại');
-    // }
-
-    final client = _client ?? http.Client();
+    final client = _effectiveClient;
     try {
       final response = await client
           .get(
             Uri.parse(
               '${ApiConfig.baseUrl}/lease-contracts/$contractId',
             ),
-            headers: {
-              'Accept': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
           )
           .timeout(_timeout);
 

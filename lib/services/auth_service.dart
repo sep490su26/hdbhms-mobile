@@ -17,7 +17,7 @@ class AuthException implements Exception {
 
 class SessionExpiredException extends AuthException {
   const SessionExpiredException([String message = 'Phiên đăng nhập đã hết hạn'])
-      : super(message);
+    : super(message);
 }
 
 class AuthService {
@@ -27,7 +27,7 @@ class AuthService {
 
   static const _timeout = Duration(seconds: 10);
   static const accessTokenKey = 'access_token';
-  static const refreshTokenKey = 'refresh_token';
+  static const sessionIdKey = 'session_id';
   static const tenantIdKey = 'tenant_id';
   static const roleKey = 'role';
   static const userIdKey = 'user_id';
@@ -35,10 +35,10 @@ class AuthService {
   static const onboardingActionsKey = 'onboarding_actions';
 
   Map<String, String> get _headers => {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'X-Client-Type': 'mobile',
-      };
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    'X-Client-Type': 'mobile',
+  };
 
   Future<LoginResponse> login({
     required String phone,
@@ -51,10 +51,7 @@ class AuthService {
           .post(
             Uri.parse('${ApiConfig.baseUrl}/auth/login'),
             headers: _headers,
-            body: jsonEncode({
-              'phone': phone,
-              'password': password,
-            }),
+            body: jsonEncode({'phone': phone, 'password': password}),
           )
           .timeout(_timeout);
 
@@ -109,16 +106,61 @@ class AuthService {
     return _fetchOnboardingWithToken(token);
   }
 
+  Future<LoginResponse> refreshToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final sessionId = prefs.getString(sessionIdKey);
+
+    if (sessionId == null || sessionId.isEmpty) {
+      throw const SessionExpiredException();
+    }
+
+    final client = _client ?? http.Client();
+    try {
+      final response = await client
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}/auth/refresh'),
+            headers: _headers,
+            body: jsonEncode({'sessionId': sessionId}),
+          )
+          .timeout(_timeout);
+
+      final apiResponse = ApiResponse<LoginResponse>.fromJson(
+        _decodeBody(response.body),
+        (data) => LoginResponse.fromJson(data as Map<String, dynamic>),
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (apiResponse.data == null) {
+          throw const AuthException('Dữ liệu refresh không hợp lệ');
+        }
+        final loginResponse = apiResponse.data!;
+        await _saveLoginData(loginResponse);
+        return loginResponse;
+      }
+
+      // If refresh fails, it's a hard logout
+      await AuthService.clearLocalSession();
+      throw const SessionExpiredException();
+    } on TimeoutException {
+      throw const AuthException('Không kết nối được máy chủ (refresh)');
+    } on http.ClientException {
+      throw const AuthException('Không kết nối được máy chủ (refresh)');
+    } on FormatException {
+      throw const AuthException('Refresh token thất bại');
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
+
   Future<OnboardingState> _fetchOnboardingWithToken(String token) async {
     final client = _client ?? http.Client();
     try {
       final response = await client
           .get(
             Uri.parse('${ApiConfig.baseUrl}/auth/onboarding'),
-            headers: {
-              ..._headers,
-              'Authorization': 'Bearer $token',
-            },
+            headers: {..._headers, 'Authorization': 'Bearer $token'},
           )
           .timeout(_timeout);
 
@@ -172,9 +214,7 @@ class AuthService {
           .post(
             Uri.parse('${ApiConfig.baseUrl}/auth/logout'),
             headers: _headers,
-            body: jsonEncode({
-              'accessToken': token,
-            }),
+            body: jsonEncode({'accessToken': token}),
           )
           .timeout(_timeout);
     } catch (_) {
@@ -190,7 +230,7 @@ class AuthService {
   static Future<void> clearLocalSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(accessTokenKey);
-    await prefs.remove(refreshTokenKey);
+    await prefs.remove(sessionIdKey);
     await prefs.remove(tenantIdKey);
     await prefs.remove(roleKey);
     await prefs.remove(userIdKey);
@@ -221,7 +261,7 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
 
     await prefs.setString(accessTokenKey, response.token);
-    await prefs.setString(refreshTokenKey, response.sessionId);
+    await prefs.setString(sessionIdKey, response.sessionId);
     await prefs.setString(roleKey, response.role);
 
     if (response.onboarding != null) {
@@ -279,13 +319,8 @@ class AuthService {
       final response = await client
           .patch(
             Uri.parse('${ApiConfig.baseUrl}/users/me/first-password'),
-            headers: {
-              ..._headers,
-              'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode({
-              'new_password': newPassword,
-            }),
+            headers: {..._headers, 'Authorization': 'Bearer $token'},
+            body: jsonEncode({'new_password': newPassword}),
           )
           .timeout(_timeout);
 
@@ -298,9 +333,7 @@ class AuthService {
         return;
       }
 
-      throw AuthException(
-        apiResponse.message ?? 'Đổi mật khẩu thất bại',
-      );
+      throw AuthException(apiResponse.message ?? 'Đổi mật khẩu thất bại');
     } on TimeoutException {
       throw const AuthException('Không kết nối được máy chủ');
     } on http.ClientException {

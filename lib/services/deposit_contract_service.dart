@@ -2,11 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
 import '../models/contract_list_item_model.dart';
-import 'auth_service.dart';
+import 'authenticated_client.dart';
 
 class DepositContractException implements Exception {
   const DepositContractException(this.message);
@@ -15,14 +14,14 @@ class DepositContractException implements Exception {
 }
 
 class DepositContractNotFoundException extends DepositContractException {
-  const DepositContractNotFoundException()
-    : super('Bạn chưa có hợp đồng cọc');
+  const DepositContractNotFoundException() : super('Bạn chưa có hợp đồng cọc');
 }
 
 class DepositContractService {
   const DepositContractService({http.Client? client}) : _client = client;
 
   final http.Client? _client;
+  http.Client get _effectiveClient => _client ?? AuthenticatedClient();
   static const _timeout = Duration(seconds: 10);
 
   Future<List<ContractListItem>> getMyDeposits({
@@ -30,13 +29,6 @@ class DepositContractService {
     DateTime? signedFrom,
     DateTime? signedTo,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(AuthService.accessTokenKey);
-
-    if (token == null || token.isEmpty) {
-      throw const DepositContractException('Bạn không có quyền xem');
-    }
-
     final queryParams = <String, String>{};
     if (status != null) queryParams['status'] = status;
     if (signedFrom != null) {
@@ -46,18 +38,15 @@ class DepositContractService {
       queryParams['signedTo'] = signedTo.toIso8601String();
     }
 
-    final uri = Uri.parse('${ApiConfig.baseUrl}/deposit-agreements/me')
-        .replace(queryParameters: queryParams);
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/deposit-agreements/me',
+    ).replace(queryParameters: queryParams);
 
-    final client = _client ?? http.Client();
+    final client = _effectiveClient;
     try {
       final response = await client
           .get(
             uri,
-            headers: {
-              'Accept': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
           )
           .timeout(_timeout);
 
@@ -103,28 +92,11 @@ class DepositContractService {
   }
 
   Future<DepositContract> getDepositById(int depositId, {int? tenantId}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(AuthService.accessTokenKey);
-    final currentTenantId = tenantId ?? prefs.getInt(AuthService.tenantIdKey);
-
-    if (token == null || token.isEmpty) {
-      throw const DepositContractException('Bạn không có quyền xem');
-    }
-    // if (currentTenantId == null) {
-    //   throw const DepositContractException('Không tìm thấy tenant hiện tại');
-    // }
-
-    final client = _client ?? http.Client();
+    final client = _effectiveClient;
     try {
       final response = await client
           .get(
-            Uri.parse(
-              '${ApiConfig.baseUrl}/deposit-agreements/$depositId',
-            ),
-            headers: {
-              'Accept': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
+            Uri.parse('${ApiConfig.baseUrl}/deposit-agreements/$depositId'),
           )
           .timeout(_timeout);
 
@@ -132,8 +104,8 @@ class DepositContractService {
         final body = jsonDecode(response.body);
         final Map<String, dynamic> data =
             body is Map<String, dynamic> && body.containsKey('data')
-                ? body['data'] as Map<String, dynamic>
-                : body as Map<String, dynamic>;
+            ? body['data'] as Map<String, dynamic>
+            : body as Map<String, dynamic>;
         return DepositContract.fromJson(data);
       }
       if (response.statusCode == 401 || response.statusCode == 403) {
