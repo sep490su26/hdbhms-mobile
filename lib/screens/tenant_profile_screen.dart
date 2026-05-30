@@ -13,6 +13,7 @@ import '../theme/app_colors.dart';
 import 'bill_selection_page.dart';
 import 'lease_contract_list_screen.dart';
 import 'login_page.dart';
+import 'update_profile_screen.dart';
 
 class TenantProfileScreen extends StatefulWidget {
   const TenantProfileScreen({
@@ -231,8 +232,47 @@ class _ProfileContent extends StatelessWidget {
           const SizedBox(height: 16),
           _VehiclesSection(vehicles: profile.vehicles),
           const SizedBox(height: 16),
+          _UpdateProfileButton(profile: profile),
+          const SizedBox(height: 16),
           _LogoutButton(onLogout: onLogout),
         ],
+      ),
+    );
+  }
+}
+class _UpdateProfileButton extends StatelessWidget {
+  const _UpdateProfileButton({required this.profile});
+
+  final TenantProfileResponse profile;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: ElevatedButton.icon(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => UpdateProfileScreen(profile: profile),
+            ),
+          );
+        },
+        icon: const Icon(Icons.edit_note_rounded, size: 20),
+        label: const Text('Cập nhật hồ sơ'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.darkBlue,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w900,
+            height: 18 / 14,
+          ),
+        ),
       ),
     );
   }
