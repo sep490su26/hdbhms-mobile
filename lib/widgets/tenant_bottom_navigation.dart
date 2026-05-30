@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 
-enum TenantBottomNavTab { home, support, bills, profile }
+enum TenantBottomNavTab { home, bills, support, profile }
 
 class TenantBottomNavigation extends StatelessWidget {
   const TenantBottomNavigation({
@@ -46,16 +46,16 @@ class TenantBottomNavigation extends StatelessWidget {
                 onTap: onHomeTap,
               ),
               _BottomNavItem(
-                icon: Icons.support_agent_outlined,
-                label: 'Support',
-                isSelected: activeTab == TenantBottomNavTab.support,
-                onTap: onSupportTap,
-              ),
-              _BottomNavItem(
                 icon: Icons.receipt_long_outlined,
                 label: 'Bills',
                 isSelected: activeTab == TenantBottomNavTab.bills,
                 onTap: onBillsTap,
+              ),
+              _BottomNavItem(
+                icon: Icons.support_agent_outlined,
+                label: 'Support',
+                isSelected: activeTab == TenantBottomNavTab.support,
+                onTap: onSupportTap,
               ),
               _BottomNavItem(
                 icon: Icons.person_outline,
