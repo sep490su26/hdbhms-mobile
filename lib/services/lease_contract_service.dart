@@ -2,12 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
 import '../models/contract_list_item_model.dart';
 import '../models/lease_contract_model.dart';
-import 'auth_service.dart';
+import 'authenticated_client.dart';
 
 class LeaseContractException implements Exception {
   const LeaseContractException(this.message);
@@ -29,37 +28,36 @@ class LeaseContractService {
   const LeaseContractService({http.Client? client}) : _client = client;
 
   final http.Client? _client;
+  http.Client get _effectiveClient => _client ?? AuthenticatedClient();
   static const _timeout = Duration(seconds: 10);
 
   Future<LeaseContract> getMyActiveContract({int? tenantId}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(AuthService.accessTokenKey);
-    final currentTenantId = tenantId ?? prefs.getInt(AuthService.tenantIdKey);
-
-    if (token == null || token.isEmpty) {
-      throw const LeaseContractForbiddenException();
-    }
-    if (currentTenantId == null) {
-      throw const LeaseContractException('Không tìm thấy tenant hiện tại');
-    }
-
-    final client = _client ?? http.Client();
+    final client = _effectiveClient;
     try {
       final response = await client
           .get(
             Uri.parse(
-              '${ApiConfig.baseUrl}/tenants/$currentTenantId/contracts/my-active',
+              '${ApiConfig.baseUrl}/lease-contracts/me?status=ACTIVE&size=1',
             ),
-            headers: {
-              'Accept': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
           )
           .timeout(_timeout);
 
       if (response.statusCode == 200) {
         final body = _decodeBody(response.body);
-        final data = _contractPayload(body);
+        // Extract from ApiResponse -> PageResponse -> List
+        dynamic data;
+        if (body.containsKey('data')) {
+          final payload = body['data'];
+          if (payload is Map<String, dynamic> && payload.containsKey('data')) {
+            final list = payload['data'];
+            if (list is List && list.isNotEmpty) {
+              data = list.first;
+            }
+          } else {
+            data = payload;
+          }
+        }
+        
         if (data == null) {
           throw const LeaseContractNotFoundException();
         }
@@ -88,35 +86,45 @@ class LeaseContractService {
     }
   }
 
-  Future<List<ContractListItem>> getMyContracts({int? tenantId}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(AuthService.accessTokenKey);
-    final currentTenantId = tenantId ?? prefs.getInt(AuthService.tenantIdKey);
-
-    if (token == null || token.isEmpty) {
-      throw const LeaseContractForbiddenException();
+  Future<List<ContractListItem>> getMyContracts({
+    String? status,
+    DateTime? signedFrom,
+    DateTime? signedTo,
+  }) async {
+    final queryParams = <String, String>{};
+    if (status != null) queryParams['status'] = status;
+    if (signedFrom != null) {
+      queryParams['signedFrom'] = signedFrom.toIso8601String();
     }
-    if (currentTenantId == null) {
-      throw const LeaseContractException('Không tìm thấy tenant hiện tại');
+    if (signedTo != null) {
+      queryParams['signedTo'] = signedTo.toIso8601String();
     }
 
-    final client = _client ?? http.Client();
+    final uri = Uri.parse('${ApiConfig.baseUrl}/lease-contracts/me')
+        .replace(queryParameters: queryParams);
+
+    final client = _effectiveClient;
     try {
       final response = await client
           .get(
-            Uri.parse(
-              '${ApiConfig.baseUrl}/tenants/$currentTenantId/contracts/my-list',
-            ),
-            headers: {
-              'Accept': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
+            uri,
           )
           .timeout(_timeout);
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
-        final List<dynamic> list = body is List ? body : (body['data'] ?? []);
+        dynamic listData = body;
+        if (body is Map<String, dynamic>) {
+          if (body.containsKey('data')) {
+            final data = body['data'];
+            if (data is Map<String, dynamic> && data.containsKey('data')) {
+              listData = data['data'];
+            } else {
+              listData = data;
+            }
+          }
+        }
+        final List<dynamic> list = listData is List ? listData : [];
         return list
             .whereType<Map<String, dynamic>>()
             .map(ContractListItem.fromJson)
@@ -142,28 +150,13 @@ class LeaseContractService {
   }
 
   Future<LeaseContract> getContractById(int contractId, {int? tenantId}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(AuthService.accessTokenKey);
-    final currentTenantId = tenantId ?? prefs.getInt(AuthService.tenantIdKey);
-
-    if (token == null || token.isEmpty) {
-      throw const LeaseContractForbiddenException();
-    }
-    if (currentTenantId == null) {
-      throw const LeaseContractException('Không tìm thấy tenant hiện tại');
-    }
-
-    final client = _client ?? http.Client();
+    final client = _effectiveClient;
     try {
       final response = await client
           .get(
             Uri.parse(
-              '${ApiConfig.baseUrl}/tenants/$currentTenantId/contracts/$contractId',
+              '${ApiConfig.baseUrl}/lease-contracts/$contractId',
             ),
-            headers: {
-              'Accept': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
           )
           .timeout(_timeout);
 

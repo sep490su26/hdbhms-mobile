@@ -7,6 +7,7 @@ import 'package:hdbhms_mobile/models/home_summary_model.dart';
 import 'package:hdbhms_mobile/models/login_response.dart';
 import 'package:hdbhms_mobile/models/onboarding_state.dart';
 import 'package:hdbhms_mobile/models/tenant_profile_model.dart';
+import 'package:hdbhms_mobile/models/onboarding_action.dart';
 import 'package:hdbhms_mobile/screens/change_password_page.dart';
 import 'package:hdbhms_mobile/screens/tenant_profile_screen.dart';
 import 'package:hdbhms_mobile/services/auth_service.dart';
@@ -18,7 +19,7 @@ class _FakeAuthService extends AuthService {
 
   @override
   Future<LoginResponse> login({
-    required String phoneOrEmail,
+    required String phone,
     required String password,
   }) async {
     return _homeLoginResponse;
@@ -30,7 +31,7 @@ class _IdentityStepLoginAuthService extends AuthService {
 
   @override
   Future<LoginResponse> login({
-    required String phoneOrEmail,
+    required String phone,
     required String password,
   }) async {
     return _identityStepLoginResponse;
@@ -84,7 +85,7 @@ class _FakeTenantProfileService extends TenantProfileService {
   int _callCount = 0;
 
   @override
-  Future<TenantProfileResponse> getMyProfile({int? tenantId}) async {
+  Future<TenantProfileResponse> getMyProfile() async {
     if (error != null) {
       throw error!;
     }
@@ -102,72 +103,45 @@ const _testApp = App(
 );
 const _homeOnboarding = OnboardingState(
   userId: 1,
-  mustChangePassword: false,
-  identityCompleted: true,
-  nextStep: OnboardingState.home,
+  onBoardingCompleted: true,
+  actions: [],
 );
 const _homeLoginResponse = LoginResponse(
-  accessToken: 'test-access-token',
-  refreshToken: 'test-refresh-token',
-  expiresIn: 900,
-  user: LoginUser(
-    id: 1,
-    fullName: 'Test User',
-    phone: '0900000000',
-    email: 'test@example.com',
-    status: 'ACTIVE',
-    mustChangePassword: false,
-    identityCompleted: true,
-  ),
-  tenants: [
-    LoginTenant(
-      tenantId: 1,
-      tenantName: 'Test Tenant',
-      role: 'TENANT',
-      propertyId: 1,
-    ),
-  ],
+  token: 'test-access-token',
+  sessionId: 'test-session-id',
+  role: 'TENANT',
+  authorized: true,
   onboarding: _homeOnboarding,
 );
 const _identityStepOnboarding = OnboardingState(
   userId: 1,
-  mustChangePassword: false,
-  identityCompleted: false,
-  nextStep: OnboardingState.identityVerification,
-);
-const _identityStepLoginResponse = LoginResponse(
-  accessToken: 'test-access-token',
-  refreshToken: 'test-refresh-token',
-  expiresIn: 900,
-  user: LoginUser(
-    id: 1,
-    fullName: 'Test User',
-    phone: '0900000000',
-    email: 'test@example.com',
-    status: 'ACTIVE',
-    mustChangePassword: false,
-    identityCompleted: false,
-  ),
-  tenants: [
-    LoginTenant(
-      tenantId: 1,
-      tenantName: 'Test Tenant',
-      role: 'TENANT',
-      propertyId: 1,
+  onBoardingCompleted: false,
+  actions: [
+    OnboardingAction(
+      actionKey: OnboardingState.identityVerification,
+      label: 'Identity Verification',
+      completed: false,
+      priority: 1,
     ),
   ],
+);
+const _identityStepLoginResponse = LoginResponse(
+  token: 'test-access-token',
+  sessionId: 'test-session-id',
+  role: 'TENANT',
+  authorized: true,
   onboarding: _identityStepOnboarding,
 );
-const _homeSummary = HomeSummary(
-  user: HomeUser(
+final _homeSummary = HomeSummary(
+  user: const HomeUser(
     id: 1,
     fullName: 'Test User',
     phone: '0900000000',
     email: 'test@example.com',
     role: 'TENANT',
   ),
-  tenant: HomeTenant(id: 1, name: 'Test Tenant'),
-  room: HomeRoom(
+  tenant: const HomeTenant(id: 1, name: 'Test Tenant'),
+  room: const HomeRoom(
     id: 1,
     roomCode: '101',
     name: 'Phòng 101',
@@ -177,22 +151,38 @@ const _homeSummary = HomeSummary(
     id: 1,
     contractCode: 'HD-TEST-001',
     status: 'ACTIVE',
-    startDate: null,
-    endDate: null,
+    startDate: DateTime(2024, 1, 1),
+    endDate: DateTime(2025, 1, 1),
   ),
-  invoiceSummary: InvoiceSummary(
+  invoiceSummary: const InvoiceSummary(
     unpaidCount: 2,
     totalUnpaidAmount: 2800000,
     nearestDueDate: null,
   ),
-  notificationSummary: NotificationSummary(unreadCount: 3),
+  notificationSummary: const NotificationSummary(unreadCount: 0),
+  utilitySummary: const UtilitySummary(
+    electricity: UtilityUsage(
+      name: 'Điện',
+      value: 150.0,
+      unit: 'kWh',
+      status: 'Bình thường',
+      percentChange: null,
+    ),
+    water: UtilityUsage(
+      name: 'Nước',
+      value: 10.0,
+      unit: 'm³',
+      status: 'Bình thường',
+      percentChange: null,
+    ),
+  ),
   onboarding: _homeOnboarding,
 );
 
 final _tenantProfile = TenantProfileResponse(
   tenantProfileId: 1,
   status: 'ACTIVE',
-  person: PersonProfileDto(
+  person: const PersonProfileDto(
     fullName: 'Nguyễn Văn A',
     phone: '0912345678',
     email: 'a@gmail.com',
@@ -207,7 +197,7 @@ final _tenantProfile = TenantProfileResponse(
     issuedPlace: 'Cục CS QLHCVTTXH',
   ),
   vehicles: [
-    VehicleDto(
+    const VehicleDto(
       id: 1,
       vehicleType: 'MOTORBIKE',
       licensePlate: '29B1-12345',
@@ -215,7 +205,7 @@ final _tenantProfile = TenantProfileResponse(
     ),
   ],
   emergencyContacts: [
-    EmergencyContactDto(
+    const EmergencyContactDto(
       fullName: 'Nguyễn Thị B',
       relationship: 'Mẹ',
       phone: '0987111222',

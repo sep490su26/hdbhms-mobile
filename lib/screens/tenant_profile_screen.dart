@@ -13,7 +13,6 @@ import '../theme/app_colors.dart';
 import 'bill_selection_page.dart';
 import 'lease_contract_list_screen.dart';
 import 'login_page.dart';
-import 'update_profile_screen.dart';
 
 class TenantProfileScreen extends StatefulWidget {
   const TenantProfileScreen({
@@ -53,7 +52,7 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
   }
 
   Future<void> _handleLogout() async {
-    await AuthService.clearLocalSession();
+    await widget.authService.logout();
     if (!mounted) {
       return;
     }
@@ -118,13 +117,15 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
                       return RefreshIndicator(
                         color: AppColors.deepBlue,
                         onRefresh: _refresh,
-                        child: _ProfileContent(
-                          profile: profile,
-                          onLogout: _handleLogout,
-                        ),
+                        child: _ProfileContent(profile: profile),
                       );
                     },
                   ),
+                ),
+                // Logout button is always visible, outside the FutureBuilder
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+                  child: _LogoutButton(onLogout: _handleLogout),
                 ),
               ],
             ),
@@ -192,16 +193,15 @@ class _ProfileHeader extends StatelessWidget {
 }
 
 class _ProfileContent extends StatelessWidget {
-  const _ProfileContent({required this.profile, required this.onLogout});
+  const _ProfileContent({required this.profile});
 
   final TenantProfileResponse profile;
-  final VoidCallback onLogout;
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(14, 16, 14, 28),
+      padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -231,48 +231,7 @@ class _ProfileContent extends StatelessWidget {
           _EmergencyContactsSection(contacts: profile.emergencyContacts),
           const SizedBox(height: 16),
           _VehiclesSection(vehicles: profile.vehicles),
-          const SizedBox(height: 16),
-          _UpdateProfileButton(profile: profile),
-          const SizedBox(height: 16),
-          _LogoutButton(onLogout: onLogout),
         ],
-      ),
-    );
-  }
-}
-class _UpdateProfileButton extends StatelessWidget {
-  const _UpdateProfileButton({required this.profile});
-
-  final TenantProfileResponse profile;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: ElevatedButton.icon(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => UpdateProfileScreen(profile: profile),
-            ),
-          );
-        },
-        icon: const Icon(Icons.edit_note_rounded, size: 20),
-        label: const Text('Cập nhật hồ sơ'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.darkBlue,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          textStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w900,
-            height: 18 / 14,
-          ),
-        ),
       ),
     );
   }
@@ -883,6 +842,18 @@ class VehicleImagePreviewPage extends StatelessWidget {
   }
 }
 
+class _InlineDivider extends StatelessWidget {
+  const _InlineDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.only(bottom: 14),
+      child: Divider(color: Color(0xFFE5E5E5), height: 1),
+    );
+  }
+}
+
 class _ProfileErrorState extends StatelessWidget {
   const _ProfileErrorState({required this.message, required this.onRetry});
 
@@ -947,18 +918,6 @@ class _EmptyText extends StatelessWidget {
         fontWeight: FontWeight.w700,
         height: 18 / 13,
       ),
-    );
-  }
-}
-
-class _InlineDivider extends StatelessWidget {
-  const _InlineDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.only(bottom: 14),
-      child: Divider(color: Color(0xFFE3E1E6), height: 1),
     );
   }
 }

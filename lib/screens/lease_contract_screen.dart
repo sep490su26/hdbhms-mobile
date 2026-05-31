@@ -438,6 +438,10 @@ class _ContractInfoGrid extends StatelessWidget {
         value: _formatMoney(contract.depositAmount),
       ),
       _InfoGridItem(label: 'Mã phòng', value: contract.room.roomCode),
+      _InfoGridItem(
+        label: 'Ngày ký',
+        value: contract.signedAt != null ? _formatDate(contract.signedAt!) : '--',
+      ),
       _InfoGridItem(label: 'Trạng thái', value: _statusLabel(contract.status)),
     ];
 
@@ -855,6 +859,8 @@ String _statusLabel(String status) {
     'EXPIRING_SOON' => 'Sắp hết hạn',
     'EXPIRED' => 'Đã hết hạn',
     'TERMINATED' => 'Đã chấm dứt',
+    'DRAFT' => 'Bản nháp',
+    'PENDING_SIGNATURE' => 'Chờ ký',
     _ => _display(status),
   };
 }

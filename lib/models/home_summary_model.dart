@@ -8,29 +8,29 @@ class HomeSummary {
     required this.contract,
     required this.invoiceSummary,
     required this.notificationSummary,
-    required this.onboarding,
-    this.utilitySummary = const UtilitySummary(),
+    required this.utilitySummary,
+    this.onboarding,
   });
 
   final HomeUser user;
-  final HomeTenant tenant;
+  final HomeTenant? tenant;
   final HomeRoom? room;
   final HomeContract? contract;
   final InvoiceSummary invoiceSummary;
   final NotificationSummary notificationSummary;
-  final OnboardingState onboarding;
   final UtilitySummary utilitySummary;
+  final OnboardingState? onboarding;
 
   factory HomeSummary.fromJson(Map<String, dynamic> json) {
     return HomeSummary(
       user: HomeUser.fromJson(json['user'] as Map<String, dynamic>? ?? {}),
-      tenant: HomeTenant.fromJson(
-        json['tenant'] as Map<String, dynamic>? ?? {},
-      ),
-      room: json['room'] is Map<String, dynamic>
+      tenant: json['tenant'] != null
+          ? HomeTenant.fromJson(json['tenant'] as Map<String, dynamic>)
+          : null,
+      room: json['room'] != null
           ? HomeRoom.fromJson(json['room'] as Map<String, dynamic>)
           : null,
-      contract: json['contract'] is Map<String, dynamic>
+      contract: json['contract'] != null
           ? HomeContract.fromJson(json['contract'] as Map<String, dynamic>)
           : null,
       invoiceSummary: InvoiceSummary.fromJson(
@@ -39,10 +39,10 @@ class HomeSummary {
       notificationSummary: NotificationSummary.fromJson(
         json['notification_summary'] as Map<String, dynamic>? ?? {},
       ),
-      onboarding: OnboardingState.fromJson(
-        json['onboarding'] as Map<String, dynamic>? ?? {},
-      ),
       utilitySummary: UtilitySummary.fromHomeJson(json),
+      onboarding: json['onboarding'] != null
+          ? OnboardingState.fromJson(json['onboarding'] as Map<String, dynamic>)
+          : null,
     );
   }
 }
@@ -213,50 +213,52 @@ class UtilitySummary {
       defaultUnit: 'm3',
     );
 
-    for (final key in [
-      'items',
-      'readings',
-      'services',
-      'utilities',
-      'data',
-      'meters',
-    ]) {
-      final values = source[key];
-      if (values is! List) {
-        continue;
-      }
-      for (final item in values) {
-        if (item is! Map<String, dynamic>) {
+    if (electricity == null || water == null) {
+      for (final key in [
+        'items',
+        'readings',
+        'services',
+        'utilities',
+        'data',
+        'meters',
+      ]) {
+        final values = source[key];
+        if (values is! List) {
           continue;
         }
-        final label = [
-          item['type'],
-          item['service_type'],
-          item['service_code'],
-          item['name'],
-          item['service_name'],
-        ].whereType<Object>().join(' ').toLowerCase();
+        for (final item in values) {
+          if (item is! Map<String, dynamic>) {
+            continue;
+          }
+          final label = [
+            item['type'],
+            item['service_type'],
+            item['service_code'],
+            item['name'],
+            item['service_name'],
+          ].whereType<Object>().join(' ').toLowerCase();
 
-        if (electricity == null &&
-            (label.contains('electric') ||
-                label.contains('power') ||
-                label.contains('dien') ||
-                label.contains('điện'))) {
-          electricity = UtilityUsage.fromJson(
-            item,
-            defaultName: 'Điện',
-            defaultUnit: 'kWh',
-          );
-        }
-        if (water == null &&
-            (label.contains('water') ||
-                label.contains('nuoc') ||
-                label.contains('nước'))) {
-          water = UtilityUsage.fromJson(
-            item,
-            defaultName: 'Nước',
-            defaultUnit: 'm3',
-          );
+          if (electricity == null &&
+              (label.contains('electric') ||
+                  label.contains('power') ||
+                  label.contains('dien') ||
+                  label.contains('điện'))) {
+            electricity = UtilityUsage.fromJson(
+              item,
+              defaultName: 'Điện',
+              defaultUnit: 'kWh',
+            );
+          }
+          if (water == null &&
+              (label.contains('water') ||
+                  label.contains('nuoc') ||
+                  label.contains('nước'))) {
+            water = UtilityUsage.fromJson(
+              item,
+              defaultName: 'Nước',
+              defaultUnit: 'm3',
+            );
+          }
         }
       }
     }
@@ -326,6 +328,7 @@ class UtilityUsage {
   }
 }
 
+// Global Parsing Helpers
 UtilityUsage? _usageFromMap(
   Map<String, dynamic> json,
   List<String> keys, {

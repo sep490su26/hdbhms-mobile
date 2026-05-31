@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/config/app_config.dart';
 
 import '../models/home_summary_model.dart';
 import '../providers/home_provider.dart';
@@ -228,29 +229,29 @@ class _HomeHeader extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  summary.tenant.name.isEmpty ? 'Nhà trọ' : summary.tenant.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.deepBlue,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                    height: 17 / 15,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _roomTitle(summary.room),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.bodyText,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    height: 15 / 13,
-                  ),
-                ),
+                // Text(
+                //   (summary.tenant?.name.isEmpty ?? true) ? 'Nhà trọ' : summary.tenant!.name,
+                //   maxLines: 1,
+                //   overflow: TextOverflow.ellipsis,
+                //   style: const TextStyle(
+                //     color: AppColors.deepBlue,
+                //     fontSize: 15,
+                //     fontWeight: FontWeight.w900,
+                //     height: 17 / 15,
+                //   ),
+                // ),
+                // const SizedBox(height: 2),
+                // Text(
+                //   _roomTitle(summary.room),
+                //   maxLines: 1,
+                //   overflow: TextOverflow.ellipsis,
+                //   style: const TextStyle(
+                //     color: AppColors.bodyText,
+                //     fontSize: 13,
+                //     fontWeight: FontWeight.w600,
+                //     height: 15 / 13,
+                //   ),
+                // ),
               ],
             ),
           ),
@@ -299,7 +300,7 @@ class _UserAvatar extends StatelessWidget {
       child: user.avatarUrl.isEmpty
           ? const Icon(Icons.person, color: Colors.white, size: 22)
           : Image.network(
-              user.avatarUrl,
+              AppConfig.apiBaseUrl + user.avatarUrl,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) =>
                   const Icon(Icons.person, color: Colors.white, size: 22),

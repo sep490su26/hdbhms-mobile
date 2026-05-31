@@ -16,6 +16,7 @@ class AuthTextField extends StatefulWidget {
     this.contentPadding,
     this.prefixIconSize = 22,
     this.uppercaseLabel = true,
+    this.enabled = true,
   });
 
   final String label;
@@ -29,6 +30,7 @@ class AuthTextField extends StatefulWidget {
   final EdgeInsets? contentPadding;
   final double prefixIconSize;
   final bool uppercaseLabel;
+  final bool enabled;
 
   @override
   State<AuthTextField> createState() => _AuthTextFieldState();
@@ -61,6 +63,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
         const SizedBox(height: 4.5),
         TextFormField(
           controller: widget.controller,
+          enabled: widget.enabled,
           keyboardType: widget.keyboardType,
           obscureText: _isObscured,
           textInputAction: widget.textInputAction,

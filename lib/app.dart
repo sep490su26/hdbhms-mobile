@@ -8,6 +8,8 @@ import 'screens/login_page.dart';
 import 'services/auth_service.dart';
 import 'services/home_service.dart';
 import 'services/tenant_profile_service.dart';
+import 'screens/reset_password_page.dart';
+import 'services/deep_link_service.dart';
 import 'theme/app_theme.dart';
 
 class App extends StatelessWidget {
@@ -18,6 +20,8 @@ class App extends StatelessWidget {
     this.profileService = const TenantProfileService(),
   });
 
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   final AuthService authService;
   final HomeService homeService;
   final TenantProfileService profileService;
@@ -27,6 +31,7 @@ class App extends StatelessWidget {
     return MaterialApp(
       title: AppConfig.appName,
       debugShowCheckedModeBanner: false,
+      navigatorKey: App.navigatorKey,
       theme: AppTheme.lightTheme,
       home: _AppRoot(
         authService: authService,
@@ -59,6 +64,30 @@ class _AppRootState extends State<_AppRoot> {
   void initState() {
     super.initState();
     _startPageFuture = _resolveStartPage();
+    _initDeepLinks();
+  }
+
+  void _initDeepLinks() {
+    DeepLinkService.instance.initialize();
+    DeepLinkService.instance.onResetPasswordToken.listen((token) {
+      _handleResetPasswordToken(token);
+    });
+  }
+
+  void _handleResetPasswordToken(String token) {
+    App.navigatorKey.currentState?.push(
+      MaterialPageRoute(
+        builder: (context) => ResetPasswordPage(
+          token: token,
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    DeepLinkService.instance.dispose();
+    super.dispose();
   }
 
   Future<Widget> _resolveStartPage() async {
@@ -73,6 +102,11 @@ class _AppRootState extends State<_AppRoot> {
     try {
       final onboarding = await widget.authService.fetchOnboarding();
       return _pageFor(onboarding);
+    } on SessionExpiredException {
+      return LoginPage(
+        authService: widget.authService,
+        homeService: widget.homeService,
+      );
     } on AuthException {
       final cachedOnboarding = await widget.authService.getCachedOnboarding();
       if (cachedOnboarding != null) {
@@ -86,17 +120,26 @@ class _AppRootState extends State<_AppRoot> {
   }
 
   Widget _pageFor(OnboardingState onboarding) {
-    return switch (onboarding.nextStep) {
-      OnboardingState.changePassword => ChangePasswordPage(
-        authService: widget.authService,
-        homeService: widget.homeService,
-        isRequired: true,
-      ),
-      _ => HomeScreen(
+    if (onboarding.onBoardingCompleted) {
+      return HomeScreen(
         authService: widget.authService,
         homeService: widget.homeService,
         profileService: widget.profileService,
-      ),
+      );
+    }
+
+    final nextStep = onboarding.nextStep;
+    return switch (nextStep) {
+      OnboardingState.changePassword => ChangePasswordPage(
+          authService: widget.authService,
+          homeService: widget.homeService,
+          isRequired: true,
+        ),
+      _ => HomeScreen(
+          authService: widget.authService,
+          homeService: widget.homeService,
+          profileService: widget.profileService,
+        ),
     };
   }
 
