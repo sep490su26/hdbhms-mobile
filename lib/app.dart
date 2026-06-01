@@ -1,0 +1,159 @@
+import 'package:flutter/material.dart';
+
+import 'config/app_config.dart';
+import 'models/onboarding_state.dart';
+import 'screens/change_password_page.dart';
+import 'screens/home_screen.dart';
+import 'screens/login_page.dart';
+import 'services/auth_service.dart';
+import 'services/home_service.dart';
+import 'services/tenant_profile_service.dart';
+import 'screens/reset_password_page.dart';
+import 'services/deep_link_service.dart';
+import 'theme/app_theme.dart';
+
+class App extends StatelessWidget {
+  const App({
+    super.key,
+    this.authService = const AuthService(),
+    this.homeService = const HomeService(),
+    this.profileService = const TenantProfileService(),
+  });
+
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+  final AuthService authService;
+  final HomeService homeService;
+  final TenantProfileService profileService;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: AppConfig.appName,
+      debugShowCheckedModeBanner: false,
+      navigatorKey: App.navigatorKey,
+      theme: AppTheme.lightTheme,
+      home: _AppRoot(
+        authService: authService,
+        homeService: homeService,
+        profileService: profileService,
+      ),
+    );
+  }
+}
+
+class _AppRoot extends StatefulWidget {
+  const _AppRoot({
+    required this.authService,
+    required this.homeService,
+    required this.profileService,
+  });
+
+  final AuthService authService;
+  final HomeService homeService;
+  final TenantProfileService profileService;
+
+  @override
+  State<_AppRoot> createState() => _AppRootState();
+}
+
+class _AppRootState extends State<_AppRoot> {
+  late Future<Widget> _startPageFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _startPageFuture = _resolveStartPage();
+    _initDeepLinks();
+  }
+
+  void _initDeepLinks() {
+    DeepLinkService.instance.initialize();
+    DeepLinkService.instance.onResetPasswordToken.listen((token) {
+      _handleResetPasswordToken(token);
+    });
+  }
+
+  void _handleResetPasswordToken(String token) {
+    App.navigatorKey.currentState?.push(
+      MaterialPageRoute(
+        builder: (context) => ResetPasswordPage(
+          token: token,
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    DeepLinkService.instance.dispose();
+    super.dispose();
+  }
+
+  Future<Widget> _resolveStartPage() async {
+    final token = await widget.authService.accessToken;
+    if (token == null || token.isEmpty) {
+      return LoginPage(
+        authService: widget.authService,
+        homeService: widget.homeService,
+      );
+    }
+
+    try {
+      final onboarding = await widget.authService.fetchOnboarding();
+      return _pageFor(onboarding);
+    } on SessionExpiredException {
+      return LoginPage(
+        authService: widget.authService,
+        homeService: widget.homeService,
+      );
+    } on AuthException {
+      final cachedOnboarding = await widget.authService.getCachedOnboarding();
+      if (cachedOnboarding != null) {
+        return _pageFor(cachedOnboarding);
+      }
+      return LoginPage(
+        authService: widget.authService,
+        homeService: widget.homeService,
+      );
+    }
+  }
+
+  Widget _pageFor(OnboardingState onboarding) {
+    if (onboarding.onBoardingCompleted) {
+      return HomeScreen(
+        authService: widget.authService,
+        homeService: widget.homeService,
+        profileService: widget.profileService,
+      );
+    }
+
+    final nextStep = onboarding.nextStep;
+    return switch (nextStep) {
+      OnboardingState.changePassword => ChangePasswordPage(
+          authService: widget.authService,
+          homeService: widget.homeService,
+          isRequired: true,
+        ),
+      _ => HomeScreen(
+          authService: widget.authService,
+          homeService: widget.homeService,
+          profileService: widget.profileService,
+        ),
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Widget>(
+      future: _startPageFuture,
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          return snapshot.data!;
+        }
+
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      },
+    );
+  }
+}
