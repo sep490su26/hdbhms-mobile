@@ -6,12 +6,13 @@ import 'package:http_parser/http_parser.dart';
 import '../config/api_config.dart';
 import '../models/api_response.dart';
 import '../models/file_metadata_model.dart';
-import 'auth_service.dart';
+import 'authenticated_client.dart';
 
 class FileService {
   const FileService({http.Client? client}) : _client = client;
 
   final http.Client? _client;
+  http.Client get _effectiveClient => _client ?? AuthenticatedClient();
 
   Future<FileMetadataResponse> uploadSingle({
     required Uint8List bytes,
@@ -19,11 +20,10 @@ class FileService {
     FileCategory category = FileCategory.OTHER,
     bool isSensitive = false,
   }) async {
-    final token = await const AuthService().accessToken;
+    final client = _effectiveClient;
     final uri = Uri.parse('${ApiConfig.baseUrl}/files/upload');
     
     final request = http.MultipartRequest('POST', uri)
-      ..headers['Authorization'] = 'Bearer $token'
       ..fields['category'] = category.name
       ..fields['isSensitive'] = isSensitive.toString()
       ..files.add(
@@ -35,7 +35,7 @@ class FileService {
         ),
       );
 
-    final streamedResponse = await request.send();
+    final streamedResponse = await client.send(request);
     final response = await http.Response.fromStream(streamedResponse);
 
     if (response.statusCode == 201) {
@@ -55,11 +55,10 @@ class FileService {
     required FileCategory category,
     bool isSensitive = false,
   }) async {
-    final token = await const AuthService().accessToken;
+    final client = _effectiveClient;
     final uri = Uri.parse('${ApiConfig.baseUrl}/files/upload/batch');
 
     final request = http.MultipartRequest('POST', uri)
-      ..headers['Authorization'] = 'Bearer $token'
       ..fields['category'] = category.name
       ..fields['isSensitive'] = isSensitive.toString();
 
@@ -74,7 +73,7 @@ class FileService {
       );
     }
 
-    final streamedResponse = await request.send();
+    final streamedResponse = await client.send(request);
     final response = await http.Response.fromStream(streamedResponse);
 
     if (response.statusCode == 201) {
@@ -90,15 +89,11 @@ class FileService {
   }
 
   Future<Uint8List> download(int fileId) async {
-    final token = await const AuthService().accessToken;
-    final client = _client ?? http.Client();
+    final client = _effectiveClient;
     
     try {
       final response = await client.get(
         Uri.parse('${ApiConfig.baseUrl}/files/download/$fileId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
       );
 
       if (response.statusCode == 200) {

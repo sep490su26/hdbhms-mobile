@@ -99,7 +99,6 @@ class _ContractHubScreenState extends State<ContractHubScreen>
             ),
           );
         },
-        onLogoutTap: _handleLogout,
       ),
     );
   }

@@ -155,7 +155,6 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
             );
           },
           onProfileTap: () {},
-          onLogoutTap: _handleLogout,
         ),
       ),
     );
@@ -468,12 +467,21 @@ class _IdentityDocumentImages extends StatelessWidget {
       children: [
         if (frontUrl.isNotEmpty) ...[
           const _ImageLabel('Ảnh CCCD mặt trước'),
-          _TenantProfileImage(imageUrl: frontUrl, title: 'CCCD mặt trước'),
           const SizedBox(height: 12),
+          _TenantProfileImage(
+            imageUrl: frontUrl,
+            title: 'CCCD mặt trước',
+            fallbackText: 'Không tải được ảnh CCCD',
+          ),
         ],
         if (backUrl.isNotEmpty) ...[
           const _ImageLabel('Ảnh CCCD mặt sau'),
-          _TenantProfileImage(imageUrl: backUrl, title: 'CCCD mặt sau'),
+          const SizedBox(height: 12),
+          _TenantProfileImage(
+            imageUrl: backUrl,
+            title: 'CCCD mặt sau',
+            fallbackText: 'Không tải được ảnh CCCD',
+          ),
         ],
       ],
     );
@@ -503,10 +511,15 @@ class _ImageLabel extends StatelessWidget {
 }
 
 class _TenantProfileImage extends StatefulWidget {
-  const _TenantProfileImage({required this.imageUrl, required this.title});
+  const _TenantProfileImage({
+    required this.imageUrl,
+    required this.title,
+    this.fallbackText = 'Không tải được ảnh',
+  });
 
   final String imageUrl;
   final String title;
+  final String fallbackText;
 
   @override
   State<_TenantProfileImage> createState() => _TenantProfileImageState();
@@ -542,7 +555,7 @@ class _TenantProfileImageState extends State<_TenantProfileImage> {
       future: _imageFuture,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return const _EmptyImage(text: 'Không tải được ảnh CCCD');
+          return _EmptyImage(text: widget.fallbackText);
         }
 
         if (!snapshot.hasData) {
@@ -795,49 +808,15 @@ class _VehicleImage extends StatelessWidget {
   Widget build(BuildContext context) {
     final imageUrl = _resolveImageUrl(vehicle.imageUrl);
     if (imageUrl.isEmpty) {
-      return const _EmptyImage();
+      return const _EmptyImage(text: 'Chưa có ảnh phương tiện');
     }
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        key: ValueKey('vehicle-image-${vehicle.id ?? vehicle.licensePlate}'),
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => VehicleImagePreviewPage(
-                imageUrl: imageUrl,
-                title: _display(vehicle.licensePlate),
-              ),
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(6),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: AspectRatio(
-            aspectRatio: 16 / 9,
-            child: Image.network(
-              imageUrl,
-              fit: BoxFit.cover,
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) {
-                  return child;
-                }
-                return Container(
-                  color: const Color(0xFFEDECF1),
-                  child: const Center(
-                    child: CircularProgressIndicator(
-                      color: AppColors.deepBlue,
-                      strokeWidth: 2,
-                    ),
-                  ),
-                );
-              },
-              errorBuilder: (context, error, stackTrace) => const _EmptyImage(),
-            ),
-          ),
-        ),
+    return Padding(
+      padding: const EdgeInsets.only(top: 8.0),
+      child: _TenantProfileImage(
+        imageUrl: imageUrl,
+        title: _display(vehicle.licensePlate),
+        fallbackText: 'Không tải được ảnh phương tiện',
       ),
     );
   }

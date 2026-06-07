@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
 import '../models/property_rule_model.dart';
+import 'authenticated_client.dart';
 import 'auth_service.dart';
 
 class PropertyRuleException implements Exception {
@@ -22,25 +23,17 @@ class PropertyRuleService {
 
   Future<PropertyRulesResponse> getRules({int? tenantId}) async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(AuthService.accessTokenKey);
     final currentTenantId = tenantId ?? prefs.getInt(AuthService.tenantIdKey);
 
-    if (token == null || token.isEmpty) {
-      throw const PropertyRuleException('Phiên đăng nhập đã hết hạn');
-    }
     if (currentTenantId == null) {
       throw const PropertyRuleException('Không tìm thấy tenant hiện tại');
     }
 
-    final client = _client ?? http.Client();
+    final client = _client ?? AuthenticatedClient();
     try {
       final response = await client
           .get(
             Uri.parse('${ApiConfig.baseUrl}/tenants/$currentTenantId/rules'),
-            headers: {
-              'Accept': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
           )
           .timeout(_timeout);
 

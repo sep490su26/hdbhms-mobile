@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 
-enum TenantBottomNavTab { home, bills, support, profile, logout }
+enum TenantBottomNavTab { home, bills, support, profile }
 
 class TenantBottomNavigation extends StatelessWidget {
   const TenantBottomNavigation({
@@ -12,7 +12,6 @@ class TenantBottomNavigation extends StatelessWidget {
     this.onSupportTap,
     this.onBillsTap,
     this.onProfileTap,
-    this.onLogoutTap,
   });
 
   final TenantBottomNavTab activeTab;
@@ -20,7 +19,6 @@ class TenantBottomNavigation extends StatelessWidget {
   final VoidCallback? onSupportTap;
   final VoidCallback? onBillsTap;
   final VoidCallback? onProfileTap;
-  final VoidCallback? onLogoutTap;
 
   @override
   Widget build(BuildContext context) {
@@ -64,13 +62,6 @@ class TenantBottomNavigation extends StatelessWidget {
                 label: 'Hồ sơ',
                 isSelected: activeTab == TenantBottomNavTab.profile,
                 onTap: onProfileTap,
-              ),
-              _BottomNavItem(
-                icon: Icons.logout_rounded,
-                label: 'Đăng xuất',
-                isSelected: activeTab == TenantBottomNavTab.logout,
-                onTap: onLogoutTap,
-                isDestructive: true,
               ),
             ],
           ),

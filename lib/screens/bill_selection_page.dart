@@ -114,7 +114,6 @@ class BillSelectionPage extends StatelessWidget {
             ),
           );
         },
-        onLogoutTap: () => _handleLogout(context),
       ),
     );
   }

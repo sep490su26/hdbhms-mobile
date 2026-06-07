@@ -989,7 +989,6 @@ class _HomeBottomNavigation extends StatelessWidget {
           ),
         );
       },
-      onLogoutTap: () => _handleLogout(context),
     );
   }
 }

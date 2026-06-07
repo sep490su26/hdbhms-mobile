@@ -127,7 +127,6 @@ class _PropertyRulesScreenState extends State<PropertyRulesScreen> {
             ),
           );
         },
-        onLogoutTap: _handleLogout,
       ),
     );
   }

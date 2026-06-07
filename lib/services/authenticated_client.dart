@@ -29,12 +29,20 @@ class AuthenticatedClient extends http.BaseClient {
       request.headers['Authorization'] = 'Bearer $token';
     }
     request.headers['Accept'] = 'application/json';
-    request.headers['Content-Type'] = 'application/json';
+    if (request is! http.MultipartRequest) {
+      request.headers['Content-Type'] = 'application/json';
+    }
     request.headers['X-Client-Type'] = 'mobile';
 
     final response = await _inner.send(request);
 
     if (response.statusCode == 401 || response.statusCode == 403) {
+      final isRetryable = request is http.Request;
+      if (!isRetryable) {
+        // Cannot retry streams safely
+        return response;
+      }
+
       try {
         final newLoginData = await authService.refreshToken();
 

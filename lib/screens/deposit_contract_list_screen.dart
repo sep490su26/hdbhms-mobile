@@ -208,7 +208,6 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
             ),
           );
         },
-        onLogoutTap: _handleLogout,
       ),
     );
   }

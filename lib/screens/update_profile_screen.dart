@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -37,6 +38,8 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
   // ── Phương tiện ─────────────────────────────────────────────────────
   late List<_VehicleFormData> _vehicles;
   static const int _maxVehicles = 2;
+
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -96,18 +99,85 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     );
     if (picked == null) return;
     setState(() {
-      _vehicles[vehicleIndex].localImage = File(picked.path);
+      _vehicles[vehicleIndex].localImage = picked;
     });
   }
 
-  void _handleSave() {
-    // TODO: gọi API cập nhật hồ sơ
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Đã lưu thay đổi'),
-        backgroundColor: AppColors.darkBlue,
-      ),
-    );
+  Future<void> _handleSave() async {
+    if (_isLoading) return;
+
+    final phone = _phoneController.text.trim();
+    final email = _emailController.text.trim();
+    final relName = _relativeName.text.trim();
+    final relPhone = _relativePhone.text.trim();
+
+    if (phone.isEmpty || email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng nhập đủ số điện thoại và email')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final service = const TenantProfileService();
+      
+      final vehiclesData = <Map<String, dynamic>>[];
+      for (final v in _vehicles) {
+        final plate = v.licensePlateController.text.trim();
+        if (plate.isEmpty && v.localImage == null && v.existingImageUrl.isEmpty) continue;
+        
+        int? fileId;
+        if (v.localImage != null) {
+          fileId = await service.uploadVehicleImage(
+            bytes: await v.localImage!.readAsBytes(),
+            fileName: v.localImage!.name,
+          );
+        }
+        
+        vehiclesData.add({
+          'license_plate': plate,
+          'vehicle_type': 'MOTORBIKE',
+          if (fileId != null) 'image_file_id': fileId,
+        });
+      }
+
+      await service.updateMyProfile(
+        phone: phone,
+        email: email,
+        emergencyContacts: [
+          if (relName.isNotEmpty || relPhone.isNotEmpty)
+            {
+              'full_name': relName,
+              'phone': relPhone,
+              'relationship': 'Người thân',
+            }
+        ],
+        vehicles: vehiclesData,
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cập nhật hồ sơ thành công'),
+          backgroundColor: AppColors.darkBlue,
+        ),
+      );
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e is TenantProfileException ? e.message : 'Có lỗi xảy ra',
+          ),
+          backgroundColor: const Color(0xFFDC2626),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   // ── Build ─────────────────────────────────────────────────────────────
@@ -352,11 +422,17 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         width: double.infinity,
         height: 56,
         child: ElevatedButton.icon(
-          onPressed: _handleSave,
-          icon: const Icon(Icons.save_rounded, size: 18),
-          label: const Text(
-            'LƯU THAY ĐỔI',
-            style: TextStyle(
+          onPressed: _isLoading ? null : _handleSave,
+          icon: _isLoading 
+            ? const SizedBox(
+                width: 18, 
+                height: 18, 
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              ) 
+            : const Icon(Icons.save_rounded, size: 18),
+          label: Text(
+            _isLoading ? 'ĐANG LƯU...' : 'LƯU THAY ĐỔI',
+            style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -367,6 +443,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.darkBlue,
             foregroundColor: Colors.white,
+            disabledBackgroundColor: AppColors.darkBlue.withValues(alpha: 0.5),
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -641,7 +718,9 @@ class _VehicleImagePicker extends StatelessWidget {
             child: AspectRatio(
               aspectRatio: 16 / 9,
               child: data.localImage != null
-                  ? Image.file(data.localImage!, fit: BoxFit.cover)
+                  ? (kIsWeb
+                      ? Image.network(data.localImage!.path, fit: BoxFit.cover)
+                      : Image.file(File(data.localImage!.path), fit: BoxFit.cover))
                   : _NetworkVehicleThumb(url: data.existingImageUrl),
             ),
           ),
@@ -769,5 +848,5 @@ class _VehicleFormData {
 
   final TextEditingController licensePlateController;
   final String existingImageUrl;
-  File? localImage;
+  XFile? localImage;
 }

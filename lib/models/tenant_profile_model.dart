@@ -51,19 +51,25 @@ class PersonProfileDto {
     required this.phone,
     required this.email,
     required this.permanentAddress,
+    required this.portraitFileUrl,
   });
 
   final String fullName;
   final String phone;
   final String email;
   final String permanentAddress;
+  final String portraitFileUrl;
 
   factory PersonProfileDto.fromJson(Map<String, dynamic> json) {
     return PersonProfileDto(
-      fullName: json['full_name']?.toString() ?? '',
+      fullName: _firstString(json, ['full_name', 'fullName']),
       phone: json['phone']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
-      permanentAddress: json['permanent_address']?.toString() ?? '',
+      permanentAddress: _firstString(json, ['permanent_address', 'permanentAddress']),
+      portraitFileUrl: _firstString(json, [
+        'portrait_file_url',
+        'portraitFileUrl',
+      ]),
     );
   }
 }
@@ -87,10 +93,10 @@ class IdentityDocumentDto {
 
   factory IdentityDocumentDto.fromJson(Map<String, dynamic> json) {
     return IdentityDocumentDto(
-      docType: json['doc_type']?.toString() ?? '',
-      docNumber: _visibleDocNumber(json['doc_number']),
-      issuedDate: DateTime.tryParse(json['issued_date']?.toString() ?? ''),
-      issuedPlace: json['issued_place']?.toString() ?? '',
+      docType: _firstString(json, ['doc_type', 'docType']),
+      docNumber: _visibleDocNumber(_firstString(json, ['doc_number', 'docNumber'])),
+      issuedDate: DateTime.tryParse(_firstString(json, ['issued_date', 'issuedDate'])),
+      issuedPlace: _firstString(json, ['issued_place', 'issuedPlace']),
       frontFileUrl: _firstString(json, [
         'front_file_url',
         'frontFileUrl',
@@ -121,8 +127,8 @@ class VehicleDto {
   factory VehicleDto.fromJson(Map<String, dynamic> json) {
     return VehicleDto(
       id: _asInt(json['id']),
-      vehicleType: json['vehicle_type']?.toString() ?? '',
-      licensePlate: json['license_plate']?.toString() ?? '',
+      vehicleType: _firstString(json, ['vehicle_type', 'vehicleType']),
+      licensePlate: _firstString(json, ['license_plate', 'licensePlate']),
       imageUrl: _firstString(json, [
         'image_url',
         'imageUrl',
@@ -147,7 +153,7 @@ class EmergencyContactDto {
 
   factory EmergencyContactDto.fromJson(Map<String, dynamic> json) {
     return EmergencyContactDto(
-      fullName: json['full_name']?.toString() ?? '',
+      fullName: _firstString(json, ['full_name', 'fullName']),
       relationship: json['relationship']?.toString() ?? '',
       phone: json['phone']?.toString() ?? '',
     );
