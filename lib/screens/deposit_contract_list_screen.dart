@@ -1,17 +1,26 @@
 import 'package:flutter/material.dart';
 
 import '../models/contract_list_item_model.dart';
+import '../services/auth_service.dart';
 import '../services/deposit_contract_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/tenant_bottom_navigation.dart';
 import 'deposit_contract_detail_screen.dart';
+import 'login_page.dart';
+import 'maintenance_ticket_list_screen.dart';
+import 'tenant_profile_screen.dart';
 
 class DepositContractListScreen extends StatefulWidget {
   const DepositContractListScreen({
     super.key,
     this.depositService = const DepositContractService(),
+    this.embeddedMode = false,
   });
 
   final DepositContractService depositService;
+
+  /// Khi true: không hiển thị header riêng, không có bottom bar (dùng trong ContractHubScreen).
+  final bool embeddedMode;
 
   @override
   State<DepositContractListScreen> createState() =>
@@ -59,8 +68,6 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
     });
   }
 
-
-
   void _clearFilters() {
     setState(() {
       _selectedStatus = null;
@@ -86,83 +93,122 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
     }
   }
 
+  Future<void> _handleLogout() async {
+    await const AuthService().logout();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => const LoginPage(),
+      ),
+      (route) => false,
+    );
+  }
+
+  Widget _buildListContent() {
+    return Column(
+      children: [
+        if (!widget.embeddedMode) _buildHeader(),
+        _FilterBar(
+          selectedStatus: _selectedStatus,
+          selectedDateRange: _selectedDateRange,
+          hasActiveFilters: _hasActiveFilters,
+          onStatusChanged: (v) {
+            _selectedStatus = v;
+            _onFiltersChanged();
+          },
+          onPickDateRange: _pickDateRange,
+          onClearFilters: _clearFilters,
+          statusOptions: _depositStatusOptions,
+        ),
+        Expanded(
+          child: FutureBuilder<List<ContractListItem>>(
+            future: _listFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(
+                    color: AppColors.deepBlue,
+                  ),
+                );
+              }
+
+              if (snapshot.hasError) {
+                return _ErrorState(
+                  message: _errorMessage(snapshot.error),
+                  onRetry: _retry,
+                );
+              }
+
+              final list = snapshot.data;
+              if (list == null || list.isEmpty) {
+                return _EmptyState(onRetry: _retry);
+              }
+
+              final filtered = list;
+
+              if (filtered.isEmpty) {
+                return _EmptyFilterState(onClear: _clearFilters);
+              }
+
+              return RefreshIndicator(
+                color: AppColors.deepBlue,
+                onRefresh: _refresh,
+                child: ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 28),
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    return _DepositCard(
+                      item: filtered[index],
+                      onTap: () => _openDetail(filtered[index]),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.embeddedMode) {
+      return _buildListContent();
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 390),
-            child: Column(
-              children: [
-                _buildHeader(),
-                _FilterBar(
-                  selectedStatus: _selectedStatus,
-                  selectedDateRange: _selectedDateRange,
-                  hasActiveFilters: _hasActiveFilters,
-                  onStatusChanged: (v) {
-                    _selectedStatus = v;
-                    _onFiltersChanged();
-                  },
-                  onPickDateRange: _pickDateRange,
-                  onClearFilters: _clearFilters,
-                  statusOptions: _depositStatusOptions,
-                ),
-                Expanded(
-                  child: FutureBuilder<List<ContractListItem>>(
-                    future: _listFuture,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.deepBlue,
-                          ),
-                        );
-                      }
-
-                      if (snapshot.hasError) {
-                        return _ErrorState(
-                          message: _errorMessage(snapshot.error),
-                          onRetry: _retry,
-                        );
-                      }
-
-                      final list = snapshot.data;
-                      if (list == null || list.isEmpty) {
-                        return _EmptyState(onRetry: _retry);
-                      }
-
-                      final filtered = list;
-
-                      if (filtered.isEmpty) {
-                        return _EmptyFilterState(onClear: _clearFilters);
-                      }
-
-                      return RefreshIndicator(
-                        color: AppColors.deepBlue,
-                        onRefresh: _refresh,
-                        child: ListView.separated(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(14, 12, 14, 28),
-                          itemCount: filtered.length,
-                          separatorBuilder: (_, _) =>
-                              const SizedBox(height: 10),
-                          itemBuilder: (context, index) {
-                            return _DepositCard(
-                              item: filtered[index],
-                              onTap: () => _openDetail(filtered[index]),
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
+            child: _buildListContent(),
           ),
         ),
+      ),
+      bottomNavigationBar: TenantBottomNavigation(
+        activeTab: TenantBottomNavTab.bills,
+        onBillsTap: () {},
+        onHomeTap: () => Navigator.of(context).pop(),
+        onSupportTap: () {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => const MaintenanceTicketListScreen(),
+            ),
+          );
+        },
+        onProfileTap: () {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => const TenantProfileScreen(),
+            ),
+          );
+        },
+        onLogoutTap: _handleLogout,
       ),
     );
   }

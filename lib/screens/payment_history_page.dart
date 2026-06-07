@@ -47,13 +47,13 @@ class _HistoryHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 66,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      height: 54,
+      padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(
           bottom: BorderSide(
-            color: AppColors.cardBorder.withValues(alpha: 0.5),
+            color: AppColors.cardBorder.withValues(alpha: 0.65),
           ),
         ),
       ),
@@ -62,23 +62,22 @@ class _HistoryHeader extends StatelessWidget {
           IconButton(
             onPressed: () => Navigator.of(context).maybePop(),
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 34, height: 38),
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
             icon: const Icon(
               Icons.arrow_back_rounded,
               color: AppColors.deepBlue,
               size: 24,
             ),
-            tooltip: 'Quay l\u1EA1i',
+            tooltip: 'Quay lại',
           ),
-          const SizedBox(width: 8),
           const Expanded(
             child: Text(
-              'L\u1ECBch s\u1EED thanh to\u00E1n',
+              'Lịch sử thanh toán',
               style: TextStyle(
                 color: AppColors.deepBlue,
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.w900,
-                height: 24 / 18,
+                height: 20 / 16,
               ),
             ),
           ),
@@ -88,10 +87,10 @@ class _HistoryHeader extends StatelessWidget {
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
             icon: const Icon(
               Icons.notifications_none_rounded,
-              color: AppColors.deepBlue,
+              color: AppColors.inputText,
               size: 24,
             ),
-            tooltip: 'Th\u00F4ng b\u00E1o',
+            tooltip: 'Thông báo',
           ),
         ],
       ),

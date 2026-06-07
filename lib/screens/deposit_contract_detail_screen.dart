@@ -123,13 +123,13 @@ class _DetailHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 48,
-      padding: const EdgeInsets.fromLTRB(4, 0, 13, 0),
+      height: 54,
+      padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(
           bottom: BorderSide(
-            color: AppColors.cardBorder.withValues(alpha: 0.6),
+            color: AppColors.cardBorder.withValues(alpha: 0.65),
           ),
         ),
       ),
@@ -149,9 +149,9 @@ class _DetailHeader extends StatelessWidget {
               'Thông tin HĐ cọc',
               style: TextStyle(
                 color: AppColors.deepBlue,
-                fontSize: 14,
+                fontSize: 16,
                 fontWeight: FontWeight.w900,
-                height: 18 / 14,
+                height: 20 / 16,
               ),
             ),
           ),
@@ -162,7 +162,7 @@ class _DetailHeader extends StatelessWidget {
             icon: const Icon(
               Icons.notifications_none_rounded,
               color: AppColors.inputText,
-              size: 22,
+              size: 24,
             ),
             tooltip: 'Thông báo',
           ),

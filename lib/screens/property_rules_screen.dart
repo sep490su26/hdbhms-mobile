@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../config/api_config.dart';
 import '../models/property_rule_model.dart';
+import '../services/auth_service.dart';
 import '../services/property_rule_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/currency_formatter.dart';
+import '../widgets/tenant_bottom_navigation.dart';
 import 'bill_selection_page.dart';
+import 'login_page.dart';
+import 'maintenance_ticket_list_screen.dart';
 import 'tenant_profile_screen.dart';
 
 class PropertyRulesScreen extends StatefulWidget {
@@ -45,6 +49,15 @@ class _PropertyRulesScreenState extends State<PropertyRulesScreen> {
       _rulesFuture = future;
     });
     await future;
+  }
+
+  Future<void> _handleLogout() async {
+    await const AuthService().logout();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const LoginPage()),
+      (route) => false,
+    );
   }
 
   @override
@@ -91,7 +104,31 @@ class _PropertyRulesScreenState extends State<PropertyRulesScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: const _RulesBottomNavigation(),
+      bottomNavigationBar: TenantBottomNavigation(
+        activeTab: TenantBottomNavTab.home,
+        onHomeTap: () =>
+            Navigator.of(context).popUntil((route) => route.isFirst),
+        onBillsTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => const BillSelectionPage()),
+          );
+        },
+        onSupportTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const MaintenanceTicketListScreen(),
+            ),
+          );
+        },
+        onProfileTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const TenantProfileScreen(),
+            ),
+          );
+        },
+        onLogoutTap: _handleLogout,
+      ),
     );
   }
 }
@@ -102,13 +139,13 @@ class _RulesHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 64,
-      padding: const EdgeInsets.fromLTRB(4, 0, 13, 0),
+      height: 54,
+      padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(
           bottom: BorderSide(
-            color: AppColors.cardBorder.withValues(alpha: 0.6),
+            color: AppColors.cardBorder.withValues(alpha: 0.65),
           ),
         ),
       ),
@@ -119,7 +156,7 @@ class _RulesHeader extends StatelessWidget {
             icon: const Icon(
               Icons.arrow_back_rounded,
               color: AppColors.deepBlue,
-              size: 25,
+              size: 24,
             ),
             tooltip: 'Trở về',
           ),
@@ -128,9 +165,9 @@ class _RulesHeader extends StatelessWidget {
               'Nội quy nhà trọ',
               style: TextStyle(
                 color: AppColors.deepBlue,
-                fontSize: 20,
+                fontSize: 16,
                 fontWeight: FontWeight.w900,
-                height: 24 / 20,
+                height: 20 / 16,
               ),
             ),
           ),
@@ -140,8 +177,8 @@ class _RulesHeader extends StatelessWidget {
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
             icon: const Icon(
               Icons.notifications_none_rounded,
-              color: AppColors.deepBlue,
-              size: 23,
+              color: AppColors.inputText,
+              size: 24,
             ),
             tooltip: 'Thông báo',
           ),
@@ -689,141 +726,8 @@ class _StateMessage extends StatelessWidget {
   }
 }
 
-class _RulesBottomNavigation extends StatelessWidget {
-  const _RulesBottomNavigation();
 
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      heightFactor: 1,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 390),
-        child: Container(
-          height: 74,
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-            border: Border.all(
-              color: AppColors.cardBorder.withValues(alpha: 0.7),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _BottomNavItem(
-                icon: Icons.home_rounded,
-                label: 'Home',
-                isSelected: true,
-                onTap: () =>
-                    Navigator.of(context).popUntil((route) => route.isFirst),
-              ),
-              _BottomNavItem(
-                icon: Icons.receipt_long_outlined,
-                label: 'Bills',
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const BillSelectionPage(),
-                    ),
-                  );
-                },
-              ),
-              _BottomNavItem(
-                icon: Icons.support_agent_outlined,
-                label: 'Support',
-                onTap: () {
-                  ScaffoldMessenger.of(context)
-                    ..hideCurrentSnackBar()
-                    ..showSnackBar(
-                      const SnackBar(content: Text('Màn hỗ trợ chưa có')),
-                    );
-                },
-              ),
-              _BottomNavItem(
-                icon: Icons.person_outline,
-                label: 'Profile',
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const TenantProfileScreen(),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
-class _BottomNavItem extends StatelessWidget {
-  const _BottomNavItem({
-    required this.icon,
-    required this.label,
-    this.isSelected = false,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool isSelected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isSelected ? AppColors.deepBlue : AppColors.bodyText;
-
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 68,
-        child: isSelected
-            ? Container(
-                height: 50,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFA7B4FF),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(icon, color: color, size: 21),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        height: 15 / 11,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, color: color, size: 21),
-                  const SizedBox(height: 2),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      height: 15 / 11,
-                    ),
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
-}
 
 class _RuleSectionConfig {
   const _RuleSectionConfig({

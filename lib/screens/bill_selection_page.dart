@@ -1,12 +1,25 @@
 import 'package:flutter/material.dart';
 
+import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/tenant_bottom_navigation.dart';
+import 'login_page.dart';
+import 'maintenance_ticket_list_screen.dart';
 import 'payment_history_page.dart';
 import 'qr_payment_page.dart';
 import 'tenant_profile_screen.dart';
 
 class BillSelectionPage extends StatelessWidget {
   const BillSelectionPage({super.key});
+
+  Future<void> _handleLogout(BuildContext context) async {
+    await const AuthService().logout();
+    if (!context.mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const LoginPage()),
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +95,27 @@ class BillSelectionPage extends StatelessWidget {
           ),
         ),
       ),
-      bottomNavigationBar: const _BillBottomNavigation(),
+      bottomNavigationBar: TenantBottomNavigation(
+        activeTab: TenantBottomNavTab.bills,
+        onHomeTap: () =>
+            Navigator.of(context).popUntil((route) => route.isFirst),
+        onBillsTap: () {},
+        onSupportTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const MaintenanceTicketListScreen(),
+            ),
+          );
+        },
+        onProfileTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const TenantProfileScreen(),
+            ),
+          );
+        },
+        onLogoutTap: () => _handleLogout(context),
+      ),
     );
   }
 
@@ -99,28 +132,35 @@ class _BillHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 58,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      height: 54,
+      padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(
           bottom: BorderSide(
-            color: AppColors.cardBorder.withValues(alpha: 0.5),
+            color: AppColors.cardBorder.withValues(alpha: 0.65),
           ),
         ),
       ),
       child: Row(
         children: [
-          const Icon(Icons.menu_rounded, color: AppColors.deepBlue, size: 24),
-          const SizedBox(width: 8),
+          IconButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            icon: const Icon(
+              Icons.arrow_back_rounded,
+              color: AppColors.deepBlue,
+              size: 24,
+            ),
+            tooltip: 'Trở về',
+          ),
           const Expanded(
             child: Text(
-              'Nhà Trọ Hải Đăng',
+              'Hóa đơn',
               style: TextStyle(
                 color: AppColors.deepBlue,
-                fontSize: 14,
+                fontSize: 16,
                 fontWeight: FontWeight.w900,
-                height: 18 / 14,
+                height: 20 / 16,
               ),
             ),
           ),
@@ -131,7 +171,7 @@ class _BillHeader extends StatelessWidget {
             icon: const Icon(
               Icons.notifications_none_rounded,
               color: AppColors.inputText,
-              size: 23,
+              size: 24,
             ),
             tooltip: 'Thông báo',
           ),
@@ -461,110 +501,3 @@ class _ViewHistoryButton extends StatelessWidget {
   }
 }
 
-class _BillBottomNavigation extends StatelessWidget {
-  const _BillBottomNavigation();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      heightFactor: 1,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 390),
-        child: Container(
-          height: 72,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-            border: Border.all(
-              color: AppColors.cardBorder.withValues(alpha: 0.7),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _BottomNavItem(
-                icon: Icons.home_outlined,
-                label: 'Home',
-                onTap: () =>
-                    Navigator.of(context).popUntil((route) => route.isFirst),
-              ),
-              const _BottomNavItem(
-                icon: Icons.receipt_long_rounded,
-                label: 'Bills',
-                isSelected: true,
-              ),
-              const _BottomNavItem(
-                icon: Icons.support_agent_outlined,
-                label: 'Support',
-              ),
-              _BottomNavItem(
-                icon: Icons.person_outline,
-                label: 'Profile',
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const TenantProfileScreen(),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BottomNavItem extends StatelessWidget {
-  const _BottomNavItem({
-    required this.icon,
-    required this.label,
-    this.isSelected = false,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool isSelected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isSelected ? AppColors.deepBlue : AppColors.bodyText;
-
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 62,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 56,
-              height: 28,
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color(0xFFA7B4FF)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
-                height: 14 / 11,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

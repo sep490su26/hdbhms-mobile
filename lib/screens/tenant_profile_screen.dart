@@ -10,9 +10,12 @@ import '../services/auth_service.dart';
 import '../services/home_service.dart';
 import '../services/tenant_profile_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/tenant_bottom_navigation.dart';
 import 'bill_selection_page.dart';
 import 'lease_contract_list_screen.dart';
 import 'login_page.dart';
+import 'maintenance_ticket_list_screen.dart';
+import 'update_profile_screen.dart';
 
 class TenantProfileScreen extends StatefulWidget {
   const TenantProfileScreen({
@@ -132,7 +135,29 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: const _ProfileBottomNavigation(),
+      bottomNavigationBar: Builder(
+        builder: (ctx) => TenantBottomNavigation(
+          activeTab: TenantBottomNavTab.profile,
+          onHomeTap: () =>
+              Navigator.of(ctx).popUntil((route) => route.isFirst),
+          onBillsTap: () {
+            Navigator.of(ctx).push(
+              MaterialPageRoute(
+                builder: (context) => const BillSelectionPage(),
+              ),
+            );
+          },
+          onSupportTap: () {
+            Navigator.of(ctx).push(
+              MaterialPageRoute(
+                builder: (context) => const MaintenanceTicketListScreen(),
+              ),
+            );
+          },
+          onProfileTap: () {},
+          onLogoutTap: _handleLogout,
+        ),
+      ),
     );
   }
 }
@@ -143,13 +168,13 @@ class _ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 48,
-      padding: const EdgeInsets.fromLTRB(4, 0, 13, 0),
+      height: 54,
+      padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(
           bottom: BorderSide(
-            color: AppColors.cardBorder.withValues(alpha: 0.6),
+            color: AppColors.cardBorder.withValues(alpha: 0.65),
           ),
         ),
       ),
@@ -169,9 +194,9 @@ class _ProfileHeader extends StatelessWidget {
               'Hồ sơ cá nhân',
               style: TextStyle(
                 color: AppColors.deepBlue,
-                fontSize: 14,
+                fontSize: 16,
                 fontWeight: FontWeight.w900,
-                height: 18 / 14,
+                height: 20 / 16,
               ),
             ),
           ),
@@ -182,7 +207,7 @@ class _ProfileHeader extends StatelessWidget {
             icon: const Icon(
               Icons.notifications_none_rounded,
               color: AppColors.inputText,
-              size: 22,
+              size: 24,
             ),
             tooltip: 'Thông báo',
           ),
@@ -231,11 +256,54 @@ class _ProfileContent extends StatelessWidget {
           _EmergencyContactsSection(contacts: profile.emergencyContacts),
           const SizedBox(height: 16),
           _VehiclesSection(vehicles: profile.vehicles),
+          const SizedBox(height: 16),
+          _UpdateProfileButton(profile: profile),
+          // const SizedBox(height: 16),
+          // _LogoutButton(onLogout: onLogout),
         ],
       ),
     );
   }
 }
+
+class _UpdateProfileButton extends StatelessWidget {
+  const _UpdateProfileButton({required this.profile});
+
+  final TenantProfileResponse profile;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: ElevatedButton.icon(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => UpdateProfileScreen(profile: profile),
+            ),
+          );
+        },
+        icon: const Icon(Icons.edit_note_rounded, size: 20),
+        label: const Text('Cập nhật hồ sơ'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.darkBlue,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w900,
+            height: 18 / 14,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 
 class _LogoutButton extends StatelessWidget {
   const _LogoutButton({required this.onLogout});
@@ -922,127 +990,6 @@ class _EmptyText extends StatelessWidget {
   }
 }
 
-class _ProfileBottomNavigation extends StatelessWidget {
-  const _ProfileBottomNavigation();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      heightFactor: 1,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 390),
-        child: Container(
-          height: 74,
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-            border: Border.all(
-              color: AppColors.cardBorder.withValues(alpha: 0.7),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _BottomNavItem(
-                icon: Icons.home_outlined,
-                label: 'Home',
-                onTap: () =>
-                    Navigator.of(context).popUntil((route) => route.isFirst),
-              ),
-              _BottomNavItem(
-                icon: Icons.receipt_long_outlined,
-                label: 'Bills',
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const BillSelectionPage(),
-                    ),
-                  );
-                },
-              ),
-              const _BottomNavItem(
-                icon: Icons.support_agent_outlined,
-                label: 'Support',
-              ),
-              const _BottomNavItem(
-                icon: Icons.person_rounded,
-                label: 'Profile',
-                isSelected: true,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BottomNavItem extends StatelessWidget {
-  const _BottomNavItem({
-    required this.icon,
-    required this.label,
-    this.isSelected = false,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool isSelected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isSelected ? AppColors.deepBlue : AppColors.bodyText;
-
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 68,
-        child: isSelected
-            ? Container(
-                height: 50,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFA7B4FF),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(icon, color: color, size: 21),
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        color: AppColors.deepBlue,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                        height: 14 / 12,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, color: color, size: 22),
-                  const SizedBox(height: 3),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      height: 14 / 12,
-                    ),
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
-}
 
 BoxDecoration _cardDecoration() {
   return BoxDecoration(

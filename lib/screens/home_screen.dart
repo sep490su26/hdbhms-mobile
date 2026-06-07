@@ -9,9 +9,8 @@ import '../services/tenant_profile_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/tenant_bottom_navigation.dart';
 import 'bill_selection_page.dart';
+import 'contract_hub_screen.dart';
 import 'create_maintenance_ticket_screen.dart';
-import 'deposit_contract_list_screen.dart';
-import 'lease_contract_list_screen.dart';
 import 'login_page.dart';
 import 'maintenance_ticket_list_screen.dart';
 import 'property_rules_screen.dart';
@@ -222,39 +221,8 @@ class _HomeHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.menu_rounded, color: AppColors.deepBlue, size: 24),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Text(
-                //   (summary.tenant?.name.isEmpty ?? true) ? 'Nhà trọ' : summary.tenant!.name,
-                //   maxLines: 1,
-                //   overflow: TextOverflow.ellipsis,
-                //   style: const TextStyle(
-                //     color: AppColors.deepBlue,
-                //     fontSize: 15,
-                //     fontWeight: FontWeight.w900,
-                //     height: 17 / 15,
-                //   ),
-                // ),
-                // const SizedBox(height: 2),
-                // Text(
-                //   _roomTitle(summary.room),
-                //   maxLines: 1,
-                //   overflow: TextOverflow.ellipsis,
-                //   style: const TextStyle(
-                //     color: AppColors.bodyText,
-                //     fontSize: 13,
-                //     fontWeight: FontWeight.w600,
-                //     height: 15 / 13,
-                //   ),
-                // ),
-              ],
-            ),
-          ),
+          _RoomSelector(room: summary.room),
+          const Spacer(),
           IconButton(
             onPressed: () => _showTodo(context, 'Màn thông báo chưa có'),
             padding: EdgeInsets.zero,
@@ -270,6 +238,177 @@ class _HomeHeader extends StatelessWidget {
           _UserAvatar(user: summary.user),
         ],
       ),
+    );
+  }
+}
+
+/// Widget hiển thị tên phòng/số phòng, khi bấm mở dropdown các phòng đã thuê.
+class _RoomSelector extends StatelessWidget {
+  const _RoomSelector({required this.room});
+
+  final HomeRoom? room;
+
+  String get _roomLabel {
+    if (room == null) return 'Chưa có phòng';
+    final name = room!.name.trim();
+    final code = room!.roomCode.trim();
+    if (name.isNotEmpty) return name;
+    if (code.isNotEmpty) return 'Phòng $code';
+    return 'Chưa có phòng';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _showRoomDropdown(context),
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF1FF),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.meeting_room_outlined,
+              color: AppColors.deepBlue,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _roomLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.deepBlue,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  height: 18 / 14,
+                ),
+              ),
+              if (room?.roomCode.isNotEmpty == true &&
+                  room!.name.trim().isNotEmpty)
+                Text(
+                  'Phòng ${room!.roomCode}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.bodyText,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    height: 15 / 11,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 4),
+          const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: AppColors.deepBlue,
+            size: 18,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRoomDropdown(BuildContext context) {
+    // Hiện popup dropdown danh sách phòng tài khoản đã thuê.
+    // TODO: lấy danh sách phòng từ API. Hiện tại dùng phòng hiện tại làm placeholder.
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final RenderBox overlay =
+        Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
+    final RelativeRect position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(const Offset(0, 0), ancestor: overlay),
+        button.localToGlobal(
+          button.size.bottomRight(Offset.zero),
+          ancestor: overlay,
+        ),
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    final items = room == null
+        ? <PopupMenuEntry<String>>[
+            const PopupMenuItem<String>(
+              enabled: false,
+              child: Text(
+                'Chưa có phòng nào',
+                style: TextStyle(color: AppColors.bodyText, fontSize: 13),
+              ),
+            ),
+          ]
+        : <PopupMenuEntry<String>>[
+            PopupMenuItem<String>(
+              value: room!.id?.toString() ?? '',
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF1FF),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(
+                      Icons.meeting_room_outlined,
+                      color: AppColors.deepBlue,
+                      size: 17,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          room!.name.isNotEmpty
+                              ? room!.name
+                              : 'Phòng ${room!.roomCode}',
+                          style: const TextStyle(
+                            color: AppColors.inputText,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        if (room!.roomCode.isNotEmpty)
+                          Text(
+                            'Mã: ${room!.roomCode}',
+                            style: const TextStyle(
+                              color: AppColors.bodyText,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.check_rounded,
+                    color: AppColors.deepBlue,
+                    size: 18,
+                  ),
+                ],
+              ),
+            ),
+          ];
+
+    showMenu<String>(
+      context: context,
+      position: position,
+      items: items,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      elevation: 8,
+      constraints: const BoxConstraints(minWidth: 220, maxWidth: 300),
     );
   }
 }
@@ -702,45 +841,34 @@ class _QuickActions extends StatelessWidget {
       childAspectRatio: 1.42,
       children: [
         _QuickActionButton(
-          icon: Icons.warning_amber_rounded,
-          label: 'Báo cáo sự cố',
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const CreateMaintenanceTicketScreen(),
-              ),
-            );
-          },
-        ),
-        _QuickActionButton(
-          icon: Icons.description_outlined,
-          label: 'Xem danh sách hợp đồng',
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const LeaseContractListScreen(),
-              ),
-            );
-          },
-        ),
-        _QuickActionButton(
-          icon: Icons.account_balance_wallet_outlined,
-          label: 'Xem danh sách HĐ cọc',
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const DepositContractListScreen(),
-              ),
-            );
-          },
-        ),
-        _QuickActionButton(
           icon: Icons.rule_folder_outlined,
           label: 'Nội quy nhà trọ',
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => const PropertyRulesScreen(),
+              ),
+            );
+          },
+        ),
+        _QuickActionButton(
+          icon: Icons.article_outlined,
+          label: 'Hợp Đồng',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const ContractHubScreen(),
+              ),
+            );
+          },
+        ),
+        _QuickActionButton(
+          icon: Icons.warning_amber_rounded,
+          label: 'Báo cáo sự cố',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const CreateMaintenanceTicketScreen(),
               ),
             );
           },
@@ -820,6 +948,20 @@ class _HomeBottomNavigation extends StatelessWidget {
   final HomeService homeService;
   final TenantProfileService profileService;
 
+  Future<void> _handleLogout(BuildContext context) async {
+    await authService.logout();
+    if (!context.mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => LoginPage(
+          authService: authService,
+          homeService: homeService,
+        ),
+      ),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return TenantBottomNavigation(
@@ -847,6 +989,7 @@ class _HomeBottomNavigation extends StatelessWidget {
           ),
         );
       },
+      onLogoutTap: () => _handleLogout(context),
     );
   }
 }
@@ -857,20 +1000,7 @@ void _showTodo(BuildContext context, String message) {
     ..showSnackBar(SnackBar(content: Text(message)));
 }
 
-String _roomTitle(HomeRoom? room) {
-  if (room == null) {
-    return 'Chưa có phòng';
-  }
-  final name = room.name.trim();
-  final code = room.roomCode.trim();
-  if (name.isNotEmpty) {
-    return name;
-  }
-  if (code.isNotEmpty) {
-    return 'Phòng $code';
-  }
-  return 'Chưa có phòng';
-}
+
 
 String _formatDate(DateTime date) {
   return '${date.day.toString().padLeft(2, '0')}/'
