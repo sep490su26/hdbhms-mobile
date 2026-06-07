@@ -1,8 +1,9 @@
-import 'dart:typed_data';
+﻿import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'notification_list_screen.dart';
 
 import '../config/api_config.dart';
 import '../models/tenant_profile_model.dart';
@@ -155,6 +156,7 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
             );
           },
           onProfileTap: () {},
+          onRequestsTap: () {},
         ),
       ),
     );
@@ -200,11 +202,15 @@ class _ProfileHeader extends StatelessWidget {
             ),
           ),
           IconButton(
-            onPressed: () {},
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const NotificationListScreen(),
+              ),
+            ),
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const Icon(
-              Icons.notifications_none_rounded,
+constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+icon: const Icon(
+Icons.notifications_none_rounded,
               color: AppColors.inputText,
               size: 24,
             ),

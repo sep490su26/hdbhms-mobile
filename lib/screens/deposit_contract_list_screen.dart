@@ -208,6 +208,7 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
             ),
           );
         },
+        onRequestsTap: () {},
       ),
     );
   }

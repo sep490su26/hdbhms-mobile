@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'notification_list_screen.dart';
 
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
@@ -12,14 +13,6 @@ import 'tenant_profile_screen.dart';
 class BillSelectionPage extends StatelessWidget {
   const BillSelectionPage({super.key});
 
-  Future<void> _handleLogout(BuildContext context) async {
-    await const AuthService().logout();
-    if (!context.mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const LoginPage()),
-      (route) => false,
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -114,6 +107,7 @@ class BillSelectionPage extends StatelessWidget {
             ),
           );
         },
+        onRequestsTap: () {},
       ),
     );
   }
@@ -164,11 +158,15 @@ class _BillHeader extends StatelessWidget {
             ),
           ),
           IconButton(
-            onPressed: () {},
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const NotificationListScreen(),
+              ),
+            ),
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const Icon(
-              Icons.notifications_none_rounded,
+constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+icon: const Icon(
+Icons.notifications_none_rounded,
               color: AppColors.inputText,
               size: 24,
             ),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 
-enum TenantBottomNavTab { home, bills, support, profile }
+enum TenantBottomNavTab { home, bills, support, requests, profile }
 
 class TenantBottomNavigation extends StatelessWidget {
   const TenantBottomNavigation({
@@ -11,6 +11,7 @@ class TenantBottomNavigation extends StatelessWidget {
     this.onHomeTap,
     this.onSupportTap,
     this.onBillsTap,
+    this.onRequestsTap,
     this.onProfileTap,
   });
 
@@ -18,6 +19,7 @@ class TenantBottomNavigation extends StatelessWidget {
   final VoidCallback? onHomeTap;
   final VoidCallback? onSupportTap;
   final VoidCallback? onBillsTap;
+  final VoidCallback? onRequestsTap;
   final VoidCallback? onProfileTap;
 
   @override
@@ -28,7 +30,7 @@ class TenantBottomNavigation extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 390),
         child: Container(
           height: 74,
-          padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+          padding: const EdgeInsets.fromLTRB(4, 8, 4, 6),
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
@@ -58,6 +60,12 @@ class TenantBottomNavigation extends StatelessWidget {
                 onTap: onSupportTap,
               ),
               _BottomNavItem(
+                icon: Icons.assignment_outlined,
+                label: 'Yêu cầu',
+                isSelected: activeTab == TenantBottomNavTab.requests,
+                onTap: onRequestsTap,
+              ),
+              _BottomNavItem(
                 icon: Icons.person_outline,
                 label: 'Hồ sơ',
                 isSelected: activeTab == TenantBottomNavTab.profile,
@@ -77,23 +85,18 @@ class _BottomNavItem extends StatelessWidget {
     required this.label,
     required this.isSelected,
     this.onTap,
-    this.isDestructive = false,
   });
 
   final IconData icon;
   final String label;
   final bool isSelected;
   final VoidCallback? onTap;
-  final bool isDestructive;
 
   @override
   Widget build(BuildContext context) {
-    final Color activeColor =
-        isDestructive ? const Color(0xFFDC2626) : AppColors.deepBlue;
-    final Color inactiveColor =
-        isDestructive ? const Color(0xFFDC2626).withValues(alpha: 0.6) : AppColors.bodyText;
-    final Color activeBg =
-        isDestructive ? const Color(0xFFFFD8D5) : const Color(0xFFA7B4FF);
+    const activeColor = AppColors.deepBlue;
+    const inactiveColor = AppColors.bodyText;
+    const activeBg = Color(0xFFA7B4FF);
 
     final color = isSelected ? activeColor : inactiveColor;
 
@@ -101,7 +104,7 @@ class _BottomNavItem extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        width: 62,
+        width: 58,
         child: isSelected
             ? Container(
                 height: 50,
@@ -112,17 +115,17 @@ class _BottomNavItem extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(icon, color: activeColor, size: 21),
+                    Icon(icon, color: activeColor, size: 20),
                     Text(
                       label,
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: activeColor,
-                        fontSize: 10,
+                        fontSize: 9,
                         fontWeight: FontWeight.w900,
-                        height: 14 / 10,
+                        height: 13 / 9,
                       ),
                     ),
                   ],
@@ -131,7 +134,7 @@ class _BottomNavItem extends StatelessWidget {
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(icon, color: color, size: 22),
+                  Icon(icon, color: color, size: 21),
                   const SizedBox(height: 3),
                   Text(
                     label,
@@ -140,9 +143,9 @@ class _BottomNavItem extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: color,
-                      fontSize: 10,
+                      fontSize: 9,
                       fontWeight: FontWeight.w700,
-                      height: 14 / 10,
+                      height: 13 / 9,
                     ),
                   ),
                 ],
