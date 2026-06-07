@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/config/app_config.dart';
 
+import '../config/api_config.dart';
 import '../models/home_summary_model.dart';
 import '../providers/home_provider.dart';
 import '../services/auth_service.dart';
@@ -15,6 +16,7 @@ import 'login_page.dart';
 import 'maintenance_ticket_list_screen.dart';
 import 'property_rules_screen.dart';
 import 'tenant_profile_screen.dart';
+import 'web_view_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -880,6 +882,20 @@ class _QuickActions extends StatelessWidget {
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => const MaintenanceTicketListScreen(),
+              ),
+            );
+          },
+        ),
+        _QuickActionButton(
+          icon: Icons.add_home_outlined,
+          label: 'Thuê thêm phòng',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => WebViewScreen(
+                  url: ApiConfig.frontendUrl,
+                  title: 'Thuê thêm phòng',
+                ),
               ),
             );
           },
