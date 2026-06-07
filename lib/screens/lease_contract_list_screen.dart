@@ -211,7 +211,6 @@ class _LeaseContractListScreenState extends State<LeaseContractListScreen> {
             ),
           );
         },
-        onLogoutTap: _handleLogout,
       ),
     );
   }

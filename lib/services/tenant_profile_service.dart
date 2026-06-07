@@ -2,10 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'dart:io';
+import 'dart:typed_data';
 
 import '../config/api_config.dart';
 import '../models/api_response.dart';
-import '../models/person_profile_model.dart';
 import '../models/tenant_profile_model.dart';
 import 'authenticated_client.dart';
 
@@ -35,29 +37,16 @@ class TenantProfileService {
     final client = _effectiveClient;
     try {
       final response = await client
-          .get(Uri.parse('${ApiConfig.baseUrl}/person-profiles/me'))
+          .get(Uri.parse('${ApiConfig.baseUrl}/tenants/profiles/me'))
           .timeout(_timeout);
 
-      final apiResponse = ApiResponse<PersonProfileResponse>.fromJson(
+      final apiResponse = ApiResponse<TenantProfileResponse>.fromJson(
         _decodeBody(response.body),
-        (data) => PersonProfileResponse.fromJson(data as Map<String, dynamic>),
+        (data) => TenantProfileResponse.fromJson(data as Map<String, dynamic>),
       );
 
       if (response.statusCode == 200 && apiResponse.data != null) {
-        final person = apiResponse.data!;
-        return TenantProfileResponse(
-          tenantProfileId: person.id,
-          status: 'ACTIVE', // Default for now
-          person: PersonProfileDto(
-            fullName: person.fullName,
-            phone: person.phone,
-            email: person.email,
-            permanentAddress: person.permanentAddress,
-          ),
-          identityDocument: null, // To be provided via later APIs
-          vehicles: [], // To be provided via later APIs
-          emergencyContacts: [], // To be provided via later APIs
-        );
+        return apiResponse.data!;
       }
 
       if (response.statusCode == 404) {
@@ -89,6 +78,108 @@ class TenantProfileService {
       return {};
     } catch (_) {
       return {};
+    }
+  }
+
+  Future<TenantProfileResponse> updateMyProfile({
+    required String phone,
+    required String email,
+    required List<Map<String, dynamic>> emergencyContacts,
+    required List<Map<String, dynamic>> vehicles,
+  }) async {
+    final client = _effectiveClient;
+    try {
+      final response = await client
+          .put(
+            Uri.parse('${ApiConfig.baseUrl}/tenants/profiles/me'),
+            body: jsonEncode({
+              'phone': phone,
+              'email': email,
+              'emergency_contacts': emergencyContacts,
+              'vehicles': vehicles,
+            }),
+          )
+          .timeout(_timeout);
+
+      if (response.statusCode == 200) {
+        final data = _decodeBody(response.body);
+        return TenantProfileResponse.fromJson(data['data'] ?? data);
+      }
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        throw const TenantProfileForbiddenException();
+      }
+
+      throw const TenantProfileException(
+        'Không thể cập nhật hồ sơ, vui lòng thử lại',
+      );
+    } on TimeoutException {
+      throw const TenantProfileException(
+        'Không thể cập nhật hồ sơ, vui lòng thử lại',
+      );
+    } on http.ClientException {
+      throw const TenantProfileException(
+        'Không thể cập nhật hồ sơ, vui lòng thử lại',
+      );
+    } on FormatException {
+      throw const TenantProfileException(
+        'Không thể cập nhật hồ sơ, vui lòng thử lại',
+      );
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
+
+  Future<int> uploadVehicleImage({
+    required Uint8List bytes,
+    required String fileName,
+  }) async {
+    final client = _effectiveClient;
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/files/upload');
+      final request = http.MultipartRequest('POST', uri);
+      request.fields['category'] = 'VEHICLE_PHOTO';
+      request.fields['isSensitive'] = 'false';
+
+      final extension = fileName.split('.').last.toLowerCase();
+      final mimeType = switch (extension) {
+        'jpg' || 'jpeg' => MediaType('image', 'jpeg'),
+        'png' => MediaType('image', 'png'),
+        'heic' => MediaType('image', 'heic'),
+        _ => MediaType('application', 'octet-stream'),
+      };
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: fileName,
+          contentType: mimeType,
+        ),
+      );
+
+      final streamedResponse = await client.send(request).timeout(_timeout);
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final body = _decodeBody(response.body);
+        final data = body['data'] as Map<String, dynamic>?;
+        final fileId = data?['fileId'] ?? data?['file_id'];
+        if (fileId is int) return fileId;
+        if (fileId != null) return int.parse(fileId.toString());
+      }
+      throw const TenantProfileException('Tải ảnh xe thất bại');
+    } on TimeoutException {
+      throw const TenantProfileException('Tải ảnh xe thất bại');
+    } on http.ClientException {
+      throw const TenantProfileException('Tải ảnh xe thất bại');
+    } on FormatException {
+      throw const TenantProfileException('Tải ảnh xe thất bại');
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
     }
   }
 }

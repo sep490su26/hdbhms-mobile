@@ -191,7 +191,6 @@ class _MaintenanceTicketListScreenState
             ),
           );
         },
-        onLogoutTap: _handleLogout,
       ),
     );
   }

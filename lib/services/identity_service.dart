@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../models/identity_image_file.dart';
 import '../models/onboarding_state.dart';
+import 'authenticated_client.dart';
 import 'auth_service.dart';
 
 class IdentityException implements Exception {
@@ -52,15 +53,7 @@ class IdentityService {
     required File idCardFrontFile,
     required File idCardBackFile,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(AuthService.accessTokenKey);
-
-    if (token == null || token.isEmpty) {
-      throw const IdentityException('Phiên đăng nhập không hợp lệ');
-    }
-
     return _sendMultipart(
-      token: token,
       tenantId: tenantId,
       portraitPart: await _multipartFileFromPath(
         'portrait_file',
@@ -83,15 +76,13 @@ class IdentityService {
     required IdentityImageFile backId,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(AuthService.accessTokenKey);
     final tenantId = prefs.getInt(AuthService.tenantIdKey);
 
-    if (token == null || token.isEmpty || tenantId == null) {
-      throw const IdentityException('Phiên đăng nhập không hợp lệ');
+    if (tenantId == null) {
+      throw const IdentityException('Không tìm thấy thông tin hợp đồng');
     }
 
     return _sendMultipart(
-      token: token,
       tenantId: tenantId,
       portraitPart: await _multipartFile('portrait_file', portrait),
       frontIdPart: await _multipartFile('id_card_front_file', frontId),
@@ -100,13 +91,12 @@ class IdentityService {
   }
 
   Future<IdentityUploadResult> _sendMultipart({
-    required String token,
     required int tenantId,
     required http.MultipartFile portraitPart,
     required http.MultipartFile frontIdPart,
     required http.MultipartFile backIdPart,
   }) async {
-    final client = _client ?? http.Client();
+    final client = _client ?? AuthenticatedClient();
     try {
       final request = http.MultipartRequest(
         'POST',
@@ -115,10 +105,6 @@ class IdentityService {
         ),
       );
 
-      request.headers.addAll({
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      });
       request.files.add(portraitPart);
       request.files.add(frontIdPart);
       request.files.add(backIdPart);
