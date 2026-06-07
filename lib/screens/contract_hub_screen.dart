@@ -99,6 +99,7 @@ class _ContractHubScreenState extends State<ContractHubScreen>
             ),
           );
         },
+        onRequestsTap: () {},
       ),
     );
   }

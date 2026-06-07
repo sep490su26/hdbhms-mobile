@@ -14,6 +14,7 @@ import 'contract_hub_screen.dart';
 import 'create_maintenance_ticket_screen.dart';
 import 'login_page.dart';
 import 'maintenance_ticket_list_screen.dart';
+import 'notification_list_screen.dart';
 import 'property_rules_screen.dart';
 import 'tenant_profile_screen.dart';
 import 'web_view_screen.dart';
@@ -226,7 +227,11 @@ class _HomeHeader extends StatelessWidget {
           _RoomSelector(room: summary.room),
           const Spacer(),
           IconButton(
-            onPressed: () => _showTodo(context, 'Màn thông báo chưa có'),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const NotificationListScreen(),
+              ),
+            ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
             icon: const Icon(
@@ -1005,6 +1010,7 @@ class _HomeBottomNavigation extends StatelessWidget {
           ),
         );
       },
+      onRequestsTap: () {},
     );
   }
 }

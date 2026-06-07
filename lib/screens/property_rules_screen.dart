@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'notification_list_screen.dart';
 
 import '../config/api_config.dart';
 import '../models/property_rule_model.dart';
@@ -51,14 +52,6 @@ class _PropertyRulesScreenState extends State<PropertyRulesScreen> {
     await future;
   }
 
-  Future<void> _handleLogout() async {
-    await const AuthService().logout();
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const LoginPage()),
-      (route) => false,
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -127,6 +120,7 @@ class _PropertyRulesScreenState extends State<PropertyRulesScreen> {
             ),
           );
         },
+        onRequestsTap: () {},
       ),
     );
   }
@@ -171,11 +165,15 @@ class _RulesHeader extends StatelessWidget {
             ),
           ),
           IconButton(
-            onPressed: () {},
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const NotificationListScreen(),
+              ),
+            ),
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const Icon(
-              Icons.notifications_none_rounded,
+constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+icon: const Icon(
+Icons.notifications_none_rounded,
               color: AppColors.inputText,
               size: 24,
             ),

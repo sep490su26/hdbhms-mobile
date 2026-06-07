@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'notification_list_screen.dart';
 
 import '../models/maintenance_ticket_model.dart';
 import '../services/auth_service.dart';
@@ -191,6 +192,7 @@ class _MaintenanceTicketListScreenState
             ),
           );
         },
+        onRequestsTap: () {},
       ),
     );
   }
@@ -230,11 +232,15 @@ class _MaintenanceTicketListScreenState
             ),
           ),
           IconButton(
-            onPressed: () {},
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const NotificationListScreen(),
+              ),
+            ),
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const Icon(
-              Icons.notifications_none_rounded,
+constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+icon: const Icon(
+Icons.notifications_none_rounded,
               color: AppColors.inputText,
               size: 24,
             ),

@@ -211,6 +211,7 @@ class _LeaseContractListScreenState extends State<LeaseContractListScreen> {
             ),
           );
         },
+        onRequestsTap: () {},
       ),
     );
   }
