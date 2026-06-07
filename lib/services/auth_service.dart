@@ -67,15 +67,10 @@ class AuthService {
 
         var loginResponse = apiResponse.data!;
         if (loginResponse.onboarding == null) {
-          try {
-            final onboarding = await _fetchOnboardingWithToken(
-              loginResponse.token,
-            );
-            loginResponse = loginResponse.copyWith(onboarding: onboarding);
-          } catch (e) {
-            // If onboarding fetch fails, we still have the token
-            // but the app might not know where to go next.
-          }
+          final onboarding = await _fetchOnboardingWithToken(
+            loginResponse.token,
+          );
+          loginResponse = loginResponse.copyWith(onboarding: onboarding);
         }
 
         await _saveLoginData(loginResponse);
@@ -263,6 +258,11 @@ class AuthService {
     await prefs.setString(accessTokenKey, response.token);
     await prefs.setString(sessionIdKey, response.sessionId);
     await prefs.setString(roleKey, response.role);
+    if (response.tenantId != null) {
+      await prefs.setInt(tenantIdKey, response.tenantId!);
+    } else {
+      await prefs.remove(tenantIdKey);
+    }
 
     if (response.onboarding != null) {
       await saveOnboarding(response.onboarding!);

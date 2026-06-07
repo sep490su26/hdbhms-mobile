@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:hdbhms_mobile/app.dart';
@@ -187,6 +189,7 @@ final _tenantProfile = TenantProfileResponse(
     phone: '0912345678',
     email: 'a@gmail.com',
     permanentAddress: '12 Nguyễn Trãi, Hà Nội',
+    portraitFileUrl: '',
   ),
   identityDocument: IdentityDocumentDto(
     docType: 'CCCD',
@@ -221,6 +224,7 @@ const _tenantProfileWithoutVehicles = TenantProfileResponse(
     phone: '',
     email: '',
     permanentAddress: '',
+    portraitFileUrl: '',
   ),
   identityDocument: null,
   vehicles: [],
@@ -235,6 +239,7 @@ const _tenantProfileWithNullVehicleImage = TenantProfileResponse(
     phone: '0912345678',
     email: '',
     permanentAddress: '',
+    portraitFileUrl: '',
   ),
   identityDocument: null,
   vehicles: [
@@ -574,6 +579,7 @@ void main() {
             phone: '0909009009',
             email: '',
             permanentAddress: '',
+            portraitFileUrl: '',
           ),
           identityDocument: null,
           vehicles: [],
@@ -591,7 +597,7 @@ void main() {
     expect(find.text('0909009009'), findsOneWidget);
   });
 
-  test('mobile onboarding maps identity verification step to home', () {
+  test('mobile onboarding preserves identity verification step', () {
     final onboarding = OnboardingState.fromJson(const {
       'user_id': 1,
       'must_change_password': false,
@@ -599,10 +605,66 @@ void main() {
       'next_step': OnboardingState.identityVerification,
     });
 
-    expect(onboarding.nextStep, OnboardingState.home);
+    expect(onboarding.nextStep, OnboardingState.identityVerification);
   });
 
-  testWidgets('login ignores identity verification onboarding step', (
+  test('mobile login response parses tenant context for identity upload', () {
+    final response = LoginResponse.fromJson(const {
+      'token': 'token',
+      'sessionId': 'session',
+      'role': 'TENANT',
+      'authorized': true,
+      'tenantId': 23,
+      'propertyId': 7,
+    });
+
+    expect(response.tenantId, 23);
+    expect(response.propertyId, 7);
+  });
+
+  test('mobile login saves tenant context for identity upload', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = AuthService(
+      client: MockClient(
+        (_) async => http.Response('''
+          {
+            "code": 0,
+            "data": {
+              "token": "token",
+              "sessionId": "session",
+              "role": "TENANT",
+              "tenantId": 23,
+              "propertyId": 7,
+              "authorized": true,
+              "onboarding": {
+                "user_id": 1,
+                "on_boarding_completed": false,
+                "actions": [
+                  {
+                    "action_key": "IDENTITY_VERIFICATION",
+                    "label": "Upload identity documents",
+                    "completed": false,
+                    "priority": 1
+                  }
+                ]
+              }
+            }
+          }
+          ''', 200),
+      ),
+    );
+
+    final response = await service.login(
+      phone: '0900000000',
+      password: 'password',
+    );
+    final prefs = await SharedPreferences.getInstance();
+
+    expect(response.onboarding?.nextStep, OnboardingState.identityVerification);
+    expect(prefs.getInt(AuthService.tenantIdKey), 23);
+  });
+
+  testWidgets('login requires identity verification before home', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -615,12 +677,12 @@ void main() {
 
     await login(tester);
 
-    expect(find.text('XIN CH\u00C0O,'), findsOneWidget);
-    expect(find.text('Hoàn tất hồ sơ'), findsNothing);
-    expect(find.text('CCCD mặt trước'), findsNothing);
+    expect(find.text('XIN CH\u00C0O,'), findsNothing);
+    expect(find.text('Hoàn tất hồ sơ'), findsWidgets);
+    expect(find.text('CCCD mặt trước'), findsWidgets);
   });
 
-  testWidgets('startup ignores cached identity verification onboarding step', (
+  testWidgets('startup requires identity verification before home', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -631,34 +693,33 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('XIN CH\u00C0O,'), findsOneWidget);
-    expect(find.text('Hoàn tất hồ sơ'), findsNothing);
-    expect(find.text('CCCD mặt trước'), findsNothing);
+    expect(find.text('XIN CH\u00C0O,'), findsNothing);
+    expect(find.text('Hoàn tất hồ sơ'), findsWidgets);
+    expect(find.text('CCCD mặt trước'), findsWidgets);
   });
 
-  testWidgets(
-    'change password goes straight home after identity step response',
-    (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: ChangePasswordPage(
-            authService: _IdentityStepAfterPasswordAuthService(),
-            homeService: _FakeHomeService(),
-            isRequired: true,
-          ),
+  testWidgets('change password continues to required identity verification', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: ChangePasswordPage(
+          authService: _IdentityStepAfterPasswordAuthService(),
+          homeService: _FakeHomeService(),
+          isRequired: true,
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      await tester.enterText(find.byType(TextFormField).at(0), 'Changed123');
-      await tester.enterText(find.byType(TextFormField).at(1), 'Changed123');
-      await tester.ensureVisible(find.text('ĐỔI MẬT KHẨU'));
-      await tester.tap(find.text('ĐỔI MẬT KHẨU'));
-      await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(0), 'Changed123');
+    await tester.enterText(find.byType(TextFormField).at(1), 'Changed123');
+    await tester.ensureVisible(find.text('ĐỔI MẬT KHẨU'));
+    await tester.tap(find.text('ĐỔI MẬT KHẨU'));
+    await tester.pumpAndSettle();
 
-      expect(find.text('XIN CH\u00C0O,'), findsOneWidget);
-      expect(find.text('Hoàn tất hồ sơ'), findsNothing);
-      expect(find.text('CCCD mặt trước'), findsNothing);
-    },
-  );
+    expect(find.text('XIN CH\u00C0O,'), findsNothing);
+    expect(find.text('Hoàn tất hồ sơ'), findsWidgets);
+    expect(find.text('CCCD mặt trước'), findsWidgets);
+  });
 }

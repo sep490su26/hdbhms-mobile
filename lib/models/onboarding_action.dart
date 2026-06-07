@@ -15,11 +15,13 @@ class OnboardingAction {
 
   factory OnboardingAction.fromJson(Map<String, dynamic> json) {
     return OnboardingAction(
-      actionKey: json['action_key']?.toString() ?? '',
+      actionKey:
+          json['action_key']?.toString() ?? json['actionKey']?.toString() ?? '',
       label: json['label']?.toString() ?? '',
       completed: json['completed'] == true,
       priority: (json['priority'] as num?)?.toInt() ?? 0,
-      actionUrl: json['action_url']?.toString(),
+      actionUrl:
+          json['action_url']?.toString() ?? json['actionUrl']?.toString(),
     );
   }
 

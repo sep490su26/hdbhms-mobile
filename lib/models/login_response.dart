@@ -6,6 +6,8 @@ class LoginResponse {
     required this.sessionId,
     required this.role,
     required this.authorized,
+    this.tenantId,
+    this.propertyId,
     this.onboarding,
   });
 
@@ -13,18 +15,21 @@ class LoginResponse {
   final String sessionId;
   final String role;
   final bool authorized;
+  final int? tenantId;
+  final int? propertyId;
   final OnboardingState? onboarding;
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
     return LoginResponse(
       token: json['token']?.toString() ?? '',
-      sessionId: json['sessionId']?.toString() ?? '',
+      sessionId:
+          json['sessionId']?.toString() ?? json['session_id']?.toString() ?? '',
       role: json['role']?.toString() ?? '',
       authorized: json['authorized'] == true,
+      tenantId: _asInt(json['tenantId'] ?? json['tenant_id']),
+      propertyId: _asInt(json['propertyId'] ?? json['property_id']),
       onboarding: json['onboarding'] != null
-          ? OnboardingState.fromJson(
-              json['onboarding'] as Map<String, dynamic>,
-            )
+          ? OnboardingState.fromJson(json['onboarding'] as Map<String, dynamic>)
           : null,
     );
   }
@@ -36,6 +41,8 @@ class LoginResponse {
       sessionId: sessionId,
       role: role,
       authorized: authorized,
+      tenantId: tenantId,
+      propertyId: propertyId,
       onboarding: onboarding ?? this.onboarding,
     );
   }
@@ -47,8 +54,13 @@ class LoginResponse {
 
   @override
   String toString() {
-    return 'LoginResponse{token: $token, sessionId: $sessionId, role: $role, authorized: $authorized, onboarding: $onboarding}';
+    return 'LoginResponse{token: $token, sessionId: $sessionId, role: $role, authorized: $authorized, tenantId: $tenantId, propertyId: $propertyId, onboarding: $onboarding}';
   }
+}
+
+int? _asInt(Object? value) {
+  if (value is int) return value;
+  return int.tryParse(value?.toString() ?? '');
 }
 
 class LoginUser {
@@ -86,5 +98,6 @@ class LoginTenant {
   final String role;
   final int? propertyId;
 
-  factory LoginTenant.fromJson(Map<String, dynamic> json) => const LoginTenant();
+  factory LoginTenant.fromJson(Map<String, dynamic> json) =>
+      const LoginTenant();
 }
