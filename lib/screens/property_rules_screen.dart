@@ -53,7 +53,6 @@ class _PropertyRulesScreenState extends State<PropertyRulesScreen> {
     await future;
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -122,10 +121,8 @@ class _PropertyRulesScreenState extends State<PropertyRulesScreen> {
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const TenantRequestScreen(),
-              ),
-            ),
+          MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+        ),
       ),
     );
   }
@@ -176,9 +173,9 @@ class _RulesHeader extends StatelessWidget {
               ),
             ),
             padding: EdgeInsets.zero,
-constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-icon: const Icon(
-Icons.notifications_none_rounded,
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            icon: const Icon(
+              Icons.notifications_none_rounded,
               color: AppColors.inputText,
               size: 24,
             ),
@@ -727,9 +724,6 @@ class _StateMessage extends StatelessWidget {
     );
   }
 }
-
-
-
 
 class _RuleSectionConfig {
   const _RuleSectionConfig({

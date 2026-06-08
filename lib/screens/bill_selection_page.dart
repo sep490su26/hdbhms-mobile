@@ -11,9 +11,15 @@ import 'payment_history_page.dart';
 import 'qr_payment_page.dart';
 import 'tenant_profile_screen.dart';
 
-class BillSelectionPage extends StatelessWidget {
+class BillSelectionPage extends StatefulWidget {
   const BillSelectionPage({super.key});
 
+  @override
+  State<BillSelectionPage> createState() => _BillSelectionPageState();
+}
+
+class _BillSelectionPageState extends State<BillSelectionPage> {
+  _BillFilter _activeFilter = _BillFilter.all;
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +39,7 @@ class BillSelectionPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Hóa đơn',
+                          'Tất cả hoá đơn',
                           style: TextStyle(
                             color: AppColors.deepBlue,
                             fontSize: 24,
@@ -41,45 +47,15 @@ class BillSelectionPage extends StatelessWidget {
                             height: 30 / 24,
                           ),
                         ),
-                        const SizedBox(height: 22),
-                        _PendingBillCard(
-                          title: 'Tiền phòng',
-                          amount: '2.200.000',
-                          dueDate: 'Hạn: 15/01/2023',
-                          onTap: () => _openPayment(context),
-                        ),
-                        const SizedBox(height: 16),
-                        _PendingBillCard(
-                          title: 'Điện & Nước',
-                          amount: '800.000',
-                          dueDate: 'Hạn: 15/01/2023',
-                          onTap: () => _openPayment(context),
-                        ),
-                        const SizedBox(height: 28),
-                        const _PaidDivider(),
-                        const SizedBox(height: 22),
-                        const _PaidBillCard(
-                          title: 'Tiền phòng',
-                          amount: '2.200.000',
-                          date: 'Ngày: 15/12/2022',
-                        ),
-                        const SizedBox(height: 12),
-                        const _PaidBillCard(
-                          title: 'Điện & Nước',
-                          amount: '800.000',
-                          date: 'Ngày: 15/12/2022',
-                        ),
-                        const SizedBox(height: 18),
-                        _ViewHistoryButton(
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const PaymentHistoryPage(),
-                              ),
-                            );
+                        const SizedBox(height: 14),
+                        _BillFilterBar(
+                          active: _activeFilter,
+                          onChanged: (filter) {
+                            setState(() => _activeFilter = filter);
                           },
                         ),
+                        const SizedBox(height: 18),
+                        ..._buildFilteredBills(context),
                       ],
                     ),
                   ),
@@ -121,6 +97,166 @@ class BillSelectionPage extends StatelessWidget {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (context) => const QrPaymentPage()));
+  }
+
+  List<Widget> _buildFilteredBills(BuildContext context) {
+    final pendingBills = [
+      _PendingBillCard(
+        title: 'Tiền phòng',
+        amount: '2.200.000',
+        dueDate: 'Hạn: 15/01/2023',
+        onTap: () => _openPayment(context),
+      ),
+      const SizedBox(height: 16),
+      _PendingBillCard(
+        title: 'Điện & Nước',
+        amount: '800.000',
+        dueDate: 'Hạn: 15/01/2023',
+        onTap: () => _openPayment(context),
+      ),
+    ];
+
+    const paidBills = [
+      _PaidBillCard(
+        title: 'Tiền phòng',
+        amount: '2.200.000',
+        date: 'Ngày: 15/12/2022',
+      ),
+      SizedBox(height: 12),
+      _PaidBillCard(
+        title: 'Điện & Nước',
+        amount: '800.000',
+        date: 'Ngày: 15/12/2022',
+      ),
+    ];
+
+    final historyButton = _ViewHistoryButton(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const PaymentHistoryPage(),
+          ),
+        );
+      },
+    );
+
+    return switch (_activeFilter) {
+      _BillFilter.all => [
+          ...pendingBills,
+          const SizedBox(height: 28),
+          const _PaidDivider(),
+          const SizedBox(height: 22),
+          ...paidBills,
+          const SizedBox(height: 18),
+          historyButton,
+        ],
+      _BillFilter.unpaid => pendingBills,
+      _BillFilter.paid => [
+          ...paidBills,
+          const SizedBox(height: 18),
+          historyButton,
+        ],
+    };
+  }
+}
+
+enum _BillFilter { all, unpaid, paid }
+
+class _BillFilterBar extends StatelessWidget {
+  const _BillFilterBar({
+    required this.active,
+    required this.onChanged,
+  });
+
+  final _BillFilter active;
+  final ValueChanged<_BillFilter> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _BillFilterChip(
+            label: 'Tất cả',
+            icon: Icons.list_rounded,
+            isActive: active == _BillFilter.all,
+            onTap: () => onChanged(_BillFilter.all),
+          ),
+          const SizedBox(width: 8),
+          _BillFilterChip(
+            label: 'Chưa thanh toán',
+            icon: Icons.pending_actions_rounded,
+            isActive: active == _BillFilter.unpaid,
+            onTap: () => onChanged(_BillFilter.unpaid),
+          ),
+          const SizedBox(width: 8),
+          _BillFilterChip(
+            label: 'Đã thanh toán',
+            icon: Icons.task_alt_rounded,
+            isActive: active == _BillFilter.paid,
+            onTap: () => onChanged(_BillFilter.paid),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BillFilterChip extends StatelessWidget {
+  const _BillFilterChip({
+    required this.label,
+    required this.icon,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: isActive
+              ? AppColors.deepBlue.withValues(alpha: 0.10)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: isActive
+                ? AppColors.deepBlue
+                : AppColors.cardBorder.withValues(alpha: 0.8),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: isActive ? AppColors.deepBlue : AppColors.bodyText,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                color: isActive ? AppColors.deepBlue : AppColors.bodyText,
+                fontSize: 12,
+                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                height: 16 / 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -491,7 +627,7 @@ class _ViewHistoryButton extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
         ),
         child: const Text(
-          'View All Historical Data',
+          'Xem toàn bộ lịch sử thanh toán',
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w800,

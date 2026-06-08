@@ -393,22 +393,22 @@ class _HistoryBottomNavigation extends StatelessWidget {
             children: [
               _BottomNavItem(
                 icon: Icons.home_outlined,
-                label: 'Home',
+                label: 'Trang chủ',
                 onTap: () =>
                     Navigator.of(context).popUntil((route) => route.isFirst),
               ),
               const _BottomNavItem(
                 icon: Icons.receipt_long_rounded,
-                label: 'Bills',
+                label: 'Hóa đơn',
                 isSelected: true,
               ),
               const _BottomNavItem(
                 icon: Icons.support_agent_outlined,
-                label: 'Support',
+                label: 'Hỗ trợ',
               ),
               _BottomNavItem(
                 icon: Icons.person_outline,
-                label: 'Profile',
+                label: 'Hồ sơ',
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
