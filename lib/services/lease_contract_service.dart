@@ -14,6 +14,49 @@ class LeaseContractException implements Exception {
   final String message;
 }
 
+class ActiveRoomItem {
+  const ActiveRoomItem({
+    required this.contractId,
+    required this.contractCode,
+    required this.roomId,
+    required this.roomCode,
+    required this.roomName,
+    required this.propertyName,
+  });
+
+  final int contractId;
+  final String contractCode;
+  final int roomId;
+  final String roomCode;
+  final String roomName;
+  final String propertyName;
+
+  factory ActiveRoomItem.fromJson(Map<String, dynamic> json) {
+    return ActiveRoomItem(
+      contractId: _asInt(json['contract_id']) ?? 0,
+      contractCode: json['contract_code']?.toString() ?? '',
+      roomId: _asInt(json['room_id']) ?? 0,
+      roomCode: json['room_code']?.toString() ?? '',
+      roomName: json['room_name']?.toString() ?? '',
+      propertyName: json['property_name']?.toString() ?? '',
+    );
+  }
+
+  String get displayLabel {
+    final name = roomName.trim();
+    final code = roomCode.trim();
+    if (name.isNotEmpty) return name;
+    if (code.isNotEmpty) return 'Phòng $code';
+    return 'Phòng';
+  }
+
+  static int? _asInt(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '');
+  }
+}
+
 class LeaseContractNotFoundException extends LeaseContractException {
   const LeaseContractNotFoundException()
     : super('Bạn chưa có hợp đồng thuê phòng đang hiệu lực');
@@ -142,6 +185,44 @@ class LeaseContractService {
       throw const LeaseContractException('Không kết nối được máy chủ');
     } on FormatException {
       throw const LeaseContractException('Không tải được danh sách hợp đồng');
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
+
+  Future<List<ActiveRoomItem>> fetchMyActiveRooms() async {
+    final client = _effectiveClient;
+    try {
+      final response = await client
+          .get(Uri.parse('${ApiConfig.baseUrl}/lease-contracts/me/active-rooms'))
+          .timeout(_timeout);
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        dynamic listData;
+        if (body is Map<String, dynamic> && body.containsKey('data')) {
+          listData = body['data'];
+        }
+        final List<dynamic> list = listData is List ? listData : [];
+        return list
+            .whereType<Map<String, dynamic>>()
+            .map(ActiveRoomItem.fromJson)
+            .toList(growable: false);
+      }
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        throw const LeaseContractForbiddenException();
+      }
+      throw LeaseContractException(_messageForError(response));
+    } on LeaseContractException {
+      rethrow;
+    } on TimeoutException {
+      throw const LeaseContractException('Không kết nối được máy chủ');
+    } on http.ClientException {
+      throw const LeaseContractException('Không kết nối được máy chủ');
+    } on FormatException {
+      throw const LeaseContractException('Không tải được danh sách phòng');
     } finally {
       if (_client == null) {
         client.close();
