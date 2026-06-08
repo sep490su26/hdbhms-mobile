@@ -26,6 +26,30 @@ class NotificationItem {
       type: type,
     );
   }
+
+  factory NotificationItem.fromJson(Map<String, dynamic> json) {
+    NotificationType parsedType = NotificationType.general;
+    final eventType = json['event_type']?.toString().toUpperCase() ?? '';
+    
+    if (eventType.contains('INVOICE') || eventType.contains('PAYMENT')) {
+      parsedType = NotificationType.invoice;
+    } else if (eventType.contains('CONTRACT') || eventType.contains('LEASE')) {
+      parsedType = NotificationType.contract;
+    } else if (eventType.contains('MAINTENANCE') || eventType.contains('REPAIR') || eventType.contains('TICKET')) {
+      parsedType = NotificationType.maintenance;
+    }
+
+    return NotificationItem(
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? 'Thông báo',
+      content: json['body']?.toString() ?? '',
+      createdAt: json['created_at'] != null 
+          ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+      isRead: json['is_read'] as bool? ?? false,
+      type: parsedType,
+    );
+  }
 }
 
 enum NotificationType {

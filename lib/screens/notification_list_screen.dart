@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/notification_model.dart';
+import '../services/notification_service.dart';
 import '../theme/app_colors.dart';
 
 /// Màn danh sách thông báo với filter Tất cả / Chưa đọc / Đã đọc.
@@ -12,16 +13,67 @@ class NotificationListScreen extends StatefulWidget {
 }
 
 class _NotificationListScreenState extends State<NotificationListScreen> {
+  final NotificationService _notificationService = const NotificationService();
   _NotifFilter _activeFilter = _NotifFilter.all;
 
-  // Trong thực tế sẽ lấy từ API/provider.
-  // Hiện tại dùng bản sao local của mock data để có thể mutate isRead.
-  late final List<NotificationItem> _items;
+  List<NotificationItem> _items = [];
+  bool _isLoading = true;
+  bool _hasMore = true;
+  bool _isLoadingMore = false;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _items = List.from(mockNotifications);
+    _fetchNotifications();
+  }
+
+  Future<void> _fetchNotifications() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final response = await _notificationService.getNotifications(limit: 20, after: 0);
+      setState(() {
+        _items = response.items;
+        _hasMore = response.hasMore;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+        // Fallback to mock data if API fails or isn't available yet
+        _items = List.from(mockNotifications);
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoadingMore || !_hasMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final lastId = _items.isNotEmpty ? int.tryParse(_items.last.id) ?? 0 : 0;
+      final response = await _notificationService.getNotifications(limit: 20, after: lastId);
+      setState(() {
+        _items.addAll(response.items);
+        _hasMore = response.hasMore;
+      });
+    } catch (_) {
+      // Ignore errors on load more
+    } finally {
+      setState(() {
+        _isLoadingMore = false;
+      });
+    }
   }
 
   List<NotificationItem> get _filtered {
@@ -34,7 +86,11 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
 
   int get _unreadCount => _items.where((n) => !n.isRead).length;
 
-  void _markAllRead() {
+  void _markAllRead() async {
+    try {
+      await _notificationService.markAllAsRead();
+    } catch (_) {}
+    
     setState(() {
       for (var i = 0; i < _items.length; i++) {
         _items[i] = _items[i].copyWith(isRead: true);
@@ -42,9 +98,13 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
     });
   }
 
-  void _markRead(String id) {
+  void _markRead(String id) async {
     final idx = _items.indexWhere((n) => n.id == id);
     if (idx != -1 && !_items[idx].isRead) {
+      try {
+        await _notificationService.markAsRead(id);
+      } catch (_) {}
+      
       setState(() {
         _items[idx] = _items[idx].copyWith(isRead: true);
       });
@@ -78,18 +138,43 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
                   onChanged: (f) => setState(() => _activeFilter = f),
                 ),
                 Expanded(
-                  child: filtered.isEmpty
-                      ? _buildEmpty()
-                      : ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
-                          itemCount: filtered.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 8),
-                          itemBuilder: (_, i) => _NotificationCard(
-                            item: filtered[i],
-                            onTap: () => _openDetail(filtered[i]),
-                          ),
-                        ),
+                  child: _isLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(color: AppColors.deepBlue),
+                        )
+                      : filtered.isEmpty
+                          ? _buildEmpty()
+                          : RefreshIndicator(
+                              color: AppColors.deepBlue,
+                              onRefresh: _fetchNotifications,
+                              child: ListView.separated(
+                                padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
+                                itemCount: filtered.length + (_hasMore ? 1 : 0),
+                                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                itemBuilder: (_, i) {
+                                  if (i == filtered.length) {
+                                    _loadMore();
+                                    return const Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 16.0),
+                                      child: Center(
+                                        child: SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                            color: AppColors.deepBlue,
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  return _NotificationCard(
+                                    item: filtered[i],
+                                    onTap: () => _openDetail(filtered[i]),
+                                  );
+                                },
+                              ),
+                            ),
                 ),
               ],
             ),
