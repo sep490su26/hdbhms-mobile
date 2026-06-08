@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -63,12 +62,6 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
         },
       ),
     );
-  }
-
-  void _snack(String msg) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(msg)));
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -157,14 +150,48 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
           // ── Thông tin người ở cùng ─────────────────────────────────────
           _SectionCard(
             title: 'Thông tin người ở cùng',
+            icon: Icons.group_add_outlined,
             children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF8FF),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: const Color(0xFF0284C7).withValues(alpha: 0.35),
+                  ),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline_rounded,
+                        size: 16, color: Color(0xFF0284C7)),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Điền thông tin người ở cùng để chủ trọ xét duyệt và cấp tài khoản sau khi yêu cầu được chấp nhận.',
+                        style: TextStyle(
+                          color: Color(0xFF0369A1),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               _Field(
                 label: 'Họ và tên',
                 hint: 'Nhập họ và tên đầy đủ',
                 controller: _nameCtrl,
                 icon: Icons.person_outline_rounded,
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Vui lòng nhập họ tên' : null,
+                required: true,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Vui lòng nhập họ tên'
+                    : null,
               ),
               const SizedBox(height: 12),
               _Field(
@@ -174,8 +201,10 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
                 icon: Icons.phone_outlined,
                 keyboardType: TextInputType.phone,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                validator: (v) =>
-                    (v == null || v.trim().length < 9) ? 'Số điện thoại không hợp lệ' : null,
+                required: true,
+                validator: (v) => (v == null || v.trim().length < 9)
+                    ? 'Số điện thoại không hợp lệ'
+                    : null,
               ),
               const SizedBox(height: 12),
               _Field(
@@ -194,7 +223,6 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
                 maxLines: 3,
               ),
               const SizedBox(height: 14),
-              // Info banner
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
@@ -215,7 +243,8 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
                         style: TextStyle(
                           color: AppColors.deepBlue,
                           fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w500,
+                          height: 1.5,
                         ),
                       ),
                     ),
@@ -257,6 +286,29 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          SizedBox(
+            height: 48,
+            child: OutlinedButton(
+              onPressed: () => Navigator.of(context).maybePop(),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.bodyText,
+                side: const BorderSide(color: AppColors.cardBorder),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                'Hủy',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
@@ -470,16 +522,21 @@ class _SuccessDialogState extends State<_SuccessDialog>
 // Section card wrapper
 // ─────────────────────────────────────────────────────────────────────────────
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.children});
+  const _SectionCard({
+    required this.title,
+    required this.icon,
+    required this.children,
+  });
 
   final String title;
+  final IconData icon;
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
@@ -495,17 +552,24 @@ class _SectionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: _kLabel,
-              fontSize: 14,
-              fontWeight: FontWeight.w900,
-            ),
+          Row(
+            children: [
+              Icon(icon, size: 14, color: _kLabel),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: _kLabel,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           const Divider(height: 1, color: Color(0xFFEEECEE)),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           ...children,
         ],
       ),
@@ -526,6 +590,7 @@ class _Field extends StatelessWidget {
     this.inputFormatters,
     this.validator,
     this.maxLines = 1,
+    this.required = false,
   });
 
   final String label;
@@ -536,6 +601,7 @@ class _Field extends StatelessWidget {
   final List<TextInputFormatter>? inputFormatters;
   final String? Function(String?)? validator;
   final int maxLines;
+  final bool required;
 
   @override
   Widget build(BuildContext context) {
@@ -554,9 +620,20 @@ class _Field extends StatelessWidget {
                 fontWeight: FontWeight.w800,
               ),
             ),
+            if (required) ...[
+              const SizedBox(width: 4),
+              const Text(
+                '*',
+                style: TextStyle(
+                  color: Color(0xFFDC2626),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
           ],
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 6),
         TextFormField(
           controller: controller,
           keyboardType: keyboardType,
@@ -578,7 +655,7 @@ class _Field extends StatelessWidget {
             filled: true,
             fillColor: AppColors.background,
             contentPadding:
-                const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+                const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: AppColors.cardBorder),
@@ -589,7 +666,8 @@ class _Field extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.deepBlue, width: 1.5),
+              borderSide:
+                  const BorderSide(color: AppColors.deepBlue, width: 1.5),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),

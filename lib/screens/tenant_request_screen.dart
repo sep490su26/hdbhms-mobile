@@ -883,34 +883,103 @@ class _RequestDetailDialog extends StatelessWidget {
 
   final TenantRequest request;
 
+  IconData get _icon => switch (request.type) {
+        TenantRequestType.renewContract => Icons.autorenew_rounded,
+        TenantRequestType.terminateContract => Icons.cancel_outlined,
+        TenantRequestType.changeRoom => Icons.swap_horiz_rounded,
+        TenantRequestType.addRoommate => Icons.person_add_outlined,
+      };
+
+  Color get _accentColor => switch (request.type) {
+        TenantRequestType.renewContract => AppColors.deepBlue,
+        TenantRequestType.terminateContract => const Color(0xFFDC2626),
+        TenantRequestType.changeRoom => const Color(0xFF0284C7),
+        TenantRequestType.addRoommate => const Color(0xFF16A34A),
+      };
+
+  Color get _accentBg => switch (request.type) {
+        TenantRequestType.renewContract => const Color(0xFFEFF1FF),
+        TenantRequestType.terminateContract => const Color(0xFFFFF0F0),
+        TenantRequestType.changeRoom => const Color(0xFFEFF8FF),
+        TenantRequestType.addRoommate => const Color(0xFFF0FFF4),
+      };
+
+  Color get _statusColor => switch (request.status) {
+        TenantRequestStatus.pending => const Color(0xFFD97706),
+        TenantRequestStatus.processing => AppColors.deepBlue,
+        TenantRequestStatus.approved => const Color(0xFF16A34A),
+        TenantRequestStatus.rejected => const Color(0xFFDC2626),
+      };
+
+  String get _detailTitle => switch (request.type) {
+        TenantRequestType.renewContract => 'Thông tin gia hạn',
+        TenantRequestType.terminateContract => 'Thông tin thanh lý',
+        TenantRequestType.changeRoom => 'Thông tin chuyển phòng',
+        TenantRequestType.addRoommate => 'Thông tin người ở cùng',
+      };
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 60),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 48),
       child: Container(
+        constraints: const BoxConstraints(maxWidth: 430),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 28,
+              offset: const Offset(0, 12),
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 10, 0),
+              padding: const EdgeInsets.fromLTRB(18, 16, 10, 12),
               child: Row(
                 children: [
-                  const Text(
-                    'Chi tiết yêu cầu',
-                    style: TextStyle(
-                      color: AppColors.deepBlue,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: _accentBg,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Icon(_icon, color: _accentColor, size: 22),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Chi tiết yêu cầu',
+                          style: TextStyle(
+                            color: AppColors.deepBlue,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          request.type.fullLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.bodyText,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const Spacer(),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
                     padding: EdgeInsets.zero,
@@ -926,17 +995,15 @@ class _RequestDetailDialog extends StatelessWidget {
               ),
             ),
             const Padding(
-              padding: EdgeInsets.fromLTRB(18, 10, 18, 0),
+              padding: EdgeInsets.symmetric(horizontal: 18),
               child: Divider(height: 1, color: Color(0xFFEEECEE)),
             ),
-            // Content
             Flexible(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Type + Status row
                     Row(
                       children: [
                         _TypeTag(type: request.type),
@@ -945,70 +1012,45 @@ class _RequestDetailDialog extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    // Title
-                    Text(
-                      request.type.fullLabel,
-                      style: const TextStyle(
-                        color: AppColors.inputText,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        height: 20 / 15,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    // ID + time
-                    Row(
+                    _DetailSection(
+                      title: 'Tổng quan',
                       children: [
-                        Text(
-                          request.id,
-                          style: const TextStyle(
-                            color: AppColors.bodyText,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        _DetailRow(label: 'Mã yêu cầu', value: request.id),
+                        _DetailRow(
+                          label: 'Ngày tạo',
+                          value: _formatTime(request.createdAt),
                         ),
-                        const SizedBox(width: 8),
-                        const Text('·',
-                            style: TextStyle(color: AppColors.bodyText)),
-                        const SizedBox(width: 8),
-                        Text(
-                          _formatTime(request.createdAt),
-                          style: const TextStyle(
-                            color: AppColors.bodyText,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        _DetailRow(
+                          label: 'Trạng thái',
+                          value: request.status.label,
+                          valueColor: _statusColor,
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
-                    const Divider(height: 1, color: Color(0xFFEEECEE)),
-                    const SizedBox(height: 12),
-                    // Note
-                    const Text(
-                      'Nội dung',
-                      style: TextStyle(
-                        color: AppColors.bodyText,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.3,
-                      ),
+                    _DetailSection(
+                      title: _detailTitle,
+                      children: _buildTypeDetails(),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      request.note,
-                      style: const TextStyle(
-                        color: AppColors.inputText,
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w500,
-                        height: 20 / 13.5,
-                      ),
+                    const SizedBox(height: 12),
+                    _DetailSection(
+                      title: 'Nội dung / ghi chú',
+                      children: [
+                        Text(
+                          request.note,
+                          style: const TextStyle(
+                            color: AppColors.inputText,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w500,
+                            height: 20 / 13.5,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ),
-            // Close button
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
               child: SizedBox(
@@ -1044,5 +1086,161 @@ class _RequestDetailDialog extends StatelessWidget {
     final h = dt.hour.toString().padLeft(2, '0');
     final m = dt.minute.toString().padLeft(2, '0');
     return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} $h:$m';
+  }
+
+  List<Widget> _buildTypeDetails() {
+    final d = request.details;
+
+    return switch (request.type) {
+      TenantRequestType.renewContract => [
+          _DetailRow(
+            label: 'Mã hợp đồng',
+            value: d['Mã hợp đồng'] ?? 'Chưa có thông tin',
+          ),
+          _DetailRow(
+            label: 'Thời gian gia hạn',
+            value: d['Thời gian gia hạn'] ?? 'Chưa có thông tin',
+          ),
+          _DetailRow(
+            label: 'Ngày bắt đầu dự kiến',
+            value: d['Ngày bắt đầu dự kiến'] ?? 'Chưa có thông tin',
+          ),
+        ],
+      TenantRequestType.terminateContract => [
+          _DetailRow(
+            label: 'Mã hợp đồng',
+            value: d['Mã hợp đồng'] ?? 'Chưa có thông tin',
+          ),
+          _DetailRow(
+            label: 'Ngày hết hạn',
+            value: d['Ngày hết hạn'] ?? 'Chưa có thông tin',
+          ),
+          _DetailRow(
+            label: 'Ngày trả phòng dự kiến',
+            value: d['Ngày trả phòng dự kiến'] ?? 'Chưa có thông tin',
+            valueColor: const Color(0xFFDC2626),
+          ),
+        ],
+      TenantRequestType.changeRoom => [
+          _DetailRow(
+            label: 'Phòng hiện tại',
+            value: d['Phòng hiện tại'] ?? 'Chưa có thông tin',
+          ),
+          _DetailRow(
+            label: 'Phòng mong muốn',
+            value: d['Phòng mong muốn'] ?? 'Chưa có thông tin',
+          ),
+          _DetailRow(
+            label: 'Tầng/khu vực',
+            value: d['Tầng/khu vực'] ?? 'Chưa có thông tin',
+          ),
+        ],
+      TenantRequestType.addRoommate => [
+          _DetailRow(
+            label: 'Họ và tên',
+            value: d['Họ và tên'] ?? 'Chưa có thông tin',
+          ),
+          _DetailRow(
+            label: 'Số điện thoại',
+            value: d['Số điện thoại'] ?? 'Chưa có thông tin',
+          ),
+          _DetailRow(
+            label: 'Email',
+            value: d['Email'] ?? 'Chưa có thông tin',
+          ),
+          _DetailRow(
+            label: 'Ngày bắt đầu ở',
+            value: d['Ngày bắt đầu ở'] ?? 'Chưa có thông tin',
+          ),
+        ],
+    };
+  }
+}
+
+class _DetailSection extends StatelessWidget {
+  const _DetailSection({required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: AppColors.cardBorder.withValues(alpha: 0.65),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.deepBlue,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 4,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.bodyText,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                height: 17 / 12,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 5,
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: valueColor ?? AppColors.inputText,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w800,
+                height: 18 / 12.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
