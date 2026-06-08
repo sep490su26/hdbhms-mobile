@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'notification_list_screen.dart';
+import 'tenant_request_screen.dart';
 
 import '../config/api_config.dart';
 import '../models/property_rule_model.dart';
@@ -120,7 +121,11 @@ class _PropertyRulesScreenState extends State<PropertyRulesScreen> {
             ),
           );
         },
-        onRequestsTap: () {},
+        onRequestsTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const TenantRequestScreen(),
+              ),
+            ),
       ),
     );
   }

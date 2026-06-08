@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'tenant_request_screen.dart';
 
 import '../models/contract_list_item_model.dart';
 import '../services/auth_service.dart';
@@ -208,7 +209,11 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
             ),
           );
         },
-        onRequestsTap: () {},
+        onRequestsTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const TenantRequestScreen(),
+              ),
+            ),
       ),
     );
   }

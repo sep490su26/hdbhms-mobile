@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'notification_list_screen.dart';
+import 'tenant_request_screen.dart';
 
 import '../config/api_config.dart';
 import '../models/lease_contract_model.dart';
@@ -803,7 +804,11 @@ class _ContractBottomNavigation extends StatelessWidget {
           ),
         );
       },
-      onRequestsTap: () {},
+      onRequestsTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const TenantRequestScreen(),
+              ),
+            ),
     );
   }
 }

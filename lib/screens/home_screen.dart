@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/config/app_config.dart';
+import 'tenant_request_screen.dart';
 
 import '../config/api_config.dart';
 import '../models/home_summary_model.dart';
@@ -1010,7 +1011,11 @@ class _HomeBottomNavigation extends StatelessWidget {
           ),
         );
       },
-      onRequestsTap: () {},
+      onRequestsTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const TenantRequestScreen(),
+              ),
+            ),
     );
   }
 }

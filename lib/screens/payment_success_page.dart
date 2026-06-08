@@ -1,5 +1,4 @@
 ﻿import 'package:flutter/material.dart';
-import 'notification_list_screen.dart';
 
 import '../theme/app_colors.dart';
 import 'home_screen.dart';

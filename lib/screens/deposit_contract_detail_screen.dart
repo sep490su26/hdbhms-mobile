@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'notification_list_screen.dart';
+import 'tenant_request_screen.dart';
 
 import '../config/api_config.dart';
 import '../models/contract_list_item_model.dart';
@@ -712,7 +713,11 @@ class _DepositBottomNavigation extends StatelessWidget {
           ),
         );
       },
-      onRequestsTap: () {},
+      onRequestsTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const TenantRequestScreen(),
+              ),
+            ),
     );
   }
 }

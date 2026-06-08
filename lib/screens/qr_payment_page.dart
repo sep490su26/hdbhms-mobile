@@ -1,5 +1,4 @@
 ﻿import 'package:flutter/material.dart';
-import 'notification_list_screen.dart';
 
 import 'payment_success_page.dart';
 import '../theme/app_colors.dart';

@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'notification_list_screen.dart';
+import 'tenant_request_screen.dart';
 
 import '../models/maintenance_ticket_model.dart';
 import '../services/auth_service.dart';
@@ -192,7 +193,11 @@ class _MaintenanceTicketListScreenState
             ),
           );
         },
-        onRequestsTap: () {},
+        onRequestsTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const TenantRequestScreen(),
+              ),
+            ),
       ),
     );
   }

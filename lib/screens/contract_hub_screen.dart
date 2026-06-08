@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'tenant_request_screen.dart';
 
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
@@ -99,7 +100,11 @@ class _ContractHubScreenState extends State<ContractHubScreen>
             ),
           );
         },
-        onRequestsTap: () {},
+        onRequestsTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const TenantRequestScreen(),
+              ),
+            ),
       ),
     );
   }

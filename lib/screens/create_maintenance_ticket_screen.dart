@@ -1,7 +1,8 @@
-import 'dart:typed_data';
+﻿import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'tenant_request_screen.dart';
 
 import '../models/maintenance_ticket_model.dart';
 import '../services/current_room_service.dart';
@@ -485,7 +486,11 @@ class _CreateMaintenanceTicketScreenState
             ),
           );
         },
-        onRequestsTap: () {},
+        onRequestsTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const TenantRequestScreen(),
+              ),
+            ),
       ),
     );
   }
