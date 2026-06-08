@@ -7,6 +7,7 @@ import '../models/home_summary_model.dart';
 import '../providers/home_provider.dart';
 import '../services/auth_service.dart';
 import '../services/home_service.dart';
+import '../services/lease_contract_service.dart';
 import '../services/tenant_profile_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/tenant_bottom_navigation.dart';
@@ -20,17 +21,21 @@ import 'property_rules_screen.dart';
 import 'tenant_profile_screen.dart';
 import 'web_view_screen.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     this.homeService = const HomeService(),
     this.authService = const AuthService(),
     this.profileService = const TenantProfileService(),
+    this.leaseContractService = const LeaseContractService(),
   });
 
   final HomeService homeService;
   final AuthService authService;
   final TenantProfileService profileService;
+  final LeaseContractService leaseContractService;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -42,8 +47,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _provider = HomeProvider(homeService: widget.homeService)
-      ..addListener(_handleProviderChanged);
+    _provider = HomeProvider(
+      homeService: widget.homeService,
+      leaseContractService: widget.leaseContractService,
+    )..addListener(_handleProviderChanged);
     _provider.load();
   }
 
@@ -127,7 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Column(
       children: [
-        _HomeHeader(summary: summary),
+        _HomeHeader(summary: summary, provider: _provider),
         Expanded(
           child: RefreshIndicator(
             color: AppColors.deepBlue,
@@ -206,9 +213,10 @@ class _HomeErrorState extends StatelessWidget {
 }
 
 class _HomeHeader extends StatelessWidget {
-  const _HomeHeader({required this.summary});
+  const _HomeHeader({required this.summary, required this.provider});
 
   final HomeSummary summary;
+  final HomeProvider provider;
 
   @override
   Widget build(BuildContext context) {
@@ -225,7 +233,7 @@ class _HomeHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _RoomSelector(room: summary.room),
+          _RoomSelector(summary: summary, provider: provider),
           const Spacer(),
           IconButton(
             onPressed: () => Navigator.of(context).push(
@@ -252,17 +260,37 @@ class _HomeHeader extends StatelessWidget {
 
 /// Widget hiển thị tên phòng/số phòng, khi bấm mở dropdown các phòng đã thuê.
 class _RoomSelector extends StatelessWidget {
-  const _RoomSelector({required this.room});
+  const _RoomSelector({required this.summary, required this.provider});
 
-  final HomeRoom? room;
+  final HomeSummary summary;
+  final HomeProvider provider;
 
   String get _roomLabel {
+    final selected = provider.selectedRoom;
+    if (selected != null) {
+      return selected.displayLabel;
+    }
+    final room = summary.room;
     if (room == null) return 'Chưa có phòng';
-    final name = room!.name.trim();
-    final code = room!.roomCode.trim();
+    final name = room.name.trim();
+    final code = room.roomCode.trim();
     if (name.isNotEmpty) return name;
     if (code.isNotEmpty) return 'Phòng $code';
     return 'Chưa có phòng';
+  }
+
+  String get _roomSubLabel {
+    final selected = provider.selectedRoom;
+    if (selected != null && selected.roomCode.isNotEmpty) {
+      return selected.propertyName.isNotEmpty
+          ? selected.propertyName
+          : 'Phòng ${selected.roomCode}';
+    }
+    final room = summary.room;
+    if (room != null && room.roomCode.isNotEmpty && room.name.trim().isNotEmpty) {
+      return 'Phòng ${room.roomCode}';
+    }
+    return '';
   }
 
   @override
@@ -302,10 +330,9 @@ class _RoomSelector extends StatelessWidget {
                   height: 18 / 14,
                 ),
               ),
-              if (room?.roomCode.isNotEmpty == true &&
-                  room!.name.trim().isNotEmpty)
+              if (_roomSubLabel.isNotEmpty)
                 Text(
-                  'Phòng ${room!.roomCode}',
+                  _roomSubLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -329,8 +356,9 @@ class _RoomSelector extends StatelessWidget {
   }
 
   void _showRoomDropdown(BuildContext context) {
-    // Hiện popup dropdown danh sách phòng tài khoản đã thuê.
-    // TODO: lấy danh sách phòng từ API. Hiện tại dùng phòng hiện tại làm placeholder.
+    final rooms = provider.activeRooms;
+    final selectedRoom = provider.selectedRoom;
+
     final RenderBox button = context.findRenderObject() as RenderBox;
     final RenderBox overlay =
         Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
@@ -345,79 +373,151 @@ class _RoomSelector extends StatelessWidget {
       Offset.zero & overlay.size,
     );
 
-    final items = room == null
-        ? <PopupMenuEntry<String>>[
-            const PopupMenuItem<String>(
-              enabled: false,
-              child: Text(
-                'Chưa có phòng nào',
-                style: TextStyle(color: AppColors.bodyText, fontSize: 13),
+    // Build header item
+    final List<PopupMenuEntry<int>> items = [
+      const PopupMenuItem<int>(
+        enabled: false,
+        height: 32,
+        child: Text(
+          'PHÒNG ĐANG THUÊ',
+          style: TextStyle(
+            color: AppColors.bodyText,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.6,
+          ),
+        ),
+      ),
+      const PopupMenuDivider(height: 1),
+    ];
+
+    if (rooms.isEmpty) {
+      // Rooms not loaded yet — show the summary room as a selectable item
+      final fallbackRoom = summary.room;
+      items.add(
+        PopupMenuItem<int>(
+          value: -1,
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF1FF),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(
+                  Icons.meeting_room_outlined,
+                  color: AppColors.deepBlue,
+                  size: 17,
+                ),
               ),
-            ),
-          ]
-        : <PopupMenuEntry<String>>[
-            PopupMenuItem<String>(
-              value: room!.id?.toString() ?? '',
-              child: Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF1FF),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Icon(
-                      Icons.meeting_room_outlined,
-                      color: AppColors.deepBlue,
-                      size: 17,
-                    ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  fallbackRoom != null
+                      ? (fallbackRoom.name.isNotEmpty
+                          ? fallbackRoom.name
+                          : 'Phòng ${fallbackRoom.roomCode}')
+                      : 'Chưa có phòng',
+                  style: const TextStyle(
+                    color: AppColors.inputText,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                ),
+              ),
+              const Icon(
+                Icons.check_rounded,
+                color: AppColors.deepBlue,
+                size: 18,
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      for (final room in rooms) {
+        final isSelected = selectedRoom?.contractId == room.contractId ||
+            (selectedRoom == null && room.roomId == summary.room?.id);
+        items.add(
+          PopupMenuItem<int>(
+            value: room.contractId,
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFFEFF1FF)
+                        : const Color(0xFFF5F5F7),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Icon(
+                    Icons.meeting_room_outlined,
+                    color: isSelected
+                        ? AppColors.deepBlue
+                        : AppColors.bodyText,
+                    size: 17,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        room.displayLabel,
+                        style: TextStyle(
+                          color: isSelected
+                              ? AppColors.deepBlue
+                              : AppColors.inputText,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      if (room.propertyName.isNotEmpty)
                         Text(
-                          room!.name.isNotEmpty
-                              ? room!.name
-                              : 'Phòng ${room!.roomCode}',
+                          room.propertyName,
                           style: const TextStyle(
-                            color: AppColors.inputText,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
+                            color: AppColors.bodyText,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                        if (room!.roomCode.isNotEmpty)
-                          Text(
-                            'Mã: ${room!.roomCode}',
-                            style: const TextStyle(
-                              color: AppColors.bodyText,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                      ],
-                    ),
+                    ],
                   ),
+                ),
+                if (isSelected)
                   const Icon(
                     Icons.check_rounded,
                     color: AppColors.deepBlue,
                     size: 18,
                   ),
-                ],
-              ),
+              ],
             ),
-          ];
+          ),
+        );
+      }
+    }
 
-    showMenu<String>(
+    showMenu<int>(
       context: context,
       position: position,
       items: items,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       elevation: 8,
-      constraints: const BoxConstraints(minWidth: 220, maxWidth: 300),
-    );
+      constraints: const BoxConstraints(minWidth: 230, maxWidth: 310),
+    ).then((selectedContractId) {
+      if (selectedContractId == null || selectedContractId == -1) return;
+      if (rooms.isEmpty) return;
+      final room = rooms.firstWhere(
+        (r) => r.contractId == selectedContractId,
+        orElse: () => rooms.first,
+      );
+      provider.selectRoom(room);
+    });
   }
 }
 
@@ -895,12 +995,23 @@ class _QuickActions extends StatelessWidget {
         _QuickActionButton(
           icon: Icons.add_home_outlined,
           label: 'Thuê thêm phòng',
-          onTap: () {
+          onTap: () async {
+            final prefs = await SharedPreferences.getInstance();
+            final token = prefs.getString(AuthService.accessTokenKey) ?? '';
+            final sessionId = prefs.getString(AuthService.sessionIdKey) ?? '';
+            final userRole = prefs.getString(AuthService.roleKey) ?? '';
+
+            if (!context.mounted) return;
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => WebViewScreen(
-                  url: ApiConfig.frontendUrl,
+                  url: '${ApiConfig.frontendUrl}/api/mobile-auth',
                   title: 'Thuê thêm phòng',
+                  postData: {
+                    'token': token,
+                    'sessionId': sessionId,
+                    'userRole': userRole,
+                  },
                 ),
               ),
             );

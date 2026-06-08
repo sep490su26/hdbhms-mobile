@@ -5,6 +5,7 @@ class HomeSummary {
     required this.user,
     required this.tenant,
     required this.room,
+    required this.rooms,
     required this.contract,
     required this.invoiceSummary,
     required this.notificationSummary,
@@ -15,6 +16,7 @@ class HomeSummary {
   final HomeUser user;
   final HomeTenant? tenant;
   final HomeRoom? room;
+  final List<HomeRoom> rooms;
   final HomeContract? contract;
   final InvoiceSummary invoiceSummary;
   final NotificationSummary notificationSummary;
@@ -22,6 +24,10 @@ class HomeSummary {
   final OnboardingState? onboarding;
 
   factory HomeSummary.fromJson(Map<String, dynamic> json) {
+    final roomsList = (json['rooms'] as List<dynamic>? ?? [])
+        .whereType<Map<String, dynamic>>()
+        .map(HomeRoom.fromJson)
+        .toList();
     return HomeSummary(
       user: HomeUser.fromJson(json['user'] as Map<String, dynamic>? ?? {}),
       tenant: json['tenant'] != null
@@ -29,7 +35,8 @@ class HomeSummary {
           : null,
       room: json['room'] != null
           ? HomeRoom.fromJson(json['room'] as Map<String, dynamic>)
-          : null,
+          : (roomsList.isNotEmpty ? roomsList.first : null),
+      rooms: roomsList,
       contract: json['contract'] != null
           ? HomeContract.fromJson(json['contract'] as Map<String, dynamic>)
           : null,

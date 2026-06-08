@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -12,10 +13,12 @@ class WebViewScreen extends StatefulWidget {
     super.key,
     required this.url,
     required this.title,
+    this.postData,
   });
 
   final String url;
   final String title;
+  final Map<String, String>? postData;
 
   @override
   State<WebViewScreen> createState() => _WebViewScreenState();
@@ -54,14 +57,28 @@ class _WebViewScreenState extends State<WebViewScreen> {
               setState(() => _loadingProgress = 100);
             }
           },
-          onWebResourceError: (_) {
-            if (mounted) {
+          onWebResourceError: (error) {
+            if (mounted && error.isForMainFrame == true) {
               setState(() => _hasError = true);
             }
           },
         ),
-      )
-      ..loadRequest(Uri.parse(widget.url));
+      );
+
+    if (widget.postData != null && widget.postData!.isNotEmpty) {
+      final String bodyString = widget.postData!.entries
+          .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+          .join('&');
+
+      _controller.loadRequest(
+        Uri.parse(widget.url),
+        method: LoadRequestMethod.post,
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: Uint8List.fromList(utf8.encode(bodyString)),
+      );
+    } else {
+      _controller.loadRequest(Uri.parse(widget.url));
+    }
   }
 
   @override
