@@ -65,7 +65,7 @@ class DepositContract {
       depositExpiresAt: _date(json, ['deposit_expires_at', 'depositExpiresAt']),
       createdAt: _date(json, ['created_at', 'createdAt', 'confirmedAt', 'confirmed_at']),
       note: _str(json, ['note']),
-      contractFileUrl: _str(json, ['contract_file_url', 'contractFileUrl']),
+      contractFileUrl: _parseDepositContractFileUrl(json),
     );
   }
 }
@@ -133,4 +133,23 @@ DateTime? _date(Map<String, dynamic> json, List<String> keys) {
     if (parsed != null) return parsed;
   }
   return null;
+}
+
+String _parseDepositContractFileUrl(Map<String, dynamic> json) {
+  final directUrl = _str(json, [
+    'contract_file_url',
+    'contractFileUrl',
+    'contract_download_url',
+    'contractDownloadUrl',
+  ]);
+  if (directUrl.isNotEmpty) return directUrl;
+
+  final contractFile = json['contract_file'] ?? json['contractFile'];
+  if (contractFile is Map<String, dynamic>) {
+    final id = contractFile['id'];
+    if (id != null) {
+      return '/api/v1/tenants/profiles/me/files/$id';
+    }
+  }
+  return '';
 }

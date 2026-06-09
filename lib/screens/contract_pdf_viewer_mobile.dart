@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
 import '../theme/app_colors.dart';
+import '../services/authenticated_client.dart';
+import '../config/api_config.dart';
 
 Widget buildPlatformPdfViewer({
   required BuildContext context,
@@ -42,8 +44,13 @@ class _MobilePdfViewerState extends State<MobilePdfViewer> {
   }
 
   Future<String> _downloadToTemp() async {
-    final response = await http
-        .get(Uri.parse(widget.pdfUrl))
+    final client = AuthenticatedClient();
+    String finalUrl = widget.pdfUrl;
+    if (!finalUrl.startsWith('http')) {
+      finalUrl = finalUrl.startsWith('/api/v1') ? finalUrl.replaceFirst('/api/v1', ApiConfig.baseUrl) : '${ApiConfig.baseUrl}$finalUrl';
+    }
+    final response = await client
+        .get(Uri.parse(finalUrl))
         .timeout(const Duration(seconds: 20));
 
     if (response.statusCode != 200) {
@@ -67,9 +74,14 @@ class _MobilePdfViewerState extends State<MobilePdfViewer> {
     setState(() => _isDownloading = true);
 
     try {
-      final response = await http
-          .get(Uri.parse(widget.pdfUrl))
-          .timeout(const Duration(seconds: 20));
+          final client = AuthenticatedClient();
+    String finalUrl = widget.pdfUrl;
+    if (!finalUrl.startsWith('http')) {
+      finalUrl = finalUrl.startsWith('/api/v1') ? finalUrl.replaceFirst('/api/v1', ApiConfig.baseUrl) : '${ApiConfig.baseUrl}$finalUrl';
+    }
+    final response = await client
+        .get(Uri.parse(finalUrl))
+        .timeout(const Duration(seconds: 20));
 
       if (response.statusCode != 200) {
         throw Exception('Không tải được file');

@@ -75,14 +75,7 @@ class LeaseContract {
       ]),
       terms: _parseTerms(json),
       serviceFees: _parseServiceFees(json),
-      contractFileUrl: _firstString(json, const [
-        'contract_file_url',
-        'contractFileUrl',
-        'file_url',
-        'fileUrl',
-        'document_url',
-        'documentUrl',
-      ]),
+      contractFileUrl: _parseContractFileUrl(json),
       signedAt: _firstDate(json, const ['signed_at', 'signedAt', 'confirmedAt']),
     );
   }
@@ -261,4 +254,32 @@ DateTime? _firstDate(Map<String, dynamic> json, List<String> keys) {
     }
   }
   return null;
+}
+
+String _parseContractFileUrl(Map<String, dynamic> json) {
+  final directUrl = _firstString(json, const [
+    'contract_file_url',
+    'contractFileUrl',
+    'file_url',
+    'fileUrl',
+    'document_url',
+    'documentUrl',
+    'contract_download_url',
+    'contractDownloadUrl',
+  ]);
+  if (directUrl.isNotEmpty) return directUrl;
+
+  final contractFileId = json['contract_file_id'] ?? json['contractFileId'];
+  if (contractFileId != null) {
+    return '/api/v1/tenants/profiles/me/files/$contractFileId';
+  }
+
+  final contractFile = json['contract_file'] ?? json['contractFile'];
+  if (contractFile is Map<String, dynamic>) {
+    final id = contractFile['id'];
+    if (id != null) {
+      return '/api/v1/tenants/profiles/me/files/$id';
+    }
+  }
+  return '';
 }
