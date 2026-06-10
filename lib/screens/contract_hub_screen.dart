@@ -111,7 +111,7 @@ class _ContractHubScreenState extends State<ContractHubScreen>
 
   Widget _buildHeader() {
     return Container(
-      height: 54,
+      height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -135,12 +135,7 @@ class _ContractHubScreenState extends State<ContractHubScreen>
           const Expanded(
             child: Text(
               'Hợp Đồng',
-              style: TextStyle(
-                color: AppColors.deepBlue,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                height: 20 / 16,
-              ),
+              style: AppColors.topBarTitleStyle,
             ),
           ),
         ],

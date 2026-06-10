@@ -231,8 +231,8 @@ class _ForgotPasswordHeader extends StatelessWidget {
               padding: EdgeInsets.zero,
               icon: const Icon(
                 Icons.arrow_back,
-                color: AppColors.inputText,
-                size: 22,
+                color: AppColors.topBarIconColor,
+                size: AppColors.topBarIconSize,
               ),
               tooltip: 'Quay lại',
             ),
@@ -241,13 +241,7 @@ class _ForgotPasswordHeader extends StatelessWidget {
             child: Text(
               'QUÊN MẬT KHẨU',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.bodyText,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                height: 16 / 12,
-                letterSpacing: 0.6,
-              ),
+              style: AppColors.topBarTitleStyle,
             ),
           ),
         ],

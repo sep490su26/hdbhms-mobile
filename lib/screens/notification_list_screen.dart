@@ -101,7 +101,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
 
   Widget _buildHeader() {
     return Container(
-      height: 54,
+      height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -125,12 +125,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
           const Expanded(
             child: Text(
               'Thông báo',
-              style: TextStyle(
-                color: AppColors.deepBlue,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                height: 20 / 16,
-              ),
+              style: AppColors.topBarTitleStyle,
             ),
           ),
           if (_unreadCount > 0)

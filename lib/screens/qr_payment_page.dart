@@ -50,7 +50,7 @@ class _QrHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 66,
+      height: AppColors.topBarHeight,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -77,12 +77,7 @@ class _QrHeader extends StatelessWidget {
           const Expanded(
             child: Text(
               'Thanh to\u00E1n h\u00F3a \u0111\u01A1n',
-              style: TextStyle(
-                color: AppColors.deepBlue,
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                height: 26 / 20,
-              ),
+              style: AppColors.topBarTitleStyle,
             ),
           ),
           IconButton(

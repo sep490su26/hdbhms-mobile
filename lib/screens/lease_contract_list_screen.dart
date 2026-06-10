@@ -223,7 +223,7 @@ class _LeaseContractListScreenState extends State<LeaseContractListScreen> {
 
   Widget _buildHeader() {
     return Container(
-      height: 54,
+      height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -247,12 +247,7 @@ class _LeaseContractListScreenState extends State<LeaseContractListScreen> {
           const Expanded(
             child: Text(
               'Danh sách hợp đồng thuê',
-              style: TextStyle(
-                color: AppColors.deepBlue,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                height: 20 / 16,
-              ),
+              style: AppColors.topBarTitleStyle,
             ),
           ),
         ],

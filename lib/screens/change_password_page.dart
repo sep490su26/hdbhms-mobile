@@ -196,20 +196,15 @@ class _ChangePasswordHeader extends StatelessWidget {
               padding: EdgeInsets.zero,
               icon: const Icon(
                 Icons.arrow_back,
-                color: AppColors.deepBlue,
-                size: 22,
+                color: AppColors.topBarIconColor,
+                size: AppColors.topBarIconSize,
               ),
               tooltip: 'Quay lại',
             ),
           ),
           const Text(
             'Đổi mật khẩu',
-            style: TextStyle(
-              color: AppColors.deepBlue,
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              height: 28 / 20,
-            ),
+            style: AppColors.topBarTitleStyle,
           ),
         ],
       ),

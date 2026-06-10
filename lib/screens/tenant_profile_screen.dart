@@ -122,7 +122,10 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
                       return RefreshIndicator(
                         color: AppColors.deepBlue,
                         onRefresh: _refresh,
-                        child: _ProfileContent(profile: profile),
+                        child: _ProfileContent(
+                          profile: profile,
+                          onProfileUpdated: _refresh,
+                        ),
                       );
                     },
                   ),
@@ -174,7 +177,7 @@ class _ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 54,
+      height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -198,12 +201,7 @@ class _ProfileHeader extends StatelessWidget {
           const Expanded(
             child: Text(
               'Hồ sơ cá nhân',
-              style: TextStyle(
-                color: AppColors.deepBlue,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                height: 20 / 16,
-              ),
+              style: AppColors.topBarTitleStyle,
             ),
           ),
           IconButton(
@@ -216,7 +214,7 @@ class _ProfileHeader extends StatelessWidget {
 constraints: const BoxConstraints.tightFor(width: 36, height: 36),
 icon: const Icon(
 Icons.notifications_none_rounded,
-              color: AppColors.inputText,
+              color: AppColors.topBarIconColor,
               size: 24,
             ),
             tooltip: 'Thông báo',
@@ -228,9 +226,13 @@ Icons.notifications_none_rounded,
 }
 
 class _ProfileContent extends StatelessWidget {
-  const _ProfileContent({required this.profile});
+  const _ProfileContent({
+    required this.profile,
+    required this.onProfileUpdated,
+  });
 
   final TenantProfileResponse profile;
+  final Future<void> Function() onProfileUpdated;
 
   @override
   Widget build(BuildContext context) {
@@ -267,7 +269,10 @@ class _ProfileContent extends StatelessWidget {
           const SizedBox(height: 16),
           _VehiclesSection(vehicles: profile.vehicles),
           const SizedBox(height: 16),
-          _UpdateProfileButton(profile: profile),
+          _UpdateProfileButton(
+            profile: profile,
+            onProfileUpdated: onProfileUpdated,
+          ),
           // const SizedBox(height: 16),
           // _LogoutButton(onLogout: onLogout),
         ],
@@ -277,9 +282,13 @@ class _ProfileContent extends StatelessWidget {
 }
 
 class _UpdateProfileButton extends StatelessWidget {
-  const _UpdateProfileButton({required this.profile});
+  const _UpdateProfileButton({
+    required this.profile,
+    required this.onProfileUpdated,
+  });
 
   final TenantProfileResponse profile;
+  final Future<void> Function() onProfileUpdated;
 
   @override
   Widget build(BuildContext context) {
@@ -287,12 +296,15 @@ class _UpdateProfileButton extends StatelessWidget {
       width: double.infinity,
       height: 48,
       child: ElevatedButton.icon(
-        onPressed: () {
-          Navigator.of(context).push(
+        onPressed: () async {
+          final updated = await Navigator.of(context).push<bool>(
             MaterialPageRoute(
               builder: (_) => UpdateProfileScreen(profile: profile),
             ),
           );
+          if (updated == true) {
+            await onProfileUpdated();
+          }
         },
         icon: const Icon(Icons.edit_note_rounded, size: 20),
         label: const Text('Cập nhật hồ sơ'),

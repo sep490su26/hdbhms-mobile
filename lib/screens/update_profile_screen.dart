@@ -226,7 +226,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      height: 48,
+      height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 13, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -239,7 +239,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => Navigator.of(context).maybePop(),
+            onPressed: () => Navigator.of(context).pop(false),
             icon: const Icon(
               Icons.arrow_back_rounded,
               color: AppColors.deepBlue,
@@ -250,12 +250,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
           const Expanded(
             child: Text(
               'Cập nhật hồ sơ',
-              style: TextStyle(
-                color: AppColors.deepBlue,
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
-                height: 18 / 14,
-              ),
+              style: AppColors.topBarTitleStyle,
             ),
           ),
           IconButton(
@@ -264,8 +259,8 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
             icon: const Icon(
               Icons.notifications_none_rounded,
-              color: AppColors.inputText,
-              size: 22,
+              color: AppColors.topBarIconColor,
+              size: AppColors.topBarIconSize,
             ),
             tooltip: 'Thông báo',
           ),

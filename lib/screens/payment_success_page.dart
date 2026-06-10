@@ -47,7 +47,7 @@ class _SuccessHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 66,
+      height: AppColors.topBarHeight,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -74,12 +74,7 @@ class _SuccessHeader extends StatelessWidget {
           const Expanded(
             child: Text(
               'Thanh to\u00E1n',
-              style: TextStyle(
-                color: AppColors.deepBlue,
-                fontSize: 17,
-                fontWeight: FontWeight.w900,
-                height: 22 / 17,
-              ),
+              style: AppColors.topBarTitleStyle,
             ),
           ),
           IconButton(

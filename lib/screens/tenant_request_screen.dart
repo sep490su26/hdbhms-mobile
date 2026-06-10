@@ -170,14 +170,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
                             children: [
                               _sectionTitle('Danh sách yêu cầu'),
                               const Spacer(),
-                              Text(
-                                '${filtered.length} yêu cầu',
-                                style: const TextStyle(
-                                  color: AppColors.bodyText,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                              _RequestCountBadge(count: filtered.length),
                             ],
                           ),
                         ),
@@ -231,7 +224,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
   // ── Header ────────────────────────────────────────────────────────────────
   Widget _buildHeader() {
     return Container(
-      height: 54,
+      height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -255,12 +248,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
           const Expanded(
             child: Text(
               'Yêu cầu',
-              style: TextStyle(
-                color: AppColors.deepBlue,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                height: 20 / 16,
-              ),
+              style: AppColors.topBarTitleStyle,
             ),
           ),
           IconButton(
@@ -273,7 +261,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
             icon: const Icon(
               Icons.notifications_none_rounded,
-              color: AppColors.inputText,
+              color: AppColors.topBarIconColor,
               size: 24,
             ),
             tooltip: 'Thông báo',
@@ -357,6 +345,60 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _RequestCountBadge extends StatelessWidget {
+  const _RequestCountBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 7, 11, 7),
+      decoration: BoxDecoration(
+        color: AppColors.deepBlue,
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.deepBlue.withValues(alpha: 0.24),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.inventory_2_outlined,
+            color: Colors.white,
+            size: 15,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '$count',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+              height: 18 / 15,
+            ),
+          ),
+          const SizedBox(width: 3),
+          const Text(
+            'yêu cầu',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              height: 15 / 11,
+            ),
+          ),
+        ],
       ),
     );
   }

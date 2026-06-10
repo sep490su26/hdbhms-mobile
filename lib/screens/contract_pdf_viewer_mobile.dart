@@ -136,16 +136,12 @@ class _MobilePdfViewerState extends State<MobilePdfViewer> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.deepBlue,
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.topBarIconColor,
         elevation: 0,
         title: Text(
           widget.title,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            height: 20 / 15,
-          ),
+          style: AppColors.topBarTitleStyle,
         ),
         actions: [
           IconButton(
@@ -155,11 +151,15 @@ class _MobilePdfViewerState extends State<MobilePdfViewer> {
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
-                      color: Colors.white,
+                      color: AppColors.topBarIconColor,
                       strokeWidth: 2,
                     ),
                   )
-                : const Icon(Icons.download_rounded, size: 24),
+                : const Icon(
+                    Icons.download_rounded,
+                    color: AppColors.topBarIconColor,
+                    size: AppColors.topBarIconSize,
+                  ),
             tooltip: 'Tải xuống',
           ),
         ],

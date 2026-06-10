@@ -58,21 +58,21 @@ class _WebPdfViewerState extends State<WebPdfViewer> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.deepBlue,
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.topBarIconColor,
         elevation: 0,
         title: Text(
           widget.title,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            height: 20 / 15,
-          ),
+          style: AppColors.topBarTitleStyle,
         ),
         actions: [
           IconButton(
             onPressed: _downloadFile,
-            icon: const Icon(Icons.download_rounded, size: 24),
+            icon: const Icon(
+              Icons.download_rounded,
+              color: AppColors.topBarIconColor,
+              size: AppColors.topBarIconSize,
+            ),
             tooltip: 'Tải xuống',
           ),
         ],

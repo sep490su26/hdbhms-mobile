@@ -128,7 +128,7 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
   // ── Header ─────────────────────────────────────────────────────────────────
   Widget _buildHeader() {
     return Container(
-      height: 54,
+      height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -151,11 +151,7 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
           const Expanded(
             child: Text(
               'Thanh lý hợp đồng',
-              style: TextStyle(
-                color: AppColors.deepBlue,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-              ),
+              style: AppColors.topBarTitleStyle,
             ),
           ),
           IconButton(
@@ -168,7 +164,7 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
             icon: const Icon(
               Icons.notifications_none_rounded,
-              color: AppColors.inputText,
+              color: AppColors.topBarIconColor,
               size: 24,
             ),
             tooltip: 'Thông báo',

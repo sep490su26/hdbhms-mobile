@@ -38,14 +38,8 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Tất cả hoá đơn',
-                          style: TextStyle(
-                            color: AppColors.deepBlue,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                            height: 30 / 24,
-                          ),
+                        _BillSectionHeader(
+                          onHistoryTap: () => _openPaymentHistory(context),
                         ),
                         const SizedBox(height: 14),
                         _BillFilterBar(
@@ -99,6 +93,14 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
     ).push(MaterialPageRoute(builder: (context) => const QrPaymentPage()));
   }
 
+  void _openPaymentHistory(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const PaymentHistoryPage(),
+      ),
+    );
+  }
+
   List<Widget> _buildFilteredBills(BuildContext context) {
     final pendingBills = [
       _PendingBillCard(
@@ -130,16 +132,6 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
       ),
     ];
 
-    final historyButton = _ViewHistoryButton(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => const PaymentHistoryPage(),
-          ),
-        );
-      },
-    );
-
     return switch (_activeFilter) {
       _BillFilter.all => [
           ...pendingBills,
@@ -147,20 +139,73 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
           const _PaidDivider(),
           const SizedBox(height: 22),
           ...paidBills,
-          const SizedBox(height: 18),
-          historyButton,
         ],
       _BillFilter.unpaid => pendingBills,
-      _BillFilter.paid => [
-          ...paidBills,
-          const SizedBox(height: 18),
-          historyButton,
-        ],
+      _BillFilter.paid => paidBills,
     };
   }
 }
 
 enum _BillFilter { all, unpaid, paid }
+
+class _BillSectionHeader extends StatelessWidget {
+  const _BillSectionHeader({required this.onHistoryTap});
+
+  final VoidCallback onHistoryTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Expanded(
+          child: Text(
+            'Tất cả hoá đơn',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: AppColors.deepBlue,
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              height: 30 / 24,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        _HistoryShortcutButton(onTap: onHistoryTap),
+      ],
+    );
+  }
+}
+
+class _HistoryShortcutButton extends StatelessWidget {
+  const _HistoryShortcutButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton.icon(
+      onPressed: onTap,
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.deepBlue,
+        backgroundColor: AppColors.deepBlue.withValues(alpha: 0.08),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        minimumSize: const Size(0, 34),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      icon: const Icon(Icons.history_rounded, size: 17),
+      label: const Text(
+        'Lịch sử',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+          height: 16 / 12,
+        ),
+      ),
+    );
+  }
+}
 
 class _BillFilterBar extends StatelessWidget {
   const _BillFilterBar({
@@ -266,7 +311,7 @@ class _BillHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 54,
+      height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -290,12 +335,7 @@ class _BillHeader extends StatelessWidget {
           const Expanded(
             child: Text(
               'Hóa đơn',
-              style: TextStyle(
-                color: AppColors.deepBlue,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                height: 20 / 16,
-              ),
+              style: AppColors.topBarTitleStyle,
             ),
           ),
           IconButton(
@@ -308,7 +348,7 @@ class _BillHeader extends StatelessWidget {
 constraints: const BoxConstraints.tightFor(width: 36, height: 36),
 icon: const Icon(
 Icons.notifications_none_rounded,
-              color: AppColors.inputText,
+              color: AppColors.topBarIconColor,
               size: 24,
             ),
             tooltip: 'Thông báo',
@@ -603,36 +643,6 @@ class _PaidBillCard extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ViewHistoryButton extends StatelessWidget {
-  const _ViewHistoryButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 54,
-      child: TextButton(
-        onPressed: onTap,
-        style: TextButton.styleFrom(
-          backgroundColor: const Color(0xFFF1EFEF),
-          foregroundColor: AppColors.deepBlue,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
-        ),
-        child: const Text(
-          'Xem toàn bộ lịch sử thanh toán',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-            height: 18 / 13,
-          ),
         ),
       ),
     );

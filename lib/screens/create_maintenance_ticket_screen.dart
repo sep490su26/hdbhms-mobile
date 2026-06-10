@@ -317,16 +317,16 @@ class _CreateMaintenanceTicketScreenState
         ),
         title: const Text(
           'Phiếu sự cố',
-          style: TextStyle(
-            color: AppColors.deepBlue,
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-          ),
+          style: AppColors.topBarTitleStyle,
         ),
         actions: const [
           Padding(
             padding: EdgeInsets.only(right: 8),
-            child: Icon(Icons.notifications_none_rounded, size: 22),
+            child: Icon(
+              Icons.notifications_none_rounded,
+              color: AppColors.topBarIconColor,
+              size: AppColors.topBarIconSize,
+            ),
           ),
         ],
       ),

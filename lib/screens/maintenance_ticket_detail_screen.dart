@@ -311,16 +311,16 @@ class _MaintenanceTicketDetailScreenState
         ),
         title: const Text(
           'Chi tiết sự cố',
-          style: TextStyle(
-            color: AppColors.deepBlue,
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-          ),
+          style: AppColors.topBarTitleStyle,
         ),
         actions: [
           IconButton(
             onPressed: () {},
-            icon: const Icon(Icons.notifications_none_rounded, size: 22),
+            icon: const Icon(
+              Icons.notifications_none_rounded,
+              color: AppColors.topBarIconColor,
+              size: AppColors.topBarIconSize,
+            ),
             tooltip: 'Thông báo',
           ),
         ],

@@ -110,16 +110,16 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
           elevation: 0,
           title: const Text(
             'Ho\u00E0n t\u1EA5t h\u1ED3 s\u01A1',
-            style: TextStyle(
-              color: AppColors.deepBlue,
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-            ),
+            style: AppColors.topBarTitleStyle,
           ),
           actions: [
             IconButton(
               onPressed: () {},
-              icon: const Icon(Icons.help_outline_rounded, size: 21),
+              icon: const Icon(
+                Icons.help_outline_rounded,
+                color: AppColors.topBarIconColor,
+                size: AppColors.topBarIconSize,
+              ),
               tooltip: 'Tr\u1EE3 gi\u00FAp',
             ),
           ],

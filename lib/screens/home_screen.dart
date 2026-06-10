@@ -221,7 +221,7 @@ class _HomeHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 54,
+      height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(16, 0, 15, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -245,7 +245,7 @@ class _HomeHeader extends StatelessWidget {
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
             icon: const Icon(
               Icons.notifications_none_rounded,
-              color: AppColors.inputText,
+              color: AppColors.topBarIconColor,
               size: 24,
             ),
             tooltip: 'Thông báo',
@@ -323,12 +323,7 @@ class _RoomSelector extends StatelessWidget {
                 _roomLabel,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.deepBlue,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                  height: 18 / 14,
-                ),
+                style: AppColors.topBarTitleStyle,
               ),
               if (_roomSubLabel.isNotEmpty)
                 Text(

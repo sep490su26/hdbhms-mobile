@@ -220,7 +220,7 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
 
   Widget _buildHeader() {
     return Container(
-      height: 48,
+      height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 13, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -244,12 +244,7 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
           const Expanded(
             child: Text(
               'Danh sách HĐ cọc',
-              style: TextStyle(
-                color: AppColors.deepBlue,
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
-                height: 18 / 14,
-              ),
+              style: AppColors.topBarTitleStyle,
             ),
           ),
         ],
