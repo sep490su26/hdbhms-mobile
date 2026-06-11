@@ -515,11 +515,37 @@ class _RepairInfoCard extends StatelessWidget {
         children: [
           _RepairLine(
             icon: Icons.payments_outlined,
-            label: 'Chi phí thực tế',
+            label: detail.lineType == 'VIOLATION_FINE'
+                ? 'Khoản phải thanh toán'
+                : 'Chi phí thực tế',
             value: repair?.totalCost == null
                 ? 'Chưa cập nhật'
                 : '${_formatCurrency(repair!.totalCost!)} VND',
           ),
+          if (detail.lineType.trim().isNotEmpty) ...[
+            const SizedBox(height: 20),
+            _RepairLine(
+              icon: Icons.receipt_long_outlined,
+              label: 'Loại phí',
+              value: detail.lineType,
+            ),
+          ],
+          if (detail.billingStatusLabel.trim().isNotEmpty) ...[
+            const SizedBox(height: 20),
+            _RepairLine(
+              icon: Icons.verified_outlined,
+              label: 'Trạng thái thanh toán',
+              value: detail.billingStatusLabel,
+            ),
+          ],
+          if (detail.invoiceCode.trim().isNotEmpty) ...[
+            const SizedBox(height: 20),
+            _RepairLine(
+              icon: Icons.confirmation_number_outlined,
+              label: 'Mã hóa đơn',
+              value: detail.invoiceCode,
+            ),
+          ],
           const SizedBox(height: 20),
           _RepairLine(
             icon: Icons.fact_check_outlined,

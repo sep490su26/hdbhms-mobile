@@ -174,6 +174,11 @@ class MaintenanceTicketDetail {
     this.repairInfo,
     this.review,
     this.events = const [],
+    this.billingStatus = '',
+    this.billingStatusLabel = '',
+    this.invoiceCode = '',
+    this.lineType = '',
+    this.chargeAmount,
   });
 
   final int id;
@@ -195,6 +200,11 @@ class MaintenanceTicketDetail {
   final TicketRepairInfo? repairInfo;
   final TicketReview? review;
   final List<TicketTimelineEvent> events;
+  final String billingStatus;
+  final String billingStatusLabel;
+  final String invoiceCode;
+  final String lineType;
+  final num? chargeAmount;
 
   bool get hasRepairData {
     final repair = repairInfo;
@@ -205,6 +215,7 @@ class MaintenanceTicketDetail {
             repair.repairItems?.trim().isNotEmpty == true ||
             repair.completionNote?.trim().isNotEmpty == true ||
             repair.totalCost != null ||
+            chargeAmount != null ||
             repair.costCategory?.trim().isNotEmpty == true ||
             repair.costResponsibility?.trim().isNotEmpty == true);
   }
@@ -219,6 +230,11 @@ class MaintenanceTicketDetail {
     TicketRepairInfo? repairInfo,
     TicketReview? review,
     List<TicketTimelineEvent>? events,
+    String? billingStatus,
+    String? billingStatusLabel,
+    String? invoiceCode,
+    String? lineType,
+    num? chargeAmount,
   }) {
     return MaintenanceTicketDetail(
       id: id,
@@ -240,6 +256,11 @@ class MaintenanceTicketDetail {
       repairInfo: repairInfo ?? this.repairInfo,
       review: review ?? this.review,
       events: events ?? this.events,
+      billingStatus: billingStatus ?? this.billingStatus,
+      billingStatusLabel: billingStatusLabel ?? this.billingStatusLabel,
+      invoiceCode: invoiceCode ?? this.invoiceCode,
+      lineType: lineType ?? this.lineType,
+      chargeAmount: chargeAmount ?? this.chargeAmount,
     );
   }
 
@@ -342,6 +363,24 @@ class MaintenanceTicketDetail {
       events: _listOfMaps(
         json['events'],
       ).map(TicketTimelineEvent.fromJson).toList(growable: false),
+      billingStatus:
+          json['billing_status']?.toString() ??
+          json['billingStatus']?.toString() ??
+          '',
+      billingStatusLabel:
+          json['billing_status_label']?.toString() ??
+          json['billingStatusLabel']?.toString() ??
+          '',
+      invoiceCode:
+          json['invoice_code']?.toString() ??
+          json['invoiceCode']?.toString() ??
+          '',
+      lineType:
+          json['line_type']?.toString() ??
+          json['lineType']?.toString() ??
+          '',
+      chargeAmount:
+          _asNum(json['charge_amount'] ?? json['chargeAmount']),
     );
   }
 }
@@ -471,7 +510,8 @@ class TicketRepairInfo {
         json['costDescription']?.toString();
     final totalCost =
         _asNum(json['actual_cost'] ?? json['actualCost']) ??
-        _asNum(json['cost_amount'] ?? json['costAmount']);
+        _asNum(json['cost_amount'] ?? json['costAmount']) ??
+        _asNum(json['charge_amount'] ?? json['chargeAmount']);
     final completedAt = DateTime.tryParse(
       json['completed_at']?.toString() ?? json['completedAt']?.toString() ?? '',
     );
