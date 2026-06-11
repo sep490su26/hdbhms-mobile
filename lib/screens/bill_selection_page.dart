@@ -1,12 +1,25 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'notification_list_screen.dart';
+import 'tenant_request_screen.dart';
 
+import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/tenant_bottom_navigation.dart';
+import 'login_page.dart';
+import 'maintenance_ticket_list_screen.dart';
 import 'payment_history_page.dart';
 import 'qr_payment_page.dart';
 import 'tenant_profile_screen.dart';
 
-class BillSelectionPage extends StatelessWidget {
+class BillSelectionPage extends StatefulWidget {
   const BillSelectionPage({super.key});
+
+  @override
+  State<BillSelectionPage> createState() => _BillSelectionPageState();
+}
+
+class _BillSelectionPageState extends State<BillSelectionPage> {
+  _BillFilter _activeFilter = _BillFilter.all;
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +39,7 @@ class BillSelectionPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Hóa đơn',
+                          'Tất cả hoá đơn',
                           style: TextStyle(
                             color: AppColors.deepBlue,
                             fontSize: 24,
@@ -34,45 +47,15 @@ class BillSelectionPage extends StatelessWidget {
                             height: 30 / 24,
                           ),
                         ),
-                        const SizedBox(height: 22),
-                        _PendingBillCard(
-                          title: 'Tiền phòng',
-                          amount: '2.200.000',
-                          dueDate: 'Hạn: 15/01/2023',
-                          onTap: () => _openPayment(context),
-                        ),
-                        const SizedBox(height: 16),
-                        _PendingBillCard(
-                          title: 'Điện & Nước',
-                          amount: '800.000',
-                          dueDate: 'Hạn: 15/01/2023',
-                          onTap: () => _openPayment(context),
-                        ),
-                        const SizedBox(height: 28),
-                        const _PaidDivider(),
-                        const SizedBox(height: 22),
-                        const _PaidBillCard(
-                          title: 'Tiền phòng',
-                          amount: '2.200.000',
-                          date: 'Ngày: 15/12/2022',
-                        ),
-                        const SizedBox(height: 12),
-                        const _PaidBillCard(
-                          title: 'Điện & Nước',
-                          amount: '800.000',
-                          date: 'Ngày: 15/12/2022',
-                        ),
-                        const SizedBox(height: 18),
-                        _ViewHistoryButton(
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const PaymentHistoryPage(),
-                              ),
-                            );
+                        const SizedBox(height: 14),
+                        _BillFilterBar(
+                          active: _activeFilter,
+                          onChanged: (filter) {
+                            setState(() => _activeFilter = filter);
                           },
                         ),
+                        const SizedBox(height: 18),
+                        ..._buildFilteredBills(context),
                       ],
                     ),
                   ),
@@ -82,7 +65,31 @@ class BillSelectionPage extends StatelessWidget {
           ),
         ),
       ),
-      bottomNavigationBar: const _BillBottomNavigation(),
+      bottomNavigationBar: TenantBottomNavigation(
+        activeTab: TenantBottomNavTab.bills,
+        onHomeTap: () =>
+            Navigator.of(context).popUntil((route) => route.isFirst),
+        onBillsTap: () {},
+        onSupportTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const MaintenanceTicketListScreen(),
+            ),
+          );
+        },
+        onProfileTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const TenantProfileScreen(),
+            ),
+          );
+        },
+        onRequestsTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const TenantRequestScreen(),
+              ),
+            ),
+      ),
     );
   }
 
@@ -90,6 +97,166 @@ class BillSelectionPage extends StatelessWidget {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (context) => const QrPaymentPage()));
+  }
+
+  List<Widget> _buildFilteredBills(BuildContext context) {
+    final pendingBills = [
+      _PendingBillCard(
+        title: 'Tiền phòng',
+        amount: '2.200.000',
+        dueDate: 'Hạn: 15/01/2023',
+        onTap: () => _openPayment(context),
+      ),
+      const SizedBox(height: 16),
+      _PendingBillCard(
+        title: 'Điện & Nước',
+        amount: '800.000',
+        dueDate: 'Hạn: 15/01/2023',
+        onTap: () => _openPayment(context),
+      ),
+    ];
+
+    const paidBills = [
+      _PaidBillCard(
+        title: 'Tiền phòng',
+        amount: '2.200.000',
+        date: 'Ngày: 15/12/2022',
+      ),
+      SizedBox(height: 12),
+      _PaidBillCard(
+        title: 'Điện & Nước',
+        amount: '800.000',
+        date: 'Ngày: 15/12/2022',
+      ),
+    ];
+
+    final historyButton = _ViewHistoryButton(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const PaymentHistoryPage(),
+          ),
+        );
+      },
+    );
+
+    return switch (_activeFilter) {
+      _BillFilter.all => [
+          ...pendingBills,
+          const SizedBox(height: 28),
+          const _PaidDivider(),
+          const SizedBox(height: 22),
+          ...paidBills,
+          const SizedBox(height: 18),
+          historyButton,
+        ],
+      _BillFilter.unpaid => pendingBills,
+      _BillFilter.paid => [
+          ...paidBills,
+          const SizedBox(height: 18),
+          historyButton,
+        ],
+    };
+  }
+}
+
+enum _BillFilter { all, unpaid, paid }
+
+class _BillFilterBar extends StatelessWidget {
+  const _BillFilterBar({
+    required this.active,
+    required this.onChanged,
+  });
+
+  final _BillFilter active;
+  final ValueChanged<_BillFilter> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _BillFilterChip(
+            label: 'Tất cả',
+            icon: Icons.list_rounded,
+            isActive: active == _BillFilter.all,
+            onTap: () => onChanged(_BillFilter.all),
+          ),
+          const SizedBox(width: 8),
+          _BillFilterChip(
+            label: 'Chưa thanh toán',
+            icon: Icons.pending_actions_rounded,
+            isActive: active == _BillFilter.unpaid,
+            onTap: () => onChanged(_BillFilter.unpaid),
+          ),
+          const SizedBox(width: 8),
+          _BillFilterChip(
+            label: 'Đã thanh toán',
+            icon: Icons.task_alt_rounded,
+            isActive: active == _BillFilter.paid,
+            onTap: () => onChanged(_BillFilter.paid),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BillFilterChip extends StatelessWidget {
+  const _BillFilterChip({
+    required this.label,
+    required this.icon,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: isActive
+              ? AppColors.deepBlue.withValues(alpha: 0.10)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: isActive
+                ? AppColors.deepBlue
+                : AppColors.cardBorder.withValues(alpha: 0.8),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: isActive ? AppColors.deepBlue : AppColors.bodyText,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                color: isActive ? AppColors.deepBlue : AppColors.bodyText,
+                fontSize: 12,
+                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                height: 16 / 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -99,39 +266,50 @@ class _BillHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 58,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      height: 54,
+      padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(
           bottom: BorderSide(
-            color: AppColors.cardBorder.withValues(alpha: 0.5),
+            color: AppColors.cardBorder.withValues(alpha: 0.65),
           ),
         ),
       ),
       child: Row(
         children: [
-          const Icon(Icons.menu_rounded, color: AppColors.deepBlue, size: 24),
-          const SizedBox(width: 8),
+          IconButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            icon: const Icon(
+              Icons.arrow_back_rounded,
+              color: AppColors.deepBlue,
+              size: 24,
+            ),
+            tooltip: 'Trở về',
+          ),
           const Expanded(
             child: Text(
-              'Nhà Trọ Hải Đăng',
+              'Hóa đơn',
               style: TextStyle(
                 color: AppColors.deepBlue,
-                fontSize: 14,
+                fontSize: 16,
                 fontWeight: FontWeight.w900,
-                height: 18 / 14,
+                height: 20 / 16,
               ),
             ),
           ),
           IconButton(
-            onPressed: () {},
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const NotificationListScreen(),
+              ),
+            ),
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const Icon(
-              Icons.notifications_none_rounded,
+constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+icon: const Icon(
+Icons.notifications_none_rounded,
               color: AppColors.inputText,
-              size: 23,
+              size: 24,
             ),
             tooltip: 'Thông báo',
           ),
@@ -449,7 +627,7 @@ class _ViewHistoryButton extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
         ),
         child: const Text(
-          'View All Historical Data',
+          'Xem toàn bộ lịch sử thanh toán',
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w800,
@@ -461,110 +639,3 @@ class _ViewHistoryButton extends StatelessWidget {
   }
 }
 
-class _BillBottomNavigation extends StatelessWidget {
-  const _BillBottomNavigation();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      heightFactor: 1,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 390),
-        child: Container(
-          height: 72,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-            border: Border.all(
-              color: AppColors.cardBorder.withValues(alpha: 0.7),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _BottomNavItem(
-                icon: Icons.home_outlined,
-                label: 'Home',
-                onTap: () =>
-                    Navigator.of(context).popUntil((route) => route.isFirst),
-              ),
-              const _BottomNavItem(
-                icon: Icons.receipt_long_rounded,
-                label: 'Bills',
-                isSelected: true,
-              ),
-              const _BottomNavItem(
-                icon: Icons.support_agent_outlined,
-                label: 'Support',
-              ),
-              _BottomNavItem(
-                icon: Icons.person_outline,
-                label: 'Profile',
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const TenantProfileScreen(),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BottomNavItem extends StatelessWidget {
-  const _BottomNavItem({
-    required this.icon,
-    required this.label,
-    this.isSelected = false,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool isSelected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isSelected ? AppColors.deepBlue : AppColors.bodyText;
-
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 62,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 56,
-              height: 28,
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color(0xFFA7B4FF)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
-                height: 14 / 11,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

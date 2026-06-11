@@ -1,19 +1,40 @@
-class UserModel {
-  const UserModel({
+class UserResponse {
+  const UserResponse({
     required this.id,
-    required this.fullName,
+    required this.phone,
     required this.email,
+    required this.role,
+    required this.mustChangePassword,
+    required this.status,
+    this.lastLoginAt,
+    this.createdAt,
+    this.updatedAt,
+    this.deletedAt,
   });
 
-  final String id;
-  final String fullName;
+  final int id;
+  final String phone;
   final String email;
+  final String role;
+  final bool mustChangePassword;
+  final String status;
+  final DateTime? lastLoginAt;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final DateTime? deletedAt;
 
-  factory UserModel.fromJson(Map<String, dynamic> json) {
-    return UserModel(
-      id: json['id'].toString(),
-      fullName: json['fullName'] as String? ?? '',
-      email: json['email'] as String? ?? '',
+  factory UserResponse.fromJson(Map<String, dynamic> json) {
+    return UserResponse(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      phone: json['phone']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      role: json['role']?.toString() ?? '',
+      mustChangePassword: json['mustChangePassword'] == true,
+      status: json['status']?.toString() ?? '',
+      lastLoginAt: DateTime.tryParse(json['lastLoginAt']?.toString() ?? ''),
+      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? ''),
+      updatedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? ''),
+      deletedAt: DateTime.tryParse(json['deletedAt']?.toString() ?? ''),
     );
   }
 }

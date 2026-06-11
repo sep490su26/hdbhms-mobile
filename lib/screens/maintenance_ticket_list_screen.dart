@@ -1,11 +1,15 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'notification_list_screen.dart';
+import 'tenant_request_screen.dart';
 
 import '../models/maintenance_ticket_model.dart';
+import '../services/auth_service.dart';
 import '../services/maintenance_ticket_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/tenant_bottom_navigation.dart';
 import 'bill_selection_page.dart';
 import 'create_maintenance_ticket_screen.dart';
+import 'login_page.dart';
 import 'maintenance_ticket_detail_screen.dart';
 import 'tenant_profile_screen.dart';
 
@@ -87,84 +91,79 @@ class _MaintenanceTicketListScreenState
     }
   }
 
+  Future<void> _handleLogout() async {
+    await const AuthService().logout();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const LoginPage()),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.deepBlue,
-        elevation: 0,
-        leading: IconButton(
-          onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Trở về',
-        ),
-        title: const Text(
-          'Danh sách phiếu sự cố',
-          style: TextStyle(
-            color: AppColors.deepBlue,
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_none_rounded, size: 22),
-            tooltip: 'Thông báo',
-          ),
-        ],
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 430),
-          child: FutureBuilder<List<MaintenanceTicketModel>>(
-            future: _ticketsFuture,
-            builder: (context, snapshot) {
-              final tickets = snapshot.data ?? const <MaintenanceTicketModel>[];
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 430),
+            child: Column(
+              children: [
+                _buildHeader(),
+                Expanded(
+                  child: FutureBuilder<List<MaintenanceTicketModel>>(
+                    future: _ticketsFuture,
+                    builder: (context, snapshot) {
+                      final tickets =
+                          snapshot.data ?? const <MaintenanceTicketModel>[];
 
-              return RefreshIndicator(
-                color: AppColors.deepBlue,
-                onRefresh: _refresh,
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(14, 18, 14, 96),
-                  children: [
-                    _FilterPanel(
-                      keywordController: _keywordController,
-                      selectedStatus: _selectedStatus,
-                      selectedCategory: _selectedCategory,
-                      onStatusChanged: (value) {
-                        setState(() {
-                          _selectedStatus = value ?? _allOption;
-                        });
-                      },
-                      onCategoryChanged: (value) {
-                        setState(() {
-                          _selectedCategory = value ?? _allOption;
-                        });
-                      },
-                      onFilter: _applyFilter,
-                    ),
-                    const SizedBox(height: 20),
-                    const _ListTitle(),
-                    const SizedBox(height: 16),
-                    if (snapshot.connectionState == ConnectionState.waiting)
-                      const _LoadingState()
-                    else if (snapshot.hasError)
-                      _ErrorState(onRetry: _applyFilter)
-                    else if (tickets.isEmpty)
-                      _EmptyState(onRetry: _applyFilter)
-                    else
-                      _TicketTableCard(
-                        tickets: tickets,
-                        onTicketTap: _openTicketDetail,
-                      ),
-                  ],
+                      return RefreshIndicator(
+                        color: AppColors.deepBlue,
+                        onRefresh: _refresh,
+                        child: ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(14, 18, 14, 96),
+                          children: [
+                            _FilterPanel(
+                              keywordController: _keywordController,
+                              selectedStatus: _selectedStatus,
+                              selectedCategory: _selectedCategory,
+                              onStatusChanged: (value) {
+                                setState(() {
+                                  _selectedStatus = value ?? _allOption;
+                                });
+                              },
+                              onCategoryChanged: (value) {
+                                setState(() {
+                                  _selectedCategory = value ?? _allOption;
+                                });
+                              },
+                              onFilter: _applyFilter,
+                            ),
+                            const SizedBox(height: 20),
+                            const _ListTitle(),
+                            const SizedBox(height: 16),
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting)
+                              const _LoadingState()
+                            else if (snapshot.hasError)
+                              _ErrorState(onRetry: _applyFilter)
+                            else if (tickets.isEmpty)
+                              _EmptyState(onRetry: _applyFilter)
+                            else
+                              _TicketTableCard(
+                                tickets: tickets,
+                                onTicketTap: _openTicketDetail,
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              );
-            },
+              ],
+            ),
           ),
         ),
       ),
@@ -194,6 +193,65 @@ class _MaintenanceTicketListScreenState
             ),
           );
         },
+        onRequestsTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const TenantRequestScreen(),
+              ),
+            ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      height: 54,
+      padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.cardBorder.withValues(alpha: 0.65),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            icon: const Icon(
+              Icons.arrow_back_rounded,
+              color: AppColors.deepBlue,
+              size: 24,
+            ),
+            tooltip: 'Trở về',
+          ),
+          const Expanded(
+            child: Text(
+              'Danh sách phiếu sự cố',
+              style: TextStyle(
+                color: AppColors.deepBlue,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                height: 20 / 16,
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const NotificationListScreen(),
+              ),
+            ),
+            padding: EdgeInsets.zero,
+constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+icon: const Icon(
+Icons.notifications_none_rounded,
+              color: AppColors.inputText,
+              size: 24,
+            ),
+            tooltip: 'Thông báo',
+          ),
+        ],
       ),
     );
   }

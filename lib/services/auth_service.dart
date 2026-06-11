@@ -3,15 +3,21 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../config/api_config.dart';
+import '../models/api_response.dart';
 import '../models/login_response.dart';
 import '../models/onboarding_state.dart';
+import '../models/onboarding_action.dart';
 
 class AuthException implements Exception {
   const AuthException(this.message);
 
   final String message;
+}
+
+class SessionExpiredException extends AuthException {
+  const SessionExpiredException([String message = 'Phiên đăng nhập đã hết hạn'])
+    : super(message);
 }
 
 class AuthService {
@@ -21,16 +27,21 @@ class AuthService {
 
   static const _timeout = Duration(seconds: 10);
   static const accessTokenKey = 'access_token';
-  static const refreshTokenKey = 'refresh_token';
+  static const sessionIdKey = 'session_id';
   static const tenantIdKey = 'tenant_id';
   static const roleKey = 'role';
   static const userIdKey = 'user_id';
-  static const mustChangePasswordKey = 'must_change_password';
-  static const identityCompletedKey = 'identity_completed';
-  static const nextStepKey = 'next_step';
+  static const onBoardingCompletedKey = 'onboarding_completed';
+  static const onboardingActionsKey = 'onboarding_actions';
+
+  Map<String, String> get _headers => {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    'X-Client-Type': 'mobile',
+  };
 
   Future<LoginResponse> login({
-    required String phoneOrEmail,
+    required String phone,
     required String password,
   }) async {
     final client = _client ?? http.Client();
@@ -39,26 +50,36 @@ class AuthService {
       final response = await client
           .post(
             Uri.parse('${ApiConfig.baseUrl}/auth/login'),
-            headers: const {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-            },
-            body: jsonEncode({
-              'phone_or_email': phoneOrEmail,
-              'password': password,
-            }),
+            headers: _headers,
+            body: jsonEncode({'phone': phone, 'password': password}),
           )
           .timeout(_timeout);
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final loginResponse = LoginResponse.fromJson(
-          _decodeBody(response.body),
-        );
+      final apiResponse = ApiResponse<LoginResponse>.fromJson(
+        _decodeBody(response.body),
+        (data) => LoginResponse.fromJson(data as Map<String, dynamic>),
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (apiResponse.data == null) {
+          throw const AuthException('Dữ liệu đăng nhập không hợp lệ');
+        }
+
+        var loginResponse = apiResponse.data!;
+        if (loginResponse.onboarding == null) {
+          final onboarding = await _fetchOnboardingWithToken(
+            loginResponse.token,
+          );
+          loginResponse = loginResponse.copyWith(onboarding: onboarding);
+        }
+
         await _saveLoginData(loginResponse);
         return loginResponse;
       }
 
-      throw AuthException(_messageForLoginError(response));
+      throw AuthException(
+        apiResponse.message ?? _messageForLoginError(response),
+      );
     } on TimeoutException {
       throw const AuthException('Không kết nối được máy chủ');
     } on http.ClientException {
@@ -72,50 +93,55 @@ class AuthService {
     }
   }
 
-  Future<OnboardingState> changePassword({
-    required String newPassword,
-    required String confirmPassword,
-  }) async {
+  Future<OnboardingState> fetchOnboarding() async {
     final token = await accessToken;
     if (token == null || token.isEmpty) {
       throw const AuthException('Phiên đăng nhập không hợp lệ');
+    }
+    return _fetchOnboardingWithToken(token);
+  }
+
+  Future<LoginResponse> refreshToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final sessionId = prefs.getString(sessionIdKey);
+
+    if (sessionId == null || sessionId.isEmpty) {
+      throw const SessionExpiredException();
     }
 
     final client = _client ?? http.Client();
     try {
       final response = await client
           .post(
-            Uri.parse('${ApiConfig.baseUrl}/auth/change-password'),
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode({
-              'new_password': newPassword,
-              'confirm_password': confirmPassword,
-            }),
+            Uri.parse('${ApiConfig.baseUrl}/auth/refresh'),
+            headers: _headers,
+            body: jsonEncode({'sessionId': sessionId}),
           )
           .timeout(_timeout);
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final body = _decodeBody(response.body);
-        final onboarding = OnboardingState.fromJson(
-          body['onboarding'] as Map<String, dynamic>? ?? {},
-        );
-        await saveOnboarding(onboarding);
-        return onboarding;
+      final apiResponse = ApiResponse<LoginResponse>.fromJson(
+        _decodeBody(response.body),
+        (data) => LoginResponse.fromJson(data as Map<String, dynamic>),
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (apiResponse.data == null) {
+          throw const AuthException('Dữ liệu refresh không hợp lệ');
+        }
+        final loginResponse = apiResponse.data!;
+        await _saveLoginData(loginResponse);
+        return loginResponse;
       }
 
-      throw AuthException(
-        _messageForDefaultError(response, 'Đổi mật khẩu thất bại'),
-      );
+      // If refresh fails, it's a hard logout
+      await AuthService.clearLocalSession();
+      throw const SessionExpiredException();
     } on TimeoutException {
-      throw const AuthException('Không kết nối được máy chủ');
+      throw const AuthException('Không kết nối được máy chủ (refresh)');
     } on http.ClientException {
-      throw const AuthException('Không kết nối được máy chủ');
+      throw const AuthException('Không kết nối được máy chủ (refresh)');
     } on FormatException {
-      throw const AuthException('Đổi mật khẩu thất bại');
+      throw const AuthException('Refresh token thất bại');
     } finally {
       if (_client == null) {
         client.close();
@@ -123,35 +149,34 @@ class AuthService {
     }
   }
 
-  Future<OnboardingState> fetchOnboarding() async {
-    final token = await accessToken;
-    if (token == null || token.isEmpty) {
-      throw const AuthException('Phiên đăng nhập không hợp lệ');
-    }
-
+  Future<OnboardingState> _fetchOnboardingWithToken(String token) async {
     final client = _client ?? http.Client();
     try {
       final response = await client
           .get(
-            Uri.parse('${ApiConfig.baseUrl}/auth/me/onboarding'),
-            headers: {
-              'Accept': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
+            Uri.parse('${ApiConfig.baseUrl}/auth/onboarding'),
+            headers: {..._headers, 'Authorization': 'Bearer $token'},
           )
           .timeout(_timeout);
 
-      if (response.statusCode == 200) {
-        final onboarding = OnboardingState.fromJson(_decodeBody(response.body));
+      final apiResponse = ApiResponse<OnboardingState>.fromJson(
+        _decodeBody(response.body),
+        (data) => OnboardingState.fromJson(data as Map<String, dynamic>),
+      );
+
+      if (response.statusCode == 200 && apiResponse.data != null) {
+        final onboarding = apiResponse.data!;
         await saveOnboarding(onboarding);
         return onboarding;
       }
 
+      if (response.statusCode == 401) {
+        await AuthService.clearLocalSession();
+        throw const SessionExpiredException();
+      }
+
       throw AuthException(
-        _messageForDefaultError(
-          response,
-          'Không lấy được trạng thái đăng nhập',
-        ),
+        apiResponse.message ?? 'Không lấy được trạng thái đăng nhập',
       );
     } on TimeoutException {
       throw const AuthException('Không kết nối được máy chủ');
@@ -171,51 +196,77 @@ class AuthService {
     return prefs.getString(accessTokenKey);
   }
 
+  Future<void> logout() async {
+    final token = await accessToken;
+    if (token == null || token.isEmpty) {
+      await clearLocalSession();
+      return;
+    }
+
+    final client = _client ?? http.Client();
+    try {
+      await client
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}/auth/logout'),
+            headers: _headers,
+            body: jsonEncode({'accessToken': token}),
+          )
+          .timeout(_timeout);
+    } catch (_) {
+      // Even if server logout fails, we clear local session
+    } finally {
+      await clearLocalSession();
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
+
   static Future<void> clearLocalSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(accessTokenKey);
-    await prefs.remove(refreshTokenKey);
+    await prefs.remove(sessionIdKey);
     await prefs.remove(tenantIdKey);
     await prefs.remove(roleKey);
     await prefs.remove(userIdKey);
-    await prefs.remove(mustChangePasswordKey);
-    await prefs.remove(identityCompletedKey);
-    await prefs.remove(nextStepKey);
+    await prefs.remove(onBoardingCompletedKey);
+    await prefs.remove(onboardingActionsKey);
   }
 
   Future<OnboardingState?> getCachedOnboarding() async {
     final prefs = await SharedPreferences.getInstance();
-    final nextStep = prefs.getString(nextStepKey);
-    if (nextStep == null || nextStep.isEmpty) {
+    final actionsRaw = prefs.getString(onboardingActionsKey);
+    if (actionsRaw == null) return null;
+
+    try {
+      final List<dynamic> actionsJson = jsonDecode(actionsRaw);
+      return OnboardingState(
+        userId: prefs.getInt(userIdKey),
+        onBoardingCompleted: prefs.getBool(onBoardingCompletedKey) ?? false,
+        actions: actionsJson
+            .map((e) => OnboardingAction.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+    } catch (_) {
       return null;
     }
-    return OnboardingState(
-      userId: prefs.getInt(userIdKey),
-      mustChangePassword: prefs.getBool(mustChangePasswordKey) ?? false,
-      identityCompleted: prefs.getBool(identityCompletedKey) ?? false,
-      nextStep: nextStep,
-    );
   }
 
   Future<void> _saveLoginData(LoginResponse response) async {
     final prefs = await SharedPreferences.getInstance();
 
-    await prefs.setString(accessTokenKey, response.accessToken);
-    await prefs.setString(refreshTokenKey, response.refreshToken);
-
-    if (response.user.id != null) {
-      await prefs.setInt(userIdKey, response.user.id!);
+    await prefs.setString(accessTokenKey, response.token);
+    await prefs.setString(sessionIdKey, response.sessionId);
+    await prefs.setString(roleKey, response.role);
+    if (response.tenantId != null) {
+      await prefs.setInt(tenantIdKey, response.tenantId!);
+    } else {
+      await prefs.remove(tenantIdKey);
     }
 
-    if (response.tenants.isNotEmpty) {
-      final tenant = response.tenants.first;
-      if (tenant.tenantId != null) {
-        await prefs.setInt(tenantIdKey, tenant.tenantId!);
-      }
-      await prefs.setString(roleKey, tenant.role);
+    if (response.onboarding != null) {
+      await saveOnboarding(response.onboarding!);
     }
-
-    await saveOnboarding(response.onboarding);
   }
 
   static Future<void> saveOnboarding(OnboardingState onboarding) async {
@@ -223,9 +274,11 @@ class AuthService {
     if (onboarding.userId != null) {
       await prefs.setInt(userIdKey, onboarding.userId!);
     }
-    await prefs.setBool(mustChangePasswordKey, onboarding.mustChangePassword);
-    await prefs.setBool(identityCompletedKey, onboarding.identityCompleted);
-    await prefs.setString(nextStepKey, onboarding.nextStep);
+    await prefs.setBool(onBoardingCompletedKey, onboarding.onBoardingCompleted);
+    await prefs.setString(
+      onboardingActionsKey,
+      jsonEncode(onboarding.actions.map((a) => a.toJson()).toList()),
+    );
   }
 
   String _messageForLoginError(http.Response response) {
@@ -234,36 +287,63 @@ class AuthService {
     }
 
     if (response.statusCode == 403) {
-      final backendMessage = _readBackendMessage(response.body);
-      return backendMessage.isNotEmpty
-          ? backendMessage
-          : 'Tài khoản chưa được duyệt hoặc đã bị khóa';
+      return 'Tài khoản chưa được duyệt hoặc đã bị khóa';
     }
 
     return 'Đăng nhập thất bại';
   }
 
-  String _messageForDefaultError(http.Response response, String fallback) {
-    final backendMessage = _readBackendMessage(response.body);
-    return backendMessage.isNotEmpty ? backendMessage : fallback;
-  }
-
-  String _readBackendMessage(String body) {
-    try {
-      final data = _decodeBody(body);
-      final message = data['message'] ?? data['error'];
-      return message?.toString() ?? '';
-    } on FormatException {
-      return '';
-    }
-  }
-
   Map<String, dynamic> _decodeBody(String body) {
-    final decoded = jsonDecode(body);
-    if (decoded is Map<String, dynamic>) {
-      return decoded;
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      return {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  // Legacy stubs for ChangePassword (if needed later)
+  Future<void> changePassword({
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final token = await accessToken;
+    if (token == null || token.isEmpty) {
+      throw const AuthException('Phiên đăng nhập không hợp lệ');
     }
 
-    throw const FormatException('Invalid response body');
+    final client = _client ?? http.Client();
+
+    try {
+      final response = await client
+          .patch(
+            Uri.parse('${ApiConfig.baseUrl}/users/me/first-password'),
+            headers: {..._headers, 'Authorization': 'Bearer $token'},
+            body: jsonEncode({'new_password': newPassword}),
+          )
+          .timeout(_timeout);
+
+      final apiResponse = ApiResponse<void>.fromJson(
+        _decodeBody(response.body),
+        (_) => null,
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return;
+      }
+
+      throw AuthException(apiResponse.message ?? 'Đổi mật khẩu thất bại');
+    } on TimeoutException {
+      throw const AuthException('Không kết nối được máy chủ');
+    } on http.ClientException {
+      throw const AuthException('Không kết nối được máy chủ');
+    } on FormatException {
+      throw const AuthException('Đổi mật khẩu thất bại');
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
   }
 }

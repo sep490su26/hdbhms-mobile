@@ -1,48 +1,80 @@
+import 'onboarding_action.dart';
+
 class OnboardingState {
   const OnboardingState({
     required this.userId,
-    required this.mustChangePassword,
-    required this.identityCompleted,
-    required this.nextStep,
+    required this.onBoardingCompleted,
+    required this.actions,
   });
+
+  final int? userId;
+  final bool onBoardingCompleted;
+  final List<OnboardingAction> actions;
+
+  factory OnboardingState.fromJson(Map<String, dynamic> json) {
+    final actionsJson = json['actions'];
+    final actions = actionsJson is List
+        ? actionsJson
+              .whereType<Map<String, dynamic>>()
+              .map(OnboardingAction.fromJson)
+              .toList()
+        : <OnboardingAction>[];
+    final completed =
+        json['on_boarding_completed'] == true ||
+        json['onBoardingCompleted'] == true;
+
+    if (actions.isEmpty && !completed) {
+      final legacyStep =
+          json['next_step']?.toString() ?? json['nextStep']?.toString();
+      if (legacyStep != null && legacyStep != home) {
+        actions.add(
+          OnboardingAction(
+            actionKey: legacyStep,
+            label: legacyStep,
+            completed: false,
+            priority: 1,
+          ),
+        );
+      }
+    }
+
+    return OnboardingState(
+      userId: int.tryParse(
+        (json['user_id'] ?? json['userId'])?.toString() ?? '',
+      ),
+      onBoardingCompleted: completed,
+      actions: actions,
+    );
+  }
 
   static const changePassword = 'CHANGE_PASSWORD';
   static const identityVerification = 'IDENTITY_VERIFICATION';
   static const home = 'HOME';
 
-  final int? userId;
-  final bool mustChangePassword;
-  final bool identityCompleted;
-  final String nextStep;
+  String get nextStep {
+    if (onBoardingCompleted) return home;
 
-  factory OnboardingState.fromJson(Map<String, dynamic> json) {
-    final mustChangePassword = json['must_change_password'] == true;
-    final rawNextStep = json['next_step']?.toString() ?? home;
+    if (actions.isEmpty) return home;
 
-    return OnboardingState(
-      userId: int.tryParse(json['user_id']?.toString() ?? ''),
-      mustChangePassword: mustChangePassword,
-      identityCompleted: json['identity_completed'] == true,
-      nextStep: _mobileNextStep(
-        rawNextStep: rawNextStep,
-        mustChangePassword: mustChangePassword,
-      ),
+    final sortedActions = List<OnboardingAction>.from(actions)
+      ..sort((a, b) => a.priority.compareTo(b.priority));
+
+    final nextAction = sortedActions.firstWhere(
+      (action) => !action.completed,
+      orElse: () => sortedActions.first,
     );
-  }
-}
 
-String _mobileNextStep({
-  required String rawNextStep,
-  required bool mustChangePassword,
-}) {
-  if (mustChangePassword) {
-    return OnboardingState.changePassword;
+    return nextAction.actionKey;
   }
 
-  // Identity verification disabled for mobile onboarding.
-  if (rawNextStep == OnboardingState.identityVerification) {
-    return OnboardingState.home;
-  }
+  bool get mustChangePassword =>
+      actions.any((a) => a.actionKey == changePassword && !a.completed);
 
-  return rawNextStep;
+  bool get identityCompleted =>
+      actions.any((a) => a.actionKey == identityVerification && a.completed);
+
+  @override
+  String toString() {
+    return 'OnboardingState{userId: $userId, onBoardingCompleted: $onBoardingCompleted, actions: $actions}';
+  }
 }

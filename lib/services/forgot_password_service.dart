@@ -11,24 +11,20 @@ class ForgotPasswordException implements Exception {
   final String message;
 }
 
-class ForgotPasswordVerifyResult {
-  const ForgotPasswordVerifyResult({required this.resetToken});
-
-  final String resetToken;
-}
-
 class ForgotPasswordService {
   const ForgotPasswordService({http.Client? client}) : _client = client;
 
   static const _timeout = Duration(seconds: 10);
   final http.Client? _client;
 
-  Future<void> sendForgotPasswordOtp(String email) async {
+  /// Phase 1: Request a password reset. 
+  /// The backend will send an email containing a reset token (or magic link).
+  Future<void> requestResetPassword(String email) async {
     final client = _client ?? http.Client();
     try {
       final response = await client
           .post(
-            Uri.parse('${ApiConfig.baseUrl}/auth/forgot-password/request-otp'),
+            Uri.parse('${ApiConfig.baseUrl}/auth/forgot-password'),
             headers: const {
               'Accept': 'application/json',
               'Content-Type': 'application/json',
@@ -37,14 +33,14 @@ class ForgotPasswordService {
           )
           .timeout(_timeout);
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         return;
       }
 
       throw ForgotPasswordException(
         _messageForDefaultError(
           response,
-          'Không gửi được mã OTP, vui lòng thử lại',
+          'Không gửi được yêu cầu cấp lại mật khẩu, vui lòng thử lại',
         ),
       );
     } on TimeoutException {
@@ -53,7 +49,7 @@ class ForgotPasswordService {
       throw const ForgotPasswordException('Không kết nối được máy chủ');
     } on FormatException {
       throw const ForgotPasswordException(
-        'Không gửi được mã OTP, vui lòng thử lại',
+        'Có lỗi xảy ra, vui lòng thử lại',
       );
     } finally {
       if (_client == null) {
@@ -62,83 +58,40 @@ class ForgotPasswordService {
     }
   }
 
-  Future<ForgotPasswordVerifyResult> verifyForgotPasswordOtp({
-    required String email,
-    required String otp,
-  }) async {
-    final client = _client ?? http.Client();
-    try {
-      final response = await client
-          .post(
-            Uri.parse('${ApiConfig.baseUrl}/auth/forgot-password/verify-otp'),
-            headers: const {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-            },
-            body: jsonEncode({'email': email.trim(), 'otp': otp.trim()}),
-          )
-          .timeout(_timeout);
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final body = _decodeBody(response.body);
-        return ForgotPasswordVerifyResult(
-          resetToken: body['reset_token']?.toString() ?? '',
-        );
-      }
-
-      throw ForgotPasswordException(
-        _messageForDefaultError(response, 'Mã OTP không đúng hoặc đã hết hạn'),
-      );
-    } on TimeoutException {
-      throw const ForgotPasswordException('Không kết nối được máy chủ');
-    } on http.ClientException {
-      throw const ForgotPasswordException('Không kết nối được máy chủ');
-    } on FormatException {
-      throw const ForgotPasswordException('Xác minh OTP thất bại');
-    } finally {
-      if (_client == null) {
-        client.close();
-      }
-    }
-  }
-
+  /// Phase 2: Reset the password using the token received in the email.
   Future<void> resetPassword({
-    required String email,
-    required String resetToken,
+    required String token,
     required String newPassword,
-    required String confirmPassword,
   }) async {
     final client = _client ?? http.Client();
     try {
       final response = await client
           .post(
-            Uri.parse('${ApiConfig.baseUrl}/auth/forgot-password/reset'),
+            Uri.parse('${ApiConfig.baseUrl}/auth/reset-password'),
             headers: const {
               'Accept': 'application/json',
               'Content-Type': 'application/json',
             },
             body: jsonEncode({
-              'email': email.trim(),
-              'reset_token': resetToken,
+              'token': token.trim(),
               'new_password': newPassword,
-              'confirm_password': confirmPassword,
             }),
           )
           .timeout(_timeout);
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         return;
       }
 
       throw ForgotPasswordException(
-        _messageForDefaultError(response, 'Đổi mật khẩu thất bại'),
+        _messageForDefaultError(response, 'Đặt lại mật khẩu thất bại'),
       );
     } on TimeoutException {
       throw const ForgotPasswordException('Không kết nối được máy chủ');
     } on http.ClientException {
       throw const ForgotPasswordException('Không kết nối được máy chủ');
     } on FormatException {
-      throw const ForgotPasswordException('Đổi mật khẩu thất bại');
+      throw const ForgotPasswordException('Đặt lại mật khẩu thất bại');
     } finally {
       if (_client == null) {
         client.close();
@@ -150,11 +103,15 @@ class ForgotPasswordService {
     if (body.trim().isEmpty) {
       return <String, dynamic>{};
     }
-    final decoded = jsonDecode(body);
-    if (decoded is Map<String, dynamic>) {
-      return decoded;
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+      return <String, dynamic>{};
+    } catch (_) {
+      return <String, dynamic>{};
     }
-    return <String, dynamic>{};
   }
 
   String _messageForDefaultError(http.Response response, String fallback) {

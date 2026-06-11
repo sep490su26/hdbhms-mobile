@@ -1,3 +1,5 @@
+import '../config/api_config.dart';
+
 class MaintenanceTicketModel {
   const MaintenanceTicketModel({
     required this.id,
@@ -55,23 +57,36 @@ class MaintenanceTicketModel {
   factory MaintenanceTicketModel.fromJson(Map<String, dynamic> json) {
     return MaintenanceTicketModel(
       id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
-      code: json['ticket_code']?.toString() ?? json['code']?.toString() ?? '',
+      code:
+          json['ticket_code']?.toString() ??
+          json['ticketCode']?.toString() ??
+          json['code']?.toString() ??
+          '',
       category: TicketCategory.fromBackend(json['category']?.toString() ?? ''),
       title: json['title']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
       createdDate:
           DateTime.tryParse(
             json['created_at']?.toString() ??
+                json['createdAt']?.toString() ??
                 json['created_date']?.toString() ??
                 '',
           ) ??
           DateTime.now(),
       status: TicketStatus.fromBackend(json['status']?.toString() ?? ''),
-      roomId: int.tryParse(json['room_id']?.toString() ?? ''),
-      roomCode: json['room_code']?.toString() ?? '',
-      priority: TicketPriority.fromBackend(json['priority']?.toString() ?? ''),
+      roomId: int.tryParse(
+        json['room_id']?.toString() ?? json['roomId']?.toString() ?? '',
+      ),
+      roomCode:
+          json['room_code']?.toString() ?? json['roomCode']?.toString() ?? '',
+      priority: TicketPriority.fromBackend(
+        json['severity']?.toString() ?? json['priority']?.toString() ?? '',
+      ),
       ticketScope: TicketScope.fromBackend(
-        json['ticket_scope']?.toString() ?? '',
+        json['scope']?.toString() ??
+            json['ticket_scope']?.toString() ??
+            json['ticketScope']?.toString() ??
+            '',
       ),
     );
   }
@@ -151,6 +166,9 @@ class MaintenanceTicketDetail {
     required this.description,
     required this.priority,
     required this.createdAt,
+    this.propertyName = '',
+    this.ticketScope = TicketScope.tenantRoom,
+    this.rejectionReason = '',
     this.beforeAttachments = const [],
     this.afterAttachments = const [],
     this.repairInfo,
@@ -169,6 +187,9 @@ class MaintenanceTicketDetail {
   final String description;
   final TicketPriority priority;
   final DateTime createdAt;
+  final String propertyName;
+  final TicketScope ticketScope;
+  final String rejectionReason;
   final List<TicketAttachment> beforeAttachments;
   final List<TicketAttachment> afterAttachments;
   final TicketRepairInfo? repairInfo;
@@ -179,14 +200,20 @@ class MaintenanceTicketDetail {
     final repair = repairInfo;
     return repair != null &&
         (repair.workerName?.trim().isNotEmpty == true ||
+            repair.repairmanPhone?.trim().isNotEmpty == true ||
+            repair.rootCause?.trim().isNotEmpty == true ||
             repair.repairItems?.trim().isNotEmpty == true ||
             repair.completionNote?.trim().isNotEmpty == true ||
             repair.totalCost != null ||
-            repair.costCategory?.trim().isNotEmpty == true);
+            repair.costCategory?.trim().isNotEmpty == true ||
+            repair.costResponsibility?.trim().isNotEmpty == true);
   }
 
   MaintenanceTicketDetail copyWith({
     TicketStatus? status,
+    String? propertyName,
+    TicketScope? ticketScope,
+    String? rejectionReason,
     List<TicketAttachment>? beforeAttachments,
     List<TicketAttachment>? afterAttachments,
     TicketRepairInfo? repairInfo,
@@ -205,6 +232,9 @@ class MaintenanceTicketDetail {
       description: description,
       priority: priority,
       createdAt: createdAt,
+      propertyName: propertyName ?? this.propertyName,
+      ticketScope: ticketScope ?? this.ticketScope,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
       beforeAttachments: beforeAttachments ?? this.beforeAttachments,
       afterAttachments: afterAttachments ?? this.afterAttachments,
       repairInfo: repairInfo ?? this.repairInfo,
@@ -226,6 +256,7 @@ class MaintenanceTicketDetail {
       description: ticket.description,
       priority: ticket.priority,
       createdAt: ticket.createdDate,
+      ticketScope: ticket.ticketScope,
       events: [
         TicketTimelineEvent(
           status: TicketStatus.pending.key,
@@ -234,6 +265,83 @@ class MaintenanceTicketDetail {
           createdAt: ticket.createdDate,
         ),
       ],
+    );
+  }
+
+  factory MaintenanceTicketDetail.fromJson(Map<String, dynamic> json) {
+    final beforeAttachments = _listOfMaps(
+      json['before_attachments'] ?? json['beforeAttachments'],
+    ).map(TicketAttachment.fromJson).toList(growable: false);
+    final afterAttachments = _listOfMaps(
+      json['after_attachments'] ?? json['afterAttachments'],
+    ).map(TicketAttachment.fromJson).toList(growable: false);
+    final allAttachments = _listOfMaps(
+      json['attachments'],
+    ).map(TicketAttachment.fromJson).toList(growable: false);
+    final before = beforeAttachments.isNotEmpty
+        ? beforeAttachments
+        : allAttachments
+              .where((item) => item.phase == TicketAttachmentPhase.before)
+              .toList(growable: false);
+    final after = afterAttachments.isNotEmpty
+        ? afterAttachments
+        : allAttachments
+              .where((item) => item.phase == TicketAttachmentPhase.after)
+              .toList(growable: false);
+
+    final category = TicketCategory.fromBackend(
+      json['category']?.toString() ?? '',
+    );
+    final status = TicketStatus.fromBackend(json['status']?.toString() ?? '');
+    final repairInfo = TicketRepairInfo.fromJson(json);
+    final reviewJson = _asMap(json['review']);
+
+    return MaintenanceTicketDetail(
+      id: _asInt(json['id']) ?? 0,
+      ticketCode:
+          json['ticket_code']?.toString() ??
+          json['ticketCode']?.toString() ??
+          json['code']?.toString() ??
+          '',
+      status: status,
+      roomId: _asInt(json['room_id'] ?? json['roomId']) ?? 0,
+      roomCode:
+          json['room_code']?.toString() ?? json['roomCode']?.toString() ?? '',
+      propertyName:
+          json['property_name']?.toString() ??
+          json['propertyName']?.toString() ??
+          '',
+      ticketScope: TicketScope.fromBackend(
+        json['scope']?.toString() ??
+            json['ticket_scope']?.toString() ??
+            json['ticketScope']?.toString() ??
+            '',
+      ),
+      category: category,
+      categoryName: category.label,
+      title: json['title']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      priority: TicketPriority.fromBackend(
+        json['severity']?.toString() ?? json['priority']?.toString() ?? '',
+      ),
+      createdAt:
+          DateTime.tryParse(
+            json['created_at']?.toString() ??
+                json['createdAt']?.toString() ??
+                '',
+          ) ??
+          DateTime.now(),
+      rejectionReason:
+          json['rejectionReason']?.toString() ??
+          json['rejection_reason']?.toString() ??
+          '',
+      beforeAttachments: before,
+      afterAttachments: after,
+      repairInfo: repairInfo,
+      review: reviewJson.isEmpty ? null : TicketReview.fromJson(reviewJson),
+      events: _listOfMaps(
+        json['events'],
+      ).map(TicketTimelineEvent.fromJson).toList(growable: false),
     );
   }
 }
@@ -257,6 +365,22 @@ class TicketAttachment {
 
   bool get isImage => mimeType.startsWith('image/');
   bool get isVideo => mimeType.startsWith('video/');
+
+  factory TicketAttachment.fromJson(Map<String, dynamic> json) {
+    final fileId = _asInt(json['file_id'] ?? json['fileId']);
+    final rawUrl = json['url']?.toString() ?? '';
+    return TicketAttachment(
+      id: _asInt(json['id']) ?? fileId ?? 0,
+      url: _resolveFileUrl(rawUrl, fileId),
+      mimeType:
+          json['mime_type']?.toString() ??
+          json['mimeType']?.toString() ??
+          'image/jpeg',
+      phase: TicketAttachmentPhase.fromBackend(json['phase']?.toString() ?? ''),
+      sortOrder: _asInt(json['sort_order'] ?? json['sortOrder']) ?? 0,
+      name: json['name']?.toString() ?? '',
+    );
+  }
 }
 
 enum TicketAttachmentPhase {
@@ -266,45 +390,117 @@ enum TicketAttachmentPhase {
   const TicketAttachmentPhase(this.key);
 
   final String key;
+
+  static TicketAttachmentPhase fromBackend(String value) {
+    final normalized = value.trim().toUpperCase();
+    for (final phase in TicketAttachmentPhase.values) {
+      if (normalized == phase.key) {
+        return phase;
+      }
+    }
+    return TicketAttachmentPhase.before;
+  }
 }
 
 class TicketRepairInfo {
   const TicketRepairInfo({
     this.workerName,
+    this.repairmanPhone,
+    this.rootCause,
     this.repairItems,
     this.completionNote,
     this.totalCost,
     this.costCategory,
+    this.costResponsibility,
     this.expectedCompletionDate,
     this.completedAt,
   });
 
   final String? workerName;
+  final String? repairmanPhone;
+  final String? rootCause;
   final String? repairItems;
   final String? completionNote;
   final num? totalCost;
   final String? costCategory;
+  final String? costResponsibility;
   final DateTime? expectedCompletionDate;
   final DateTime? completedAt;
 
   TicketRepairInfo copyWith({
     String? workerName,
+    String? repairmanPhone,
+    String? rootCause,
     String? repairItems,
     String? completionNote,
     num? totalCost,
     String? costCategory,
+    String? costResponsibility,
     DateTime? expectedCompletionDate,
     DateTime? completedAt,
   }) {
     return TicketRepairInfo(
       workerName: workerName ?? this.workerName,
+      repairmanPhone: repairmanPhone ?? this.repairmanPhone,
+      rootCause: rootCause ?? this.rootCause,
       repairItems: repairItems ?? this.repairItems,
       completionNote: completionNote ?? this.completionNote,
       totalCost: totalCost ?? this.totalCost,
       costCategory: costCategory ?? this.costCategory,
+      costResponsibility: costResponsibility ?? this.costResponsibility,
       expectedCompletionDate:
           expectedCompletionDate ?? this.expectedCompletionDate,
       completedAt: completedAt ?? this.completedAt,
+    );
+  }
+
+  factory TicketRepairInfo.fromJson(Map<String, dynamic> json) {
+    final workerName =
+        json['repairman_name']?.toString() ??
+        json['repairmanName']?.toString() ??
+        json['worker_name']?.toString() ??
+        json['workerName']?.toString();
+    final repairItems =
+        json['repair_items']?.toString() ?? json['repairItems']?.toString();
+    final rootCause =
+        json['root_cause']?.toString() ?? json['rootCause']?.toString();
+    final completionNote =
+        json['completion_note']?.toString() ??
+        json['completionNote']?.toString() ??
+        json['cost_description']?.toString() ??
+        json['costDescription']?.toString();
+    final totalCost =
+        _asNum(json['actual_cost'] ?? json['actualCost']) ??
+        _asNum(json['cost_amount'] ?? json['costAmount']);
+    final completedAt = DateTime.tryParse(
+      json['completed_at']?.toString() ?? json['completedAt']?.toString() ?? '',
+    );
+
+    if ((workerName == null || workerName.trim().isEmpty) &&
+        (repairItems == null || repairItems.trim().isEmpty) &&
+        (rootCause == null || rootCause.trim().isEmpty) &&
+        (completionNote == null || completionNote.trim().isEmpty) &&
+        totalCost == null &&
+        completedAt == null) {
+      return const TicketRepairInfo();
+    }
+
+    return TicketRepairInfo(
+      workerName: workerName,
+      repairmanPhone:
+          json['repairman_phone']?.toString() ??
+          json['repairmanPhone']?.toString(),
+      rootCause: rootCause,
+      repairItems: repairItems,
+      completionNote: completionNote,
+      totalCost: totalCost,
+      costCategory:
+          json['cost_description']?.toString() ??
+          json['costDescription']?.toString(),
+      costResponsibility:
+          json['cost_responsibility']?.toString() ??
+          json['costResponsibility']?.toString(),
+      completedAt: completedAt,
     );
   }
 }
@@ -319,6 +515,20 @@ class TicketReview {
   final double rating;
   final String? comment;
   final DateTime createdAt;
+
+  factory TicketReview.fromJson(Map<String, dynamic> json) {
+    return TicketReview(
+      rating: _asNum(json['rating'])?.toDouble() ?? 0,
+      comment: json['comment']?.toString() ?? json['feedback']?.toString(),
+      createdAt:
+          DateTime.tryParse(
+            json['created_at']?.toString() ??
+                json['createdAt']?.toString() ??
+                '',
+          ) ??
+          DateTime.now(),
+    );
+  }
 }
 
 class TicketTimelineEvent {
@@ -333,6 +543,27 @@ class TicketTimelineEvent {
   final String title;
   final String description;
   final DateTime createdAt;
+
+  factory TicketTimelineEvent.fromJson(Map<String, dynamic> json) {
+    final action = json['action']?.toString() ?? '';
+    final toStatus =
+        json['to_status']?.toString() ??
+        json['toStatus']?.toString() ??
+        json['status']?.toString() ??
+        '';
+    return TicketTimelineEvent(
+      status: toStatus,
+      title: action.isEmpty ? TicketStatus.fromBackend(toStatus).label : action,
+      description: json['note']?.toString() ?? '',
+      createdAt:
+          DateTime.tryParse(
+            json['created_at']?.toString() ??
+                json['createdAt']?.toString() ??
+                '',
+          ) ??
+          DateTime.now(),
+    );
+  }
 }
 
 enum TicketUserRole {
@@ -370,6 +601,11 @@ bool canConfirmTicket(TicketUserRole role, TicketStatus status) {
       status == TicketStatus.waitingConfirmation;
 }
 
+bool canReportNotFixed(TicketUserRole role, TicketStatus status) {
+  return role == TicketUserRole.tenant &&
+      status == TicketStatus.waitingConfirmation;
+}
+
 bool canReviewTicket(
   TicketUserRole role,
   TicketStatus status, {
@@ -388,7 +624,9 @@ class CurrentRentedRoom {
 }
 
 enum TicketScope {
-  tenantRoom('TENANT_ROOM');
+  tenantRoom('TENANT_ROOM'),
+  commonArea('COMMON_AREA'),
+  propertyOperation('PROPERTY_OPERATION');
 
   const TicketScope(this.key);
 
@@ -396,6 +634,9 @@ enum TicketScope {
 
   static TicketScope fromBackend(String value) {
     final normalized = value.trim().toUpperCase();
+    if (normalized == 'ROOM') {
+      return TicketScope.tenantRoom;
+    }
     for (final scope in TicketScope.values) {
       if (normalized == scope.key) {
         return scope;
@@ -408,7 +649,8 @@ enum TicketScope {
 enum TicketPriority {
   low('LOW'),
   medium('MEDIUM'),
-  high('HIGH');
+  high('HIGH'),
+  urgent('URGENT');
 
   const TicketPriority(this.key);
 
@@ -455,13 +697,13 @@ enum TicketStatus {
 }
 
 enum TicketCategory {
-  equipment('ROOM_EQUIPMENT', 'Thiết bị trong phòng'),
+  equipment('FURNITURE', 'Thiết bị trong phòng'),
   electricity('ELECTRICITY', 'Điện'),
   water('WATER', 'Nước'),
   airConditioner('AIR_CONDITIONER', 'Điều hòa'),
-  internet('WIFI', 'Wifi'),
-  doorLock('DOOR_LOCK', 'Cửa / khóa'),
-  cleaningDrainage('CLEANING_DRAINAGE', 'Vệ sinh / thoát nước'),
+  internet('INTERNET', 'Wifi'),
+  doorLock('SECURITY', 'Cửa / khóa'),
+  cleaningDrainage('SANITARY', 'Vệ sinh / thoát nước'),
   other('OTHER', 'Khác');
 
   const TicketCategory(this.key, this.label);
@@ -471,11 +713,19 @@ enum TicketCategory {
 
   static TicketCategory fromBackend(String value) {
     final normalized = value.trim().toUpperCase();
-    if (normalized == 'EQUIPMENT' || normalized == 'THIẾT BỊ') {
+    if (normalized == 'EQUIPMENT' ||
+        normalized == 'ROOM_EQUIPMENT' ||
+        normalized == 'THIẾT BỊ') {
       return TicketCategory.equipment;
     }
-    if (normalized == 'INTERNET') {
+    if (normalized == 'WIFI') {
       return TicketCategory.internet;
+    }
+    if (normalized == 'CLEANING_DRAINAGE') {
+      return TicketCategory.cleaningDrainage;
+    }
+    if (normalized == 'DOOR_LOCK') {
+      return TicketCategory.doorLock;
     }
     for (final category in TicketCategory.values) {
       if (normalized == category.key ||
@@ -485,4 +735,49 @@ enum TicketCategory {
     }
     return TicketCategory.other;
   }
+}
+
+int? _asInt(Object? value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '');
+}
+
+num? _asNum(Object? value) {
+  if (value is num) return value;
+  return num.tryParse(value?.toString() ?? '');
+}
+
+Map<String, dynamic> _asMap(Object? value) {
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) {
+    return value.map((key, item) => MapEntry(key.toString(), item));
+  }
+  return const {};
+}
+
+List<Map<String, dynamic>> _listOfMaps(Object? value) {
+  if (value is! List) return const [];
+  return value.map(_asMap).where((item) => item.isNotEmpty).toList();
+}
+
+String _resolveFileUrl(String rawUrl, int? fileId) {
+  final url = rawUrl.trim();
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  final apiRoot = ApiConfig.baseUrl.replaceFirst(RegExp(r'/api/v1/?$'), '');
+  if (url.startsWith('/api/v1')) {
+    return '$apiRoot$url';
+  }
+  if (url.startsWith('/')) {
+    return '${ApiConfig.baseUrl}$url';
+  }
+  if (url.isNotEmpty) {
+    return '${ApiConfig.baseUrl}/$url';
+  }
+  if (fileId != null && fileId > 0) {
+    return '${ApiConfig.baseUrl}/files/download/$fileId';
+  }
+  return '';
 }

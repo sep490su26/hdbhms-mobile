@@ -95,6 +95,11 @@ class _MaintenanceTicketDetailScreenState
       }
       _showSnackBar(successMessage);
       await _loadDetail();
+    } on MaintenanceTicketException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      _showSnackBar(error.message);
     } catch (_) {
       if (!mounted) {
         return;
@@ -180,6 +185,7 @@ class _MaintenanceTicketDetailScreenState
         costDescription: data.costDescription,
         amount: data.amount,
         paidBy: data.paidBy,
+        afterAttachments: data.afterAttachments,
       ),
       'Đã đánh dấu hoàn tất',
     );
@@ -187,6 +193,17 @@ class _MaintenanceTicketDetailScreenState
 
   Future<void> _confirmTicket() async {
     await _openReviewScreen();
+  }
+
+  Future<void> _reportNotFixed() async {
+    final note = await _showNotFixedDialog();
+    if (note == null) {
+      return;
+    }
+    await _runAction(
+      () => widget.ticketService.reportNotFixed(widget.ticketId, note: note),
+      'Đã báo quản lý tiếp tục xử lý',
+    );
   }
 
   Future<void> _reviewTicket() async {
@@ -287,6 +304,54 @@ class _MaintenanceTicketDetailScreenState
     ).whenComplete(controller.dispose);
   }
 
+  Future<String?> _showNotFixedDialog() {
+    final formKey = GlobalKey<FormState>();
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Báo chưa sửa xong'),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: controller,
+              minLines: 3,
+              maxLines: 4,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Vấn đề còn tồn tại',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? 'Vui lòng nhập ghi chú'
+                  : null,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (formKey.currentState?.validate() != true) {
+                  return;
+                }
+                Navigator.of(context).pop(controller.text.trim());
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.deepBlue,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Gửi'),
+            ),
+          ],
+        );
+      },
+    ).whenComplete(controller.dispose);
+  }
+
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -309,18 +374,15 @@ class _MaintenanceTicketDetailScreenState
           icon: const Icon(Icons.arrow_back_rounded),
           tooltip: 'Trở về',
         ),
-        title: const Text(
-          'Chi tiết sự cố',
-          style: TextStyle(
-            color: AppColors.deepBlue,
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
+        title: const Text('Chi tiết sự cố', style: AppColors.topBarTitleStyle),
         actions: [
           IconButton(
             onPressed: () {},
-            icon: const Icon(Icons.notifications_none_rounded, size: 22),
+            icon: const Icon(
+              Icons.notifications_none_rounded,
+              color: AppColors.topBarIconColor,
+              size: AppColors.topBarIconSize,
+            ),
             tooltip: 'Thông báo',
           ),
         ],
@@ -397,6 +459,7 @@ class _MaintenanceTicketDetailScreenState
                             onUpdateProgress: _updateProgress,
                             onComplete: _completeTicket,
                             onConfirm: _confirmTicket,
+                            onReportNotFixed: _reportNotFixed,
                             onReview: _reviewTicket,
                           ),
                         ],
@@ -573,6 +636,7 @@ class _ActionPanel extends StatelessWidget {
     required this.onUpdateProgress,
     required this.onComplete,
     required this.onConfirm,
+    required this.onReportNotFixed,
     required this.onReview,
   });
 
@@ -584,6 +648,7 @@ class _ActionPanel extends StatelessWidget {
   final VoidCallback onUpdateProgress;
   final VoidCallback onComplete;
   final VoidCallback onConfirm;
+  final VoidCallback onReportNotFixed;
   final VoidCallback onReview;
 
   @override
@@ -615,6 +680,12 @@ class _ActionPanel extends StatelessWidget {
     if (canConfirmTicket(role, detail.status)) {
       actions.add(
         _PrimaryActionButton(label: 'Xác nhận hoàn tất', onTap: onConfirm),
+      );
+      actions.add(
+        _SecondaryActionButton(
+          label: 'Báo chưa sửa xong',
+          onTap: onReportNotFixed,
+        ),
       );
     }
     if (canReviewTicket(
@@ -1076,7 +1147,7 @@ class _CompleteSheetState extends State<_CompleteSheet> {
   final _costDescriptionController = TextEditingController();
   final _amountController = TextEditingController();
   final _paidByController = TextEditingController();
-  int _selectedFileCount = 0;
+  final List<MaintenanceAttachment> _afterAttachments = [];
 
   @override
   void dispose() {
@@ -1092,8 +1163,23 @@ class _CompleteSheetState extends State<_CompleteSheet> {
     if (!mounted || files.isEmpty) {
       return;
     }
+    final selected = <MaintenanceAttachment>[];
+    for (final file in files.take(3)) {
+      selected.add(
+        MaintenanceAttachment(
+          name: file.name,
+          path: file.path,
+          mimeType: _mimeTypeForImage(file),
+          sizeBytes: await file.length(),
+          type: MaintenanceAttachmentType.image,
+          previewBytes: await file.readAsBytes(),
+        ),
+      );
+    }
     setState(() {
-      _selectedFileCount = files.length > 3 ? 3 : files.length;
+      _afterAttachments
+        ..clear()
+        ..addAll(selected);
     });
   }
 
@@ -1135,9 +1221,9 @@ class _CompleteSheetState extends State<_CompleteSheet> {
               onPressed: _pickAfterFiles,
               icon: const Icon(Icons.add_photo_alternate_outlined),
               label: Text(
-                _selectedFileCount == 0
+                _afterAttachments.isEmpty
                     ? 'Thêm ảnh sau sửa chữa'
-                    : 'Đã chọn $_selectedFileCount ảnh',
+                    : 'Đã chọn ${_afterAttachments.length} ảnh',
               ),
             ),
             const SizedBox(height: 18),
@@ -1153,6 +1239,7 @@ class _CompleteSheetState extends State<_CompleteSheet> {
                     costDescription: _costDescriptionController.text,
                     amount: num.tryParse(_amountController.text.trim()) ?? 0,
                     paidBy: _paidByController.text,
+                    afterAttachments: List.unmodifiable(_afterAttachments),
                   ),
                 );
               },
@@ -1277,12 +1364,14 @@ class _CompleteFormData {
     required this.costDescription,
     required this.amount,
     required this.paidBy,
+    required this.afterAttachments,
   });
 
   final String completionNote;
   final String costDescription;
   final num amount;
   final String paidBy;
+  final List<MaintenanceAttachment> afterAttachments;
 }
 
 bool _shouldShowAfterAttachments(MaintenanceTicketDetail detail) {
@@ -1334,4 +1423,17 @@ String _formatCurrency(num amount) {
     }
   }
   return buffer.toString();
+}
+
+String _mimeTypeForImage(XFile file) {
+  final explicitMime = file.mimeType;
+  if (explicitMime != null && explicitMime.startsWith('image/')) {
+    return explicitMime;
+  }
+  final extension = file.name.split('.').last.toLowerCase();
+  return switch (extension) {
+    'png' => 'image/png',
+    'webp' => 'image/webp',
+    _ => 'image/jpeg',
+  };
 }

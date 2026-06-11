@@ -9,6 +9,7 @@ import '../widgets/auth_text_field.dart';
 import 'change_password_page.dart';
 import 'forgot_password_page.dart';
 import 'home_screen.dart';
+import 'identity_verification_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({
@@ -65,15 +66,18 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       final response = await widget.authService.login(
-        phoneOrEmail: id,
+        phone: id,
         password: password,
       );
 
       if (!mounted) {
         return;
       }
-
-      _goToNextStep(response.onboarding);
+      if (response.onboarding != null) {
+        _goToNextStep(response.onboarding!);
+      } else {
+        _showMessage('Không lấy được trạng thái hoàn tất hồ sơ');
+      }
     } on AuthException catch (error) {
       if (mounted) {
         _showMessage(error.message);
@@ -94,11 +98,29 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _goToNextStep(OnboardingState onboarding) {
-    final page = switch (onboarding.nextStep) {
+    if (onboarding.onBoardingCompleted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => HomeScreen(
+            authService: widget.authService,
+            homeService: widget.homeService,
+          ),
+        ),
+      );
+      return;
+    }
+
+    final nextStep = onboarding.nextStep;
+    final page = switch (nextStep) {
       OnboardingState.changePassword => ChangePasswordPage(
         authService: widget.authService,
         homeService: widget.homeService,
         isRequired: true,
+      ),
+      OnboardingState.identityVerification => CompleteProfileUploadScreen(
+        isRequired: true,
+        authService: widget.authService,
+        homeService: widget.homeService,
       ),
       _ => HomeScreen(
         authService: widget.authService,

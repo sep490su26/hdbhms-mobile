@@ -1,19 +1,26 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+﻿import 'package:flutter/material.dart';
+import 'notification_list_screen.dart';
+import 'tenant_request_screen.dart';
 
 import '../config/api_config.dart';
 import '../models/lease_contract_model.dart';
 import '../services/lease_contract_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/currency_formatter.dart';
+import '../widgets/tenant_bottom_navigation.dart';
 import 'bill_selection_page.dart';
+import 'contract_pdf_viewer_screen.dart';
+import 'maintenance_ticket_list_screen.dart';
+import 'tenant_profile_screen.dart';
 
 class LeaseContractScreen extends StatefulWidget {
   const LeaseContractScreen({
     super.key,
+    this.contractId,
     this.contractService = const LeaseContractService(),
   });
 
+  final int? contractId;
   final LeaseContractService contractService;
 
   @override
@@ -30,6 +37,10 @@ class _LeaseContractScreenState extends State<LeaseContractScreen> {
   }
 
   Future<LeaseContract> _loadContract() {
+    final id = widget.contractId;
+    if (id != null) {
+      return widget.contractService.getContractById(id);
+    }
     return widget.contractService.getMyActiveContract();
   }
 
@@ -106,13 +117,13 @@ class _ContractHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 48,
-      padding: const EdgeInsets.fromLTRB(4, 0, 13, 0),
+      height: 54,
+      padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(
           bottom: BorderSide(
-            color: AppColors.cardBorder.withValues(alpha: 0.6),
+            color: AppColors.cardBorder.withValues(alpha: 0.65),
           ),
         ),
       ),
@@ -132,20 +143,24 @@ class _ContractHeader extends StatelessWidget {
               'Thông tin hợp đồng',
               style: TextStyle(
                 color: AppColors.deepBlue,
-                fontSize: 14,
+                fontSize: 16,
                 fontWeight: FontWeight.w900,
-                height: 18 / 14,
+                height: 20 / 16,
               ),
             ),
           ),
           IconButton(
-            onPressed: () {},
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const NotificationListScreen(),
+              ),
+            ),
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const Icon(
-              Icons.notifications_none_rounded,
+constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+icon: const Icon(
+Icons.notifications_none_rounded,
               color: AppColors.inputText,
-              size: 22,
+              size: 24,
             ),
             tooltip: 'Thông báo',
           ),
@@ -176,8 +191,6 @@ class _ContractContent extends StatelessWidget {
           _TermsSection(terms: contract.terms),
           const SizedBox(height: 12),
           _DocumentSection(contractFileUrl: contract.contractFileUrl),
-          const SizedBox(height: 12),
-          _PaymentDetailsCard(contract: contract),
         ],
       ),
     );
@@ -414,14 +427,14 @@ class _ContractInfoGrid extends StatelessWidget {
             ? ''
             : '${contract.paymentCycleMonths} tháng',
       ),
-      _InfoGridItem(label: 'Bắt đầu', value: _formatDate(contract.startDate)),
-      _InfoGridItem(label: 'Kết thúc', value: _formatDate(contract.endDate)),
       _InfoGridItem(
         label: 'Diện tích',
         value: contract.room.area == null
             ? ''
             : '${_formatNumber(contract.room.area!)} m²',
-      ),
+      ),      
+      _InfoGridItem(label: 'Bắt đầu', value: _formatDate(contract.startDate)),
+      _InfoGridItem(label: 'Kết thúc', value: _formatDate(contract.endDate)),
       _InfoGridItem(
         label: 'Bắt đầu tính tiền',
         value: _formatDate(contract.rentStartDate),
@@ -431,6 +444,10 @@ class _ContractInfoGrid extends StatelessWidget {
         value: _formatMoney(contract.depositAmount),
       ),
       _InfoGridItem(label: 'Mã phòng', value: contract.room.roomCode),
+      _InfoGridItem(
+        label: 'Ngày ký',
+        value: contract.signedAt != null ? _formatDate(contract.signedAt!) : '--',
+      ),
       _InfoGridItem(label: 'Trạng thái', value: _statusLabel(contract.status)),
     ];
 
@@ -590,105 +607,6 @@ class _DocumentSection extends StatelessWidget {
                 ),
               ),
             ),
-    );
-  }
-}
-
-class _PaymentDetailsCard extends StatelessWidget {
-  const _PaymentDetailsCard({required this.contract});
-
-  final LeaseContract contract;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-      decoration: BoxDecoration(
-        color: AppColors.deepBlue,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.deepBlue.withValues(alpha: 0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Chi tiết thanh toán',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-              height: 20 / 16,
-            ),
-          ),
-          const SizedBox(height: 16),
-          _PaymentRow(
-            label: 'Tiền thuê hàng tháng',
-            value: _formatMoney(contract.monthlyRent),
-          ),
-          for (final fee in contract.serviceFees) ...[
-            const SizedBox(height: 10),
-            _PaymentRow(label: fee.name, value: _formatMoney(fee.amount)),
-          ],
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Divider(color: Color(0x66FFFFFF), height: 1),
-          ),
-          _PaymentRow(
-            label: 'Tổng cộng dự kiến',
-            value: _formatMoney(contract.expectedTotal),
-            isTotal: true,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PaymentRow extends StatelessWidget {
-  const _PaymentRow({
-    required this.label,
-    required this.value,
-    this.isTotal = false,
-  });
-
-  final String label;
-  final String value;
-  final bool isTotal;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: isTotal ? 14 : 12,
-              fontWeight: isTotal ? FontWeight.w900 : FontWeight.w500,
-              height: isTotal ? 18 / 14 : 16 / 12,
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          value,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: isTotal ? 14 : 12,
-            fontWeight: isTotal ? FontWeight.w900 : FontWeight.w600,
-            height: isTotal ? 18 / 14 : 16 / 12,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -861,139 +779,48 @@ class _ContractBottomNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      heightFactor: 1,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 390),
-        child: Container(
-          height: 74,
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-            border: Border.all(
-              color: AppColors.cardBorder.withValues(alpha: 0.7),
+    return TenantBottomNavigation(
+      activeTab: TenantBottomNavTab.home,
+      onHomeTap: () =>
+          Navigator.of(context).popUntil((route) => route.isFirst),
+      onSupportTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const MaintenanceTicketListScreen(),
+          ),
+        );
+      },
+      onBillsTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const BillSelectionPage(),
+          ),
+        );
+      },
+      onProfileTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const TenantProfileScreen(),
+          ),
+        );
+      },
+      onRequestsTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const TenantRequestScreen(),
+              ),
             ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _BottomNavItem(
-                icon: Icons.home_outlined,
-                label: 'Home',
-                onTap: () =>
-                    Navigator.of(context).popUntil((route) => route.isFirst),
-              ),
-              _BottomNavItem(
-                icon: Icons.receipt_long_outlined,
-                label: 'Bills',
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const BillSelectionPage(),
-                    ),
-                  );
-                },
-              ),
-              const _BottomNavItem(
-                icon: Icons.support_agent_outlined,
-                label: 'Support',
-              ),
-              const _BottomNavItem(
-                icon: Icons.person_rounded,
-                label: 'Profile',
-                isSelected: true,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BottomNavItem extends StatelessWidget {
-  const _BottomNavItem({
-    required this.icon,
-    required this.label,
-    this.isSelected = false,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool isSelected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isSelected ? AppColors.deepBlue : AppColors.bodyText;
-
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 68,
-        child: isSelected
-            ? Container(
-                height: 52,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFA7B4FF),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(icon, color: color, size: 21),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        height: 15 / 11,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, color: color, size: 21),
-                  const SizedBox(height: 2),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      height: 15 / 11,
-                    ),
-                  ),
-                ],
-              ),
-      ),
     );
   }
 }
 
 void _showContractFile(BuildContext context, String url) {
-  Clipboard.setData(ClipboardData(text: url));
-  showDialog<void>(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: const Text('Tài liệu hợp đồng'),
-        content: SelectableText(url),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Đóng'),
-          ),
-        ],
-      );
-    },
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (context) => ContractPdfViewerScreen(
+        pdfUrl: url,
+        title: 'Hợp đồng thuê phòng',
+      ),
+    ),
   );
 }
 
@@ -1043,6 +870,8 @@ String _statusLabel(String status) {
     'EXPIRING_SOON' => 'Sắp hết hạn',
     'EXPIRED' => 'Đã hết hạn',
     'TERMINATED' => 'Đã chấm dứt',
+    'DRAFT' => 'Bản nháp',
+    'PENDING_SIGNATURE' => 'Chờ ký',
     _ => _display(status),
   };
 }

@@ -1,19 +1,27 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/config/app_config.dart';
+import 'tenant_request_screen.dart';
 
+import '../config/api_config.dart';
 import '../models/home_summary_model.dart';
 import '../providers/home_provider.dart';
 import '../services/auth_service.dart';
 import '../services/home_service.dart';
+import '../services/lease_contract_service.dart';
 import '../services/tenant_profile_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/tenant_bottom_navigation.dart';
 import 'bill_selection_page.dart';
+import 'contract_hub_screen.dart';
 import 'create_maintenance_ticket_screen.dart';
-import 'lease_contract_screen.dart';
 import 'login_page.dart';
 import 'maintenance_ticket_list_screen.dart';
+import 'notification_list_screen.dart';
 import 'property_rules_screen.dart';
 import 'tenant_profile_screen.dart';
+import 'web_view_screen.dart';
+
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -21,11 +29,13 @@ class HomeScreen extends StatefulWidget {
     this.homeService = const HomeService(),
     this.authService = const AuthService(),
     this.profileService = const TenantProfileService(),
+    this.leaseContractService = const LeaseContractService(),
   });
 
   final HomeService homeService;
   final AuthService authService;
   final TenantProfileService profileService;
+  final LeaseContractService leaseContractService;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -37,8 +47,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _provider = HomeProvider(homeService: widget.homeService)
-      ..addListener(_handleProviderChanged);
+    _provider = HomeProvider(
+      homeService: widget.homeService,
+      leaseContractService: widget.leaseContractService,
+    )..addListener(_handleProviderChanged);
     _provider.load();
   }
 
@@ -122,7 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Column(
       children: [
-        _HomeHeader(summary: summary),
+        _HomeHeader(summary: summary, provider: _provider),
         Expanded(
           child: RefreshIndicator(
             color: AppColors.deepBlue,
@@ -201,9 +213,10 @@ class _HomeErrorState extends StatelessWidget {
 }
 
 class _HomeHeader extends StatelessWidget {
-  const _HomeHeader({required this.summary});
+  const _HomeHeader({required this.summary, required this.provider});
 
   final HomeSummary summary;
+  final HomeProvider provider;
 
   @override
   Widget build(BuildContext context) {
@@ -220,41 +233,14 @@ class _HomeHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.menu_rounded, color: AppColors.deepBlue, size: 24),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  summary.tenant.name.isEmpty ? 'Nhà trọ' : summary.tenant.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.deepBlue,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                    height: 17 / 15,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _roomTitle(summary.room),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.bodyText,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    height: 15 / 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          _RoomSelector(summary: summary, provider: provider),
+          const Spacer(),
           IconButton(
-            onPressed: () => _showTodo(context, 'Màn thông báo chưa có'),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const NotificationListScreen(),
+              ),
+            ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
             icon: const Icon(
@@ -269,6 +255,269 @@ class _HomeHeader extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Widget hiển thị tên phòng/số phòng, khi bấm mở dropdown các phòng đã thuê.
+class _RoomSelector extends StatelessWidget {
+  const _RoomSelector({required this.summary, required this.provider});
+
+  final HomeSummary summary;
+  final HomeProvider provider;
+
+  String get _roomLabel {
+    final selected = provider.selectedRoom;
+    if (selected != null) {
+      return selected.displayLabel;
+    }
+    final room = summary.room;
+    if (room == null) return 'Chưa có phòng';
+    final name = room.name.trim();
+    final code = room.roomCode.trim();
+    if (name.isNotEmpty) return name;
+    if (code.isNotEmpty) return 'Phòng $code';
+    return 'Chưa có phòng';
+  }
+
+  String get _roomSubLabel {
+    final selected = provider.selectedRoom;
+    if (selected != null && selected.roomCode.isNotEmpty) {
+      return selected.propertyName.isNotEmpty
+          ? selected.propertyName
+          : 'Phòng ${selected.roomCode}';
+    }
+    final room = summary.room;
+    if (room != null && room.roomCode.isNotEmpty && room.name.trim().isNotEmpty) {
+      return 'Phòng ${room.roomCode}';
+    }
+    return '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _showRoomDropdown(context),
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF1FF),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.meeting_room_outlined,
+              color: AppColors.deepBlue,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _roomLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.deepBlue,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  height: 18 / 14,
+                ),
+              ),
+              if (_roomSubLabel.isNotEmpty)
+                Text(
+                  _roomSubLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.bodyText,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    height: 15 / 11,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 4),
+          const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: AppColors.deepBlue,
+            size: 18,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRoomDropdown(BuildContext context) {
+    final rooms = provider.activeRooms;
+    final selectedRoom = provider.selectedRoom;
+
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final RenderBox overlay =
+        Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
+    final RelativeRect position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(const Offset(0, 0), ancestor: overlay),
+        button.localToGlobal(
+          button.size.bottomRight(Offset.zero),
+          ancestor: overlay,
+        ),
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    // Build header item
+    final List<PopupMenuEntry<int>> items = [
+      const PopupMenuItem<int>(
+        enabled: false,
+        height: 32,
+        child: Text(
+          'PHÒNG ĐANG THUÊ',
+          style: TextStyle(
+            color: AppColors.bodyText,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.6,
+          ),
+        ),
+      ),
+      const PopupMenuDivider(height: 1),
+    ];
+
+    if (rooms.isEmpty) {
+      // Rooms not loaded yet — show the summary room as a selectable item
+      final fallbackRoom = summary.room;
+      items.add(
+        PopupMenuItem<int>(
+          value: -1,
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF1FF),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(
+                  Icons.meeting_room_outlined,
+                  color: AppColors.deepBlue,
+                  size: 17,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  fallbackRoom != null
+                      ? (fallbackRoom.name.isNotEmpty
+                          ? fallbackRoom.name
+                          : 'Phòng ${fallbackRoom.roomCode}')
+                      : 'Chưa có phòng',
+                  style: const TextStyle(
+                    color: AppColors.inputText,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const Icon(
+                Icons.check_rounded,
+                color: AppColors.deepBlue,
+                size: 18,
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      for (final room in rooms) {
+        final isSelected = selectedRoom?.contractId == room.contractId ||
+            (selectedRoom == null && room.roomId == summary.room?.id);
+        items.add(
+          PopupMenuItem<int>(
+            value: room.contractId,
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFFEFF1FF)
+                        : const Color(0xFFF5F5F7),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Icon(
+                    Icons.meeting_room_outlined,
+                    color: isSelected
+                        ? AppColors.deepBlue
+                        : AppColors.bodyText,
+                    size: 17,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        room.displayLabel,
+                        style: TextStyle(
+                          color: isSelected
+                              ? AppColors.deepBlue
+                              : AppColors.inputText,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      if (room.propertyName.isNotEmpty)
+                        Text(
+                          room.propertyName,
+                          style: const TextStyle(
+                            color: AppColors.bodyText,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (isSelected)
+                  const Icon(
+                    Icons.check_rounded,
+                    color: AppColors.deepBlue,
+                    size: 18,
+                  ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
+
+    showMenu<int>(
+      context: context,
+      position: position,
+      items: items,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      elevation: 8,
+      constraints: const BoxConstraints(minWidth: 230, maxWidth: 310),
+    ).then((selectedContractId) {
+      if (selectedContractId == null || selectedContractId == -1) return;
+      if (rooms.isEmpty) return;
+      final room = rooms.firstWhere(
+        (r) => r.contractId == selectedContractId,
+        orElse: () => rooms.first,
+      );
+      provider.selectRoom(room);
+    });
   }
 }
 
@@ -298,7 +547,7 @@ class _UserAvatar extends StatelessWidget {
       child: user.avatarUrl.isEmpty
           ? const Icon(Icons.person, color: Colors.white, size: 22)
           : Image.network(
-              user.avatarUrl,
+              AppConfig.apiBaseUrl + user.avatarUrl,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) =>
                   const Icon(Icons.person, color: Colors.white, size: 22),
@@ -700,28 +949,6 @@ class _QuickActions extends StatelessWidget {
       childAspectRatio: 1.42,
       children: [
         _QuickActionButton(
-          icon: Icons.warning_amber_rounded,
-          label: 'Báo cáo sự cố',
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const CreateMaintenanceTicketScreen(),
-              ),
-            );
-          },
-        ),
-        _QuickActionButton(
-          icon: Icons.description_outlined,
-          label: 'Xem hợp đồng',
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const LeaseContractScreen(),
-              ),
-            );
-          },
-        ),
-        _QuickActionButton(
           icon: Icons.rule_folder_outlined,
           label: 'Nội quy nhà trọ',
           onTap: () {
@@ -733,12 +960,59 @@ class _QuickActions extends StatelessWidget {
           },
         ),
         _QuickActionButton(
+          icon: Icons.article_outlined,
+          label: 'Hợp Đồng',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const ContractHubScreen(),
+              ),
+            );
+          },
+        ),
+        _QuickActionButton(
+          icon: Icons.warning_amber_rounded,
+          label: 'Báo cáo sự cố',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const CreateMaintenanceTicketScreen(),
+              ),
+            );
+          },
+        ),
+        _QuickActionButton(
           icon: Icons.assignment_late_outlined,
           label: 'Danh sách sự cố',
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => const MaintenanceTicketListScreen(),
+              ),
+            );
+          },
+        ),
+        _QuickActionButton(
+          icon: Icons.add_home_outlined,
+          label: 'Thuê thêm phòng',
+          onTap: () async {
+            final prefs = await SharedPreferences.getInstance();
+            final token = prefs.getString(AuthService.accessTokenKey) ?? '';
+            final sessionId = prefs.getString(AuthService.sessionIdKey) ?? '';
+            final userRole = prefs.getString(AuthService.roleKey) ?? '';
+
+            if (!context.mounted) return;
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => WebViewScreen(
+                  url: '${ApiConfig.frontendUrl}/api/mobile-auth',
+                  title: 'Thuê thêm phòng',
+                  postData: {
+                    'token': token,
+                    'sessionId': sessionId,
+                    'userRole': userRole,
+                  },
+                ),
               ),
             );
           },
@@ -807,6 +1081,20 @@ class _HomeBottomNavigation extends StatelessWidget {
   final HomeService homeService;
   final TenantProfileService profileService;
 
+  Future<void> _handleLogout(BuildContext context) async {
+    await authService.logout();
+    if (!context.mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => LoginPage(
+          authService: authService,
+          homeService: homeService,
+        ),
+      ),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return TenantBottomNavigation(
@@ -834,6 +1122,11 @@ class _HomeBottomNavigation extends StatelessWidget {
           ),
         );
       },
+      onRequestsTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const TenantRequestScreen(),
+              ),
+            ),
     );
   }
 }
@@ -844,20 +1137,7 @@ void _showTodo(BuildContext context, String message) {
     ..showSnackBar(SnackBar(content: Text(message)));
 }
 
-String _roomTitle(HomeRoom? room) {
-  if (room == null) {
-    return 'Chưa có phòng';
-  }
-  final name = room.name.trim();
-  final code = room.roomCode.trim();
-  if (name.isNotEmpty) {
-    return name;
-  }
-  if (code.isNotEmpty) {
-    return 'Phòng $code';
-  }
-  return 'Chưa có phòng';
-}
+
 
 String _formatDate(DateTime date) {
   return '${date.day.toString().padLeft(2, '0')}/'

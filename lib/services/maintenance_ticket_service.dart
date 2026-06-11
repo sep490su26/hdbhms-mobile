@@ -1,142 +1,97 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:http/http.dart' as http;
+
+import '../config/api_config.dart';
+import '../models/file_metadata_model.dart';
 import '../models/maintenance_ticket_model.dart';
+import 'authenticated_client.dart';
+import 'file_service.dart';
 
 class MaintenanceTicketService {
-  const MaintenanceTicketService();
+  const MaintenanceTicketService({
+    http.Client? client,
+    FileService fileService = const FileService(),
+  }) : _client = client,
+       _fileService = fileService;
 
-  // Future API endpoint:
-  // GET /api/v1/tenants/{tenantId}/tickets
+  final http.Client? _client;
+  final FileService _fileService;
+  http.Client get _effectiveClient => _client ?? AuthenticatedClient();
+
+  static const _timeout = Duration(seconds: 15);
+
   Future<List<MaintenanceTicketModel>> getTickets({
     String? keyword,
     String? status,
     String? category,
   }) async {
-    await Future<void>.delayed(const Duration(milliseconds: 250));
+    final query = <String, String>{
+      'page': '0',
+      'size': '100',
+      'sort': 'createdAt,desc',
+    };
+    final code = keyword?.trim() ?? '';
+    if (code.isNotEmpty) {
+      query['code'] = code;
+    }
+    final statusValue = _statusFilter(status);
+    if (statusValue != null) {
+      query['status'] = statusValue;
+    }
+    final categoryValue = _categoryFilter(category);
+    if (categoryValue != null) {
+      query['category'] = categoryValue;
+    }
 
-    final normalizedKeyword = keyword?.trim().toLowerCase() ?? '';
-    final normalizedStatus = status?.trim();
-    final normalizedCategory = category?.trim();
-
-    final filtered = _mockTickets.where((ticket) {
-      final matchesKeyword =
-          normalizedKeyword.isEmpty ||
-          ticket.code.toLowerCase().contains(normalizedKeyword) ||
-          ticket.code
-              .toLowerCase()
-              .replaceAll('#', '')
-              .contains(normalizedKeyword.replaceAll('#', ''));
-      final matchesStatus =
-          normalizedStatus == null ||
-          normalizedStatus.isEmpty ||
-          normalizedStatus == 'Tất cả' ||
-          ticket.status.label == normalizedStatus ||
-          ticket.status.key == normalizedStatus;
-      final matchesCategory =
-          normalizedCategory == null ||
-          normalizedCategory.isEmpty ||
-          normalizedCategory == 'Tất cả' ||
-          ticket.category.label == normalizedCategory ||
-          ticket.category.key == normalizedCategory;
-
-      return matchesKeyword && matchesStatus && matchesCategory;
-    }).toList();
-
-    filtered.sort(_sortTicketForTenantList);
-    return List.unmodifiable(filtered);
+    final body = await _request('GET', '/maintenance/tickets/my', query: query);
+    final rows = _rows(_apiData(body));
+    final tickets = rows.map(MaintenanceTicketModel.fromJson).toList();
+    tickets.sort(_sortTicketForTenantList);
+    return List.unmodifiable(tickets);
   }
 
-  // Future API endpoint:
-  // POST /api/v1/tenants/{tenantId}/tickets
   Future<MaintenanceTicketModel> createTicket(
     CreateMaintenanceTicketRequest request,
   ) async {
-    await Future<void>.delayed(const Duration(milliseconds: 650));
-
-    final ticket = MaintenanceTicketModel(
-      id: _mockTickets.length + 1,
-      code: '#${_generateTicketCode()}',
-      category: request.category,
-      title: request.title,
-      description: request.description,
-      createdDate: DateTime.now(),
-      status: TicketStatus.pending,
-      roomId: request.roomId,
-      roomCode: '201',
-      priority: request.priority,
-      ticketScope: request.ticketScope,
+    final attachmentIds = await _uploadAttachments(request.attachments);
+    final body = await _request(
+      'POST',
+      '/maintenance/tickets',
+      body: {
+        'roomId': request.roomId,
+        'category': request.category.key,
+        'title': request.title,
+        'description': request.description,
+        'ticketScope': request.ticketScope.key,
+        'scope': request.ticketScope.key,
+        'priority': request.priority.key,
+        'severity': request.priority.key,
+        'attachmentIds': attachmentIds,
+      },
     );
-    _mockTickets.insert(0, ticket);
-    _mockDetails[ticket.id] = MaintenanceTicketDetail.fromTicket(ticket);
-    return ticket;
+    return MaintenanceTicketModel.fromJson(_asMap(_apiData(body)));
   }
 
-  // Future API endpoint:
-  // GET /api/v1/tenants/{tenantId}/tickets/{ticketId}
   Future<MaintenanceTicketDetail> getTicketDetail(int ticketId) async {
-    await Future<void>.delayed(const Duration(milliseconds: 300));
-
-    final detail = _mockDetails[ticketId];
-    if (detail != null) {
-      return detail;
-    }
-
-    MaintenanceTicketModel? ticket;
-    for (final item in _mockTickets) {
-      if (item.id == ticketId) {
-        ticket = item;
-        break;
-      }
-    }
-    if (ticket == null) {
-      throw const MaintenanceTicketException('Không tìm thấy phiếu sự cố');
-    }
-
-    final created = MaintenanceTicketDetail.fromTicket(ticket);
-    _mockDetails[ticketId] = created;
-    return created;
+    final body = await _request('GET', '/maintenance/tickets/$ticketId');
+    return MaintenanceTicketDetail.fromJson(_asMap(_apiData(body)));
   }
 
-  // Future API endpoint:
-  // POST /api/v1/tenants/{tenantId}/tickets/{ticketId}/accept
   Future<void> acceptTicket(int ticketId) async {
-    await Future<void>.delayed(const Duration(milliseconds: 350));
-    final detail = await getTicketDetail(ticketId);
-    final updated = detail.copyWith(
-      status: TicketStatus.accepted,
-      events: [
-        ...detail.events,
-        TicketTimelineEvent(
-          status: TicketStatus.accepted.key,
-          title: 'Đã tiếp nhận',
-          description: 'Ban quản lý đã xác nhận yêu cầu',
-          createdAt: DateTime.now(),
-        ),
-      ],
-    );
-    _saveDetail(updated);
+    await _request('POST', '/maintenance/tickets/$ticketId/approve');
   }
 
-  // Future API endpoint:
-  // POST /api/v1/tenants/{tenantId}/tickets/{ticketId}/reject
   Future<void> rejectTicket(int ticketId, String reason) async {
-    await Future<void>.delayed(const Duration(milliseconds: 350));
-    final detail = await getTicketDetail(ticketId);
-    final updated = detail.copyWith(
-      status: TicketStatus.rejected,
-      events: [
-        ...detail.events,
-        TicketTimelineEvent(
-          status: TicketStatus.rejected.key,
-          title: 'Từ chối',
-          description: reason.trim(),
-          createdAt: DateTime.now(),
-        ),
-      ],
+    await _request(
+      'POST',
+      '/maintenance/tickets/$ticketId/decline',
+      body: {'reason': reason.trim()},
     );
-    _saveDetail(updated);
   }
 
-  // Future API endpoint:
-  // POST /api/v1/tenants/{tenantId}/tickets/{ticketId}/update-progress
   Future<void> updateProgress(
     int ticketId, {
     required String workerName,
@@ -144,126 +99,243 @@ class MaintenanceTicketService {
     DateTime? expectedCompletionDate,
     String? note,
   }) async {
-    await Future<void>.delayed(const Duration(milliseconds: 450));
-    final detail = await getTicketDetail(ticketId);
-    final currentRepair = detail.repairInfo ?? const TicketRepairInfo();
-    final updatedRepair = currentRepair.copyWith(
-      workerName: workerName.trim().isEmpty ? null : workerName.trim(),
-      repairItems: repairItems.trim().isEmpty ? null : repairItems.trim(),
-      expectedCompletionDate: expectedCompletionDate,
+    await _request(
+      'POST',
+      '/maintenance/tickets/$ticketId/progress',
+      body: {
+        'workerName': workerName.trim(),
+        'repairmanName': workerName.trim(),
+        'repairItems': repairItems.trim(),
+        'note': note?.trim(),
+      },
     );
-    final updated = detail.copyWith(
-      status: TicketStatus.inProgress,
-      repairInfo: updatedRepair,
-      events: [
-        ...detail.events,
-        TicketTimelineEvent(
-          status: TicketStatus.inProgress.key,
-          title: 'Đang sửa chữa',
-          description: note?.trim().isNotEmpty == true
-              ? note!.trim()
-              : 'Kỹ thuật viên đang có mặt tại căn hộ',
-          createdAt: DateTime.now(),
-        ),
-      ],
-    );
-    _saveDetail(updated);
   }
 
-  // Future API endpoint:
-  // POST /api/v1/tenants/{tenantId}/tickets/{ticketId}/complete
   Future<void> completeTicket(
     int ticketId, {
     required String completionNote,
     required String costDescription,
     required num amount,
     required String paidBy,
-    List<TicketAttachment> afterAttachments = const [],
+    List<MaintenanceAttachment> afterAttachments = const [],
   }) async {
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-    final detail = await getTicketDetail(ticketId);
-    final currentRepair = detail.repairInfo ?? const TicketRepairInfo();
-    final updatedRepair = currentRepair.copyWith(
-      completionNote: completionNote.trim(),
-      costCategory: costDescription.trim().isEmpty
-          ? currentRepair.costCategory
-          : costDescription.trim(),
-      totalCost: amount <= 0 ? currentRepair.totalCost : amount,
-      completedAt: DateTime.now(),
+    final attachmentIds = await _uploadAttachments(afterAttachments);
+    await _request(
+      'POST',
+      '/maintenance/tickets/$ticketId/complete',
+      body: {
+        'repairItems': costDescription.trim(),
+        'costDescription': costDescription.trim(),
+        'actualCost': amount.round(),
+        'costResponsibility': _costResponsibility(paidBy),
+        'completionNote': completionNote.trim(),
+        'attachmentIds': attachmentIds,
+        'attachmentPhase': 'AFTER',
+      },
     );
-    final attachments = afterAttachments.isEmpty
-        ? _defaultAfterAttachments(ticketId)
-        : afterAttachments;
-    final updated = detail.copyWith(
-      status: TicketStatus.waitingConfirmation,
-      repairInfo: updatedRepair,
-      afterAttachments: attachments,
-      events: [
-        ...detail.events,
-        TicketTimelineEvent(
-          status: TicketStatus.waitingConfirmation.key,
-          title: 'Chờ xác nhận',
-          description: paidBy.trim().isEmpty
-              ? 'Sự cố đã được xử lý, chờ khách xác nhận'
-              : 'Sự cố đã được xử lý, chi phí do ${paidBy.trim()} thanh toán',
-          createdAt: DateTime.now(),
-        ),
-      ],
-    );
-    _saveDetail(updated);
   }
 
-  // Future API endpoint:
-  // POST /api/v1/tenants/{tenantId}/tickets/{ticketId}/confirm
   Future<void> confirmTicket(int ticketId, {String? satisfactionNote}) async {
-    await Future<void>.delayed(const Duration(milliseconds: 350));
-    final detail = await getTicketDetail(ticketId);
-    if (detail.status == TicketStatus.completed) {
-      return;
-    }
-    final updated = detail.copyWith(
-      status: TicketStatus.completed,
-      events: [
-        ...detail.events,
-        TicketTimelineEvent(
-          status: TicketStatus.completed.key,
-          title: 'Hoàn tất',
-          description: satisfactionNote?.trim().isNotEmpty == true
-              ? satisfactionNote!.trim()
-              : 'Khách thuê đã xác nhận sự cố được xử lý xong',
-          createdAt: DateTime.now(),
-        ),
-      ],
-    );
-    _saveDetail(updated);
+    await _request('POST', '/maintenance/tickets/$ticketId/confirm');
   }
 
-  // Future API endpoint:
-  // POST /api/v1/tenants/{tenantId}/tickets/{ticketId}/review
+  Future<void> reportNotFixed(int ticketId, {String? note}) async {
+    await _request(
+      'POST',
+      '/maintenance/tickets/$ticketId/report-not-fixed',
+      body: {'note': note?.trim()},
+    );
+  }
+
   Future<TicketReview> reviewTicket(
     int ticketId, {
     required double rating,
     required String comment,
   }) async {
-    await Future<void>.delayed(const Duration(milliseconds: 350));
-    final detail = await getTicketDetail(ticketId);
-    final review = TicketReview(
-      rating: rating,
-      comment: comment.trim().isEmpty ? null : comment.trim(),
-      createdAt: DateTime.now(),
+    final body = await _request(
+      'POST',
+      '/maintenance/tickets/$ticketId/review',
+      body: {
+        'rating': rating.round(),
+        'comment': comment.trim(),
+        'feedback': comment.trim(),
+      },
     );
-    final updated = detail.copyWith(review: review);
-    _saveDetail(updated);
-    return review;
+    final detail = MaintenanceTicketDetail.fromJson(_asMap(_apiData(body)));
+    return detail.review ??
+        TicketReview(
+          rating: rating,
+          comment: comment.trim().isEmpty ? null : comment.trim(),
+          createdAt: DateTime.now(),
+        );
   }
 
-  void _saveDetail(MaintenanceTicketDetail detail) {
-    _mockDetails[detail.id] = detail;
-    final index = _mockTickets.indexWhere((ticket) => ticket.id == detail.id);
-    if (index == -1) {
-      return;
+  Future<List<int>> _uploadAttachments(
+    List<MaintenanceAttachment> attachments,
+  ) async {
+    if (attachments.isEmpty) {
+      return const [];
     }
-    _mockTickets[index] = _mockTickets[index].copyWith(status: detail.status);
+    final ids = <int>[];
+    for (final attachment in attachments) {
+      if (attachment.type != MaintenanceAttachmentType.image) {
+        throw const MaintenanceTicketException(
+          'MVP chỉ hỗ trợ đính kèm ảnh jpg, jpeg, png hoặc webp',
+        );
+      }
+      final bytes = _attachmentBytes(attachment);
+      final uploaded = await _fileService.uploadSingle(
+        bytes: bytes,
+        fileName: attachment.name,
+        category: FileCategory.TICKET_ATTACHMENT,
+        isSensitive: false,
+      );
+      if (uploaded.fileId > 0) {
+        ids.add(uploaded.fileId);
+      }
+    }
+    return ids;
+  }
+
+  Uint8List _attachmentBytes(MaintenanceAttachment attachment) {
+    final bytes = attachment.previewBytes;
+    if (bytes == null || bytes.isEmpty) {
+      throw const MaintenanceTicketException(
+        'Không đọc được ảnh đính kèm. Vui lòng chọn lại ảnh.',
+      );
+    }
+    return Uint8List.fromList(bytes);
+  }
+
+  Future<Map<String, dynamic>> _request(
+    String method,
+    String path, {
+    Map<String, String>? query,
+    Map<String, dynamic>? body,
+  }) async {
+    final client = _effectiveClient;
+    try {
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}$path',
+      ).replace(queryParameters: query);
+      final encodedBody = body == null ? null : jsonEncode(_stripNulls(body));
+      late final http.Response response;
+      switch (method) {
+        case 'GET':
+          response = await client.get(uri).timeout(_timeout);
+          break;
+        case 'POST':
+          response = await client
+              .post(uri, body: encodedBody)
+              .timeout(_timeout);
+          break;
+        case 'PATCH':
+          response = await client
+              .patch(uri, body: encodedBody)
+              .timeout(_timeout);
+          break;
+        default:
+          throw MaintenanceTicketException('HTTP method không hỗ trợ: $method');
+      }
+
+      final decoded = _decodeBody(response);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw MaintenanceTicketException(_messageForError(decoded));
+      }
+      if (decoded.containsKey('code')) {
+        final code = _asInt(decoded['code']) ?? 0;
+        if (code != 0 && (code < 200 || code >= 300)) {
+          throw MaintenanceTicketException(_messageForError(decoded));
+        }
+      }
+      return decoded;
+    } on MaintenanceTicketException {
+      rethrow;
+    } on TimeoutException {
+      throw const MaintenanceTicketException('Không kết nối được máy chủ');
+    } on http.ClientException {
+      throw const MaintenanceTicketException('Không kết nối được máy chủ');
+    } on FormatException {
+      throw const MaintenanceTicketException(
+        'Không đọc được dữ liệu phiếu sự cố',
+      );
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
+
+  Map<String, dynamic> _decodeBody(http.Response response) {
+    if (response.bodyBytes.isEmpty) {
+      return const {};
+    }
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    if (decoded is Map<String, dynamic>) {
+      return decoded;
+    }
+    throw const FormatException('Invalid maintenance response');
+  }
+
+  Object? _apiData(Map<String, dynamic> body) {
+    if (body.containsKey('code') && body.containsKey('data')) {
+      return body['data'];
+    }
+    return body;
+  }
+
+  List<Map<String, dynamic>> _rows(Object? payload) {
+    if (payload is List) {
+      return payload.map(_asMap).where((item) => item.isNotEmpty).toList();
+    }
+    final map = _asMap(payload);
+    for (final key in ['data', 'content', 'items']) {
+      final value = map[key];
+      if (value is List) {
+        return value.map(_asMap).where((item) => item.isNotEmpty).toList();
+      }
+    }
+    return const [];
+  }
+
+  Map<String, dynamic> _stripNulls(Map<String, dynamic> body) {
+    final result = <String, dynamic>{};
+    body.forEach((key, value) {
+      if (value != null) {
+        result[key] = value;
+      }
+    });
+    return result;
+  }
+
+  String? _statusFilter(String? status) {
+    final value = status?.trim() ?? '';
+    if (value.isEmpty || value == 'Tất cả') {
+      return null;
+    }
+    return TicketStatus.fromBackend(value).key;
+  }
+
+  String? _categoryFilter(String? category) {
+    final value = category?.trim() ?? '';
+    if (value.isEmpty || value == 'Tất cả') {
+      return null;
+    }
+    return TicketCategory.fromBackend(value).key;
+  }
+
+  String _costResponsibility(String paidBy) {
+    final normalized = paidBy.trim().toUpperCase();
+    if (normalized.contains('KHÁCH') || normalized.contains('TENANT')) {
+      return 'TENANT';
+    }
+    if (normalized.contains('VẬN HÀNH') || normalized.contains('MANAGER')) {
+      return 'OPERATION';
+    }
+    if (normalized.contains('CHỦ') || normalized.contains('OWNER')) {
+      return 'OWNER';
+    }
+    return 'UNDECIDED';
   }
 
   int _sortTicketForTenantList(
@@ -291,308 +363,34 @@ class MaintenanceTicketService {
     };
   }
 
-  String _generateTicketCode() {
-    final year = DateTime.now().year;
-    final next = (_mockTickets.length + 1).toString().padLeft(4, '0');
-    return 'SC-$year-$next';
+  String _messageForError(Map<String, dynamic> body) {
+    final message =
+        body['message']?.toString() ??
+        body['details']?.toString() ??
+        body['error']?.toString();
+    if (message != null && message.trim().isNotEmpty) {
+      return message.trim();
+    }
+    return 'Không xử lý được phiếu sự cố';
   }
 
-  static final List<MaintenanceTicketModel> _mockTickets = [
-    MaintenanceTicketModel(
-      id: 4,
-      code: '#SC-2026-0004',
-      category: TicketCategory.electricity,
-      title: 'Điện trong phòng chập chờn',
-      description: 'Ổ điện gần bàn học lúc có lúc mất nguồn.',
-      createdDate: DateTime(2026, 5, 18),
-      status: TicketStatus.pending,
-      roomId: 1,
-      roomCode: '201',
-    ),
-    MaintenanceTicketModel(
-      id: 5,
-      code: '#SC-2026-0005',
-      category: TicketCategory.airConditioner,
-      title: 'Điều hòa đang được kiểm tra',
-      description: 'Điều hòa phòng ngủ vẫn kêu to sau khi bật khoảng 10 phút.',
-      createdDate: DateTime(2026, 5, 17),
-      status: TicketStatus.inProgress,
-      roomId: 1,
-      roomCode: '201',
-    ),
-    MaintenanceTicketModel(
-      id: 6,
-      code: '#SC-2026-0006',
-      category: TicketCategory.cleaningDrainage,
-      title: 'Vòi sen đã sửa, chờ xác nhận',
-      description: 'Vòi sen trong nhà tắm đã được thợ xử lý.',
-      createdDate: DateTime(2026, 5, 16),
-      status: TicketStatus.waitingConfirmation,
-      roomId: 1,
-      roomCode: '201',
-    ),
-    MaintenanceTicketModel(
-      id: 1,
-      code: '#SC-2825',
-      category: TicketCategory.equipment,
-      title: 'Máy lạnh phòng ngủ không lạnh',
-      description: 'Máy lạnh phòng ngủ không lạnh, kêu to khi hoạt động.',
-      createdDate: DateTime(2023, 10, 5),
-      status: TicketStatus.completed,
-      roomId: 1,
-      roomCode: '201',
-    ),
-    MaintenanceTicketModel(
-      id: 2,
-      code: '#SC-2810',
-      category: TicketCategory.other,
-      title: 'Sơn lại tường phòng khách',
-      description: 'Sơn lại tường phòng khách theo yêu cầu cá nhân.',
-      createdDate: DateTime(2023, 10, 1),
-      status: TicketStatus.rejected,
-      roomId: 1,
-      roomCode: '201',
-    ),
-    MaintenanceTicketModel(
-      id: 3,
-      code: '#SC-2805',
-      category: TicketCategory.water,
-      title: 'Nước chảy yếu tại vòi sen',
-      description: 'Nước chảy yếu tại vòi sen tắm.',
-      createdDate: DateTime(2023, 9, 28),
-      status: TicketStatus.accepted,
-      roomId: 1,
-      roomCode: '201',
-    ),
-  ];
+  Map<String, dynamic> _asMap(Object? value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) {
+      return value.map((key, item) => MapEntry(key.toString(), item));
+    }
+    return const {};
+  }
 
-  static final Map<int, MaintenanceTicketDetail> _mockDetails = {
-    4: MaintenanceTicketDetail(
-      id: 4,
-      ticketCode: '#SC-2026-0004',
-      status: TicketStatus.pending,
-      roomId: 1,
-      roomCode: '201',
-      category: TicketCategory.electricity,
-      categoryName: 'Hệ thống điện & Chiếu sáng',
-      title: 'Điện trong phòng chập chờn',
-      description: 'Ổ điện gần bàn học lúc có lúc mất nguồn.',
-      priority: TicketPriority.medium,
-      createdAt: DateTime(2026, 5, 18, 9, 20),
-      beforeAttachments: _beforeElectricalAttachments,
-      events: [
-        TicketTimelineEvent(
-          status: TicketStatus.pending.key,
-          title: 'Yêu cầu mới',
-          description: 'Đã gửi báo cáo sự cố',
-          createdAt: DateTime(2026, 5, 18, 9, 20),
-        ),
-      ],
-    ),
-    5: MaintenanceTicketDetail(
-      id: 5,
-      ticketCode: '#SC-2026-0005',
-      status: TicketStatus.inProgress,
-      roomId: 1,
-      roomCode: '201',
-      category: TicketCategory.airConditioner,
-      categoryName: 'Điều hòa',
-      title: 'Điều hòa đang được kiểm tra',
-      description: 'Điều hòa phòng ngủ vẫn kêu to sau khi bật khoảng 10 phút.',
-      priority: TicketPriority.medium,
-      createdAt: DateTime(2026, 5, 17, 14, 30),
-      beforeAttachments: _airConditionerAttachments,
-      repairInfo: const TicketRepairInfo(
-        workerName: 'Thợ Hùng - 0987654321',
-        repairItems: 'Kiểm tra block máy lạnh',
-        totalCost: 0,
-      ),
-      events: [
-        TicketTimelineEvent(
-          status: TicketStatus.pending.key,
-          title: 'Yêu cầu mới',
-          description: 'Đã gửi báo cáo sự cố',
-          createdAt: DateTime(2026, 5, 17, 14, 30),
-        ),
-        TicketTimelineEvent(
-          status: TicketStatus.accepted.key,
-          title: 'Đã tiếp nhận',
-          description: 'Ban quản lý đã xác nhận yêu cầu',
-          createdAt: DateTime(2026, 5, 17, 15, 0),
-        ),
-        TicketTimelineEvent(
-          status: TicketStatus.inProgress.key,
-          title: 'Đang sửa chữa',
-          description: 'Kỹ thuật viên đang có mặt tại căn hộ',
-          createdAt: DateTime(2026, 5, 17, 15, 25),
-        ),
-      ],
-    ),
-    1: MaintenanceTicketDetail(
-      id: 1,
-      ticketCode: '#SC-2825',
-      status: TicketStatus.completed,
-      roomId: 1,
-      roomCode: '201',
-      category: TicketCategory.equipment,
-      categoryName: 'Hệ thống điện & Chiếu sáng',
-      title: 'Máy lạnh phòng ngủ không lạnh',
-      description:
-          'Đèn trần tại khu vực phòng khách có hiện tượng nhấp nháy liên tục sau đó tắt hẳn. Đã thử thay bóng mới nhưng vẫn không hoạt động. Có mùi khét nhẹ gần ổ cắm điện.',
-      priority: TicketPriority.medium,
-      createdAt: DateTime(2023, 10, 24, 14, 30),
-      beforeAttachments: _beforeElectricalAttachments,
-      afterAttachments: _defaultAfterAttachments(1),
-      repairInfo: TicketRepairInfo(
-        workerName: 'Thợ Hùng - 0987654321',
-        repairItems: 'Thay tụ điện & Bóng LED',
-        completionNote: 'Đã thay tụ điện, kiểm tra lại nguồn và đèn trần.',
-        totalCost: 450000,
-        costCategory: 'Thay tụ điện & Bóng LED',
-        completedAt: DateTime(2023, 10, 25, 10, 45),
-      ),
-      review: TicketReview(
-        rating: 5,
-        comment:
-            'Thợ đến đúng giờ, xử lý rất chuyên nghiệp và gọn gàng. Tôi rất hài lòng với chất lượng phục vụ của ban quản lý.',
-        createdAt: DateTime(2023, 10, 25, 16, 5),
-      ),
-      events: [
-        TicketTimelineEvent(
-          status: TicketStatus.pending.key,
-          title: 'Yêu cầu mới',
-          description: 'Đã gửi báo cáo sự cố',
-          createdAt: DateTime(2023, 10, 24, 14, 30),
-        ),
-        TicketTimelineEvent(
-          status: TicketStatus.accepted.key,
-          title: 'Đã tiếp nhận',
-          description: 'Ban quản lý đã xác nhận yêu cầu',
-          createdAt: DateTime(2023, 10, 24, 15, 0),
-        ),
-        TicketTimelineEvent(
-          status: TicketStatus.inProgress.key,
-          title: 'Đang sửa chữa',
-          description: 'Kỹ thuật viên đang có mặt tại căn hộ',
-          createdAt: DateTime(2023, 10, 25, 9, 15),
-        ),
-        TicketTimelineEvent(
-          status: TicketStatus.completed.key,
-          title: 'Hoàn tất',
-          description: 'Sự cố đã được xử lý xong',
-          createdAt: DateTime(2023, 10, 25, 10, 45),
-        ),
-      ],
-    ),
-    6: MaintenanceTicketDetail(
-      id: 6,
-      ticketCode: '#SC-2026-0006',
-      status: TicketStatus.waitingConfirmation,
-      roomId: 1,
-      roomCode: '201',
-      category: TicketCategory.cleaningDrainage,
-      categoryName: 'Vệ sinh / thoát nước',
-      title: 'Vòi sen đã sửa, chờ xác nhận',
-      description: 'Vòi sen trong nhà tắm đã được thợ xử lý.',
-      priority: TicketPriority.medium,
-      createdAt: DateTime(2026, 5, 16, 8, 15),
-      beforeAttachments: const [],
-      afterAttachments: const [],
-      repairInfo: TicketRepairInfo(
-        workerName: 'Thợ Minh - 0912345678',
-        repairItems: 'Sửa chữa vòi sen',
-        completionNote: 'Đã thay ron cao su và kiểm tra lại áp lực nước.',
-        totalCost: 120000,
-        costCategory: 'Sửa chữa vòi sen',
-        completedAt: DateTime(2026, 5, 16, 14, 10),
-      ),
-      events: [
-        TicketTimelineEvent(
-          status: TicketStatus.pending.key,
-          title: 'Yêu cầu mới',
-          description: 'Đã gửi báo cáo sự cố',
-          createdAt: DateTime(2026, 5, 16, 8, 15),
-        ),
-        TicketTimelineEvent(
-          status: TicketStatus.accepted.key,
-          title: 'Đã tiếp nhận',
-          description: 'Ban quản lý đã xác nhận yêu cầu',
-          createdAt: DateTime(2026, 5, 16, 8, 45),
-        ),
-        TicketTimelineEvent(
-          status: TicketStatus.inProgress.key,
-          title: 'Đang sửa chữa',
-          description: 'Kỹ thuật viên đang sửa vòi sen',
-          createdAt: DateTime(2026, 5, 16, 13, 20),
-        ),
-        TicketTimelineEvent(
-          status: TicketStatus.waitingConfirmation.key,
-          title: 'Chờ xác nhận',
-          description: 'Sự cố đã được xử lý, chờ khách xác nhận',
-          createdAt: DateTime(2026, 5, 16, 14, 10),
-        ),
-      ],
-    ),
-  };
+  int? _asInt(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '');
+  }
 }
 
 class MaintenanceTicketException implements Exception {
   const MaintenanceTicketException(this.message);
 
   final String message;
-}
-
-const _beforeElectricalAttachments = [
-  TicketAttachment(
-    id: 1,
-    url:
-        'https://images.unsplash.com/photo-1509391366360-2e959784a276?auto=format&fit=crop&w=900&q=80',
-    mimeType: 'image/jpeg',
-    phase: TicketAttachmentPhase.before,
-    sortOrder: 1,
-    name: 'den-tran-loi.jpg',
-  ),
-  TicketAttachment(
-    id: 2,
-    url:
-        'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=900&q=80',
-    mimeType: 'image/jpeg',
-    phase: TicketAttachmentPhase.before,
-    sortOrder: 2,
-    name: 'o-dien.jpg',
-  ),
-  TicketAttachment(
-    id: 3,
-    url: 'mock-video-before',
-    mimeType: 'video/mp4',
-    phase: TicketAttachmentPhase.before,
-    sortOrder: 3,
-    name: 'video-hien-trang.mp4',
-  ),
-];
-
-const _airConditionerAttachments = [
-  TicketAttachment(
-    id: 4,
-    url:
-        'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=900&q=80',
-    mimeType: 'image/jpeg',
-    phase: TicketAttachmentPhase.before,
-    sortOrder: 1,
-    name: 'dieu-hoa.jpg',
-  ),
-];
-
-List<TicketAttachment> _defaultAfterAttachments(int ticketId) {
-  return [
-    TicketAttachment(
-      id: 1000 + ticketId,
-      url:
-          'https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=900&q=80',
-      mimeType: 'image/jpeg',
-      phase: TicketAttachmentPhase.after,
-      sortOrder: 1,
-      name: 'sau-sua-chua.jpg',
-    ),
-  ];
 }

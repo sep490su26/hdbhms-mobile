@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'tenant_request_screen.dart';
 
 import '../models/maintenance_ticket_model.dart';
 import '../services/current_room_service.dart';
@@ -33,7 +34,6 @@ class _CreateMaintenanceTicketScreenState
     extends State<CreateMaintenanceTicketScreen> {
   static const _maxAttachments = 3;
   static const _maxImageBytes = 5 * 1024 * 1024;
-  static const _maxVideoBytes = 20 * 1024 * 1024;
 
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _descriptionController;
@@ -79,67 +79,16 @@ class _CreateMaintenanceTicketScreenState
   Future<void> _pickAttachment() async {
     if (_attachments.length >= _maxAttachments) {
       setState(() {
-        _attachmentError = 'Chỉ được đính kèm tối đa 3 ảnh/video';
+        _attachmentError = 'Chỉ được đính kèm tối đa 3 ảnh';
       });
       return;
     }
 
-    final source = await showModalBottomSheet<_AttachmentSource>(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  leading: const Icon(
-                    Icons.image_outlined,
-                    color: AppColors.deepBlue,
-                  ),
-                  title: const Text('Chọn ảnh'),
-                  onTap: () =>
-                      Navigator.of(context).pop(_AttachmentSource.image),
-                ),
-                ListTile(
-                  leading: const Icon(
-                    Icons.videocam_outlined,
-                    color: AppColors.deepBlue,
-                  ),
-                  title: const Text('Chọn video'),
-                  onTap: () =>
-                      Navigator.of(context).pop(_AttachmentSource.video),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-
-    if (source == null) {
+    final files = await _imagePicker.pickMultiImage(imageQuality: 82);
+    if (files.isEmpty) {
       return;
     }
-
-    if (source == _AttachmentSource.image) {
-      final files = await _imagePicker.pickMultiImage(imageQuality: 82);
-      if (files.isEmpty) {
-        return;
-      }
-      await _addPickedFiles(files, MaintenanceAttachmentType.image);
-      return;
-    }
-
-    final file = await _imagePicker.pickVideo(source: ImageSource.gallery);
-    if (file == null) {
-      return;
-    }
-    await _addPickedFiles([file], MaintenanceAttachmentType.video);
+    await _addPickedFiles(files, MaintenanceAttachmentType.image);
   }
 
   Future<void> _addPickedFiles(
@@ -149,7 +98,7 @@ class _CreateMaintenanceTicketScreenState
     final remainingSlots = _maxAttachments - _attachments.length;
     if (files.length > remainingSlots) {
       setState(() {
-        _attachmentError = 'Chỉ được đính kèm tối đa 3 ảnh/video';
+        _attachmentError = 'Chỉ được đính kèm tối đa 3 ảnh';
       });
       return;
     }
@@ -186,10 +135,7 @@ class _CreateMaintenanceTicketScreenState
     }
 
     final sizeBytes = await file.length();
-    final maxBytes = type == MaintenanceAttachmentType.image
-        ? _maxImageBytes
-        : _maxVideoBytes;
-    if (sizeBytes > maxBytes) {
+    if (type != MaintenanceAttachmentType.image || sizeBytes > _maxImageBytes) {
       return null;
     }
 
@@ -314,18 +260,15 @@ class _CreateMaintenanceTicketScreenState
           icon: const Icon(Icons.arrow_back_rounded),
           tooltip: 'Trở về',
         ),
-        title: const Text(
-          'Phiếu sự cố',
-          style: TextStyle(
-            color: AppColors.deepBlue,
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
+        title: const Text('Phiếu sự cố', style: AppColors.topBarTitleStyle),
         actions: const [
           Padding(
             padding: EdgeInsets.only(right: 8),
-            child: Icon(Icons.notifications_none_rounded, size: 22),
+            child: Icon(
+              Icons.notifications_none_rounded,
+              color: AppColors.topBarIconColor,
+              size: AppColors.topBarIconSize,
+            ),
           ),
         ],
       ),
@@ -375,9 +318,16 @@ class _CreateMaintenanceTicketScreenState
                     minLines: 5,
                     maxLines: 7,
                     textInputAction: TextInputAction.newline,
-                    validator: (value) => value == null || value.trim().isEmpty
-                        ? 'Vui lòng mô tả vấn đề'
-                        : null,
+                    validator: (value) {
+                      final description = value?.trim() ?? '';
+                      if (description.isEmpty) {
+                        return 'Vui lòng mô tả vấn đề';
+                      }
+                      if (description.length < 10) {
+                        return 'Mô tả cần tối thiểu 10 ký tự';
+                      }
+                      return null;
+                    },
                     decoration: _inputDecoration(
                       hintText:
                           'Mô tả chi tiết vấn đề (ví dụ: vị trí, âm thanh, mức độ khẩn cấp)...',
@@ -485,6 +435,9 @@ class _CreateMaintenanceTicketScreenState
             ),
           );
         },
+        onRequestsTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+        ),
       ),
     );
   }
@@ -547,7 +500,9 @@ class _AttachmentHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Expanded(child: _FieldLabel('Đính kèm ảnh/video (Tối đa 3 ảnh)')),
+        const Expanded(
+          child: _FieldLabel('Đính kèm ảnh hiện trạng (Tối đa 3 ảnh)'),
+        ),
         Text(
           '$count/3',
           style: const TextStyle(
@@ -748,8 +703,6 @@ class _DashedBorderPainter extends CustomPainter {
   }
 }
 
-enum _AttachmentSource { image, video }
-
 InputDecoration _inputDecoration({String? hintText}) {
   return InputDecoration(
     hintText: hintText,
@@ -791,23 +744,17 @@ String _resolveMimeType(XFile file, MaintenanceAttachmentType fallbackType) {
   }
 
   final extension = file.name.split('.').last.toLowerCase();
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].contains(extension)) {
+  if (['jpg', 'jpeg', 'png', 'webp'].contains(extension)) {
     return 'image/$extension';
-  }
-  if (['mp4', 'mov', 'm4v', 'avi', 'webm'].contains(extension)) {
-    return 'video/$extension';
   }
   return fallbackType == MaintenanceAttachmentType.image
       ? 'image/unknown'
-      : 'video/unknown';
+      : 'application/octet-stream';
 }
 
 MaintenanceAttachmentType? _attachmentTypeFromMime(String mimeType) {
   if (mimeType.startsWith('image/')) {
     return MaintenanceAttachmentType.image;
-  }
-  if (mimeType.startsWith('video/')) {
-    return MaintenanceAttachmentType.video;
   }
   return null;
 }

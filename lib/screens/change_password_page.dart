@@ -6,6 +6,7 @@ import '../services/home_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/auth_text_field.dart';
 import 'home_screen.dart';
+import 'identity_verification_page.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({
@@ -102,6 +103,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
   void _goToNextStep(OnboardingState onboarding) {
     final page = switch (onboarding.nextStep) {
+      OnboardingState.identityVerification => CompleteProfileUploadScreen(
+        isRequired: true,
+        authService: widget.authService,
+        homeService: widget.homeService,
+      ),
       _ => HomeScreen(
         authService: widget.authService,
         homeService: widget.homeService,

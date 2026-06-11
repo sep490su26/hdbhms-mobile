@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:hdbhms_mobile/app.dart';
@@ -7,6 +9,7 @@ import 'package:hdbhms_mobile/models/home_summary_model.dart';
 import 'package:hdbhms_mobile/models/login_response.dart';
 import 'package:hdbhms_mobile/models/onboarding_state.dart';
 import 'package:hdbhms_mobile/models/tenant_profile_model.dart';
+import 'package:hdbhms_mobile/models/onboarding_action.dart';
 import 'package:hdbhms_mobile/screens/change_password_page.dart';
 import 'package:hdbhms_mobile/screens/tenant_profile_screen.dart';
 import 'package:hdbhms_mobile/services/auth_service.dart';
@@ -18,7 +21,7 @@ class _FakeAuthService extends AuthService {
 
   @override
   Future<LoginResponse> login({
-    required String phoneOrEmail,
+    required String phone,
     required String password,
   }) async {
     return _homeLoginResponse;
@@ -30,7 +33,7 @@ class _IdentityStepLoginAuthService extends AuthService {
 
   @override
   Future<LoginResponse> login({
-    required String phoneOrEmail,
+    required String phone,
     required String password,
   }) async {
     return _identityStepLoginResponse;
@@ -84,7 +87,7 @@ class _FakeTenantProfileService extends TenantProfileService {
   int _callCount = 0;
 
   @override
-  Future<TenantProfileResponse> getMyProfile({int? tenantId}) async {
+  Future<TenantProfileResponse> getMyProfile() async {
     if (error != null) {
       throw error!;
     }
@@ -102,101 +105,99 @@ const _testApp = App(
 );
 const _homeOnboarding = OnboardingState(
   userId: 1,
-  mustChangePassword: false,
-  identityCompleted: true,
-  nextStep: OnboardingState.home,
+  onBoardingCompleted: true,
+  actions: [],
 );
 const _homeLoginResponse = LoginResponse(
-  accessToken: 'test-access-token',
-  refreshToken: 'test-refresh-token',
-  expiresIn: 900,
-  user: LoginUser(
-    id: 1,
-    fullName: 'Test User',
-    phone: '0900000000',
-    email: 'test@example.com',
-    status: 'ACTIVE',
-    mustChangePassword: false,
-    identityCompleted: true,
-  ),
-  tenants: [
-    LoginTenant(
-      tenantId: 1,
-      tenantName: 'Test Tenant',
-      role: 'TENANT',
-      propertyId: 1,
-    ),
-  ],
+  token: 'test-access-token',
+  sessionId: 'test-session-id',
+  role: 'TENANT',
+  authorized: true,
   onboarding: _homeOnboarding,
 );
 const _identityStepOnboarding = OnboardingState(
   userId: 1,
-  mustChangePassword: false,
-  identityCompleted: false,
-  nextStep: OnboardingState.identityVerification,
-);
-const _identityStepLoginResponse = LoginResponse(
-  accessToken: 'test-access-token',
-  refreshToken: 'test-refresh-token',
-  expiresIn: 900,
-  user: LoginUser(
-    id: 1,
-    fullName: 'Test User',
-    phone: '0900000000',
-    email: 'test@example.com',
-    status: 'ACTIVE',
-    mustChangePassword: false,
-    identityCompleted: false,
-  ),
-  tenants: [
-    LoginTenant(
-      tenantId: 1,
-      tenantName: 'Test Tenant',
-      role: 'TENANT',
-      propertyId: 1,
+  onBoardingCompleted: false,
+  actions: [
+    OnboardingAction(
+      actionKey: OnboardingState.identityVerification,
+      label: 'Identity Verification',
+      completed: false,
+      priority: 1,
     ),
   ],
+);
+const _identityStepLoginResponse = LoginResponse(
+  token: 'test-access-token',
+  sessionId: 'test-session-id',
+  role: 'TENANT',
+  authorized: true,
   onboarding: _identityStepOnboarding,
 );
-const _homeSummary = HomeSummary(
-  user: HomeUser(
+final _homeSummary = HomeSummary(
+  user: const HomeUser(
     id: 1,
     fullName: 'Test User',
     phone: '0900000000',
     email: 'test@example.com',
     role: 'TENANT',
   ),
-  tenant: HomeTenant(id: 1, name: 'Test Tenant'),
-  room: HomeRoom(
+  tenant: const HomeTenant(id: 1, name: 'Test Tenant'),
+  room: const HomeRoom(
     id: 1,
     roomCode: '101',
     name: 'Phòng 101',
     currentStatus: 'OCCUPIED',
   ),
+  rooms: const [
+    HomeRoom(
+      id: 1,
+      roomCode: '101',
+      name: 'Phòng 101',
+      currentStatus: 'OCCUPIED',
+    ),
+  ],
   contract: HomeContract(
     id: 1,
     contractCode: 'HD-TEST-001',
     status: 'ACTIVE',
-    startDate: null,
-    endDate: null,
+    startDate: DateTime(2024, 1, 1),
+    endDate: DateTime(2025, 1, 1),
   ),
-  invoiceSummary: InvoiceSummary(
+  invoiceSummary: const InvoiceSummary(
     unpaidCount: 2,
     totalUnpaidAmount: 2800000,
     nearestDueDate: null,
   ),
-  notificationSummary: NotificationSummary(unreadCount: 3),
+  notificationSummary: const NotificationSummary(unreadCount: 0),
+  utilitySummary: const UtilitySummary(
+    electricity: UtilityUsage(
+      name: 'Điện',
+      value: 150.0,
+      unit: 'kWh',
+      status: 'Bình thường',
+      percentChange: null,
+    ),
+    water: UtilityUsage(
+      name: 'Nước',
+      value: 10.0,
+      unit: 'm³',
+      status: 'Bình thường',
+      percentChange: null,
+    ),
+  ),
   onboarding: _homeOnboarding,
 );
 
 final _tenantProfile = TenantProfileResponse(
   tenantProfileId: 1,
   status: 'ACTIVE',
-  person: PersonProfileDto(
+  person: const PersonProfileDto(
     fullName: 'Nguyễn Văn A',
     phone: '0912345678',
     email: 'a@gmail.com',
     permanentAddress: '12 Nguyễn Trãi, Hà Nội',
+    portraitFileUrl: '',
   ),
   identityDocument: IdentityDocumentDto(
     docType: 'CCCD',
@@ -207,7 +208,7 @@ final _tenantProfile = TenantProfileResponse(
     issuedPlace: 'Cục CS QLHCVTTXH',
   ),
   vehicles: [
-    VehicleDto(
+    const VehicleDto(
       id: 1,
       vehicleType: 'MOTORBIKE',
       licensePlate: '29B1-12345',
@@ -215,7 +216,7 @@ final _tenantProfile = TenantProfileResponse(
     ),
   ],
   emergencyContacts: [
-    EmergencyContactDto(
+    const EmergencyContactDto(
       fullName: 'Nguyễn Thị B',
       relationship: 'Mẹ',
       phone: '0987111222',
@@ -231,6 +232,7 @@ const _tenantProfileWithoutVehicles = TenantProfileResponse(
     phone: '',
     email: '',
     permanentAddress: '',
+    portraitFileUrl: '',
   ),
   identityDocument: null,
   vehicles: [],
@@ -245,6 +247,7 @@ const _tenantProfileWithNullVehicleImage = TenantProfileResponse(
     phone: '0912345678',
     email: '',
     permanentAddress: '',
+    portraitFileUrl: '',
   ),
   identityDocument: null,
   vehicles: [
@@ -584,6 +587,7 @@ void main() {
             phone: '0909009009',
             email: '',
             permanentAddress: '',
+            portraitFileUrl: '',
           ),
           identityDocument: null,
           vehicles: [],
@@ -601,7 +605,7 @@ void main() {
     expect(find.text('0909009009'), findsOneWidget);
   });
 
-  test('mobile onboarding maps identity verification step to home', () {
+  test('mobile onboarding preserves identity verification step', () {
     final onboarding = OnboardingState.fromJson(const {
       'user_id': 1,
       'must_change_password': false,
@@ -609,10 +613,66 @@ void main() {
       'next_step': OnboardingState.identityVerification,
     });
 
-    expect(onboarding.nextStep, OnboardingState.home);
+    expect(onboarding.nextStep, OnboardingState.identityVerification);
   });
 
-  testWidgets('login ignores identity verification onboarding step', (
+  test('mobile login response parses tenant context for identity upload', () {
+    final response = LoginResponse.fromJson(const {
+      'token': 'token',
+      'sessionId': 'session',
+      'role': 'TENANT',
+      'authorized': true,
+      'tenantId': 23,
+      'propertyId': 7,
+    });
+
+    expect(response.tenantId, 23);
+    expect(response.propertyId, 7);
+  });
+
+  test('mobile login saves tenant context for identity upload', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = AuthService(
+      client: MockClient(
+        (_) async => http.Response('''
+          {
+            "code": 0,
+            "data": {
+              "token": "token",
+              "sessionId": "session",
+              "role": "TENANT",
+              "tenantId": 23,
+              "propertyId": 7,
+              "authorized": true,
+              "onboarding": {
+                "user_id": 1,
+                "on_boarding_completed": false,
+                "actions": [
+                  {
+                    "action_key": "IDENTITY_VERIFICATION",
+                    "label": "Upload identity documents",
+                    "completed": false,
+                    "priority": 1
+                  }
+                ]
+              }
+            }
+          }
+          ''', 200),
+      ),
+    );
+
+    final response = await service.login(
+      phone: '0900000000',
+      password: 'password',
+    );
+    final prefs = await SharedPreferences.getInstance();
+
+    expect(response.onboarding?.nextStep, OnboardingState.identityVerification);
+    expect(prefs.getInt(AuthService.tenantIdKey), 23);
+  });
+
+  testWidgets('login requires identity verification before home', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -625,12 +685,12 @@ void main() {
 
     await login(tester);
 
-    expect(find.text('XIN CH\u00C0O,'), findsOneWidget);
-    expect(find.text('Hoàn tất hồ sơ'), findsNothing);
-    expect(find.text('CCCD mặt trước'), findsNothing);
+    expect(find.text('XIN CH\u00C0O,'), findsNothing);
+    expect(find.text('Hoàn tất hồ sơ'), findsWidgets);
+    expect(find.text('CCCD mặt trước'), findsWidgets);
   });
 
-  testWidgets('startup ignores cached identity verification onboarding step', (
+  testWidgets('startup requires identity verification before home', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -641,34 +701,33 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('XIN CH\u00C0O,'), findsOneWidget);
-    expect(find.text('Hoàn tất hồ sơ'), findsNothing);
-    expect(find.text('CCCD mặt trước'), findsNothing);
+    expect(find.text('XIN CH\u00C0O,'), findsNothing);
+    expect(find.text('Hoàn tất hồ sơ'), findsWidgets);
+    expect(find.text('CCCD mặt trước'), findsWidgets);
   });
 
-  testWidgets(
-    'change password goes straight home after identity step response',
-    (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: ChangePasswordPage(
-            authService: _IdentityStepAfterPasswordAuthService(),
-            homeService: _FakeHomeService(),
-            isRequired: true,
-          ),
+  testWidgets('change password continues to required identity verification', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: ChangePasswordPage(
+          authService: _IdentityStepAfterPasswordAuthService(),
+          homeService: _FakeHomeService(),
+          isRequired: true,
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      await tester.enterText(find.byType(TextFormField).at(0), 'Changed123');
-      await tester.enterText(find.byType(TextFormField).at(1), 'Changed123');
-      await tester.ensureVisible(find.text('ĐỔI MẬT KHẨU'));
-      await tester.tap(find.text('ĐỔI MẬT KHẨU'));
-      await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(0), 'Changed123');
+    await tester.enterText(find.byType(TextFormField).at(1), 'Changed123');
+    await tester.ensureVisible(find.text('ĐỔI MẬT KHẨU'));
+    await tester.tap(find.text('ĐỔI MẬT KHẨU'));
+    await tester.pumpAndSettle();
 
-      expect(find.text('XIN CH\u00C0O,'), findsOneWidget);
-      expect(find.text('Hoàn tất hồ sơ'), findsNothing);
-      expect(find.text('CCCD mặt trước'), findsNothing);
-    },
-  );
+    expect(find.text('XIN CH\u00C0O,'), findsNothing);
+    expect(find.text('Hoàn tất hồ sơ'), findsWidgets);
+    expect(find.text('CCCD mặt trước'), findsWidgets);
+  });
 }

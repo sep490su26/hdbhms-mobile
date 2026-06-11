@@ -15,4 +15,11 @@ class AppColors {
   static const cardBorder = Color(0xFFC6C5D4);
   static const requirementBackground = Color(0xFFF5F3F3);
   static const heroGradientStart = Color(0xFF000666);
+  static const topBarIconColor = deepBlue;
+  static const double topBarIconSize = 22;
+  static const topBarTitleStyle = TextStyle(
+    color: deepBlue,
+    fontSize: 18,
+    fontWeight: FontWeight.w900,
+  );
 }
