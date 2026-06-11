@@ -22,6 +22,7 @@ class ActiveRoomItem {
     required this.roomCode,
     required this.roomName,
     required this.propertyName,
+    this.contractStatus = '',
   });
 
   final int contractId;
@@ -30,6 +31,7 @@ class ActiveRoomItem {
   final String roomCode;
   final String roomName;
   final String propertyName;
+  final String contractStatus;
 
   factory ActiveRoomItem.fromJson(Map<String, dynamic> json) {
     return ActiveRoomItem(
@@ -39,6 +41,10 @@ class ActiveRoomItem {
       roomCode: json['room_code']?.toString() ?? '',
       roomName: json['room_name']?.toString() ?? '',
       propertyName: json['property_name']?.toString() ?? '',
+      contractStatus:
+          json['contract_status']?.toString() ??
+          json['contractStatus']?.toString() ??
+          '',
     );
   }
 
@@ -100,7 +106,7 @@ class LeaseContractService {
             data = payload;
           }
         }
-        
+
         if (data == null) {
           throw const LeaseContractNotFoundException();
         }
@@ -143,16 +149,13 @@ class LeaseContractService {
       queryParams['signedTo'] = signedTo.toIso8601String();
     }
 
-    final uri = Uri.parse('${ApiConfig.baseUrl}/lease-contracts/me')
-        .replace(queryParameters: queryParams);
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/lease-contracts/me',
+    ).replace(queryParameters: queryParams);
 
     final client = _effectiveClient;
     try {
-      final response = await client
-          .get(
-            uri,
-          )
-          .timeout(_timeout);
+      final response = await client.get(uri).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -196,7 +199,9 @@ class LeaseContractService {
     final client = _effectiveClient;
     try {
       final response = await client
-          .get(Uri.parse('${ApiConfig.baseUrl}/lease-contracts/me/active-rooms'))
+          .get(
+            Uri.parse('${ApiConfig.baseUrl}/lease-contracts/me/active-rooms'),
+          )
           .timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -234,11 +239,7 @@ class LeaseContractService {
     final client = _effectiveClient;
     try {
       final response = await client
-          .get(
-            Uri.parse(
-              '${ApiConfig.baseUrl}/lease-contracts/$contractId',
-            ),
-          )
+          .get(Uri.parse('${ApiConfig.baseUrl}/lease-contracts/$contractId'))
           .timeout(_timeout);
 
       if (response.statusCode == 200) {

@@ -1,9 +1,9 @@
-
 enum FileCategory {
   ID_CARD,
   CONTRACT,
   INVOICE,
   MAINTENANCE,
+  TICKET_ATTACHMENT,
   OTHER;
 
   String toJson() => name;
@@ -55,8 +55,11 @@ class BatchFileResponse {
       totalFiles: (json['totalFiles'] as num?)?.toInt() ?? 0,
       successfulUploads: (json['successfulUploads'] as num?)?.toInt() ?? 0,
       failedUploads: (json['failedUploads'] as num?)?.toInt() ?? 0,
-      fileMetadataResponse: (json['fileMetadataResponse'] as List<dynamic>?)
-              ?.map((e) => FileMetadataResponse.fromJson(e as Map<String, dynamic>))
+      fileMetadataResponse:
+          (json['fileMetadataResponse'] as List<dynamic>?)
+              ?.map(
+                (e) => FileMetadataResponse.fromJson(e as Map<String, dynamic>),
+              )
               .toList() ??
           [],
       message: json['message']?.toString(),

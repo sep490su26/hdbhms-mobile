@@ -22,7 +22,7 @@ class FileService {
   }) async {
     final client = _effectiveClient;
     final uri = Uri.parse('${ApiConfig.baseUrl}/files/upload');
-    
+
     final request = http.MultipartRequest('POST', uri)
       ..fields['category'] = category.name
       ..fields['isSensitive'] = isSensitive.toString()
@@ -38,7 +38,7 @@ class FileService {
     final streamedResponse = await client.send(request);
     final response = await http.Response.fromStream(streamedResponse);
 
-    if (response.statusCode == 201) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       final apiResponse = ApiResponse<FileMetadataResponse>.fromJson(
         data,
@@ -76,7 +76,7 @@ class FileService {
     final streamedResponse = await client.send(request);
     final response = await http.Response.fromStream(streamedResponse);
 
-    if (response.statusCode == 201) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       final apiResponse = ApiResponse<BatchFileResponse>.fromJson(
         data,
@@ -90,7 +90,7 @@ class FileService {
 
   Future<Uint8List> download(int fileId) async {
     final client = _effectiveClient;
-    
+
     try {
       final response = await client.get(
         Uri.parse('${ApiConfig.baseUrl}/files/download/$fileId'),
@@ -114,6 +114,8 @@ class FileService {
         return MediaType('image', 'jpeg');
       case 'png':
         return MediaType('image', 'png');
+      case 'webp':
+        return MediaType('image', 'webp');
       case 'pdf':
         return MediaType('application', 'pdf');
       default:

@@ -149,6 +149,14 @@ final _homeSummary = HomeSummary(
     name: 'Phòng 101',
     currentStatus: 'OCCUPIED',
   ),
+  rooms: const [
+    HomeRoom(
+      id: 1,
+      roomCode: '101',
+      name: 'Phòng 101',
+      currentStatus: 'OCCUPIED',
+    ),
+  ],
   contract: HomeContract(
     id: 1,
     contractCode: 'HD-TEST-001',
