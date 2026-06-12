@@ -64,7 +64,9 @@ class MaintenanceTicketModel {
           '',
       category: TicketCategory.fromBackend(json['category']?.toString() ?? ''),
       title: json['title']?.toString() ?? '',
-      description: json['description']?.toString() ?? '',
+      description: _maintenanceDisplayText(
+        json['description']?.toString() ?? '',
+      ),
       createdDate:
           DateTime.tryParse(
             json['created_at']?.toString() ??
@@ -176,6 +178,7 @@ class MaintenanceTicketDetail {
     this.events = const [],
     this.billingStatus = '',
     this.billingStatusLabel = '',
+    this.invoiceStatus = '',
     this.invoiceCode = '',
     this.lineType = '',
     this.chargeAmount,
@@ -202,6 +205,7 @@ class MaintenanceTicketDetail {
   final List<TicketTimelineEvent> events;
   final String billingStatus;
   final String billingStatusLabel;
+  final String invoiceStatus;
   final String invoiceCode;
   final String lineType;
   final num? chargeAmount;
@@ -232,6 +236,7 @@ class MaintenanceTicketDetail {
     List<TicketTimelineEvent>? events,
     String? billingStatus,
     String? billingStatusLabel,
+    String? invoiceStatus,
     String? invoiceCode,
     String? lineType,
     num? chargeAmount,
@@ -258,6 +263,7 @@ class MaintenanceTicketDetail {
       events: events ?? this.events,
       billingStatus: billingStatus ?? this.billingStatus,
       billingStatusLabel: billingStatusLabel ?? this.billingStatusLabel,
+      invoiceStatus: invoiceStatus ?? this.invoiceStatus,
       invoiceCode: invoiceCode ?? this.invoiceCode,
       lineType: lineType ?? this.lineType,
       chargeAmount: chargeAmount ?? this.chargeAmount,
@@ -341,7 +347,9 @@ class MaintenanceTicketDetail {
       category: category,
       categoryName: category.label,
       title: json['title']?.toString() ?? '',
-      description: json['description']?.toString() ?? '',
+      description: _maintenanceDisplayText(
+        json['description']?.toString() ?? '',
+      ),
       priority: TicketPriority.fromBackend(
         json['severity']?.toString() ?? json['priority']?.toString() ?? '',
       ),
@@ -371,16 +379,17 @@ class MaintenanceTicketDetail {
           json['billing_status_label']?.toString() ??
           json['billingStatusLabel']?.toString() ??
           '',
+      invoiceStatus:
+          json['invoice_status']?.toString() ??
+          json['invoiceStatus']?.toString() ??
+          '',
       invoiceCode:
           json['invoice_code']?.toString() ??
           json['invoiceCode']?.toString() ??
           '',
       lineType:
-          json['line_type']?.toString() ??
-          json['lineType']?.toString() ??
-          '',
-      chargeAmount:
-          _asNum(json['charge_amount'] ?? json['chargeAmount']),
+          json['line_type']?.toString() ?? json['lineType']?.toString() ?? '',
+      chargeAmount: _asNum(json['charge_amount'] ?? json['chargeAmount']),
     );
   }
 }
@@ -593,8 +602,10 @@ class TicketTimelineEvent {
         '';
     return TicketTimelineEvent(
       status: toStatus,
-      title: action.isEmpty ? TicketStatus.fromBackend(toStatus).label : action,
-      description: json['note']?.toString() ?? '',
+      title: action.isEmpty
+          ? TicketStatus.fromBackend(toStatus).label
+          : _maintenanceActionLabel(action),
+      description: _maintenanceDisplayText(json['note']?.toString() ?? ''),
       createdAt:
           DateTime.tryParse(
             json['created_at']?.toString() ??
@@ -810,8 +821,14 @@ String _resolveFileUrl(String rawUrl, int? fileId) {
   if (url.startsWith('/api/v1')) {
     return '$apiRoot$url';
   }
-  if (url.startsWith('/')) {
+  if (url.startsWith('api/v1/')) {
+    return '$apiRoot/$url';
+  }
+  if (url.startsWith('/files/')) {
     return '${ApiConfig.baseUrl}$url';
+  }
+  if (url.startsWith('/')) {
+    return '$apiRoot$url';
   }
   if (url.isNotEmpty) {
     return '${ApiConfig.baseUrl}/$url';
@@ -820,4 +837,43 @@ String _resolveFileUrl(String rawUrl, int? fileId) {
     return '${ApiConfig.baseUrl}/files/download/$fileId';
   }
   return '';
+}
+
+String _maintenanceActionLabel(String action) {
+  switch (action.trim().toUpperCase()) {
+    case 'CREATE':
+      return 'Tạo phiếu';
+    case 'ACCEPT':
+      return 'Tiếp nhận';
+    case 'START_PROGRESS':
+      return 'Bắt đầu xử lý';
+    case 'COMPLETE':
+    case 'CONFIRM_COMPLETED':
+      return 'Hoàn tất xử lý';
+    case 'REJECT':
+    case 'DECLINE':
+      return 'Từ chối';
+    case 'REPORT_NOT_FIXED':
+      return 'Báo chưa xử lý xong';
+    case 'REVIEW':
+      return 'Đánh giá';
+    default:
+      return action.replaceAll('_', ' ');
+  }
+}
+
+String _maintenanceDisplayText(String value) {
+  return value
+      .replaceAll('RESET_WIFI_PASSWORD', 'Tự ý reset mật khẩu modem/wifi')
+      .replaceAll('VIOLATION_FINE', 'Phạt vi phạm nội quy')
+      .replaceAll('MAINTENANCE_COMPENSATION', 'Bồi thường chi phí bảo trì')
+      .replaceAll('NO_CHARGE', 'Không thu khách')
+      .replaceAll('SCHEDULE_FAILED', 'Lỗi lên lịch hóa đơn')
+      .replaceAll('SCHEDULED', 'Đã lên lịch gộp hóa đơn đầu tháng')
+      .replaceAll('DRAFT', 'Chờ chủ trọ phát hành')
+      .replaceAll('PARTIALLY_PAID', 'Thanh toán một phần')
+      .replaceAll('VOIDED', 'Đã hủy')
+      .replaceAll('PENDING_PAYMENT', 'Chờ thanh toán')
+      .replaceAll('PAID', 'Đã thanh toán')
+      .replaceAll('NOT_INVOICED', 'Chưa tạo hóa đơn');
 }

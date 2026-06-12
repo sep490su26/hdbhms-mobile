@@ -9,6 +9,7 @@ class TenantInvoice {
     required this.contractCode,
     required this.dueDate,
     required this.issuedAt,
+    required this.paidAt,
     required this.totalAmount,
     required this.paidAmount,
     required this.remainingAmount,
@@ -34,6 +35,7 @@ class TenantInvoice {
   final String contractCode;
   final DateTime? dueDate;
   final DateTime? issuedAt;
+  final DateTime? paidAt;
   final int totalAmount;
   final int paidAmount;
   final int remainingAmount;
@@ -51,14 +53,38 @@ class TenantInvoice {
 
   bool get isPaid => status.toUpperCase() == 'PAID' || remainingAmount <= 0;
 
+  bool get isTenantVisible {
+    final normalized = status.toUpperCase();
+    return normalized == 'ISSUED' ||
+        normalized == 'PARTIALLY_PAID' ||
+        normalized == 'PAID' ||
+        normalized == 'OVERDUE';
+  }
+
+  bool get canPay {
+    final normalized = status.toUpperCase();
+    return normalized == 'ISSUED' ||
+        normalized == 'PARTIALLY_PAID' ||
+        normalized == 'OVERDUE';
+  }
+
   String get title {
     final hasViolation = lines.any((line) => line.lineType == 'VIOLATION_FINE');
-    if (hasViolation) return 'Phạt vi phạm nội quy';
-    final hasMaintenanceCompensation =
-        lines.any((line) => line.lineType == 'MAINTENANCE_COMPENSATION');
-    if (hasMaintenanceCompensation) return 'Bồi thường chi phí bảo trì';
-    if (invoiceType == 'UTILITY') return 'Hóa đơn Điện & Nước ${_periodLabel(billingPeriod)}';
-    if (invoiceType == 'RENT') return 'Hóa đơn tiền phòng ${_periodLabel(billingPeriod)}';
+    if (hasViolation) {
+      return 'Phạt vi phạm nội quy';
+    }
+    final hasMaintenanceCompensation = lines.any(
+      (line) => line.lineType == 'MAINTENANCE_COMPENSATION',
+    );
+    if (hasMaintenanceCompensation) {
+      return 'Bồi thường chi phí bảo trì';
+    }
+    if (invoiceType == 'UTILITY') {
+      return 'Hóa đơn Điện & Nước ${_periodLabel(billingPeriod)}';
+    }
+    if (invoiceType == 'RENT') {
+      return 'Hóa đơn tiền phòng ${_periodLabel(billingPeriod)}';
+    }
     final period = _periodLabel(billingPeriod);
     return period.isEmpty ? 'Hóa đơn phát sinh' : 'Hóa đơn $period';
   }
@@ -73,20 +99,35 @@ class TenantInvoice {
       roomCode: _firstString(json, ['roomCode', 'room_code']),
       contractCode: _firstString(json, ['contractCode', 'contract_code']),
       dueDate: DateTime.tryParse(_firstString(json, ['dueDate', 'due_date'])),
-      issuedAt: DateTime.tryParse(_firstString(json, ['issuedAt', 'issued_at'])),
+      issuedAt: DateTime.tryParse(
+        _firstString(json, ['issuedAt', 'issued_at']),
+      ),
+      paidAt: DateTime.tryParse(_firstString(json, ['paidAt', 'paid_at'])),
       totalAmount: _intField(json, ['totalAmount', 'total_amount']),
       paidAmount: _intField(json, ['paidAmount', 'paid_amount']),
       remainingAmount: _intField(json, ['remainingAmount', 'remaining_amount']),
-      paymentIntentId: int.tryParse(_firstString(json, ['paymentIntentId', 'payment_intent_id'])),
-      checkoutUrl: _firstString(json, ['checkoutUrl', 'checkout_url', 'checkOutUrl']),
+      paymentIntentId: int.tryParse(
+        _firstString(json, ['paymentIntentId', 'payment_intent_id']),
+      ),
+      checkoutUrl: _firstString(json, [
+        'checkoutUrl',
+        'checkout_url',
+        'checkOutUrl',
+      ]),
       qrCode: _firstString(json, ['qrCode', 'qr_code']),
-      providerOrderCode: _firstString(json, ['providerOrderCode', 'provider_order_code']),
+      providerOrderCode: _firstString(json, [
+        'providerOrderCode',
+        'provider_order_code',
+      ]),
       paymentLinkId: _firstString(json, ['paymentLinkId', 'payment_link_id']),
       bankBin: _firstString(json, ['bankBin', 'bank_bin']),
       bankShortName: _firstString(json, ['bankShortName', 'bank_short_name']),
       accountNumber: _firstString(json, ['accountNumber', 'account_number']),
       accountName: _firstString(json, ['accountName', 'account_name']),
-      transferDescription: _firstString(json, ['transferDescription', 'transfer_description']),
+      transferDescription: _firstString(json, [
+        'transferDescription',
+        'transfer_description',
+      ]),
       lines: (json['lines'] as List<dynamic>? ?? [])
           .whereType<Map<String, dynamic>>()
           .map(TenantInvoiceLine.fromJson)

@@ -19,7 +19,7 @@ class PropertyRuleService {
   const PropertyRuleService({http.Client? client}) : _client = client;
 
   final http.Client? _client;
-  static const _timeout = Duration(seconds: 10);
+  static const _timeout = Duration(seconds: 20);
 
   Future<PropertyRulesResponse> getRules({int? tenantId}) async {
     final prefs = await SharedPreferences.getInstance();

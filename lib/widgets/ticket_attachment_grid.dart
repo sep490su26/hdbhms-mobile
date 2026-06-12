@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/maintenance_ticket_model.dart';
+import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 
 class TicketAttachmentGrid extends StatelessWidget {
@@ -61,7 +62,7 @@ class _AttachmentTile extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               if (attachment.isImage)
-                Image.network(
+                _AuthenticatedAttachmentImage(
                   attachment.url,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
@@ -128,7 +129,7 @@ class _AttachmentPreviewScreen extends StatelessWidget {
               ? InteractiveViewer(
                   minScale: 0.8,
                   maxScale: 4,
-                  child: Image.network(
+                  child: _AuthenticatedAttachmentImage(
                     attachment.url,
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) {
@@ -144,6 +145,62 @@ class _AttachmentPreviewScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class _AuthenticatedAttachmentImage extends StatelessWidget {
+  const _AuthenticatedAttachmentImage(
+    this.url, {
+    required this.fit,
+    required this.errorBuilder,
+  });
+
+  final String url;
+  final BoxFit fit;
+  final ImageErrorWidgetBuilder errorBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, String>?>(
+      future: _buildAuthHeaders(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const _AttachmentLoadingPlaceholder();
+        }
+        return Image.network(
+          url,
+          headers: snapshot.data,
+          fit: fit,
+          errorBuilder: errorBuilder,
+        );
+      },
+    );
+  }
+}
+
+class _AttachmentLoadingPlaceholder extends StatelessWidget {
+  const _AttachmentLoadingPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: Color(0xFFE7E9F0),
+      child: Center(
+        child: SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ),
+    );
+  }
+}
+
+Future<Map<String, String>?> _buildAuthHeaders() async {
+  final token = await const AuthService().accessToken;
+  if (token == null || token.isEmpty) {
+    return null;
+  }
+  return {'Authorization': 'Bearer $token', 'X-Client-Type': 'mobile'};
 }
 
 class _EmptyAttachments extends StatelessWidget {

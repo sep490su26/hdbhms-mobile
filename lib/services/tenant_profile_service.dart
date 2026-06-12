@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
-import 'dart:io';
 import 'dart:typed_data';
 
 import '../config/api_config.dart';
@@ -31,7 +30,7 @@ class TenantProfileService {
 
   final http.Client? _client;
   http.Client get _effectiveClient => _client ?? AuthenticatedClient();
-  static const _timeout = Duration(seconds: 10);
+  static const _timeout = Duration(seconds: 20);
 
   Future<TenantProfileResponse> getMyProfile() async {
     final client = _effectiveClient;

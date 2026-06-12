@@ -35,11 +35,14 @@ class AuthenticatedClient extends http.BaseClient {
     request.headers['X-Client-Type'] = 'mobile';
 
     debugPrint('➡️ [HTTP REQUEST] ${request.method} ${request.url}');
-    if (request is http.Request) {
-      debugPrint('➡️ [BODY] ${request.body}');
-    }
 
-    final response = await _inner.send(request);
+    http.StreamedResponse response;
+    try {
+      response = await _inner.send(request);
+    } on http.ClientException catch (error) {
+      _logNetworkFailure(request, error);
+      rethrow;
+    }
 
     // Read the response stream so we can log it, then reconstruct it
     final responseBytes = await response.stream.toBytes();
@@ -87,6 +90,18 @@ class AuthenticatedClient extends http.BaseClient {
     }
 
     return clonedResponse;
+  }
+
+  void _logNetworkFailure(http.BaseRequest request, Object error) {
+    final uri = request.url;
+    debugPrint(
+      '❌ [HTTP NETWORK] ${request.method} scheme=${uri.scheme} host=${uri.host} port=${uri.hasPort ? uri.port : '(default)'} path=${uri.path} error=$error',
+    );
+    if (uri.scheme == 'http') {
+      debugPrint(
+        '❌ [HTTP NETWORK] Nếu chạy Android thật, kiểm tra API_BASE_URL dùng IP LAN laptop và debug build cho phép cleartext HTTP.',
+      );
+    }
   }
 
   void _redirectToLogin() {

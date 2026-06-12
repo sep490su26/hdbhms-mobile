@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'notification_list_screen.dart';
 import 'tenant_request_screen.dart';
 
@@ -66,21 +66,27 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
                         FutureBuilder<List<TenantInvoice>>(
                           future: _invoicesFuture,
                           builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
                               return const _BillLoadingState();
                             }
                             if (snapshot.hasError) {
                               return _BillErrorState(
-                                message: snapshot.error is TenantInvoiceException
-                                    ? (snapshot.error as TenantInvoiceException).message
+                                message:
+                                    snapshot.error is TenantInvoiceException
+                                    ? (snapshot.error as TenantInvoiceException)
+                                          .message
                                     : 'Không tải được hóa đơn. Vui lòng thử lại.',
                                 onRetry: _reloadInvoices,
                               );
                             }
+                            final visibleInvoices = (snapshot.data ?? const [])
+                                .where((invoice) => invoice.isTenantVisible)
+                                .toList();
                             return Column(
                               children: _buildFilteredBills(
                                 context,
-                                snapshot.data ?? const [],
+                                visibleInvoices,
                               ),
                             );
                           },
@@ -114,10 +120,8 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const TenantRequestScreen(),
-              ),
-            ),
+          MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+        ),
       ),
     );
   }
@@ -129,7 +133,7 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
   }
 
   void _openPayment(BuildContext context, TenantInvoice invoice) {
-    if (invoice.checkoutUrl.isNotEmpty) {
+    if (invoice.canPay && invoice.checkoutUrl.isNotEmpty) {
       Navigator.of(context)
           .push(
             MaterialPageRoute(
@@ -144,7 +148,7 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
     }
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Hóa đơn chưa có link thanh toán. Vui lòng liên hệ quản lý.'),
+        content: Text('Hóa đơn chưa thể thanh toán. Vui lòng liên hệ quản lý.'),
       ),
     );
   }
@@ -177,9 +181,7 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
     final historyButton = _ViewHistoryButton(
       onTap: () {
         Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => const PaymentHistoryPage(),
-          ),
+          MaterialPageRoute(builder: (context) => const PaymentHistoryPage()),
         );
       },
     );
@@ -190,26 +192,26 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
 
     return switch (_activeFilter) {
       _BillFilter.all => [
-          if (pendingBills.isNotEmpty) ...pendingBills,
-          if (paidBills.isNotEmpty) ...[
-            const SizedBox(height: 28),
-            const _PaidDivider(),
-            const SizedBox(height: 22),
-            ...paidBills,
-          ],
-          const SizedBox(height: 18),
-          historyButton,
+        if (pendingBills.isNotEmpty) ...pendingBills,
+        if (paidBills.isNotEmpty) ...[
+          const SizedBox(height: 28),
+          const _PaidDivider(),
+          const SizedBox(height: 22),
+          ...paidBills,
         ],
-      _BillFilter.unpaid => pendingBills.isEmpty
-          ? const [_BillEmptyState(message: 'Không có hóa đơn chờ thanh toán.')]
-          : pendingBills,
-      _BillFilter.paid => paidBills.isEmpty
-          ? const [_BillEmptyState(message: 'Chưa có hóa đơn đã thanh toán.')]
-          : [
-              ...paidBills,
-              const SizedBox(height: 18),
-              historyButton,
-            ],
+        const SizedBox(height: 18),
+        historyButton,
+      ],
+      _BillFilter.unpaid =>
+        pendingBills.isEmpty
+            ? const [
+                _BillEmptyState(message: 'Không có hóa đơn chờ thanh toán.'),
+              ]
+            : pendingBills,
+      _BillFilter.paid =>
+        paidBills.isEmpty
+            ? const [_BillEmptyState(message: 'Chưa có hóa đơn đã thanh toán.')]
+            : [...paidBills, const SizedBox(height: 18), historyButton],
     };
   }
 }
@@ -266,10 +268,7 @@ class _BillLoadingState extends StatelessWidget {
 }
 
 class _BillErrorState extends StatelessWidget {
-  const _BillErrorState({
-    required this.message,
-    required this.onRetry,
-  });
+  const _BillErrorState({required this.message, required this.onRetry});
 
   final String message;
   final VoidCallback onRetry;
@@ -332,10 +331,7 @@ class _BillEmptyState extends StatelessWidget {
 }
 
 class _BillFilterBar extends StatelessWidget {
-  const _BillFilterBar({
-    required this.active,
-    required this.onChanged,
-  });
+  const _BillFilterBar({required this.active, required this.onChanged});
 
   final _BillFilter active;
   final ValueChanged<_BillFilter> onChanged;
@@ -474,9 +470,9 @@ class _BillHeader extends StatelessWidget {
               ),
             ),
             padding: EdgeInsets.zero,
-constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-icon: const Icon(
-Icons.notifications_none_rounded,
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            icon: const Icon(
+              Icons.notifications_none_rounded,
               color: AppColors.inputText,
               size: 24,
             ),
@@ -489,10 +485,7 @@ Icons.notifications_none_rounded,
 }
 
 class _PendingBillCard extends StatelessWidget {
-  const _PendingBillCard({
-    required this.invoice,
-    required this.onTap,
-  });
+  const _PendingBillCard({required this.invoice, required this.onTap});
 
   final TenantInvoice invoice;
   final VoidCallback onTap;
@@ -552,7 +545,11 @@ class _PendingBillCard extends StatelessWidget {
                               ),
                               const SizedBox(width: 10),
                               Text(
-                                _formatAmount(invoice.remainingAmount > 0 ? invoice.remainingAmount : invoice.totalAmount),
+                                _formatAmount(
+                                  invoice.remainingAmount > 0
+                                      ? invoice.remainingAmount
+                                      : invoice.totalAmount,
+                                ),
                                 style: const TextStyle(
                                   color: AppColors.deepBlue,
                                   fontSize: 16,
@@ -610,7 +607,9 @@ class _PendingBillCard extends StatelessWidget {
                               ),
                               const SizedBox(width: 7),
                               Text(
-                                invoice.roomCode.isEmpty ? 'Chưa có phòng' : 'Phòng ${invoice.roomCode}',
+                                invoice.roomCode.isEmpty
+                                    ? 'Chưa có phòng'
+                                    : 'Phòng ${invoice.roomCode}',
                                 style: const TextStyle(
                                   color: AppColors.bodyText,
                                   fontSize: 12,
@@ -813,4 +812,3 @@ class _ViewHistoryButton extends StatelessWidget {
     );
   }
 }
-
