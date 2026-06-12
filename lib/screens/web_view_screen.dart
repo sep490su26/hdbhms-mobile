@@ -1,9 +1,9 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-import '../theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 /// Màn WebView dùng chung – nhận [url] và [title] từ ngoài truyền vào.
 ///

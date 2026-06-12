@@ -1,11 +1,11 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hdbhms_mobile/models/lease_contract_model.dart';
-import 'package:hdbhms_mobile/screens/lease_contract_screen.dart';
-import 'package:hdbhms_mobile/services/auth_service.dart';
-import 'package:hdbhms_mobile/services/lease_contract_service.dart';
+import 'package:hdbhms_mobile/models/contract/lease_contract_model.dart';
+import 'package:hdbhms_mobile/screens/contract/lease_contract_screen.dart';
+import 'package:hdbhms_mobile/services/auth/auth_service.dart';
+import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';

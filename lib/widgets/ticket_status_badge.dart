@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
-import '../models/maintenance_ticket_model.dart';
-import '../theme/app_colors.dart';
+import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 class TicketStatusBadge extends StatelessWidget {
   const TicketStatusBadge({

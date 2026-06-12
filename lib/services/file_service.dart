@@ -1,12 +1,12 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
-import '../config/api_config.dart';
-import '../models/api_response.dart';
-import '../models/file_metadata_model.dart';
-import 'authenticated_client.dart';
+import 'package:hdbhms_mobile/config/api_config.dart';
+import 'package:hdbhms_mobile/models/api_response.dart';
+import 'package:hdbhms_mobile/models/maintenance/file_metadata_model.dart';
+import 'package:hdbhms_mobile/services/authenticated_client.dart';
 
 class FileService {
   const FileService({http.Client? client}) : _client = client;

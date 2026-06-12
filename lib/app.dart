@@ -1,17 +1,17 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
-import 'config/app_config.dart';
-import 'models/onboarding_state.dart';
-import 'screens/change_password_page.dart';
-import 'screens/home_screen.dart';
-import 'screens/identity_verification_page.dart';
-import 'screens/login_page.dart';
-import 'services/auth_service.dart';
-import 'services/home_service.dart';
-import 'services/tenant_profile_service.dart';
-import 'screens/reset_password_page.dart';
-import 'services/deep_link_service.dart';
-import 'theme/app_theme.dart';
+import 'package:hdbhms_mobile/config/app_config.dart';
+import 'package:hdbhms_mobile/models/onboarding_state.dart';
+import 'package:hdbhms_mobile/screens/auth/change_password_page.dart';
+import 'package:hdbhms_mobile/screens/home/home_screen.dart';
+import 'package:hdbhms_mobile/screens/auth/identity_verification_page.dart';
+import 'package:hdbhms_mobile/screens/auth/login_page.dart';
+import 'package:hdbhms_mobile/services/auth/auth_service.dart';
+import 'package:hdbhms_mobile/services/home/home_service.dart';
+import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
+import 'package:hdbhms_mobile/screens/auth/reset_password_page.dart';
+import 'package:hdbhms_mobile/services/deep_link_service.dart';
+import 'package:hdbhms_mobile/theme/app_theme.dart';
 
 class App extends StatelessWidget {
   const App({

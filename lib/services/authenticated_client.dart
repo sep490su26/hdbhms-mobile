@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../app.dart';
-import '../screens/login_page.dart';
+import 'package:hdbhms_mobile/app.dart';
+import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'auth_service.dart';
-import 'home_service.dart';
+import 'package:hdbhms_mobile/services/auth/auth_service.dart';
+import 'package:hdbhms_mobile/services/home/home_service.dart';
 
 class AuthenticatedClient extends http.BaseClient {
   AuthenticatedClient({

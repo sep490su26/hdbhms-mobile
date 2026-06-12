@@ -1,9 +1,9 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 
-import '../models/home_summary_model.dart';
-import '../services/auth_service.dart';
-import '../services/home_service.dart';
-import '../services/lease_contract_service.dart';
+import 'package:hdbhms_mobile/models/home/home_summary_model.dart';
+import 'package:hdbhms_mobile/services/auth/auth_service.dart';
+import 'package:hdbhms_mobile/services/home/home_service.dart';
+import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 
 class HomeProvider extends ChangeNotifier {
   HomeProvider({

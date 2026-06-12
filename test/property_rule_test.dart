@@ -1,11 +1,11 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hdbhms_mobile/models/property_rule_model.dart';
-import 'package:hdbhms_mobile/screens/property_rules_screen.dart';
-import 'package:hdbhms_mobile/services/auth_service.dart';
-import 'package:hdbhms_mobile/services/property_rule_service.dart';
+import 'package:hdbhms_mobile/models/rules/property_rule_model.dart';
+import 'package:hdbhms_mobile/screens/rules/property_rules_screen.dart';
+import 'package:hdbhms_mobile/services/auth/auth_service.dart';
+import 'package:hdbhms_mobile/services/rules/property_rule_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
