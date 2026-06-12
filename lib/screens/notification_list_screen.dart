@@ -32,6 +32,8 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _items = [];
+      _hasMore = true;
     });
 
     try {
@@ -43,8 +45,8 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
-        // Fallback to mock data if API fails or isn't available yet
-        _items = List.from(mockNotifications);
+        _items = [];
+        _hasMore = false;
       });
     } finally {
       setState(() {
@@ -142,39 +144,44 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
                       ? const Center(
                           child: CircularProgressIndicator(color: AppColors.deepBlue),
                         )
-                      : filtered.isEmpty
-                          ? _buildEmpty()
-                          : RefreshIndicator(
-                              color: AppColors.deepBlue,
-                              onRefresh: _fetchNotifications,
-                              child: ListView.separated(
-                                padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
-                                itemCount: filtered.length + (_hasMore ? 1 : 0),
-                                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                                itemBuilder: (_, i) {
-                                  if (i == filtered.length) {
-                                    _loadMore();
-                                    return const Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 16.0),
-                                      child: Center(
-                                        child: SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child: CircularProgressIndicator(
-                                            color: AppColors.deepBlue,
-                                            strokeWidth: 2,
+                      : _errorMessage != null && _items.isEmpty
+                          ? _ErrorState(
+                              message: _errorMessage!,
+                              onRetry: _fetchNotifications,
+                            )
+                          : filtered.isEmpty
+                              ? _buildEmpty()
+                              : RefreshIndicator(
+                                  color: AppColors.deepBlue,
+                                  onRefresh: _fetchNotifications,
+                                  child: ListView.separated(
+                                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
+                                    itemCount: filtered.length + (_hasMore ? 1 : 0),
+                                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                    itemBuilder: (_, i) {
+                                      if (i == filtered.length) {
+                                        _loadMore();
+                                        return const Padding(
+                                          padding: EdgeInsets.symmetric(vertical: 16.0),
+                                          child: Center(
+                                            child: SizedBox(
+                                              width: 24,
+                                              height: 24,
+                                              child: CircularProgressIndicator(
+                                                color: AppColors.deepBlue,
+                                                strokeWidth: 2,
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                  return _NotificationCard(
-                                    item: filtered[i],
-                                    onTap: () => _openDetail(filtered[i]),
-                                  );
-                                },
-                              ),
-                            ),
+                                        );
+                                      }
+                                      return _NotificationCard(
+                                        item: filtered[i],
+                                        onTap: () => _openDetail(filtered[i]),
+                                      );
+                                    },
+                                  ),
+                                ),
                 ),
               ],
             ),
@@ -770,5 +777,44 @@ class _NotificationDetailDialog extends StatelessWidget {
     final h = dt.hour.toString().padLeft(2, '0');
     final m = dt.minute.toString().padLeft(2, '0');
     return '$dayName, ${dt.day} tháng ${dt.month} ${dt.year} lúc $h:$m';
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_rounded, color: AppColors.deepBlue, size: 42),
+            const SizedBox(height: 14),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.inputText,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.deepBlue),
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Thử lại'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

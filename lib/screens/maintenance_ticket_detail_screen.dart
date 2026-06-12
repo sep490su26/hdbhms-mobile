@@ -509,17 +509,52 @@ class _RepairInfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repair = detail.repairInfo;
+    final invoiceStatus = detail.invoiceStatus.toUpperCase();
+    final billingStatus = detail.billingStatus.toUpperCase();
+    final isDraftCharge = invoiceStatus == 'DRAFT' || billingStatus == 'DRAFT';
+    final isScheduledCharge = billingStatus == 'SCHEDULED';
+    final paymentStatusText = isDraftCharge
+        ? 'Chi phí đang chờ chủ trọ xác nhận, chưa cần thanh toán.'
+        : isScheduledCharge
+        ? 'Khoản này sẽ được gộp vào hóa đơn đầu tháng, chưa cần thanh toán.'
+        : detail.billingStatusLabel;
     return _SectionCard(
       title: 'Thông tin xử lý thực tế',
       child: Column(
         children: [
           _RepairLine(
             icon: Icons.payments_outlined,
-            label: 'Chi phí thực tế',
+            label: detail.lineType == 'VIOLATION_FINE'
+                ? 'Khoản phải thanh toán'
+                : 'Chi phí thực tế',
             value: repair?.totalCost == null
                 ? 'Chưa cập nhật'
                 : '${_formatCurrency(repair!.totalCost!)} VND',
           ),
+          if (detail.lineType.trim().isNotEmpty) ...[
+            const SizedBox(height: 20),
+            _RepairLine(
+              icon: Icons.receipt_long_outlined,
+              label: 'Loại phí',
+              value: _lineTypeLabel(detail.lineType),
+            ),
+          ],
+          if (paymentStatusText.trim().isNotEmpty) ...[
+            const SizedBox(height: 20),
+            _RepairLine(
+              icon: Icons.verified_outlined,
+              label: 'Trạng thái thanh toán',
+              value: paymentStatusText,
+            ),
+          ],
+          if (detail.invoiceCode.trim().isNotEmpty) ...[
+            const SizedBox(height: 20),
+            _RepairLine(
+              icon: Icons.confirmation_number_outlined,
+              label: 'Mã hóa đơn',
+              value: detail.invoiceCode,
+            ),
+          ],
           const SizedBox(height: 20),
           _RepairLine(
             icon: Icons.fact_check_outlined,
@@ -1423,6 +1458,17 @@ String _formatCurrency(num amount) {
     }
   }
   return buffer.toString();
+}
+
+String _lineTypeLabel(String value) {
+  switch (value.trim().toUpperCase()) {
+    case 'VIOLATION_FINE':
+      return 'Phạt vi phạm nội quy';
+    case 'MAINTENANCE_COMPENSATION':
+      return 'Bồi thường chi phí bảo trì';
+    default:
+      return value.replaceAll('_', ' ');
+  }
 }
 
 String _mimeTypeForImage(XFile file) {

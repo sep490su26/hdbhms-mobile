@@ -32,7 +32,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
   @override
   void initState() {
     super.initState();
-    _requests = List.from(mockTenantRequests);
+    _requests = [];
   }
 
   List<TenantRequest> get _filtered {
@@ -228,6 +228,55 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
     );
   }
 
+  Widget _buildEmpty() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 68,
+              height: 68,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF1FF),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(
+                Icons.inbox_outlined,
+                color: AppColors.deepBlue,
+                size: 34,
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Chưa có yêu cầu nào',
+              style: TextStyle(
+                color: AppColors.inputText,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                height: 20 / 16,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _filterType == null
+                  ? 'Bạn chưa tạo yêu cầu nào.'
+                  : 'Không có yêu cầu phù hợp với bộ lọc hiện tại.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.bodyText,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                height: 18 / 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ── Header ────────────────────────────────────────────────────────────────
   Widget _buildHeader() {
     return Container(
@@ -312,52 +361,6 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
             ),
           )
           .toList(),
-    );
-  }
-
-  Widget _buildEmpty() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF1FF),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(
-                Icons.inbox_outlined,
-                color: AppColors.deepBlue,
-                size: 32,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Không có yêu cầu nào',
-              style: TextStyle(
-                color: AppColors.inputText,
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Bạn chưa có yêu cầu nào trong danh mục này.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.bodyText,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                height: 18 / 13,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

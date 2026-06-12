@@ -1,11 +1,42 @@
-﻿import 'package:flutter/material.dart';
-import 'notification_list_screen.dart';
+import 'package:flutter/material.dart';
 
+import '../models/tenant_invoice_model.dart';
+import '../services/tenant_invoice_service.dart';
 import '../theme/app_colors.dart';
+import 'notification_list_screen.dart';
 import 'tenant_profile_screen.dart';
 
-class PaymentHistoryPage extends StatelessWidget {
+class PaymentHistoryPage extends StatefulWidget {
   const PaymentHistoryPage({super.key});
+
+  @override
+  State<PaymentHistoryPage> createState() => _PaymentHistoryPageState();
+}
+
+class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
+  final TenantInvoiceService _invoiceService = const TenantInvoiceService();
+  final TextEditingController _searchController = TextEditingController();
+  late Future<List<TenantInvoice>> _invoicesFuture;
+  String _selectedMonthKey = 'all';
+
+  @override
+  void initState() {
+    super.initState();
+    _invoicesFuture = _invoiceService.fetchMyInvoices();
+    _searchController.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _reload() {
+    setState(() {
+      _invoicesFuture = _invoiceService.fetchMyInvoices();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,19 +48,64 @@ class PaymentHistoryPage extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 390),
             child: Column(
               children: [
-                const _HistoryHeader(),
+                _HistoryHeader(onRefresh: _reload),
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(14, 22, 14, 22),
-                    child: Column(
-                      children: const [
-                        _SearchField(),
-                        SizedBox(height: 16),
-                        _FilterRow(),
-                        SizedBox(height: 24),
-                        _HistoryListCard(),
-                      ],
-                    ),
+                  child: FutureBuilder<List<TenantInvoice>>(
+                    future: _invoicesFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const _HistoryLoading();
+                      }
+                      if (snapshot.hasError) {
+                        return _HistoryError(
+                          message: snapshot.error is TenantInvoiceException
+                              ? (snapshot.error as TenantInvoiceException)
+                                    .message
+                              : 'Không tải được lịch sử thanh toán.',
+                          onRetry: _reload,
+                        );
+                      }
+                      final paidInvoices = _paidInvoices(
+                        snapshot.data ?? const [],
+                      );
+                      final monthOptions = _monthOptions(paidInvoices);
+                      if (_selectedMonthKey != 'all' &&
+                          !monthOptions.any(
+                            (item) => item.key == _selectedMonthKey,
+                          )) {
+                        _selectedMonthKey = 'all';
+                      }
+                      final filteredInvoices = _filterInvoices(paidInvoices);
+
+                      return SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(14, 22, 14, 22),
+                        child: Column(
+                          children: [
+                            _SearchField(controller: _searchController),
+                            const SizedBox(height: 16),
+                            _FilterRow(
+                              selectedMonthKey: _selectedMonthKey,
+                              monthOptions: monthOptions,
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setState(() => _selectedMonthKey = value);
+                              },
+                            ),
+                            const SizedBox(height: 24),
+                            if (filteredInvoices.isEmpty)
+                              _HistoryEmpty(
+                                hasAnyPaidInvoice: paidInvoices.isNotEmpty,
+                                onClearFilter: () {
+                                  _searchController.clear();
+                                  setState(() => _selectedMonthKey = 'all');
+                                },
+                              )
+                            else
+                              _HistoryListCard(invoices: filteredInvoices),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -40,16 +116,49 @@ class PaymentHistoryPage extends StatelessWidget {
       bottomNavigationBar: const _HistoryBottomNavigation(),
     );
   }
+
+  List<TenantInvoice> _paidInvoices(List<TenantInvoice> invoices) {
+    final result = invoices.where((invoice) => invoice.isPaid).toList()
+      ..sort((a, b) => _historyDate(b).compareTo(_historyDate(a)));
+    return List.unmodifiable(result);
+  }
+
+  List<TenantInvoice> _filterInvoices(List<TenantInvoice> invoices) {
+    final keyword = _searchController.text.trim().toLowerCase();
+    return invoices
+        .where((invoice) {
+          final date = _historyDate(invoice);
+          final monthMatches =
+              _selectedMonthKey == 'all' ||
+              _monthKey(date) == _selectedMonthKey ||
+              invoice.billingPeriod == _selectedMonthKey;
+          if (!monthMatches) return false;
+          if (keyword.isEmpty) return true;
+          final haystack = [
+            invoice.title,
+            invoice.invoiceCode,
+            invoice.roomCode,
+            invoice.contractCode,
+            invoice.billingPeriod,
+            _formatAmount(_historyAmount(invoice)),
+            ...invoice.lines.map((line) => line.description),
+          ].join(' ').toLowerCase();
+          return haystack.contains(keyword);
+        })
+        .toList(growable: false);
+  }
 }
 
 class _HistoryHeader extends StatelessWidget {
-  const _HistoryHeader();
+  const _HistoryHeader({required this.onRefresh});
+
+  final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 54,
-      padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
+      padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(
@@ -83,15 +192,26 @@ class _HistoryHeader extends StatelessWidget {
             ),
           ),
           IconButton(
+            onPressed: onRefresh,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            icon: const Icon(
+              Icons.refresh_rounded,
+              color: AppColors.inputText,
+              size: 22,
+            ),
+            tooltip: 'Làm mới',
+          ),
+          IconButton(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => const NotificationListScreen(),
               ),
             ),
             padding: EdgeInsets.zero,
-constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-icon: const Icon(
-Icons.notifications_none_rounded,
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            icon: const Icon(
+              Icons.notifications_none_rounded,
               color: AppColors.inputText,
               size: 24,
             ),
@@ -104,94 +224,130 @@ Icons.notifications_none_rounded,
 }
 
 class _SearchField extends StatelessWidget {
-  const _SearchField();
+  const _SearchField({required this.controller});
+
+  final TextEditingController controller;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 44,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F1F1),
-        borderRadius: BorderRadius.circular(7),
+    return TextField(
+      controller: controller,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        hintText: 'Tìm theo mã hóa đơn, phòng, nội dung...',
+        prefixIcon: const Icon(
+          Icons.search_rounded,
+          color: AppColors.bodyText,
+          size: 21,
+        ),
+        suffixIcon: controller.text.isEmpty
+            ? null
+            : IconButton(
+                onPressed: controller.clear,
+                icon: const Icon(Icons.close_rounded, size: 18),
+              ),
+        filled: true,
+        fillColor: const Color(0xFFF1F1F1),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
+        border: OutlineInputBorder(
+          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(7),
+        ),
       ),
-      child: const Row(
-        children: [
-          SizedBox(width: 14),
-          Icon(Icons.search_rounded, color: AppColors.bodyText, size: 21),
-          SizedBox(width: 12),
-          Text(
-            'T\u00ECm ki\u1EBFm..',
-            style: TextStyle(
-              color: AppColors.bodyText,
-              fontSize: 16,
-              fontWeight: FontWeight.w400,
-              height: 22 / 16,
-            ),
-          ),
-        ],
+      style: const TextStyle(
+        color: AppColors.inputText,
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
       ),
     );
   }
 }
 
 class _FilterRow extends StatelessWidget {
-  const _FilterRow();
+  const _FilterRow({
+    required this.selectedMonthKey,
+    required this.monthOptions,
+    required this.onChanged,
+  });
+
+  final String selectedMonthKey;
+  final List<_MonthOption> monthOptions;
+  final ValueChanged<String?> onChanged;
 
   @override
   Widget build(BuildContext context) {
+    final options = [
+      const _MonthOption(key: 'all', label: 'Tất cả tháng'),
+      ...monthOptions,
+    ];
     return Row(
       children: [
         Expanded(
-          child: Container(
+          child: SizedBox(
             height: 45,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F1F1),
-              borderRadius: BorderRadius.circular(7),
-            ),
-            child: const Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Th\u00E1ng 2 2023',
-                    style: TextStyle(
-                      color: AppColors.deepBlue,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w500,
-                      height: 22 / 17,
+            child: DropdownButtonFormField<String>(
+              key: ValueKey(selectedMonthKey),
+              initialValue: selectedMonthKey,
+              items: options
+                  .map(
+                    (item) => DropdownMenuItem<String>(
+                      value: item.key,
+                      child: Text(item.label),
                     ),
-                  ),
+                  )
+                  .toList(),
+              onChanged: onChanged,
+              icon: const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: AppColors.deepBlue,
+              ),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFFF1F1F1),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(7),
+                  borderSide: BorderSide.none,
                 ),
-                Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: AppColors.deepBlue,
-                ),
-              ],
+              ),
+              style: const TextStyle(
+                color: AppColors.deepBlue,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ),
         const SizedBox(width: 10),
-        SizedBox(
+        Container(
           width: 80,
           height: 45,
-          child: ElevatedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.filter_list_rounded, size: 18),
-            label: const Text('L\u1ECDc'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFA7B4FF),
-              foregroundColor: AppColors.deepBlue,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 11),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(7),
+          decoration: BoxDecoration(
+            color: const Color(0xFFA7B4FF),
+            borderRadius: BorderRadius.circular(7),
+          ),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.filter_list_rounded,
+                size: 18,
+                color: AppColors.deepBlue,
               ),
-              textStyle: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                height: 20 / 15,
+              SizedBox(width: 5),
+              Text(
+                'Lọc',
+                style: TextStyle(
+                  color: AppColors.deepBlue,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  height: 20 / 15,
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ],
@@ -200,7 +356,9 @@ class _FilterRow extends StatelessWidget {
 }
 
 class _HistoryListCard extends StatelessWidget {
-  const _HistoryListCard();
+  const _HistoryListCard({required this.invoices});
+
+  final List<TenantInvoice> invoices;
 
   @override
   Widget build(BuildContext context) {
@@ -217,28 +375,12 @@ class _HistoryListCard extends StatelessWidget {
           ),
         ],
       ),
-      child: const Column(
+      child: Column(
         children: [
-          _HistoryItem(
-            icon: Icons.receipt_long_outlined,
-            title: 'Ti\u1EC1n ph\u00F2ng',
-            date: 'Th\u00E1ng 01/02/2023',
-            amount: '2.220.000',
-          ),
-          _HistoryDivider(),
-          _HistoryItem(
-            icon: Icons.flash_on_outlined,
-            title: '\u0110i\u1EC7n & N\u01B0\u1EDBc',
-            date: 'Th\u00E1ng 01/02/2023',
-            amount: '800.000',
-          ),
-          _HistoryDivider(),
-          _HistoryItem(
-            icon: Icons.construction_rounded,
-            title: 'S\u1EEDa t\u1EE7 l\u1EA1nh',
-            date: 'Th\u00E1ng 15/02/2023',
-            amount: '400.000',
-          ),
+          for (var index = 0; index < invoices.length; index++) ...[
+            _HistoryItem(invoice: invoices[index]),
+            if (index < invoices.length - 1) const _HistoryDivider(),
+          ],
         ],
       ),
     );
@@ -246,20 +388,14 @@ class _HistoryListCard extends StatelessWidget {
 }
 
 class _HistoryItem extends StatelessWidget {
-  const _HistoryItem({
-    required this.icon,
-    required this.title,
-    required this.date,
-    required this.amount,
-  });
+  const _HistoryItem({required this.invoice});
 
-  final IconData icon;
-  final String title;
-  final String date;
-  final String amount;
+  final TenantInvoice invoice;
 
   @override
   Widget build(BuildContext context) {
+    final amount = _historyAmount(invoice);
+    final date = _historyDate(invoice);
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 20, 16, 19),
       child: Row(
@@ -271,7 +407,11 @@ class _HistoryItem extends StatelessWidget {
               color: Color(0xFFEDEFFF),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: AppColors.deepBlue, size: 25),
+            child: Icon(
+              _historyIcon(invoice),
+              color: AppColors.deepBlue,
+              size: 25,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -279,27 +419,45 @@ class _HistoryItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  invoice.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.inputText,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w500,
-                    height: 22 / 17,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    height: 22 / 16,
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
-                  date,
+                  [
+                    if (invoice.roomCode.isNotEmpty)
+                      'Phòng ${invoice.roomCode}',
+                    _formatDate(date),
+                  ].join(' · '),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.bodyText,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    height: 20 / 14,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    height: 18 / 13,
                   ),
                 ),
+                if (invoice.invoiceCode.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    invoice.invoiceCode,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.hintText,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -308,12 +466,12 @@ class _HistoryItem extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                amount,
+                _formatAmount(amount),
                 style: const TextStyle(
                   color: AppColors.deepBlue,
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.w900,
-                  height: 24 / 20,
+                  height: 24 / 18,
                 ),
               ),
               const SizedBox(height: 7),
@@ -333,7 +491,7 @@ class _HistoryItem extends StatelessWidget {
                     ),
                     SizedBox(width: 4),
                     Text(
-                      '\u0110\u00C3 THANH TO\u00C1N',
+                      'ĐÃ THANH TOÁN',
                       style: TextStyle(
                         color: Color(0xFF15803D),
                         fontSize: 10,
@@ -359,6 +517,114 @@ class _HistoryDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Divider(height: 1, color: Color(0xFFE9E9EF));
+  }
+}
+
+class _HistoryLoading extends StatelessWidget {
+  const _HistoryLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: CircularProgressIndicator(color: AppColors.deepBlue),
+    );
+  }
+}
+
+class _HistoryError extends StatelessWidget {
+  const _HistoryError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              color: Color(0xFFC8171F),
+              size: 36,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.bodyText,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Thử lại'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.deepBlue,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HistoryEmpty extends StatelessWidget {
+  const _HistoryEmpty({
+    required this.hasAnyPaidInvoice,
+    required this.onClearFilter,
+  });
+
+  final bool hasAnyPaidInvoice;
+  final VoidCallback onClearFilter;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 28, 18, 28),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(color: AppColors.cardBorder.withValues(alpha: 0.75)),
+      ),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.receipt_long_outlined,
+            color: AppColors.deepBlue,
+            size: 34,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            hasAnyPaidInvoice
+                ? 'Không có giao dịch phù hợp bộ lọc.'
+                : 'Chưa có lịch sử thanh toán.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppColors.inputText,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          if (hasAnyPaidInvoice) ...[
+            const SizedBox(height: 14),
+            TextButton(
+              onPressed: onClearFilter,
+              child: const Text('Xóa bộ lọc'),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 
@@ -475,4 +741,81 @@ class _BottomNavItem extends StatelessWidget {
       ),
     );
   }
+}
+
+class _MonthOption {
+  const _MonthOption({required this.key, required this.label});
+
+  final String key;
+  final String label;
+}
+
+List<_MonthOption> _monthOptions(List<TenantInvoice> invoices) {
+  final seen = <String>{};
+  final options = <_MonthOption>[];
+  for (final invoice in invoices) {
+    final date = _historyDate(invoice);
+    final key = _monthKey(date);
+    if (seen.add(key)) {
+      options.add(_MonthOption(key: key, label: _monthLabel(date)));
+    }
+  }
+  return options;
+}
+
+DateTime _historyDate(TenantInvoice invoice) {
+  return invoice.paidAt ??
+      invoice.issuedAt ??
+      invoice.dueDate ??
+      DateTime.fromMillisecondsSinceEpoch(0);
+}
+
+String _monthKey(DateTime date) {
+  return '${date.year}-${date.month.toString().padLeft(2, '0')}';
+}
+
+String _monthLabel(DateTime date) {
+  return 'Tháng ${date.month}/${date.year}';
+}
+
+String _formatDate(DateTime date) {
+  if (date.millisecondsSinceEpoch == 0) return 'Chưa có ngày';
+  return '${date.day.toString().padLeft(2, '0')}/'
+      '${date.month.toString().padLeft(2, '0')}/'
+      '${date.year}';
+}
+
+int _historyAmount(TenantInvoice invoice) {
+  if (invoice.paidAmount > 0) return invoice.paidAmount;
+  return invoice.totalAmount;
+}
+
+String _formatAmount(int amount) {
+  final value = amount.toString();
+  final buffer = StringBuffer();
+  for (var index = 0; index < value.length; index++) {
+    final reverseIndex = value.length - index;
+    buffer.write(value[index]);
+    if (reverseIndex > 1 && reverseIndex % 3 == 1) {
+      buffer.write('.');
+    }
+  }
+  return buffer.toString();
+}
+
+IconData _historyIcon(TenantInvoice invoice) {
+  final lineTypes = invoice.lines.map((line) => line.lineType).toSet();
+  if (lineTypes.contains('VIOLATION_FINE')) {
+    return Icons.gavel_rounded;
+  }
+  if (lineTypes.contains('MAINTENANCE_COMPENSATION')) {
+    return Icons.construction_rounded;
+  }
+  if (invoice.invoiceType == 'UTILITY') {
+    return Icons.flash_on_outlined;
+  }
+  if (invoice.invoiceType == 'RENT') {
+    return Icons.receipt_long_outlined;
+  }
+  return Icons.payments_outlined;
 }

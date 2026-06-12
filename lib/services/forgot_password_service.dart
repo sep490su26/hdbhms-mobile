@@ -14,7 +14,7 @@ class ForgotPasswordException implements Exception {
 class ForgotPasswordService {
   const ForgotPasswordService({http.Client? client}) : _client = client;
 
-  static const _timeout = Duration(seconds: 10);
+  static const _timeout = Duration(seconds: 20);
   final http.Client? _client;
 
   /// Phase 1: Request a password reset. 
