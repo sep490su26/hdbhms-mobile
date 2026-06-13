@@ -1,15 +1,14 @@
-﻿import 'package:flutter/material.dart';
-import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
-
-import 'package:hdbhms_mobile/services/auth/auth_service.dart';
-import 'package:hdbhms_mobile/theme/app_colors.dart';
-import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
-import 'package:hdbhms_mobile/screens/auth/login_page.dart';
-import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
-import 'package:hdbhms_mobile/screens/payment/payment_history_page.dart';
-import 'package:hdbhms_mobile/screens/payment/qr_payment_page.dart';
-import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
+import 'package:flutter/material.dart';
+import '../../models/payment/tenant_invoice_model.dart';
+import '../../services/payment/tenant_invoice_service.dart';
+import '../../theme/app_colors.dart';
+import '../../widgets/tenant_bottom_navigation.dart';
+import '../maintenance/maintenance_ticket_list_screen.dart';
+import '../notification/notification_list_screen.dart';
+import '../profile_request/tenant_profile_screen.dart';
+import '../profile_request/tenant_request_screen.dart';
+import 'payment_history_page.dart';
+import '../web_view_screen.dart';
 
 class BillSelectionPage extends StatefulWidget {
   const BillSelectionPage({super.key});
@@ -20,6 +19,14 @@ class BillSelectionPage extends StatefulWidget {
 
 class _BillSelectionPageState extends State<BillSelectionPage> {
   _BillFilter _activeFilter = _BillFilter.all;
+  final TenantInvoiceService _invoiceService = const TenantInvoiceService();
+  late Future<List<TenantInvoice>> _invoicesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _invoicesFuture = _invoiceService.fetchMyInvoices();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,8 +45,14 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _BillSectionHeader(
-                          onHistoryTap: () => _openPaymentHistory(context),
+                        const Text(
+                          'Tất cả hoá đơn',
+                          style: TextStyle(
+                            color: AppColors.deepBlue,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            height: 30 / 24,
+                          ),
                         ),
                         const SizedBox(height: 14),
                         _BillFilterBar(
@@ -49,7 +62,34 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
                           },
                         ),
                         const SizedBox(height: 18),
-                        ..._buildFilteredBills(context),
+                        FutureBuilder<List<TenantInvoice>>(
+                          future: _invoicesFuture,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const _BillLoadingState();
+                            }
+                            if (snapshot.hasError) {
+                              return _BillErrorState(
+                                message:
+                                    snapshot.error is TenantInvoiceException
+                                    ? (snapshot.error as TenantInvoiceException)
+                                          .message
+                                    : 'Không tải được hóa đơn. Vui lòng thử lại.',
+                                onRetry: _reloadInvoices,
+                              );
+                            }
+                            final visibleInvoices = (snapshot.data ?? const [])
+                                .where((invoice) => invoice.isTenantVisible)
+                                .toList();
+                            return Column(
+                              children: _buildFilteredBills(
+                                context,
+                                visibleInvoices,
+                              ),
+                            );
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -79,128 +119,210 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const TenantRequestScreen(),
+          MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+        ),
+      ),
+    );
+  }
+
+  void _reloadInvoices() {
+    setState(() {
+      _invoicesFuture = _invoiceService.fetchMyInvoices();
+    });
+  }
+
+  void _openPayment(BuildContext context, TenantInvoice invoice) {
+    if (invoice.canPay && invoice.checkoutUrl.isNotEmpty) {
+      Navigator.of(context)
+          .push(
+            MaterialPageRoute(
+              builder: (context) => WebViewScreen(
+                url: invoice.checkoutUrl,
+                title: 'Thanh toán hóa đơn',
               ),
             ),
+          )
+          .then((_) => _reloadInvoices());
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Hóa đơn chưa thể thanh toán. Vui lòng liên hệ quản lý.'),
       ),
     );
   }
 
-  void _openPayment(BuildContext context) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (context) => const QrPaymentPage()));
-  }
-
-  void _openPaymentHistory(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const PaymentHistoryPage(),
-      ),
+  List<Widget> _buildFilteredBills(
+    BuildContext context,
+    List<TenantInvoice> invoices,
+  ) {
+    final pendingBills = _withSpacing(
+      invoices
+          .where((invoice) => !invoice.isPaid)
+          .map(
+            (invoice) => _PendingBillCard(
+              invoice: invoice,
+              onTap: () => _openPayment(context, invoice),
+            ),
+          )
+          .toList(),
+      16,
     );
-  }
 
-  List<Widget> _buildFilteredBills(BuildContext context) {
-    final pendingBills = [
-      _PendingBillCard(
-        title: 'Tiền phòng',
-        amount: '2.200.000',
-        dueDate: 'Hạn: 15/01/2023',
-        onTap: () => _openPayment(context),
-      ),
-      const SizedBox(height: 16),
-      _PendingBillCard(
-        title: 'Điện & Nước',
-        amount: '800.000',
-        dueDate: 'Hạn: 15/01/2023',
-        onTap: () => _openPayment(context),
-      ),
-    ];
+    final paidBills = _withSpacing(
+      invoices
+          .where((invoice) => invoice.isPaid)
+          .map((invoice) => _PaidBillCard(invoice: invoice))
+          .toList(),
+      12,
+    );
 
-    const paidBills = [
-      _PaidBillCard(
-        title: 'Tiền phòng',
-        amount: '2.200.000',
-        date: 'Ngày: 15/12/2022',
-      ),
-      SizedBox(height: 12),
-      _PaidBillCard(
-        title: 'Điện & Nước',
-        amount: '800.000',
-        date: 'Ngày: 15/12/2022',
-      ),
-    ];
+    final historyButton = _ViewHistoryButton(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => const PaymentHistoryPage()),
+        );
+      },
+    );
+
+    if (invoices.isEmpty) {
+      return const [_BillEmptyState(message: 'Chưa có hóa đơn đã phát hành.')];
+    }
 
     return switch (_activeFilter) {
       _BillFilter.all => [
-          ...pendingBills,
+        if (pendingBills.isNotEmpty) ...pendingBills,
+        if (paidBills.isNotEmpty) ...[
           const SizedBox(height: 28),
           const _PaidDivider(),
           const SizedBox(height: 22),
           ...paidBills,
         ],
-      _BillFilter.unpaid => pendingBills,
-      _BillFilter.paid => paidBills,
+        const SizedBox(height: 18),
+        historyButton,
+      ],
+      _BillFilter.unpaid =>
+        pendingBills.isEmpty
+            ? const [
+                _BillEmptyState(message: 'Không có hóa đơn chờ thanh toán.'),
+              ]
+            : pendingBills,
+      _BillFilter.paid =>
+        paidBills.isEmpty
+            ? const [_BillEmptyState(message: 'Chưa có hóa đơn đã thanh toán.')]
+            : [...paidBills, const SizedBox(height: 18), historyButton],
     };
   }
 }
 
 enum _BillFilter { all, unpaid, paid }
 
-class _BillSectionHeader extends StatelessWidget {
-  const _BillSectionHeader({required this.onHistoryTap});
+List<Widget> _withSpacing(List<Widget> widgets, double spacing) {
+  if (widgets.isEmpty) return const [];
+  return [
+    for (var index = 0; index < widgets.length; index++) ...[
+      if (index > 0) SizedBox(height: spacing),
+      widgets[index],
+    ],
+  ];
+}
 
-  final VoidCallback onHistoryTap;
+String _formatAmount(int amount) {
+  final raw = amount.abs().toString();
+  final buffer = StringBuffer();
+  for (var index = 0; index < raw.length; index += 1) {
+    if (index > 0 && (raw.length - index) % 3 == 0) {
+      buffer.write('.');
+    }
+    buffer.write(raw[index]);
+  }
+  return '${amount < 0 ? '-' : ''}${buffer.toString()}đ';
+}
+
+String _formatDate(DateTime? value) {
+  if (value == null) return 'Chưa có hạn';
+  return '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+}
+
+String _lineLabel(TenantInvoiceLine line) {
+  if (line.lineType == 'VIOLATION_FINE') {
+    return 'Phạt vi phạm nội quy: ${_formatAmount(line.amount)}';
+  }
+  if (line.lineType == 'MAINTENANCE_COMPENSATION') {
+    return 'Bồi thường bảo trì: ${_formatAmount(line.amount)}';
+  }
+  return '${line.description}: ${_formatAmount(line.amount)}';
+}
+
+class _BillLoadingState extends StatelessWidget {
+  const _BillLoadingState();
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Expanded(
-          child: Text(
-            'Tất cả hoá đơn',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: AppColors.deepBlue,
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              height: 30 / 24,
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        _HistoryShortcutButton(onTap: onHistoryTap),
-      ],
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 32),
+      child: Center(child: CircularProgressIndicator()),
     );
   }
 }
 
-class _HistoryShortcutButton extends StatelessWidget {
-  const _HistoryShortcutButton({required this.onTap});
+class _BillErrorState extends StatelessWidget {
+  const _BillErrorState({required this.message, required this.onRetry});
 
-  final VoidCallback onTap;
+  final String message;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
-    return TextButton.icon(
-      onPressed: onTap,
-      style: TextButton.styleFrom(
-        foregroundColor: AppColors.deepBlue,
-        backgroundColor: AppColors.deepBlue.withValues(alpha: 0.08),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        minimumSize: const Size(0, 34),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF0EF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFFB5AE)),
       ),
-      icon: const Icon(Icons.history_rounded, size: 17),
-      label: const Text(
-        'Lịch sử',
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w900,
-          height: 16 / 12,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            message,
+            style: const TextStyle(
+              color: Color(0xFFB42318),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextButton(onPressed: onRetry, child: const Text('Thử lại')),
+        ],
+      ),
+    );
+  }
+}
+
+class _BillEmptyState extends StatelessWidget {
+  const _BillEmptyState({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Text(
+        message,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: AppColors.bodyText,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
@@ -208,10 +330,7 @@ class _HistoryShortcutButton extends StatelessWidget {
 }
 
 class _BillFilterBar extends StatelessWidget {
-  const _BillFilterBar({
-    required this.active,
-    required this.onChanged,
-  });
+  const _BillFilterBar({required this.active, required this.onChanged});
 
   final _BillFilter active;
   final ValueChanged<_BillFilter> onChanged;
@@ -311,7 +430,7 @@ class _BillHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: AppColors.topBarHeight,
+      height: 54,
       padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -335,7 +454,12 @@ class _BillHeader extends StatelessWidget {
           const Expanded(
             child: Text(
               'Hóa đơn',
-              style: AppColors.topBarTitleStyle,
+              style: TextStyle(
+                color: AppColors.deepBlue,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                height: 20 / 16,
+              ),
             ),
           ),
           IconButton(
@@ -345,10 +469,10 @@ class _BillHeader extends StatelessWidget {
               ),
             ),
             padding: EdgeInsets.zero,
-constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-icon: const Icon(
-Icons.notifications_none_rounded,
-              color: AppColors.topBarIconColor,
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            icon: const Icon(
+              Icons.notifications_none_rounded,
+              color: AppColors.inputText,
               size: 24,
             ),
             tooltip: 'Thông báo',
@@ -360,16 +484,9 @@ Icons.notifications_none_rounded,
 }
 
 class _PendingBillCard extends StatelessWidget {
-  const _PendingBillCard({
-    required this.title,
-    required this.amount,
-    required this.dueDate,
-    required this.onTap,
-  });
+  const _PendingBillCard({required this.invoice, required this.onTap});
 
-  final String title;
-  final String amount;
-  final String dueDate;
+  final TenantInvoice invoice;
   final VoidCallback onTap;
 
   @override
@@ -416,7 +533,7 @@ class _PendingBillCard extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: Text(
-                                  title,
+                                  invoice.title,
                                   style: const TextStyle(
                                     color: AppColors.inputText,
                                     fontSize: 15,
@@ -427,7 +544,11 @@ class _PendingBillCard extends StatelessWidget {
                               ),
                               const SizedBox(width: 10),
                               Text(
-                                amount,
+                                _formatAmount(
+                                  invoice.remainingAmount > 0
+                                      ? invoice.remainingAmount
+                                      : invoice.totalAmount,
+                                ),
                                 style: const TextStyle(
                                   color: AppColors.deepBlue,
                                   fontSize: 16,
@@ -463,7 +584,7 @@ class _PendingBillCard extends StatelessWidget {
                               const Spacer(),
                               Flexible(
                                 child: Text(
-                                  dueDate,
+                                  'Hạn: ${_formatDate(invoice.dueDate)}',
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     color: AppColors.bodyText,
@@ -476,17 +597,19 @@ class _PendingBillCard extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          const Row(
+                          Row(
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.apartment_rounded,
                                 color: AppColors.bodyText,
                                 size: 14,
                               ),
-                              SizedBox(width: 7),
+                              const SizedBox(width: 7),
                               Text(
-                                'Phòng 302',
-                                style: TextStyle(
+                                invoice.roomCode.isEmpty
+                                    ? 'Chưa có phòng'
+                                    : 'Phòng ${invoice.roomCode}',
+                                style: const TextStyle(
                                   color: AppColors.bodyText,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
@@ -495,6 +618,20 @@ class _PendingBillCard extends StatelessWidget {
                               ),
                             ],
                           ),
+                          if (invoice.lines.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              invoice.lines.take(2).map(_lineLabel).join('\n'),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.bodyText,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                height: 15 / 11,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -537,15 +674,9 @@ class _PaidDivider extends StatelessWidget {
 }
 
 class _PaidBillCard extends StatelessWidget {
-  const _PaidBillCard({
-    required this.title,
-    required this.amount,
-    required this.date,
-  });
+  const _PaidBillCard({required this.invoice});
 
-  final String title;
-  final String amount;
-  final String date;
+  final TenantInvoice invoice;
 
   @override
   Widget build(BuildContext context) {
@@ -580,7 +711,7 @@ class _PaidBillCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          title,
+                          invoice.title,
                           style: const TextStyle(
                             color: AppColors.inputText,
                             fontSize: 15,
@@ -591,7 +722,7 @@ class _PaidBillCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        amount,
+                        _formatAmount(invoice.totalAmount),
                         style: const TextStyle(
                           color: AppColors.inputText,
                           fontSize: 15,
@@ -627,7 +758,9 @@ class _PaidBillCard extends StatelessWidget {
                       const Spacer(),
                       Flexible(
                         child: Text(
-                          date,
+                          invoice.issuedAt == null
+                              ? 'Đã thanh toán'
+                              : 'Ngày: ${_formatDate(invoice.issuedAt)}',
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: AppColors.bodyText,
@@ -649,3 +782,32 @@ class _PaidBillCard extends StatelessWidget {
   }
 }
 
+class _ViewHistoryButton extends StatelessWidget {
+  const _ViewHistoryButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: TextButton(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          backgroundColor: const Color(0xFFF1EFEF),
+          foregroundColor: AppColors.deepBlue,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+        ),
+        child: const Text(
+          'Xem toàn bộ lịch sử thanh toán',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            height: 18 / 13,
+          ),
+        ),
+      ),
+    );
+  }
+}

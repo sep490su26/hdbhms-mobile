@@ -683,10 +683,6 @@ class _EmergencyContactsSection extends StatelessWidget {
                 if (i > 0) const _InlineDivider(),
                 _ReadOnlyField(label: 'Họ tên', value: contacts[i].fullName),
                 _ReadOnlyField(
-                  label: 'Quan hệ',
-                  value: contacts[i].relationship,
-                ),
-                _ReadOnlyField(
                   label: 'Số điện thoại',
                   value: contacts[i].phone,
                 ),

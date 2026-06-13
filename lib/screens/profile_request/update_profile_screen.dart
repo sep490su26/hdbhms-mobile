@@ -688,7 +688,7 @@ class _VehicleCard extends StatelessWidget {
   }
 }
 
-/// Vehicle image picker: shows existing image and an "upload" button
+/// A single image area that can be tapped to upload or replace the image.
 class _VehicleImagePicker extends StatelessWidget {
   const _VehicleImagePicker({
     required this.data,
@@ -703,62 +703,99 @@ class _VehicleImagePicker extends StatelessWidget {
     final hasImage =
         data.localImage != null || data.existingImageUrl.isNotEmpty;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Existing / picked image preview
-        if (hasImage)
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: AspectRatio(
-              aspectRatio: 16 / 9,
-              child: data.localImage != null
-                  ? (kIsWeb
-                      ? Image.network(data.localImage!.path, fit: BoxFit.cover)
-                      : Image.file(File(data.localImage!.path), fit: BoxFit.cover))
-                  : _NetworkVehicleThumb(url: data.existingImageUrl),
-            ),
-          ),
-        if (hasImage) const SizedBox(height: 8),
-        // Upload button
-        GestureDetector(
-          onTap: onPickImage,
-          child: AspectRatio(
-            aspectRatio: 16 / 9,
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFEDECF1),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: AppColors.cardBorder,
-                  width: 1,
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.camera_alt_outlined,
-                    color: AppColors.bodyText,
-                    size: 28,
+    return GestureDetector(
+      onTap: onPickImage,
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (hasImage)
+                data.localImage != null
+                    ? (kIsWeb
+                        ? Image.network(
+                            data.localImage!.path,
+                            fit: BoxFit.cover,
+                          )
+                        : Image.file(
+                            File(data.localImage!.path),
+                            fit: BoxFit.cover,
+                          ))
+                    : _NetworkVehicleThumb(url: data.existingImageUrl)
+              else
+                Container(
+                  color: const Color(0xFFEDECF1),
+                  alignment: Alignment.center,
+                  child: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.camera_alt_outlined,
+                        color: AppColors.bodyText,
+                        size: 28,
+                      ),
+                      SizedBox(height: 6),
+                      Text(
+                        'Tải ảnh lên',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          color: AppColors.bodyText,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          height: 16 / 13,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Tải ảnh lên',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      color: AppColors.bodyText,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      height: 16 / 13,
+                ),
+              if (hasImage)
+                Positioned(
+                  right: 8,
+                  bottom: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.68),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.camera_alt_outlined,
+                          color: Colors.white,
+                          size: 15,
+                        ),
+                        SizedBox(width: 5),
+                        Text(
+                          'Thay ảnh',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
+              IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.cardBorder),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
