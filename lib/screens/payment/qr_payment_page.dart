@@ -1,171 +1,73 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 
-import 'package:hdbhms_mobile/screens/payment/payment_success_page.dart';
-import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../../models/payment/tenant_invoice_model.dart';
 
 class QrPaymentPage extends StatelessWidget {
-  const QrPaymentPage({super.key});
+  const QrPaymentPage({super.key, required this.invoice});
+
+  final TenantInvoice invoice;
 
   @override
   Widget build(BuildContext context) {
+    final theme = _PaymentVisualTheme.fromInvoice(invoice);
+    final fields = <({String label, String value, IconData icon})>[
+      (
+        label: 'Ngân hàng',
+        value: invoice.bankShortName,
+        icon: Icons.account_balance_rounded,
+      ),
+      (
+        label: 'Số tài khoản',
+        value: invoice.accountNumber,
+        icon: Icons.credit_card_rounded,
+      ),
+      (
+        label: 'Chủ tài khoản',
+        value: invoice.accountName,
+        icon: Icons.person_outline_rounded,
+      ),
+      (
+        label: 'Nội dung chuyển khoản',
+        value: invoice.transferDescription,
+        icon: Icons.notes_rounded,
+      ),
+    ].where((field) => field.value.trim().isNotEmpty).toList();
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F3FA),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 390),
-            child: Column(
-              children: [
-                const _QrHeader(),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(14, 16, 14, 18),
-                    child: Column(
-                      children: const [
-                        _TotalPaymentCard(),
-                        SizedBox(height: 18),
-                        _QrMethodCard(),
-                        SizedBox(height: 14),
-                        _TransferContentCard(),
-                        SizedBox(height: 14),
-                        _BankInfoCard(),
-                        SizedBox(height: 22),
-                        _PaidButton(),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _QrHeader extends StatelessWidget {
-  const _QrHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: AppColors.topBarHeight,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: AppColors.cardBorder.withValues(alpha: 0.5),
-          ),
-        ),
-      ),
-      child: Row(
+      backgroundColor: theme.background,
+      body: Stack(
         children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 34, height: 38),
-            icon: const Icon(
-              Icons.arrow_back_rounded,
-              color: AppColors.deepBlue,
-              size: 24,
-            ),
-            tooltip: 'Quay l\u1EA1i',
-          ),
-          const SizedBox(width: 8),
-          const Expanded(
-            child: Text(
-              'Thanh to\u00E1n h\u00F3a \u0111\u01A1n',
-              style: AppColors.topBarTitleStyle,
-            ),
-          ),
-          IconButton(
-            onPressed: () {},
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const Icon(
-              Icons.notifications_none_rounded,
-              color: AppColors.deepBlue,
-              size: 24,
-            ),
-            tooltip: 'Th\u00F4ng b\u00E1o',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TotalPaymentCard extends StatelessWidget {
-  const _TotalPaymentCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 22, 18, 22),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 14,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          const Text(
-            'T\u1ED4NG THANH TO\u00C1N',
-            style: TextStyle(
-              color: AppColors.bodyText,
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
-              height: 18 / 13,
-              letterSpacing: 1.5,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            '2.450.000\u0111',
-            style: TextStyle(
-              color: AppColors.deepBlue,
-              fontSize: 35,
-              fontWeight: FontWeight.w900,
-              height: 42 / 35,
-            ),
-          ),
-          const SizedBox(height: 12),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 284),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF0EF),
-                border: Border.all(color: const Color(0xFFFFB5AE)),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: const FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.schedule_rounded,
-                      color: Color(0xFFDC2626),
-                      size: 17,
-                    ),
-                    SizedBox(width: 7),
-                    Text(
-                      'H\u1EBFt h\u1EA1n trong 14:59',
-                      style: TextStyle(
-                        color: Color(0xFFDC2626),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        height: 18 / 14,
+          Positioned.fill(child: _DecoratedBackground(theme: theme)),
+          SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 430),
+                child: CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(child: _Header(theme: theme)),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                      sliver: SliverList.list(
+                        children: [
+                          _PaymentHero(invoice: invoice, theme: theme),
+                          const SizedBox(height: 18),
+                          _QrCard(qrCode: invoice.qrCode, theme: theme),
+                          if (fields.isNotEmpty) ...[
+                            const SizedBox(height: 18),
+                            _InformationCard(fields: fields, theme: theme),
+                          ],
+                          const SizedBox(height: 18),
+                          _SecurityNote(theme: theme),
+                          const SizedBox(height: 20),
+                          _ConfirmButton(
+                            theme: theme,
+                            invoice: invoice,
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -179,354 +81,74 @@ class _TotalPaymentCard extends StatelessWidget {
   }
 }
 
-class _QrMethodCard extends StatelessWidget {
-  const _QrMethodCard();
+class _Header extends StatelessWidget {
+  const _Header({required this.theme});
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 14,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        children: const [
-          _PaymentTabs(),
-          SizedBox(height: 24),
-          _QrDecorationRow(),
-          SizedBox(height: 16),
-          _QrFrame(),
-          SizedBox(height: 16),
-          _DownloadQrButton(),
-          SizedBox(height: 18),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 30),
-            child: Text(
-              'Chuy\u1EC3n kho\u1EA3n \u0111\u00FAng s\u1ED1 ti\u1EC1n v\u00E0 n\u1ED9i dung\nb\u00EAn d\u01B0\u1EDBi \u0111\u1EC3 h\u1EC7 th\u1ED1ng t\u1EF1 \u0111\u1ED9ng ghi nh\u1EADn',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.inputText,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                height: 22 / 14,
-              ),
-            ),
-          ),
-          SizedBox(height: 20),
-        ],
-      ),
-    );
-  }
-}
-
-class _PaymentTabs extends StatelessWidget {
-  const _PaymentTabs();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: const [
-        Expanded(child: _PaymentTab(label: 'VietQR', isSelected: true)),
-        Expanded(child: _PaymentTab(label: 'MoMo')),
-        Expanded(child: _PaymentTab(label: 'ZaloPay')),
-      ],
-    );
-  }
-}
-
-class _PaymentTab extends StatelessWidget {
-  const _PaymentTab({required this.label, this.isSelected = false});
-
-  final String label;
-  final bool isSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 54,
-      decoration: BoxDecoration(
-        color: isSelected ? AppColors.surface : const Color(0xFFFBFBFD),
-        border: Border(
-          bottom: BorderSide(
-            color: isSelected ? AppColors.deepBlue : const Color(0xFFE8E8EF),
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-      ),
-      child: Center(
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? AppColors.deepBlue : AppColors.inputText,
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-            height: 18 / 13,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _QrDecorationRow extends StatelessWidget {
-  const _QrDecorationRow();
+  final _PaymentVisualTheme theme;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 38),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: const [_MiniQrImage(), _MiniQrImage()],
-      ),
-    );
-  }
-}
-
-class _MiniQrImage extends StatelessWidget {
-  const _MiniQrImage();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 22,
-      height: 22,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF64748B), Color(0xFF0F172A)],
-        ),
-      ),
-      child: const Icon(
-        Icons.landscape_outlined,
-        color: Colors.white,
-        size: 12,
-      ),
-    );
-  }
-}
-
-class _QrFrame extends StatelessWidget {
-  const _QrFrame();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 244,
-      height: 244,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFDADCEB), width: 2),
-      ),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: Container(
-              margin: const EdgeInsets.all(8),
-              color: const Color(0xFFF1F4F9),
-              child: CustomPaint(painter: _QrPlaceholderPainter()),
-            ),
-          ),
-          const Positioned(top: 0, left: 0, child: _CornerMark()),
-          const Positioned(top: 0, right: 0, child: _CornerMark(turns: 1)),
-          const Positioned(bottom: 0, right: 0, child: _CornerMark(turns: 2)),
-          const Positioned(bottom: 0, left: 0, child: _CornerMark(turns: 3)),
-          Center(
-            child: Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 8,
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.shield_outlined,
-                color: AppColors.deepBlue,
-                size: 29,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CornerMark extends StatelessWidget {
-  const _CornerMark({this.turns = 0});
-
-  final int turns;
-
-  @override
-  Widget build(BuildContext context) {
-    return RotatedBox(
-      quarterTurns: turns,
-      child: CustomPaint(size: const Size(38, 38), painter: _CornerPainter()),
-    );
-  }
-}
-
-class _CornerPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AppColors.deepBlue
-      ..strokeWidth = 5
-      ..strokeCap = StrokeCap.square
-      ..style = PaintingStyle.stroke;
-
-    canvas.drawLine(Offset.zero, Offset(size.width * 0.62, 0), paint);
-    canvas.drawLine(Offset.zero, Offset(0, size.height * 0.62), paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _QrPlaceholderPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color(0xFFC5CADF);
-    final cell = size.width / 9;
-    const filled = <int>{
-      10,
-      11,
-      12,
-      14,
-      15,
-      16,
-      19,
-      21,
-      23,
-      25,
-      28,
-      29,
-      32,
-      34,
-      38,
-      40,
-      41,
-      43,
-      47,
-      49,
-      50,
-      52,
-      55,
-      57,
-      59,
-      61,
-      64,
-      65,
-      66,
-      68,
-      70,
-    };
-
-    for (var row = 0; row < 9; row++) {
-      for (var col = 0; col < 9; col++) {
-        final index = row * 9 + col;
-        if (!filled.contains(index)) continue;
-        canvas.drawRect(
-          Rect.fromLTWH(col * cell, row * cell, cell * 0.82, cell * 0.82),
-          paint,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _DownloadQrButton extends StatelessWidget {
-  const _DownloadQrButton();
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: () {},
-      icon: const Icon(Icons.download_rounded, size: 18),
-      label: const Text('T\u1EA3i m\u00E3 QR'),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.deepBlue,
-        side: const BorderSide(color: Color(0xFFD3D8F2), width: 2),
-        minimumSize: const Size(140, 42),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
-      ),
-    );
-  }
-}
-
-class _TransferContentCard extends StatelessWidget {
-  const _TransferContentCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.fromLTRB(8, 8, 16, 8),
       child: Row(
         children: [
-          const Expanded(
+          IconButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.white.withValues(alpha: 0.12),
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.arrow_back_rounded),
+            tooltip: 'Quay lại',
+          ),
+          const SizedBox(width: 8),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'N\u1ED9i dung chuy\u1EC3n kho\u1EA3n',
+                const Text(
+                  'Thanh toán an toàn',
                   style: TextStyle(
-                    color: AppColors.bodyText,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    height: 16 / 12,
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                SizedBox(height: 4),
                 Text(
-                  'RESIDENT_99283_JULY',
+                  theme.subtitle,
                   style: TextStyle(
-                    color: AppColors.deepBlue,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                    height: 22 / 17,
-                    letterSpacing: 0.4,
+                    color: Colors.white.withValues(alpha: 0.72),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
           ),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.copy_rounded, color: AppColors.deepBlue),
-            tooltip: 'Sao ch\u00E9p',
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.18),
+              ),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.lock_outline_rounded, color: Colors.white, size: 14),
+                SizedBox(width: 5),
+                Text(
+                  'Bảo mật',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -534,38 +156,465 @@ class _TransferContentCard extends StatelessWidget {
   }
 }
 
-class _BankInfoCard extends StatelessWidget {
-  const _BankInfoCard();
+class _PaymentHero extends StatelessWidget {
+  const _PaymentHero({required this.invoice, required this.theme});
+
+  final TenantInvoice invoice;
+  final _PaymentVisualTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: 0.18),
+            Colors.white.withValues(alpha: 0.08),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              color: theme.accent,
+              borderRadius: BorderRadius.circular(17),
+              boxShadow: [
+                BoxShadow(
+                  color: theme.accent.withValues(alpha: 0.35),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Icon(theme.icon, color: theme.iconColor, size: 28),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  theme.title,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.76),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${_formatAmount(invoice.remainingAmount)}đ',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 30,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.8,
+                  ),
+                ),
+                if (invoice.invoiceCode.isNotEmpty) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    'Mã hóa đơn: ${invoice.invoiceCode}',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.62),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QrCard extends StatelessWidget {
+  const _QrCard({required this.qrCode, required this.theme});
+
+  final String qrCode;
+  final _PaymentVisualTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return _LightCard(
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.qr_code_scanner_rounded, color: theme.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Quét mã VietQR',
+                style: TextStyle(
+                  color: theme.ink,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Mở ứng dụng ngân hàng và quét mã bên dưới',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: theme.mutedInk,
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 18),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final size = constraints.maxWidth.clamp(210.0, 256.0).toDouble();
+              return RepaintBoundary(
+                child: Container(
+                  width: size,
+                  height: size,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: theme.primary.withValues(alpha: 0.2),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: theme.primary.withValues(alpha: 0.12),
+                        blurRadius: 26,
+                        offset: const Offset(0, 12),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: _QrImage(qrCode: qrCode, theme: theme),
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: theme.softAccent,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.bolt_rounded, color: theme.primary, size: 16),
+                const SizedBox(width: 5),
+                Text(
+                  'Tự động đối soát sau khi chuyển khoản',
+                  style: TextStyle(
+                    color: theme.primary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QrImage extends StatelessWidget {
+  const _QrImage({required this.qrCode, required this.theme});
+
+  final String qrCode;
+  final _PaymentVisualTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = qrCode.trim();
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return Image.network(
+        value,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => _QrFallback(theme: theme),
+      );
+    }
+    final bytes = _decodeQrBytes(value);
+    return bytes == null
+        ? _QrFallback(theme: theme)
+        : Image.memory(
+            bytes,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => _QrFallback(theme: theme),
+          );
+  }
+}
+
+class _QrFallback extends StatelessWidget {
+  const _QrFallback({required this.theme});
+
+  final _PaymentVisualTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: theme.softAccent,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.qr_code_2_rounded, color: theme.primary, size: 92),
+            const SizedBox(height: 8),
+            Text(
+              'Mã QR chưa sẵn sàng',
+              style: TextStyle(
+                color: theme.ink,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InformationCard extends StatelessWidget {
+  const _InformationCard({required this.fields, required this.theme});
+
+  final List<({String label, String value, IconData icon})> fields;
+  final _PaymentVisualTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return _LightCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Thông tin chuyển khoản',
+            style: TextStyle(
+              color: theme.ink,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Nhấn biểu tượng sao chép để tránh nhập sai.',
+            style: TextStyle(color: theme.mutedInk, fontSize: 12),
+          ),
+          const SizedBox(height: 14),
+          for (var index = 0; index < fields.length; index++) ...[
+            if (index > 0) const SizedBox(height: 10),
+            _CopyableField(field: fields[index], theme: theme),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CopyableField extends StatelessWidget {
+  const _CopyableField({required this.field, required this.theme});
+
+  final ({String label, String value, IconData icon}) field;
+  final _PaymentVisualTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: '${field.label}: ${field.value}. Nhấn để sao chép.',
+      button: true,
+      child: Material(
+        color: theme.softSurface,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: () => _copyValue(context, field.value),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(13, 12, 8, 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: theme.softAccent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(field.icon, color: theme.primary, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        field.label,
+                        style: TextStyle(
+                          color: theme.mutedInk,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      SelectableText(
+                        field.value,
+                        style: TextStyle(
+                          color: theme.ink,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => _copyValue(context, field.value),
+                  icon: Icon(Icons.copy_rounded, color: theme.primary, size: 20),
+                  tooltip: 'Sao chép ${field.label}',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SecurityNote extends StatelessWidget {
+  const _SecurityNote({required this.theme});
+
+  final _PaymentVisualTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.verified_user_outlined, color: theme.accent, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Vui lòng chuyển đúng số tiền và nội dung. Không chia sẻ mã OTP hoặc mật khẩu ngân hàng.',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.82),
+                fontSize: 12,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConfirmButton extends StatelessWidget {
+  const _ConfirmButton({required this.theme, required this.invoice});
+
+  final _PaymentVisualTheme theme;
+  final TenantInvoice invoice;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 56,
+      child: FilledButton.icon(
+        onPressed: () => _showPaymentSuccess(context, invoice, theme),
+        style: FilledButton.styleFrom(
+          backgroundColor: theme.accent,
+          foregroundColor: theme.iconColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        icon: const Icon(Icons.check_circle_outline_rounded),
+        label: const Text('Tôi đã hoàn tất thanh toán'),
+      ),
+    );
+  }
+}
+
+class _LightCard extends StatelessWidget {
+  const _LightCard({required this.child});
+
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        color: const Color(0xFFFDFEFF).withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: const Color(0xFF071426).withValues(alpha: 0.18),
+            blurRadius: 30,
+            offset: const Offset(0, 14),
           ),
         ],
       ),
-      child: const Column(
+      child: child,
+    );
+  }
+}
+
+class _DecoratedBackground extends StatelessWidget {
+  const _DecoratedBackground({required this.theme});
+
+  final _PaymentVisualTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [theme.background, theme.backgroundEnd],
+        ),
+      ),
+      child: Stack(
         children: [
-          _BankInfoRow(label: 'Ng\u00E2n h\u00E0ng', value: 'Agribank'),
-          SizedBox(height: 16),
-          _BankInfoRow(
-            label: 'S\u1ED1 t\u00E0i kho\u1EA3n',
-            value: '3213888869999',
-            canCopy: true,
+          Positioned(
+            top: -90,
+            right: -70,
+            child: _GlowOrb(color: theme.accent, size: 220),
           ),
-          SizedBox(height: 16),
-          _BankInfoRow(
-            label: 'Ch\u1EE7 t\u00E0i kho\u1EA3n',
-            value: '\u0110\u1EB7ng V\u0103n Nhu\u1EADn',
+          Positioned(
+            top: 330,
+            left: -100,
+            child: _GlowOrb(color: theme.secondary, size: 240),
           ),
         ],
       ),
@@ -573,83 +622,205 @@ class _BankInfoCard extends StatelessWidget {
   }
 }
 
-class _BankInfoRow extends StatelessWidget {
-  const _BankInfoRow({
-    required this.label,
-    required this.value,
-    this.canCopy = false,
+class _GlowOrb extends StatelessWidget {
+  const _GlowOrb({required this.color, required this.size});
+
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [
+            color.withValues(alpha: 0.28),
+            color.withValues(alpha: 0),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PaymentVisualTheme {
+  const _PaymentVisualTheme({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.background,
+    required this.backgroundEnd,
+    required this.primary,
+    required this.secondary,
+    required this.accent,
+    required this.iconColor,
+    required this.ink,
+    required this.mutedInk,
+    required this.softAccent,
+    required this.softSurface,
   });
 
-  final String label;
-  final String value;
-  final bool canCopy;
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color background;
+  final Color backgroundEnd;
+  final Color primary;
+  final Color secondary;
+  final Color accent;
+  final Color iconColor;
+  final Color ink;
+  final Color mutedInk;
+  final Color softAccent;
+  final Color softSurface;
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: AppColors.bodyText,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              height: 18 / 13,
-            ),
-          ),
-        ),
-        Flexible(
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.inputText,
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
-              height: 18 / 13,
-            ),
-          ),
-        ),
-        if (canCopy) ...[
-          const SizedBox(width: 6),
-          const Icon(Icons.copy_rounded, color: AppColors.deepBlue, size: 18),
-        ],
-      ],
+  factory _PaymentVisualTheme.fromInvoice(TenantInvoice invoice) {
+    final isRent = invoice.invoiceType.toUpperCase() == 'RENT';
+    if (isRent) {
+      return const _PaymentVisualTheme(
+        title: 'Thanh toán tiền phòng',
+        subtitle: 'Khoản thuê phòng định kỳ',
+        icon: Icons.apartment_rounded,
+        background: Color(0xFF081426),
+        backgroundEnd: Color(0xFF172A4B),
+        primary: Color(0xFF173B6C),
+        secondary: Color(0xFF8B5CF6),
+        accent: Color(0xFFFBBF24),
+        iconColor: Color(0xFF352100),
+        ink: Color(0xFF10233F),
+        mutedInk: Color(0xFF607089),
+        softAccent: Color(0xFFFFF6D8),
+        softSurface: Color(0xFFF5F7FB),
+      );
+    }
+    return const _PaymentVisualTheme(
+      title: 'Thanh toán điện nước & dịch vụ',
+      subtitle: 'Chi phí tiện ích trong kỳ',
+      icon: Icons.bolt_rounded,
+      background: Color(0xFF073B4C),
+      backgroundEnd: Color(0xFF075E63),
+      primary: Color(0xFF087F8C),
+      secondary: Color(0xFF22D3EE),
+      accent: Color(0xFF5EEAD4),
+      iconColor: Color(0xFF073B4C),
+      ink: Color(0xFF103A43),
+      mutedInk: Color(0xFF5F747A),
+      softAccent: Color(0xFFDDFBF6),
+      softSurface: Color(0xFFF1F9F8),
     );
   }
 }
 
-class _PaidButton extends StatelessWidget {
-  const _PaidButton();
+Future<void> _showPaymentSuccess(
+  BuildContext context,
+  TenantInvoice invoice,
+  _PaymentVisualTheme theme,
+) {
+  return showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 76,
+              height: 76,
+              decoration: BoxDecoration(
+                color: theme.softAccent,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.check_rounded,
+                color: theme.primary,
+                size: 42,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Thanh toán thành công',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: theme.ink,
+                fontSize: 21,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Hệ thống đã ghi nhận ${_formatAmount(invoice.remainingAmount)}đ cho ${theme.title.toLowerCase()}.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: theme.mutedInk,
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: FilledButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  Navigator.of(context).maybePop();
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: theme.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: const Text(
+                  'Hoàn tất',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
 
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 58,
-      child: ElevatedButton(
-        onPressed: () {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const PaymentSuccessPage()),
-          );
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.deepBlue,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-        child: const Text(
-          'T\u00F4i \u0111\u00E3 thanh to\u00E1n',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-            height: 24 / 18,
-          ),
-        ),
+Uint8List? _decodeQrBytes(String value) {
+  if (value.isEmpty) return null;
+  try {
+    final encoded = value.startsWith('data:image/')
+        ? value.substring(value.indexOf(',') + 1)
+        : value;
+    return base64Decode(encoded);
+  } on FormatException {
+    return null;
+  }
+}
+
+Future<void> _copyValue(BuildContext context, String value) async {
+  await Clipboard.setData(ClipboardData(text: value));
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      const SnackBar(
+        content: Text('Đã sao chép thông tin'),
+        duration: Duration(seconds: 2),
       ),
     );
+}
+
+String _formatAmount(int amount) {
+  final digits = amount.abs().toString();
+  final buffer = StringBuffer();
+  for (var index = 0; index < digits.length; index++) {
+    if (index > 0 && (digits.length - index) % 3 == 0) buffer.write('.');
+    buffer.write(digits[index]);
   }
+  return amount < 0 ? '-$buffer' : buffer.toString();
 }

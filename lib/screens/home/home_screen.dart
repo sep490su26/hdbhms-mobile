@@ -4,6 +4,7 @@ import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart
 
 import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/home/home_summary_model.dart';
+import 'package:hdbhms_mobile/models/payment/tenant_invoice_model.dart';
 import 'package:hdbhms_mobile/providers/home_provider.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
@@ -12,6 +13,7 @@ import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.da
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
+import 'package:hdbhms_mobile/screens/payment/qr_payment_page.dart';
 import 'package:hdbhms_mobile/screens/contract/contract_hub_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
@@ -21,6 +23,7 @@ import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart
 import 'package:hdbhms_mobile/screens/web_view_screen.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -99,6 +102,15 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
+          floatingActionButton: kDebugMode
+              ? FloatingActionButton.extended(
+                  onPressed: _openQrPaymentPreview,
+                  backgroundColor: AppColors.deepBlue,
+                  foregroundColor: Colors.white,
+                  icon: const Icon(Icons.qr_code_2_rounded),
+                  label: const Text('Xem QR mẫu'),
+                )
+              : null,
           bottomNavigationBar: _HomeBottomNavigation(
             authService: widget.authService,
             homeService: widget.homeService,
@@ -106,6 +118,108 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _openQrPaymentPreview() async {
+    final type = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => SafeArea(
+        child: Container(
+          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Chọn loại QR muốn xem',
+                style: TextStyle(
+                  color: AppColors.deepBlue,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 14),
+              ListTile(
+                onTap: () => Navigator.of(sheetContext).pop('RENT'),
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFFFF4CC),
+                  child: Icon(
+                    Icons.apartment_rounded,
+                    color: Color(0xFF8A5A00),
+                  ),
+                ),
+                title: const Text(
+                  'Thanh toán tiền phòng',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                subtitle: const Text('Giao diện xanh đêm và vàng'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+              ),
+              ListTile(
+                onTap: () => Navigator.of(sheetContext).pop('UTILITY'),
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFDDFBF6),
+                  child: Icon(
+                    Icons.bolt_rounded,
+                    color: Color(0xFF087F8C),
+                  ),
+                ),
+                title: const Text(
+                  'Điện nước & dịch vụ',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                subtitle: const Text('Giao diện teal và cyan'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!mounted || type == null) return;
+
+    final isRent = type == 'RENT';
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => QrPaymentPage(
+          invoice: TenantInvoice(
+            id: 0,
+            invoiceCode: isRent ? 'RENT-DEMO-001' : 'UTILITY-DEMO-001',
+            invoiceType: type,
+            billingPeriod: '2026-06',
+            status: 'ISSUED',
+            roomCode: 'P.302',
+            contractCode: 'HD-DEMO',
+            dueDate: null,
+            issuedAt: null,
+            paidAt: null,
+            totalAmount: isRent ? 2450000 : 438000,
+            paidAmount: 0,
+            remainingAmount: isRent ? 2450000 : 438000,
+            paymentIntentId: 0,
+            checkoutUrl: '',
+            qrCode:
+                'https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${isRent ? 'HDBHMS-RENT-DEMO' : 'HDBHMS-UTILITY-DEMO'}',
+            providerOrderCode: 'DEMO-001',
+            paymentLinkId: '',
+            bankBin: '970405',
+            bankShortName: isRent ? 'Agribank' : 'Vietcombank',
+            accountNumber: isRent ? '3213888869999' : '0123456789',
+            accountName: 'CONG TY HDBHMS',
+            transferDescription: isRent
+                ? 'RENT_P302_JUNE'
+                : 'UTILITY_P302_JUNE',
+            lines: const [],
+          ),
+        ),
+      ),
     );
   }
 
