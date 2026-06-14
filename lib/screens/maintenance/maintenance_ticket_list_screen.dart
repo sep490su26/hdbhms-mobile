@@ -71,7 +71,9 @@ class _MaintenanceTicketListScreenState
   Future<void> _openCreateTicket() async {
     final created = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (context) => const CreateMaintenanceTicketScreen(),
+        builder: (context) => CreateMaintenanceTicketScreen(
+          ticketService: widget.ticketService,
+        ),
       ),
     );
     if (created == true && mounted) {
@@ -125,6 +127,13 @@ class _MaintenanceTicketListScreenState
                           physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.fromLTRB(14, 18, 14, 96),
                           children: [
+                            _MaintenanceSectionHeader(
+                              ticketCount: snapshot.hasData
+                                  ? tickets.length
+                                  : null,
+                              onCreateTicket: _openCreateTicket,
+                            ),
+                            const SizedBox(height: 18),
                             _FilterPanel(
                               keywordController: _keywordController,
                               selectedStatus: _selectedStatus,
@@ -142,8 +151,6 @@ class _MaintenanceTicketListScreenState
                               onFilter: _applyFilter,
                             ),
                             const SizedBox(height: 20),
-                            const _ListTitle(),
-                            const SizedBox(height: 16),
                             if (snapshot.connectionState ==
                                 ConnectionState.waiting)
                               const _LoadingState()
@@ -167,15 +174,6 @@ class _MaintenanceTicketListScreenState
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openCreateTicket,
-        backgroundColor: AppColors.deepBlue,
-        foregroundColor: Colors.white,
-        elevation: 6,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add_rounded, size: 30),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       bottomNavigationBar: TenantBottomNavigation(
         activeTab: TenantBottomNavTab.support,
         onHomeTap: () =>
@@ -227,7 +225,7 @@ class _MaintenanceTicketListScreenState
           ),
           const Expanded(
             child: Text(
-              'Danh sách phiếu sự cố',
+              'Sự cố',
               style: AppColors.topBarTitleStyle,
             ),
           ),
@@ -248,6 +246,70 @@ Icons.notifications_none_rounded,
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MaintenanceSectionHeader extends StatelessWidget {
+  const _MaintenanceSectionHeader({
+    required this.ticketCount,
+    required this.onCreateTicket,
+  });
+
+  final int? ticketCount;
+  final VoidCallback onCreateTicket;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Danh sách sự cố',
+                style: TextStyle(
+                  color: AppColors.deepBlue,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  height: 23 / 18,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                ticketCount == null ? 'Đang tải...' : '$ticketCount phiếu',
+                style: const TextStyle(
+                  color: AppColors.bodyText,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  height: 16 / 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        ElevatedButton.icon(
+          onPressed: onCreateTicket,
+          icon: const Icon(Icons.add_rounded, size: 19),
+          label: const Text('Báo cáo sự cố'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.deepBlue,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            minimumSize: const Size(0, 42),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            textStyle: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -355,31 +417,6 @@ class _FieldLabel extends StatelessWidget {
         fontWeight: FontWeight.w800,
         height: 16 / 12,
       ),
-    );
-  }
-}
-
-class _ListTitle extends StatelessWidget {
-  const _ListTitle();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Row(
-      children: [
-        Icon(Icons.push_pin_rounded, color: AppColors.deepBlue, size: 20),
-        SizedBox(width: 4),
-        Expanded(
-          child: Text(
-            'Tất cả phiếu sự cố',
-            style: TextStyle(
-              color: AppColors.deepBlue,
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              height: 23 / 18,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

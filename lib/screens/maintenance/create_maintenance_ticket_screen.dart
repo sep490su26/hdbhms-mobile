@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
 import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
@@ -271,12 +272,7 @@ class _CreateMaintenanceTicketScreenState
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                Navigator.of(this.context).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                    builder: (context) => const MaintenanceTicketListScreen(),
-                  ),
-                  (route) => route.isFirst,
-                );
+                Navigator.of(this.context).pop(true);
               },
               child: const Text('Xem phiếu'),
             ),
@@ -299,6 +295,55 @@ class _CreateMaintenanceTicketScreenState
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Widget _buildHeader() {
+    return Container(
+      height: AppColors.topBarHeight,
+      padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.cardBorder.withValues(alpha: 0.65),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+            icon: const Icon(
+              Icons.arrow_back_rounded,
+              color: AppColors.topBarIconColor,
+              size: AppColors.topBarIconSize,
+            ),
+            tooltip: 'Trở về',
+          ),
+          const Expanded(
+            child: Text(
+              'Tạo phiếu sự cố',
+              style: AppColors.topBarTitleStyle,
+            ),
+          ),
+          IconButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const NotificationListScreen(),
+              ),
+            ),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            icon: const Icon(
+              Icons.notifications_none_rounded,
+              color: AppColors.topBarIconColor,
+              size: AppColors.topBarIconSize,
+            ),
+            tooltip: 'Thông báo',
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
@@ -306,41 +351,28 @@ class _CreateMaintenanceTicketScreenState
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.deepBlue,
-        elevation: 0,
-        leading: IconButton(
-          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Trở về',
-        ),
-        title: const Text(
-          'Phiếu sự cố',
-          style: AppColors.topBarTitleStyle,
-        ),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 8),
-            child: Icon(
-              Icons.notifications_none_rounded,
-              color: AppColors.topBarIconColor,
-              size: AppColors.topBarIconSize,
-            ),
-          ),
-        ],
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 430),
-          child: Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(14, 18, 14, 26 + bottomInset),
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 430),
+            child: Column(
+              children: [
+                _buildHeader(),
+                Expanded(
+                  child: Form(
+                    key: _formKey,
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(
+                        14,
+                        18,
+                        14,
+                        26 + bottomInset,
+                      ),
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                   const _IntroCard(),
                   const SizedBox(height: 18),
                   const _FieldLabel('Danh mục sự cố'),
@@ -457,8 +489,12 @@ class _CreateMaintenanceTicketScreenState
                       ),
                     ),
                   ),
-                ],
-              ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

@@ -54,8 +54,8 @@ class TenantBottomNavigation extends StatelessWidget {
                 onTap: onBillsTap,
               ),
               _BottomNavItem(
-                icon: Icons.support_agent_outlined,
-                label: 'Hỗ trợ',
+                icon: Icons.handyman_outlined,
+                label: 'Sự cố',
                 isSelected: activeTab == TenantBottomNavTab.support,
                 onTap: onSupportTap,
               ),

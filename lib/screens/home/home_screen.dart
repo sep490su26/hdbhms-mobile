@@ -13,7 +13,6 @@ import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/contract/contract_hub_screen.dart';
-import 'package:hdbhms_mobile/screens/maintenance/create_maintenance_ticket_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
@@ -966,19 +965,8 @@ class _QuickActions extends StatelessWidget {
           },
         ),
         _QuickActionButton(
-          icon: Icons.warning_amber_rounded,
-          label: 'Báo cáo sự cố',
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const CreateMaintenanceTicketScreen(),
-              ),
-            );
-          },
-        ),
-        _QuickActionButton(
-          icon: Icons.assignment_late_outlined,
-          label: 'Danh sách sự cố',
+          icon: Icons.handyman_outlined,
+          label: 'Sự cố',
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
