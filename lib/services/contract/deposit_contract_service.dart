@@ -22,7 +22,7 @@ class DepositContractService {
 
   final http.Client? _client;
   http.Client get _effectiveClient => _client ?? AuthenticatedClient();
-  static const _timeout = Duration(seconds: 10);
+  static const _timeout = Duration(seconds: 20);
 
   Future<List<ContractListItem>> getMyDeposits({
     String? status,

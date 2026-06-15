@@ -16,8 +16,7 @@ class AuthException implements Exception {
 }
 
 class SessionExpiredException extends AuthException {
-  const SessionExpiredException([String message = 'Phiên đăng nhập đã hết hạn'])
-    : super(message);
+  const SessionExpiredException([super.message = 'Phiên đăng nhập đã hết hạn']);
 }
 
 class AuthService {
@@ -25,7 +24,7 @@ class AuthService {
 
   final http.Client? _client;
 
-  static const _timeout = Duration(seconds: 10);
+  static const _timeout = Duration(seconds: 20);
   static const accessTokenKey = 'access_token';
   static const sessionIdKey = 'session_id';
   static const tenantIdKey = 'tenant_id';
@@ -326,7 +325,7 @@ class AuthService {
 
       final apiResponse = ApiResponse<void>.fromJson(
         _decodeBody(response.body),
-        (_) => null,
+        (_) {},
       );
 
       if (response.statusCode >= 200 && response.statusCode < 300) {

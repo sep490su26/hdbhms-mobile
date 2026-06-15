@@ -99,6 +99,9 @@ class HomeProvider extends ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     _sessionExpired = false;
+    _summary = null;
+    _activeRooms = const [];
+    _selectedRoom = null;
     notifyListeners();
 
     try {
@@ -108,10 +111,8 @@ class HomeProvider extends ChangeNotifier {
       _errorMessage = error.message;
     } on HomeException catch (error) {
       _errorMessage = error.message;
-      _summary = _mockSummary;
     } catch (e) {
       _errorMessage = 'Đã có lỗi xảy ra';
-      _summary = _mockSummary;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -184,59 +185,4 @@ class HomeProvider extends ChangeNotifier {
     _selectedRoom = room;
     notifyListeners();
   }
-
-  static final _mockSummary = HomeSummary(
-    user: const HomeUser(
-      id: 1,
-      fullName: 'Nguyễn Văn A',
-      phone: '0912345678',
-      email: 'a@example.com',
-      role: 'RESIDENT',
-      avatarUrl: '',
-    ),
-    tenant: const HomeTenant(id: 1, name: 'Chung cư Blue Sky'),
-    room: const HomeRoom(
-      id: 101,
-      roomCode: 'P.101',
-      name: 'Phòng 101 - Tầng 1',
-      currentStatus: 'OCCUPIED',
-    ),
-    rooms: const [
-      HomeRoom(
-        id: 101,
-        roomCode: 'P.101',
-        name: 'Phòng 101 - Tầng 1',
-        currentStatus: 'OCCUPIED',
-      ),
-    ],
-    contract: HomeContract(
-      id: 1,
-      contractCode: 'HD-2024-001',
-      status: 'ACTIVE',
-      startDate: DateTime(2024, 1, 1),
-      endDate: DateTime(2025, 1, 1),
-    ),
-    invoiceSummary: const InvoiceSummary(
-      unpaidCount: 2,
-      totalUnpaidAmount: 3500000,
-      nearestDueDate: null,
-    ),
-    notificationSummary: const NotificationSummary(unreadCount: 5),
-    utilitySummary: const UtilitySummary(
-      electricity: UtilityUsage(
-        name: 'Điện tháng 4',
-        value: 145.5,
-        unit: 'kWh',
-        status: 'Bình thường',
-        percentChange: 5.2,
-      ),
-      water: UtilityUsage(
-        name: 'Nước tháng 4',
-        value: 12.0,
-        unit: 'm³',
-        status: 'Bình thường',
-        percentChange: -2.1,
-      ),
-    ),
-  );
 }
