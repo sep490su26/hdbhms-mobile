@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:hdbhms_mobile/app.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
@@ -144,5 +144,11 @@ class AuthenticatedClient extends http.BaseClient {
       return request;
     }
     return request;
+  }
+
+  @override
+  void close() {
+    _inner.close();
+    super.close();
   }
 }

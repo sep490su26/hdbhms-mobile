@@ -13,6 +13,13 @@ class LeaseContract {
     required this.terms,
     required this.serviceFees,
     required this.contractFileUrl,
+    this.tenantIntention = '',
+    this.expectedVacantDate,
+    this.roleInContract = '',
+    this.isPrimary = false,
+    this.canRecordIntention = false,
+    this.canRenew = false,
+    this.canRenewBlockedReason = '',
     this.signedAt,
   });
 
@@ -29,6 +36,13 @@ class LeaseContract {
   final List<String> terms;
   final List<LeaseServiceFee> serviceFees;
   final String contractFileUrl;
+  final String tenantIntention;
+  final DateTime? expectedVacantDate;
+  final String roleInContract;
+  final bool isPrimary;
+  final bool canRecordIntention;
+  final bool canRenew;
+  final String canRenewBlockedReason;
   final DateTime? signedAt;
 
   double get expectedServiceFeeTotal =>
@@ -76,14 +90,46 @@ class LeaseContract {
       terms: _parseTerms(json),
       serviceFees: _parseServiceFees(json),
       contractFileUrl: _firstString(json, const [
+        'contract_file_download_url',
+        'contractFileDownloadUrl',
         'contract_file_url',
         'contractFileUrl',
+        'signed_file_download_url',
+        'signedFileDownloadUrl',
         'file_url',
         'fileUrl',
         'document_url',
         'documentUrl',
       ]),
-      signedAt: _firstDate(json, const ['signed_at', 'signedAt', 'confirmedAt']),
+      tenantIntention: _firstString(json, const [
+        'tenant_intention',
+        'tenantIntention',
+      ]),
+      expectedVacantDate: _firstDate(json, const [
+        'expected_vacant_date',
+        'expectedVacantDate',
+        'expected_move_out_date',
+        'expectedMoveOutDate',
+      ]),
+      roleInContract: _firstString(json, const [
+        'role_in_contract',
+        'roleInContract',
+      ]),
+      isPrimary: _firstBool(json, const ['is_primary', 'isPrimary']),
+      canRecordIntention: _firstBool(json, const [
+        'can_record_intention',
+        'canRecordIntention',
+      ]),
+      canRenew: _firstBool(json, const ['can_renew', 'canRenew']),
+      canRenewBlockedReason: _firstString(json, const [
+        'can_renew_blocked_reason',
+        'canRenewBlockedReason',
+      ]),
+      signedAt: _firstDate(json, const [
+        'signed_at',
+        'signedAt',
+        'confirmedAt',
+      ]),
     );
   }
 }
@@ -251,6 +297,23 @@ double? _firstDouble(Map<String, dynamic> json, List<String> keys) {
     }
   }
   return null;
+}
+
+bool _firstBool(Map<String, dynamic> json, List<String> keys) {
+  for (final key in keys) {
+    final value = json[key];
+    if (value is bool) {
+      return value;
+    }
+    final normalized = value?.toString().trim().toLowerCase();
+    if (normalized == 'true' || normalized == '1') {
+      return true;
+    }
+    if (normalized == 'false' || normalized == '0') {
+      return false;
+    }
+  }
+  return false;
 }
 
 DateTime? _firstDate(Map<String, dynamic> json, List<String> keys) {

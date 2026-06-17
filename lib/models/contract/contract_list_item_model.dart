@@ -15,11 +15,33 @@ class ContractListItem {
 
   factory ContractListItem.fromJson(Map<String, dynamic> json) {
     return ContractListItem(
-      id: _asInt(json['id']) ?? 0,
-      contractCode: _str(json, ['contract_code', 'contractCode', 'deposit_code', 'depositCode']),
+      id:
+          _asInt(
+            json['id'] ??
+                json['depositAgreementId'] ??
+                json['deposit_agreement_id'] ??
+                json['leaseContractId'] ??
+                json['lease_contract_id'] ??
+                json['contractId'] ??
+                json['contract_id'],
+          ) ??
+          0,
+      contractCode: _str(json, [
+        'contract_code',
+        'contractCode',
+        'deposit_code',
+        'depositCode',
+      ]),
       roomCode: _str(json, ['room_code', 'roomCode']),
-      signedAt: _date(json, ['confirmed_at', 'confirmedAt', 'signed_at', 'signedAt', 'created_at', 'createdAt']),
-      status: _str(json, ['status']),
+      signedAt: _date(json, [
+        'confirmed_at',
+        'confirmedAt',
+        'signed_at',
+        'signedAt',
+        'created_at',
+        'createdAt',
+      ]),
+      status: _str(json, ['signature_status', 'signatureStatus', 'status']),
     );
   }
 }
@@ -53,19 +75,46 @@ class DepositContract {
 
   factory DepositContract.fromJson(Map<String, dynamic> json) {
     final roomJson = _firstMap(json, ['room', 'room_info', 'roomInfo']);
+    final signedFileId = _asInt(json['signedFileId'] ?? json['signed_file_id']);
+    final signedFileUrl = _str(json, [
+      'signed_file_download_url',
+      'signedFileDownloadUrl',
+      'signed_file_url',
+      'signedFileUrl',
+    ]);
 
     return DepositContract(
-      id: _asInt(json['id']),
+      id: _asInt(
+        json['id'] ??
+            json['depositAgreementId'] ??
+            json['deposit_agreement_id'],
+      ),
       depositCode: _str(json, ['deposit_code', 'depositCode']),
       status: _str(json, ['status']),
       room: DepositRoom.fromJson(roomJson.isEmpty ? json : roomJson),
       amount: _dbl(json, ['amount', 'deposit_amount', 'depositAmount']),
-      expectedMoveInDate: _date(json, ['expected_move_in_date', 'expectedMoveInDate']),
-      expectedLeaseSignDate: _date(json, ['expected_lease_sign_date', 'expectedLeaseSignDate']),
+      expectedMoveInDate: _date(json, [
+        'expected_move_in_date',
+        'expectedMoveInDate',
+      ]),
+      expectedLeaseSignDate: _date(json, [
+        'expected_lease_sign_date',
+        'expectedLeaseSignDate',
+      ]),
       depositExpiresAt: _date(json, ['deposit_expires_at', 'depositExpiresAt']),
-      createdAt: _date(json, ['created_at', 'createdAt', 'confirmedAt', 'confirmed_at']),
+      createdAt: _date(json, [
+        'created_at',
+        'createdAt',
+        'confirmedAt',
+        'confirmed_at',
+      ]),
       note: _str(json, ['note']),
-      contractFileUrl: _str(json, ['contract_file_url', 'contractFileUrl']),
+      // Mobile chỉ hiển thị bản đã ký. Không fallback sang draft PDF khi chưa có signedFileId.
+      contractFileUrl: signedFileUrl.isNotEmpty
+          ? signedFileUrl
+          : signedFileId != null
+          ? _str(json, ['contract_file_url', 'contractFileUrl'])
+          : '',
     );
   }
 }
