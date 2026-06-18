@@ -1,11 +1,11 @@
-import 'dart:typed_data';
+﻿import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../models/file_metadata_model.dart';
-import '../models/identity_image_file.dart';
-import 'file_service.dart';
+import 'package:hdbhms_mobile/models/maintenance/file_metadata_model.dart';
+import 'package:hdbhms_mobile/models/auth/identity_image_file.dart';
+import 'package:hdbhms_mobile/services/file_service.dart';
 
 abstract class FileUploadService {
   Future<IdentityImageFile> pickIdentityImage({

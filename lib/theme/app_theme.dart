@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
-import 'app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 class AppTheme {
   const AppTheme._();
@@ -13,8 +13,18 @@ class AppTheme {
       colorScheme: ColorScheme.fromSeed(seedColor: primaryColor),
       scaffoldBackgroundColor: AppColors.background,
       appBarTheme: const AppBarTheme(
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.topBarIconColor,
+        toolbarHeight: AppColors.topBarHeight,
+        iconTheme: IconThemeData(
+          color: AppColors.topBarIconColor,
+          size: AppColors.topBarIconSize,
+        ),
+        actionsIconTheme: IconThemeData(
+          color: AppColors.topBarIconColor,
+          size: AppColors.topBarIconSize,
+        ),
+        titleTextStyle: AppColors.topBarTitleStyle,
         centerTitle: false,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(

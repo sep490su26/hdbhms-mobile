@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../app.dart';
-import '../screens/login_page.dart';
+import 'package:hdbhms_mobile/app.dart';
+import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'auth_service.dart';
-import 'home_service.dart';
+import 'package:hdbhms_mobile/services/auth/auth_service.dart';
+import 'package:hdbhms_mobile/services/home/home_service.dart';
 
 class AuthenticatedClient extends http.BaseClient {
   AuthenticatedClient({
@@ -29,27 +29,64 @@ class AuthenticatedClient extends http.BaseClient {
       request.headers['Authorization'] = 'Bearer $token';
     }
     request.headers['Accept'] = 'application/json';
-    request.headers['Content-Type'] = 'application/json';
+    if (request is! http.MultipartRequest) {
+      request.headers['Content-Type'] = 'application/json';
+    }
     request.headers['X-Client-Type'] = 'mobile';
+
+    debugPrint('➡️ [HTTP REQUEST] ${request.method} ${request.url}');
+    if (request is http.Request) {
+      debugPrint('➡️ [BODY] ${request.body}');
+    }
 
     final response = await _inner.send(request);
 
-    if (response.statusCode == 401 || response.statusCode == 403) {
+    // Read the response stream so we can log it, then reconstruct it
+    final responseBytes = await response.stream.toBytes();
+    String bodyString = '';
+    try {
+      bodyString = String.fromCharCodes(responseBytes);
+    } catch (e) {
+      bodyString = '[Binary Data]';
+    }
+
+    debugPrint('⬅️ [HTTP RESPONSE] ${response.statusCode} ${request.url}');
+    debugPrint('⬅️ [BODY] $bodyString');
+
+    final clonedResponse = http.StreamedResponse(
+      Stream.value(responseBytes),
+      response.statusCode,
+      contentLength: response.contentLength ?? responseBytes.length,
+      request: response.request,
+      headers: response.headers,
+      isRedirect: response.isRedirect,
+      persistentConnection: response.persistentConnection,
+      reasonPhrase: response.reasonPhrase,
+    );
+
+    if (clonedResponse.statusCode == 401 || clonedResponse.statusCode == 403) {
+      final isRetryable = request is http.Request;
+      if (!isRetryable) {
+        // Cannot retry streams safely
+        return clonedResponse;
+      }
+
       try {
         final newLoginData = await authService.refreshToken();
 
         final newRequest = _cloneRequest(request);
         newRequest.headers['Authorization'] = 'Bearer ${newLoginData.token}';
 
+        debugPrint('🔄 [HTTP RETRY] ${newRequest.method} ${newRequest.url}');
         return await _inner.send(newRequest);
       } catch (e) {
         await AuthService.clearLocalSession();
         _redirectToLogin();
-        return response;
+        return clonedResponse;
       }
     }
 
-    return response;
+    return clonedResponse;
   }
 
   void _redirectToLogin() {

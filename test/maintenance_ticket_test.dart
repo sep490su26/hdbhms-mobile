@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hdbhms_mobile/screens/maintenance_ticket_list_screen.dart';
-import 'package:hdbhms_mobile/services/maintenance_ticket_service.dart';
+import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
+import 'package:hdbhms_mobile/services/maintenance/maintenance_ticket_service.dart';
 
 void main() {
   test('MaintenanceTicketService filters mock tickets locally', () async {

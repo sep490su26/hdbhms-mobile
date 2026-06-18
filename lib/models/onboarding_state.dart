@@ -1,4 +1,4 @@
-import 'onboarding_action.dart';
+﻿import 'package:hdbhms_mobile/models/onboarding_action.dart';
 
 class OnboardingState {
   const OnboardingState({
@@ -13,15 +13,37 @@ class OnboardingState {
 
   factory OnboardingState.fromJson(Map<String, dynamic> json) {
     final actionsJson = json['actions'];
+    final actions = actionsJson is List
+        ? actionsJson
+              .whereType<Map<String, dynamic>>()
+              .map(OnboardingAction.fromJson)
+              .toList()
+        : <OnboardingAction>[];
+    final completed =
+        json['on_boarding_completed'] == true ||
+        json['onBoardingCompleted'] == true;
+
+    if (actions.isEmpty && !completed) {
+      final legacyStep =
+          json['next_step']?.toString() ?? json['nextStep']?.toString();
+      if (legacyStep != null && legacyStep != home) {
+        actions.add(
+          OnboardingAction(
+            actionKey: legacyStep,
+            label: legacyStep,
+            completed: false,
+            priority: 1,
+          ),
+        );
+      }
+    }
+
     return OnboardingState(
-      userId: int.tryParse(json['user_id']?.toString() ?? ''),
-      onBoardingCompleted: json['on_boarding_completed'] == true,
-      actions: actionsJson is List
-          ? actionsJson
-                .whereType<Map<String, dynamic>>()
-                .map(OnboardingAction.fromJson)
-                .toList()
-          : const [],
+      userId: int.tryParse(
+        (json['user_id'] ?? json['userId'])?.toString() ?? '',
+      ),
+      onBoardingCompleted: completed,
+      actions: actions,
     );
   }
 
@@ -31,12 +53,12 @@ class OnboardingState {
 
   String get nextStep {
     if (onBoardingCompleted) return home;
-    
+
     if (actions.isEmpty) return home;
-    
+
     final sortedActions = List<OnboardingAction>.from(actions)
       ..sort((a, b) => a.priority.compareTo(b.priority));
-      
+
     final nextAction = sortedActions.firstWhere(
       (action) => !action.completed,
       orElse: () => sortedActions.first,
@@ -45,13 +67,11 @@ class OnboardingState {
     return nextAction.actionKey;
   }
 
-  bool get mustChangePassword => actions.any(
-    (a) => a.actionKey == changePassword && !a.completed
-  );
+  bool get mustChangePassword =>
+      actions.any((a) => a.actionKey == changePassword && !a.completed);
 
-  bool get identityCompleted => actions.any(
-    (a) => a.actionKey == identityVerification && a.completed
-  );
+  bool get identityCompleted =>
+      actions.any((a) => a.actionKey == identityVerification && a.completed);
 
   @override
   String toString() {
