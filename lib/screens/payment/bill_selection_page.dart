@@ -8,7 +8,7 @@ import '../notification/notification_list_screen.dart';
 import '../profile_request/tenant_profile_screen.dart';
 import '../profile_request/tenant_request_screen.dart';
 import 'payment_history_page.dart';
-import '../web_view_screen.dart';
+import 'qr_payment_page.dart';
 
 class BillSelectionPage extends StatefulWidget {
   const BillSelectionPage({super.key});
@@ -132,14 +132,12 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
   }
 
   void _openPayment(BuildContext context, TenantInvoice invoice) {
-    if (invoice.canPay && invoice.checkoutUrl.isNotEmpty) {
+    if (invoice.canPay &&
+        (invoice.qrCode.isNotEmpty || invoice.transferDescription.isNotEmpty)) {
       Navigator.of(context)
           .push(
             MaterialPageRoute(
-              builder: (context) => WebViewScreen(
-                url: invoice.checkoutUrl,
-                title: 'Thanh toán hóa đơn',
-              ),
+              builder: (context) => QrPaymentPage(invoice: invoice),
             ),
           )
           .then((_) => _reloadInvoices());

@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -22,6 +22,7 @@ class ActiveRoomItem {
     required this.roomCode,
     required this.roomName,
     required this.propertyName,
+    this.contractStatus = '',
   });
 
   final int contractId;
@@ -30,6 +31,7 @@ class ActiveRoomItem {
   final String roomCode;
   final String roomName;
   final String propertyName;
+  final String contractStatus;
 
   factory ActiveRoomItem.fromJson(Map<String, dynamic> json) {
     return ActiveRoomItem(
@@ -39,6 +41,10 @@ class ActiveRoomItem {
       roomCode: json['room_code']?.toString() ?? '',
       roomName: json['room_name']?.toString() ?? '',
       propertyName: json['property_name']?.toString() ?? '',
+      contractStatus:
+          json['contract_status']?.toString() ??
+          json['contractStatus']?.toString() ??
+          '',
     );
   }
 
@@ -72,7 +78,7 @@ class LeaseContractService {
 
   final http.Client? _client;
   http.Client get _effectiveClient => _client ?? AuthenticatedClient();
-  static const _timeout = Duration(seconds: 10);
+  static const _timeout = Duration(seconds: 20);
 
   Future<LeaseContract> getMyActiveContract({int? tenantId}) async {
     final client = _effectiveClient;
@@ -100,7 +106,7 @@ class LeaseContractService {
             data = payload;
           }
         }
-        
+
         if (data == null) {
           throw const LeaseContractNotFoundException();
         }
@@ -143,31 +149,17 @@ class LeaseContractService {
       queryParams['signedTo'] = signedTo.toIso8601String();
     }
 
-    final uri = Uri.parse('${ApiConfig.baseUrl}/lease-contracts/me')
-        .replace(queryParameters: queryParams);
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/lease-contracts/me',
+    ).replace(queryParameters: queryParams);
 
     final client = _effectiveClient;
     try {
-      final response = await client
-          .get(
-            uri,
-          )
-          .timeout(_timeout);
+      final response = await client.get(uri).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
-        dynamic listData = body;
-        if (body is Map<String, dynamic>) {
-          if (body.containsKey('data')) {
-            final data = body['data'];
-            if (data is Map<String, dynamic> && data.containsKey('data')) {
-              listData = data['data'];
-            } else {
-              listData = data;
-            }
-          }
-        }
-        final List<dynamic> list = listData is List ? listData : [];
+        final list = _extractListPayload(body);
         return list
             .whereType<Map<String, dynamic>>()
             .map(ContractListItem.fromJson)
@@ -196,7 +188,9 @@ class LeaseContractService {
     final client = _effectiveClient;
     try {
       final response = await client
-          .get(Uri.parse('${ApiConfig.baseUrl}/lease-contracts/me/active-rooms'))
+          .get(
+            Uri.parse('${ApiConfig.baseUrl}/lease-contracts/me/active-rooms'),
+          )
           .timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -234,11 +228,7 @@ class LeaseContractService {
     final client = _effectiveClient;
     try {
       final response = await client
-          .get(
-            Uri.parse(
-              '${ApiConfig.baseUrl}/lease-contracts/$contractId',
-            ),
-          )
+          .get(Uri.parse('${ApiConfig.baseUrl}/lease-contracts/$contractId'))
           .timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -264,6 +254,51 @@ class LeaseContractService {
       throw const LeaseContractException('Không kết nối được máy chủ');
     } on FormatException {
       throw const LeaseContractException('Không tải được dữ liệu hợp đồng');
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
+
+  Future<LeaseContract> recordIntention({
+    required int contractId,
+    required String intention,
+    DateTime? expectedMoveOutDate,
+    String note = '',
+  }) async {
+    final client = _effectiveClient;
+    try {
+      final response = await client
+          .post(
+            Uri.parse(
+              '${ApiConfig.baseUrl}/tenant/contracts/$contractId/intention',
+            ),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'intention': intention,
+              'expectedMoveOutDate': expectedMoveOutDate == null
+                  ? null
+                  : _dateOnlyString(expectedMoveOutDate),
+              'note': note.trim().isEmpty ? null : note.trim(),
+            }),
+          )
+          .timeout(_timeout);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return getContractById(contractId);
+      }
+      throw LeaseContractException(_messageForIntentionError(response));
+    } on LeaseContractException {
+      rethrow;
+    } on TimeoutException {
+      throw const LeaseContractException('Không kết nối được máy chủ');
+    } on http.ClientException {
+      throw const LeaseContractException('Không kết nối được máy chủ');
+    } on FormatException {
+      throw const LeaseContractException(
+        'Không thể lưu ý định. Vui lòng thử lại.',
+      );
     } finally {
       if (_client == null) {
         client.close();
@@ -311,11 +346,62 @@ class LeaseContractService {
     return 'Không tải được dữ liệu hợp đồng';
   }
 
+  String _messageForIntentionError(http.Response response) {
+    final raw = _messageForError(response);
+    if (raw.contains('CONTRACT_INTENTION_PRIMARY_ONLY')) {
+      return 'Chỉ người ký chính của hợp đồng mới được ghi nhận ý định.';
+    }
+    if (raw.contains('EXPECTED_MOVE_OUT_DATE_REQUIRED')) {
+      return 'Vui lòng chọn ngày dự kiến trả phòng.';
+    }
+    if (raw.contains('EXPECTED_MOVE_OUT_DATE_IN_PAST')) {
+      return 'Ngày dự kiến trả phòng không được trước ngày hiện tại.';
+    }
+    if (raw.contains('EXPECTED_MOVE_OUT_DATE_AFTER_CONTRACT_END')) {
+      return 'Ngày dự kiến trả phòng không được sau ngày kết thúc hợp đồng.';
+    }
+    if (raw.contains('ROOM_HOLD_IN_PROGRESS') ||
+        raw.contains('ROOM_ALREADY_RESERVED_FOR_FUTURE') ||
+        raw.contains('ROOM_ALREADY_RESERVED_BY_NEW_TENANT')) {
+      return 'Phòng đã có khách khác đặt cọc/giữ chỗ, không thể gia hạn. Vui lòng liên hệ quản lý.';
+    }
+    if (raw.trim().isNotEmpty && !raw.contains('Không tải')) {
+      return raw;
+    }
+    return 'Không thể lưu ý định. Vui lòng thử lại.';
+  }
+
   Map<String, dynamic> _decodeBody(String body) {
     final decoded = jsonDecode(body);
     if (decoded is Map<String, dynamic>) {
       return decoded;
     }
     throw const FormatException('Invalid response body');
+  }
+
+  List<dynamic> _extractListPayload(dynamic body) {
+    final payload = _unwrapEnvelope(body);
+    if (payload is List) return payload;
+    if (payload is Map<String, dynamic>) {
+      for (final key in ['data', 'items', 'content', 'records']) {
+        final value = payload[key];
+        if (value is List) return value;
+      }
+    }
+    return const [];
+  }
+
+  dynamic _unwrapEnvelope(dynamic body) {
+    if (body is Map<String, dynamic> && body.containsKey('data')) {
+      return body['data'];
+    }
+    return body;
+  }
+
+  String _dateOnlyString(DateTime value) {
+    final date = DateTime(value.year, value.month, value.day);
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
   }
 }

@@ -1,10 +1,11 @@
-﻿import 'dart:io';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import 'package:hdbhms_mobile/services/authenticated_client.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 Widget buildPlatformPdfViewer({
@@ -19,11 +20,7 @@ class MobilePdfViewer extends StatefulWidget {
   final String pdfUrl;
   final String title;
 
-  const MobilePdfViewer({
-    super.key,
-    required this.pdfUrl,
-    required this.title,
-  });
+  const MobilePdfViewer({super.key, required this.pdfUrl, required this.title});
 
   @override
   State<MobilePdfViewer> createState() => _MobilePdfViewerState();
@@ -42,18 +39,29 @@ class _MobilePdfViewerState extends State<MobilePdfViewer> {
   }
 
   Future<String> _downloadToTemp() async {
-    final response = await http
-        .get(Uri.parse(widget.pdfUrl))
-        .timeout(const Duration(seconds: 20));
+    final response = await _fetchPdf();
 
     if (response.statusCode != 200) {
       throw Exception('Không tải được tài liệu (${response.statusCode})');
     }
 
     final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/contract_preview.pdf');
+    final file = File(
+      '${dir.path}/contract_preview_${DateTime.now().millisecondsSinceEpoch}.pdf',
+    );
     await file.writeAsBytes(response.bodyBytes);
     return file.path;
+  }
+
+  Future<http.Response> _fetchPdf() async {
+    final client = AuthenticatedClient();
+    try {
+      return await client
+          .get(Uri.parse(widget.pdfUrl))
+          .timeout(const Duration(seconds: 20));
+    } finally {
+      client.close();
+    }
   }
 
   void _retry() {
@@ -67,9 +75,7 @@ class _MobilePdfViewerState extends State<MobilePdfViewer> {
     setState(() => _isDownloading = true);
 
     try {
-      final response = await http
-          .get(Uri.parse(widget.pdfUrl))
-          .timeout(const Duration(seconds: 20));
+      final response = await _fetchPdf();
 
       if (response.statusCode != 200) {
         throw Exception('Không tải được file');
@@ -114,7 +120,9 @@ class _MobilePdfViewerState extends State<MobilePdfViewer> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Lỗi tải xuống: ${e.toString().replaceAll('Exception: ', '')}'),
+            content: Text(
+              'Lỗi tải xuống: ${e.toString().replaceAll('Exception: ', '')}',
+            ),
             backgroundColor: const Color(0xFFB00020),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -139,10 +147,7 @@ class _MobilePdfViewerState extends State<MobilePdfViewer> {
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.topBarIconColor,
         elevation: 0,
-        title: Text(
-          widget.title,
-          style: AppColors.topBarTitleStyle,
-        ),
+        title: Text(widget.title, style: AppColors.topBarTitleStyle),
         actions: [
           IconButton(
             onPressed: _isDownloading ? null : _downloadFile,
@@ -188,7 +193,9 @@ class _MobilePdfViewerState extends State<MobilePdfViewer> {
           }
 
           if (snapshot.hasError) {
-            return _buildErrorState(snapshot.error.toString().replaceAll('Exception: ', ''));
+            return _buildErrorState(
+              snapshot.error.toString().replaceAll('Exception: ', ''),
+            );
           }
 
           final path = snapshot.data;

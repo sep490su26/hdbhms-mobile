@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -22,7 +22,7 @@ class DepositContractService {
 
   final http.Client? _client;
   http.Client get _effectiveClient => _client ?? AuthenticatedClient();
-  static const _timeout = Duration(seconds: 10);
+  static const _timeout = Duration(seconds: 20);
 
   Future<List<ContractListItem>> getMyDeposits({
     String? status,
@@ -44,29 +44,11 @@ class DepositContractService {
 
     final client = _effectiveClient;
     try {
-      final response = await client
-          .get(
-            uri,
-          )
-          .timeout(_timeout);
+      final response = await client.get(uri).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
-        // Handle ApiResponse wrapper and PageResponse wrapper
-        dynamic listData = body;
-        if (body is Map<String, dynamic>) {
-          if (body.containsKey('data')) {
-            final data = body['data'];
-            if (data is Map<String, dynamic> && data.containsKey('data')) {
-              // It's a PageResponse
-              listData = data['data'];
-            } else {
-              listData = data;
-            }
-          }
-        }
-
-        final List<dynamic> list = listData is List ? listData : [];
+        final list = _extractListPayload(body);
         return list
             .whereType<Map<String, dynamic>>()
             .map(ContractListItem.fromJson)
@@ -95,17 +77,15 @@ class DepositContractService {
     final client = _effectiveClient;
     try {
       final response = await client
-          .get(
-            Uri.parse('${ApiConfig.baseUrl}/deposit-agreements/$depositId'),
-          )
+          .get(Uri.parse('${ApiConfig.baseUrl}/deposit-agreements/$depositId'))
           .timeout(_timeout);
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
-        final Map<String, dynamic> data =
-            body is Map<String, dynamic> && body.containsKey('data')
-            ? body['data'] as Map<String, dynamic>
-            : body as Map<String, dynamic>;
+        final data = _extractMapPayload(body);
+        if (data == null) {
+          throw const DepositContractNotFoundException();
+        }
         return DepositContract.fromJson(data);
       }
       if (response.statusCode == 401 || response.statusCode == 403) {
@@ -143,5 +123,30 @@ class DepositContractService {
       // Fall through
     }
     return 'Không tải được dữ liệu HĐ cọc';
+  }
+
+  List<dynamic> _extractListPayload(dynamic body) {
+    final payload = _unwrapEnvelope(body);
+    if (payload is List) return payload;
+    if (payload is Map<String, dynamic>) {
+      for (final key in ['data', 'items', 'content', 'records']) {
+        final value = payload[key];
+        if (value is List) return value;
+      }
+    }
+    return const [];
+  }
+
+  Map<String, dynamic>? _extractMapPayload(dynamic body) {
+    final payload = _unwrapEnvelope(body);
+    if (payload is Map<String, dynamic>) return payload;
+    return null;
+  }
+
+  dynamic _unwrapEnvelope(dynamic body) {
+    if (body is Map<String, dynamic> && body.containsKey('data')) {
+      return body['data'];
+    }
+    return body;
   }
 }

@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Ứng dụng cần quyền truy cập để lưu ảnh QR thanh toán vào bộ sưu tập của bạn.</string>
 </dict>
 </plist>

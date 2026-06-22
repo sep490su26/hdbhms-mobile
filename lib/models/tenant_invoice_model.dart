@@ -5,9 +5,7 @@ class TenantInvoice {
     required this.invoiceType,
     required this.billingPeriod,
     required this.status,
-    required this.roomId,
     required this.roomCode,
-    required this.contractId,
     required this.contractCode,
     required this.dueDate,
     required this.issuedAt,
@@ -33,9 +31,7 @@ class TenantInvoice {
   final String invoiceType;
   final String billingPeriod;
   final String status;
-  final int? roomId;
   final String roomCode;
-  final int? contractId;
   final String contractCode;
   final DateTime? dueDate;
   final DateTime? issuedAt;
@@ -72,18 +68,6 @@ class TenantInvoice {
         normalized == 'OVERDUE';
   }
 
-  String get displayAccountNumber {
-    final raw = accountNumber.trim();
-    if (raw.isEmpty) return '';
-    if (!RegExp(r'[A-Za-z]').hasMatch(raw)) return raw;
-    final lastLetterIndex = raw.lastIndexOf(RegExp(r'[A-Za-z]'));
-    final suffix = raw.substring(lastLetterIndex + 1).trim();
-    if (RegExp(r'^\d{6,}$').hasMatch(suffix)) {
-      return suffix;
-    }
-    return raw;
-  }
-
   String get title {
     final hasViolation = lines.any((line) => line.lineType == 'VIOLATION_FINE');
     if (hasViolation) {
@@ -112,11 +96,7 @@ class TenantInvoice {
       invoiceType: _firstString(json, ['invoiceType', 'invoice_type']),
       billingPeriod: _firstString(json, ['billingPeriod', 'billing_period']),
       status: _firstString(json, ['status']),
-      roomId: int.tryParse(_firstString(json, ['roomId', 'room_id'])),
       roomCode: _firstString(json, ['roomCode', 'room_code']),
-      contractId: int.tryParse(
-        _firstString(json, ['contractId', 'contract_id']),
-      ),
       contractCode: _firstString(json, ['contractCode', 'contract_code']),
       dueDate: DateTime.tryParse(_firstString(json, ['dueDate', 'due_date'])),
       issuedAt: DateTime.tryParse(

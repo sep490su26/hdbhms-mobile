@@ -1,18 +1,19 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/config/app_config.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
 import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/home/home_summary_model.dart';
-import 'package:hdbhms_mobile/models/payment/tenant_invoice_model.dart';
 import 'package:hdbhms_mobile/providers/home_provider.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
+import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
 import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
+import 'package:hdbhms_mobile/screens/payment/payment_preview_page.dart';
 import 'package:hdbhms_mobile/screens/payment/qr_payment_page.dart';
 import 'package:hdbhms_mobile/screens/contract/contract_hub_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
@@ -23,7 +24,6 @@ import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart
 import 'package:hdbhms_mobile/screens/web_view_screen.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/foundation.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -32,12 +32,14 @@ class HomeScreen extends StatefulWidget {
     this.authService = const AuthService(),
     this.profileService = const TenantProfileService(),
     this.leaseContractService = const LeaseContractService(),
+    this.tenantInvoiceService = const TenantInvoiceService(),
   });
 
   final HomeService homeService;
   final AuthService authService;
   final TenantProfileService profileService;
   final LeaseContractService leaseContractService;
+  final TenantInvoiceService tenantInvoiceService;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -52,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _provider = HomeProvider(
       homeService: widget.homeService,
       leaseContractService: widget.leaseContractService,
+      tenantInvoiceService: widget.tenantInvoiceService,
     )..addListener(_handleProviderChanged);
     _provider.load();
   }
@@ -102,15 +105,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          floatingActionButton: kDebugMode
-              ? FloatingActionButton.extended(
-                  onPressed: _openQrPaymentPreview,
-                  backgroundColor: AppColors.deepBlue,
-                  foregroundColor: Colors.white,
-                  icon: const Icon(Icons.qr_code_2_rounded),
-                  label: const Text('Xem QR mẫu'),
-                )
-              : null,
           bottomNavigationBar: _HomeBottomNavigation(
             authService: widget.authService,
             homeService: widget.homeService,
@@ -118,108 +112,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       },
-    );
-  }
-
-  Future<void> _openQrPaymentPreview() async {
-    final type = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) => SafeArea(
-        child: Container(
-          margin: const EdgeInsets.all(12),
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Chọn loại QR muốn xem',
-                style: TextStyle(
-                  color: AppColors.deepBlue,
-                  fontSize: 19,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 14),
-              ListTile(
-                onTap: () => Navigator.of(sheetContext).pop('RENT'),
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFFFF4CC),
-                  child: Icon(
-                    Icons.apartment_rounded,
-                    color: Color(0xFF8A5A00),
-                  ),
-                ),
-                title: const Text(
-                  'Thanh toán tiền phòng',
-                  style: TextStyle(fontWeight: FontWeight.w800),
-                ),
-                subtitle: const Text('Giao diện xanh đêm và vàng'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-              ),
-              ListTile(
-                onTap: () => Navigator.of(sheetContext).pop('UTILITY'),
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFDDFBF6),
-                  child: Icon(
-                    Icons.bolt_rounded,
-                    color: Color(0xFF087F8C),
-                  ),
-                ),
-                title: const Text(
-                  'Điện nước & dịch vụ',
-                  style: TextStyle(fontWeight: FontWeight.w800),
-                ),
-                subtitle: const Text('Giao diện teal và cyan'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (!mounted || type == null) return;
-
-    final isRent = type == 'RENT';
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => QrPaymentPage(
-          invoice: TenantInvoice(
-            id: 0,
-            invoiceCode: isRent ? 'RENT-DEMO-001' : 'UTILITY-DEMO-001',
-            invoiceType: type,
-            billingPeriod: '2026-06',
-            status: 'ISSUED',
-            roomCode: 'P.302',
-            contractCode: 'HD-DEMO',
-            dueDate: null,
-            issuedAt: null,
-            paidAt: null,
-            totalAmount: isRent ? 2450000 : 438000,
-            paidAmount: 0,
-            remainingAmount: isRent ? 2450000 : 438000,
-            paymentIntentId: 0,
-            checkoutUrl: '',
-            qrCode:
-                'https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${isRent ? 'HDBHMS-RENT-DEMO' : 'HDBHMS-UTILITY-DEMO'}',
-            providerOrderCode: 'DEMO-001',
-            paymentLinkId: '',
-            bankBin: '970405',
-            bankShortName: isRent ? 'Agribank' : 'Vietcombank',
-            accountNumber: isRent ? '3213888869999' : '0123456789',
-            accountName: 'CONG TY HDBHMS',
-            transferDescription: isRent
-                ? 'RENT_P302_JUNE'
-                : 'UTILITY_P302_JUNE',
-            lines: const [],
-          ),
-        ),
-      ),
     );
   }
 
@@ -260,7 +152,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   _Greeting(user: summary.user),
                   const SizedBox(height: 17),
-                  _PaymentStatusCard(summary: summary),
+                  _PaymentStatusCard(
+                    invoiceSummary: _provider.invoiceSummary,
+                    onPay: _openPayment,
+                  ),
+                  const SizedBox(height: 10),
+                  // TEMPORARY: Xóa nút này sau khi xem xong UI thanh toán.
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const PaymentPreviewPage(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.visibility_outlined),
+                    label: const Text('XEM DEMO THANH TOÁN (TẠM)'),
+                  ),
                   const SizedBox(height: 18),
                   const _SectionHeading('Điện & Nước'),
                   const SizedBox(height: 17),
@@ -276,6 +184,29 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ],
     );
+  }
+
+  Future<void> _openPayment() async {
+    final invoices = _provider.payableInvoices;
+    if (invoices.isEmpty) {
+      return;
+    }
+
+    if (invoices.length == 1) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => QrPaymentPage(invoice: invoices.first),
+        ),
+      );
+    } else {
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (context) => const BillSelectionPage()),
+      );
+    }
+
+    if (mounted) {
+      await _provider.load();
+    }
   }
 }
 
@@ -400,7 +331,9 @@ class _RoomSelector extends StatelessWidget {
           : 'Phòng ${selected.roomCode}';
     }
     final room = summary.room;
-    if (room != null && room.roomCode.isNotEmpty && room.name.trim().isNotEmpty) {
+    if (room != null &&
+        room.roomCode.isNotEmpty &&
+        room.name.trim().isNotEmpty) {
       return 'Phòng ${room.roomCode}';
     }
     return '';
@@ -525,8 +458,8 @@ class _RoomSelector extends StatelessWidget {
                 child: Text(
                   fallbackRoom != null
                       ? (fallbackRoom.name.isNotEmpty
-                          ? fallbackRoom.name
-                          : 'Phòng ${fallbackRoom.roomCode}')
+                            ? fallbackRoom.name
+                            : 'Phòng ${fallbackRoom.roomCode}')
                       : 'Chưa có phòng',
                   style: const TextStyle(
                     color: AppColors.inputText,
@@ -546,7 +479,8 @@ class _RoomSelector extends StatelessWidget {
       );
     } else {
       for (final room in rooms) {
-        final isSelected = selectedRoom?.contractId == room.contractId ||
+        final isSelected =
+            selectedRoom?.contractId == room.contractId ||
             (selectedRoom == null && room.roomId == summary.room?.id);
         items.add(
           PopupMenuItem<int>(
@@ -564,9 +498,7 @@ class _RoomSelector extends StatelessWidget {
                   ),
                   child: Icon(
                     Icons.meeting_room_outlined,
-                    color: isSelected
-                        ? AppColors.deepBlue
-                        : AppColors.bodyText,
+                    color: isSelected ? AppColors.deepBlue : AppColors.bodyText,
                     size: 17,
                   ),
                 ),
@@ -704,14 +636,15 @@ class _Greeting extends StatelessWidget {
 }
 
 class _PaymentStatusCard extends StatelessWidget {
-  const _PaymentStatusCard({required this.summary});
+  const _PaymentStatusCard({required this.invoiceSummary, required this.onPay});
 
-  final HomeSummary summary;
+  final InvoiceSummary invoiceSummary;
+  final VoidCallback onPay;
 
   @override
   Widget build(BuildContext context) {
-    final invoice = summary.invoiceSummary;
-    final hasUnpaid = invoice.unpaidCount > 0 || invoice.totalUnpaidAmount > 0;
+    final hasUnpaid =
+        invoiceSummary.unpaidCount > 0 || invoiceSummary.totalUnpaidAmount > 0;
 
     return Container(
       width: double.infinity,
@@ -749,9 +682,9 @@ class _PaymentStatusCard extends StatelessWidget {
           ),
           const SizedBox(height: 5),
           Text(
-            invoice.nearestDueDate == null
+            invoiceSummary.nearestDueDate == null
                 ? 'Chưa có hạn thanh toán'
-                : 'Hạn: ${_formatDate(invoice.nearestDueDate!)}',
+                : 'Hạn: ${_formatDate(invoiceSummary.nearestDueDate!)}',
             style: const TextStyle(
               color: AppColors.bodyText,
               fontSize: 14,
@@ -765,7 +698,7 @@ class _PaymentStatusCard extends StatelessWidget {
             children: [
               Flexible(
                 child: Text(
-                  _formatAmount(invoice.totalUnpaidAmount),
+                  _formatAmount(invoiceSummary.totalUnpaidAmount),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -796,15 +729,7 @@ class _PaymentStatusCard extends StatelessWidget {
             width: double.infinity,
             height: 56,
             child: ElevatedButton(
-              onPressed: hasUnpaid
-                  ? () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const BillSelectionPage(),
-                        ),
-                      );
-                    }
-                  : null,
+              onPressed: hasUnpaid ? onPay : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.deepBlue,
                 disabledBackgroundColor: AppColors.deepBlue.withValues(
@@ -1183,10 +1108,8 @@ class _HomeBottomNavigation extends StatelessWidget {
     if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
-        builder: (context) => LoginPage(
-          authService: authService,
-          homeService: homeService,
-        ),
+        builder: (context) =>
+            LoginPage(authService: authService, homeService: homeService),
       ),
       (route) => false,
     );
@@ -1220,10 +1143,8 @@ class _HomeBottomNavigation extends StatelessWidget {
         );
       },
       onRequestsTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const TenantRequestScreen(),
-              ),
-            ),
+        MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+      ),
     );
   }
 }
@@ -1233,8 +1154,6 @@ void _showTodo(BuildContext context, String message) {
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(message)));
 }
-
-
 
 String _formatDate(DateTime date) {
   return '${date.day.toString().padLeft(2, '0')}/'

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
@@ -84,8 +84,11 @@ class _MaintenanceTicketListScreenState
   Future<void> _openTicketDetail(MaintenanceTicketModel ticket) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) =>
-            MaintenanceTicketDetailScreen(ticketId: ticket.id, ticket: ticket),
+        builder: (context) => MaintenanceTicketDetailScreen(
+          ticketId: ticket.id,
+          ticket: ticket,
+          ticketService: widget.ticketService,
+        ),
       ),
     );
     if (mounted) {

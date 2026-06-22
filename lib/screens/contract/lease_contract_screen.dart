@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
@@ -96,7 +96,11 @@ class _LeaseContractScreenState extends State<LeaseContractScreen> {
                       return RefreshIndicator(
                         color: AppColors.deepBlue,
                         onRefresh: _refresh,
-                        child: _ContractContent(contract: contract),
+                        child: _ContractContent(
+                          contract: contract,
+                          contractService: widget.contractService,
+                          onChanged: _refresh,
+                        ),
                       );
                     },
                   ),
@@ -151,9 +155,9 @@ class _ContractHeader extends StatelessWidget {
               ),
             ),
             padding: EdgeInsets.zero,
-constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-icon: const Icon(
-Icons.notifications_none_rounded,
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            icon: const Icon(
+              Icons.notifications_none_rounded,
               color: AppColors.topBarIconColor,
               size: 24,
             ),
@@ -166,9 +170,15 @@ Icons.notifications_none_rounded,
 }
 
 class _ContractContent extends StatelessWidget {
-  const _ContractContent({required this.contract});
+  const _ContractContent({
+    required this.contract,
+    required this.contractService,
+    required this.onChanged,
+  });
 
   final LeaseContract contract;
+  final LeaseContractService contractService;
+  final Future<void> Function() onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -179,6 +189,11 @@ class _ContractContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _ContractWarning(contract: contract),
+          _TenantIntentionCard(
+            contract: contract,
+            contractService: contractService,
+            onChanged: onChanged,
+          ),
           _RoomHeroCard(contract: contract),
           const SizedBox(height: 12),
           _ContractInfoGrid(contract: contract),
@@ -266,6 +281,366 @@ class _ContractWarning extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TenantIntentionCard extends StatefulWidget {
+  const _TenantIntentionCard({
+    required this.contract,
+    required this.contractService,
+    required this.onChanged,
+  });
+
+  final LeaseContract contract;
+  final LeaseContractService contractService;
+  final Future<void> Function() onChanged;
+
+  @override
+  State<_TenantIntentionCard> createState() => _TenantIntentionCardState();
+}
+
+class _TenantIntentionCardState extends State<_TenantIntentionCard> {
+  late String _selectedIntention;
+  DateTime? _expectedMoveOutDate;
+  final _reasonController = TextEditingController();
+  String _error = '';
+  bool _submitting = false;
+
+  bool get _requiresMoveOutInfo =>
+      _selectedIntention == 'MOVE_OUT' || _selectedIntention == 'TRANSFER';
+
+  @override
+  void initState() {
+    super.initState();
+    _syncFromContract();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TenantIntentionCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final oldContract = oldWidget.contract;
+    final contract = widget.contract;
+    if (oldContract.id != contract.id ||
+        oldContract.tenantIntention != contract.tenantIntention ||
+        oldContract.expectedVacantDate != contract.expectedVacantDate) {
+      _syncFromContract();
+    }
+  }
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    super.dispose();
+  }
+
+  void _syncFromContract() {
+    final current = widget.contract.tenantIntention.trim().toUpperCase();
+    _selectedIntention = _validIntention(current) ? current : 'UNDECIDED';
+    _expectedMoveOutDate = widget.contract.expectedVacantDate;
+    _error = '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final contract = widget.contract;
+    final showByDate = _isWithinIntentionWindow(contract);
+    final showByBackend =
+        contract.canRecordIntention ||
+        contract.tenantIntention.trim().isNotEmpty;
+    final shouldShow =
+        _activeForIntention(contract.status) && (showByBackend || showByDate);
+    if (!shouldShow) {
+      return const SizedBox.shrink();
+    }
+
+    final isPrimary =
+        contract.isPrimary || contract.roleInContract == 'PRIMARY';
+    final intentionLabel = _tenantIntentionLabel(contract.tenantIntention);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: _SectionCard(
+        title: 'Phản hồi nguyện vọng',
+        icon: Icons.fact_check_outlined,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (intentionLabel.isNotEmpty)
+              _MutedText('Ý định hiện tại: $intentionLabel')
+            else
+              const _MutedText(
+                'Bạn có thể ghi nhận lựa chọn để ban quản lý xử lý trước khi hợp đồng kết thúc.',
+              ),
+            if (contract.expectedVacantDate != null) ...[
+              const SizedBox(height: 8),
+              _MutedText(
+                'Ngày dự kiến trả phòng: ${_formatDate(contract.expectedVacantDate)}',
+              ),
+            ],
+            if (isPrimary) ...[
+              const SizedBox(height: 14),
+              const _FieldLabel('Ý định'),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedIntention,
+                isExpanded: true,
+                decoration: _inputDecoration(),
+                items: _intentionOptions
+                    .map(
+                      (option) => DropdownMenuItem<String>(
+                        value: option.value,
+                        child: Text(option.label),
+                      ),
+                    )
+                    .toList(growable: false),
+                onChanged: _submitting
+                    ? null
+                    : (value) {
+                        setState(() {
+                          _selectedIntention = value ?? 'UNDECIDED';
+                          _error = '';
+                          if (!_requiresMoveOutInfo) {
+                            _expectedMoveOutDate = null;
+                            _reasonController.clear();
+                          }
+                        });
+                      },
+              ),
+              if (_requiresMoveOutInfo) ...[
+                const SizedBox(height: 12),
+                const _FieldLabel('Ngày dự kiến chuyển đi'),
+                InkWell(
+                  onTap: _submitting ? null : _pickMoveOutDate,
+                  borderRadius: BorderRadius.circular(10),
+                  child: InputDecorator(
+                    decoration: _inputDecoration(),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _expectedMoveOutDate == null
+                                ? 'dd/mm/yyyy'
+                                : _formatDate(_expectedMoveOutDate),
+                            style: TextStyle(
+                              color: _expectedMoveOutDate == null
+                                  ? AppColors.hintText
+                                  : AppColors.inputText,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.calendar_month_rounded,
+                          color: AppColors.inputText,
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const _FieldLabel('Lý do'),
+                TextField(
+                  controller: _reasonController,
+                  enabled: !_submitting,
+                  maxLines: 3,
+                  decoration: _inputDecoration(hintText: 'Nhập lý do'),
+                ),
+              ],
+              if (_error.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  _error,
+                  style: const TextStyle(
+                    color: Color(0xFFB00020),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _submitting ? null : () => _submit(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.deepBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Text(_submitting ? 'Đang lưu...' : 'Lưu ý định'),
+                ),
+              ),
+            ],
+            const SizedBox(height: 4),
+            if (!isPrimary)
+              const _MutedText(
+                'Chỉ người ký chính được ghi nhận ý định hợp đồng.',
+              ),
+            if (isPrimary &&
+                [
+                  'MOVE_OUT',
+                  'TRANSFER',
+                ].contains(contract.tenantIntention.trim().toUpperCase()) &&
+                !contract.canRenew &&
+                contract.canRenewBlockedReason.trim().isNotEmpty) ...[
+              const SizedBox(height: 2),
+              _MutedText(contract.canRenewBlockedReason),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickMoveOutDate() async {
+    final today = _dateOnly(DateTime.now());
+    final endDate = widget.contract.endDate == null
+        ? today.add(const Duration(days: 90))
+        : _dateOnly(widget.contract.endDate!);
+    final lastDate = endDate.isBefore(today) ? today : endDate;
+    final initialDate =
+        _expectedMoveOutDate != null &&
+            !_dateOnly(_expectedMoveOutDate!).isBefore(today) &&
+            !_dateOnly(_expectedMoveOutDate!).isAfter(lastDate)
+        ? _dateOnly(_expectedMoveOutDate!)
+        : today;
+
+    final picked = await showDatePicker(
+      context: context,
+      firstDate: today,
+      lastDate: lastDate,
+      initialDate: initialDate,
+    );
+    if (picked == null) {
+      return;
+    }
+    setState(() {
+      _expectedMoveOutDate = picked;
+      _error = '';
+    });
+  }
+
+  Future<void> _submit(BuildContext context) async {
+    final validation = _validate();
+    if (validation != null) {
+      setState(() => _error = validation);
+      return;
+    }
+
+    setState(() {
+      _submitting = true;
+      _error = '';
+    });
+    await _submitIntention(context);
+    if (mounted) {
+      setState(() => _submitting = false);
+    }
+  }
+
+  String? _validate() {
+    if (!_requiresMoveOutInfo) {
+      return null;
+    }
+    final expectedMoveOutDate = _expectedMoveOutDate;
+    if (expectedMoveOutDate == null) {
+      return 'Vui lòng chọn ngày dự kiến chuyển đi.';
+    }
+    final selectedDate = _dateOnly(expectedMoveOutDate);
+    final today = _dateOnly(DateTime.now());
+    if (selectedDate.isBefore(today)) {
+      return 'Ngày dự kiến chuyển đi không được trước ngày hiện tại.';
+    }
+    final endDate = widget.contract.endDate;
+    if (endDate != null && selectedDate.isAfter(_dateOnly(endDate))) {
+      return 'Ngày dự kiến chuyển đi không được sau ngày kết thúc hợp đồng.';
+    }
+    if (_reasonController.text.trim().isEmpty) {
+      return 'Vui lòng nhập lý do.';
+    }
+    return null;
+  }
+
+  Future<void> _submitIntention(BuildContext context) async {
+    final id = widget.contract.id;
+    if (id == null) return;
+    try {
+      final note = _requiresMoveOutInfo
+          ? _reasonController.text.trim()
+          : _noteForIntention(_selectedIntention);
+      await widget.contractService.recordIntention(
+        contractId: id,
+        intention: _selectedIntention,
+        expectedMoveOutDate: _requiresMoveOutInfo ? _expectedMoveOutDate : null,
+        note: note,
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã lưu ý định hợp đồng.')),
+        );
+      }
+      await widget.onChanged();
+    } on LeaseContractException catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+  }
+
+  String _noteForIntention(String intention) {
+    return switch (intention) {
+      'RENEW' => 'Khách muốn tái ký / gia hạn.',
+      'TRANSFER' => 'Khách muốn chuyển phòng.',
+      'MOVE_OUT' => 'Khách sẽ chuyển đi / không tái ký.',
+      'UNDECIDED' => 'Khách chưa quyết định.',
+      _ => '',
+    };
+  }
+
+  InputDecoration _inputDecoration({String? hintText}) {
+    return InputDecoration(
+      hintText: hintText,
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.cardBorder),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.cardBorder),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.deepBlue, width: 1.4),
+      ),
+    );
+  }
+}
+
+class _FieldLabel extends StatelessWidget {
+  const _FieldLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: AppColors.inputText,
+          fontSize: 13,
+          fontWeight: FontWeight.w900,
         ),
       ),
     );
@@ -427,7 +802,7 @@ class _ContractInfoGrid extends StatelessWidget {
         value: contract.room.area == null
             ? ''
             : '${_formatNumber(contract.room.area!)} m²',
-      ),      
+      ),
       _InfoGridItem(label: 'Bắt đầu', value: _formatDate(contract.startDate)),
       _InfoGridItem(label: 'Kết thúc', value: _formatDate(contract.endDate)),
       _InfoGridItem(
@@ -441,7 +816,9 @@ class _ContractInfoGrid extends StatelessWidget {
       _InfoGridItem(label: 'Mã phòng', value: contract.room.roomCode),
       _InfoGridItem(
         label: 'Ngày ký',
-        value: contract.signedAt != null ? _formatDate(contract.signedAt!) : '--',
+        value: contract.signedAt != null
+            ? _formatDate(contract.signedAt!)
+            : '--',
       ),
       _InfoGridItem(label: 'Trạng thái', value: _statusLabel(contract.status)),
     ];
@@ -776,8 +1153,7 @@ class _ContractBottomNavigation extends StatelessWidget {
   Widget build(BuildContext context) {
     return TenantBottomNavigation(
       activeTab: TenantBottomNavTab.home,
-      onHomeTap: () =>
-          Navigator.of(context).popUntil((route) => route.isFirst),
+      onHomeTap: () => Navigator.of(context).popUntil((route) => route.isFirst),
       onSupportTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
@@ -787,23 +1163,17 @@ class _ContractBottomNavigation extends StatelessWidget {
       },
       onBillsTap: () {
         Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => const BillSelectionPage(),
-          ),
+          MaterialPageRoute(builder: (context) => const BillSelectionPage()),
         );
       },
       onProfileTap: () {
         Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => const TenantProfileScreen(),
-          ),
+          MaterialPageRoute(builder: (context) => const TenantProfileScreen()),
         );
       },
       onRequestsTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const TenantRequestScreen(),
-              ),
-            ),
+        MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+      ),
     );
   }
 }
@@ -811,15 +1181,62 @@ class _ContractBottomNavigation extends StatelessWidget {
 void _showContractFile(BuildContext context, String url) {
   Navigator.of(context).push(
     MaterialPageRoute(
-      builder: (context) => ContractPdfViewerScreen(
-        pdfUrl: url,
-        title: 'Hợp đồng thuê phòng',
-      ),
+      builder: (context) =>
+          ContractPdfViewerScreen(pdfUrl: url, title: 'Hợp đồng thuê phòng'),
     ),
   );
 }
 
 DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
+
+class _IntentionOption {
+  const _IntentionOption(this.value, this.label);
+
+  final String value;
+  final String label;
+}
+
+const _intentionOptions = <_IntentionOption>[
+  _IntentionOption('RENEW', 'Tái ký / Gia hạn'),
+  _IntentionOption('TRANSFER', 'Chuyển phòng'),
+  _IntentionOption('MOVE_OUT', 'Chuyển đi / Không tái ký'),
+  _IntentionOption('UNDECIDED', 'Chưa có ý định'),
+];
+
+bool _activeForIntention(String status) {
+  final normalized = status.trim().toUpperCase();
+  return normalized == 'ACTIVE' || normalized == 'EXPIRING_SOON';
+}
+
+bool _validIntention(String intention) {
+  return const {
+    'RENEW',
+    'TRANSFER',
+    'MOVE_OUT',
+    'UNDECIDED',
+  }.contains(intention);
+}
+
+bool _isWithinIntentionWindow(LeaseContract contract) {
+  final endDate = contract.endDate;
+  if (endDate == null) {
+    return false;
+  }
+  final today = _dateOnly(DateTime.now());
+  final end = _dateOnly(endDate);
+  final remainingDays = end.difference(today).inDays;
+  return remainingDays >= 0 && remainingDays <= 90;
+}
+
+String _tenantIntentionLabel(String intention) {
+  return switch (intention.trim().toUpperCase()) {
+    'RENEW' => 'Muốn tái ký / gia hạn',
+    'MOVE_OUT' => 'Sẽ chuyển đi / Không tái ký',
+    'TRANSFER' => 'Muốn chuyển phòng',
+    'UNDECIDED' => 'Chưa quyết định',
+    _ => '',
+  };
+}
 
 String _roomTitle(LeaseRoom room) {
   if (room.roomName.trim().isNotEmpty) {

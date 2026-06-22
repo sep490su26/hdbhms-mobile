@@ -1,7 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.sep490.hdbhms_mobile">
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Cần cho Android < 10 (API 28 trở xuống) để lưu ảnh vào bộ sưu tập -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
     <application
-        android:usesCleartextTraffic="true"
         android:label="hdbhms_mobile"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">

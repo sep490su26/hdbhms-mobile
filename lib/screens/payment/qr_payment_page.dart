@@ -1,38 +1,183 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
+import '../../services/payment/tenant_invoice_service.dart';
+import 'payment_success_page.dart';
+import 'qr_receipt_download_page.dart';
 
-class QrPaymentPage extends StatelessWidget {
-  const QrPaymentPage({super.key, required this.invoice});
+class QrPaymentPage extends StatefulWidget {
+  const QrPaymentPage({
+    super.key,
+    required this.invoice,
+    this.invoiceService = const TenantInvoiceService(),
+    this.pollInterval = const Duration(seconds: 4),
+  });
 
   final TenantInvoice invoice;
+  final TenantInvoiceService invoiceService;
+  final Duration pollInterval;
+
+  @override
+  State<QrPaymentPage> createState() => _QrPaymentPageState();
+}
+
+class _QrPaymentPageState extends State<QrPaymentPage> {
+  late TenantInvoice _invoice;
+  Timer? _pollTimer;
+  bool _checking = false;
+  bool _completed = false;
+  bool _downloadingQr = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _invoice = widget.invoice;
+    _startPolling();
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startPolling() {
+    if (_invoice.isPaid) return;
+    _pollTimer = Timer.periodic(widget.pollInterval, (_) {
+      _checkPaymentStatus(showPendingMessage: false);
+    });
+  }
+
+  Future<void> _checkPaymentStatus({required bool showPendingMessage}) async {
+    if (_checking || _completed) return;
+    setState(() => _checking = true);
+    try {
+      final invoices = await widget.invoiceService.fetchMyInvoices();
+      final updated = _findUpdatedInvoice(invoices);
+      if (!mounted) return;
+      if (updated != null) {
+        setState(() => _invoice = updated);
+        if (updated.isPaid) {
+          _completed = true;
+          _pollTimer?.cancel();
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              const SnackBar(content: Text('Thanh toán đã được xác nhận.')),
+            );
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => PaymentSuccessPage(invoice: updated),
+            ),
+          );
+          return;
+        }
+      }
+      if (showPendingMessage) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Chưa ghi nhận thanh toán. Hệ thống sẽ tiếp tục tự động kiểm tra.',
+              ),
+            ),
+          );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      if (showPendingMessage) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Không kiểm tra được trạng thái. Vui lòng thử lại.',
+              ),
+            ),
+          );
+      }
+    } finally {
+      if (mounted) setState(() => _checking = false);
+    }
+  }
+
+  TenantInvoice? _findUpdatedInvoice(List<TenantInvoice> invoices) {
+    for (final candidate in invoices) {
+      if (_invoice.id != null && candidate.id == _invoice.id) {
+        return candidate;
+      }
+      if (_invoice.paymentIntentId != null &&
+          candidate.paymentIntentId == _invoice.paymentIntentId) {
+        return candidate;
+      }
+      if (_invoice.providerOrderCode.isNotEmpty &&
+          candidate.providerOrderCode == _invoice.providerOrderCode) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _downloadQr() async {
+    if (_downloadingQr) return;
+    setState(() => _downloadingQr = true);
+    try {
+      final saved = await downloadQrReceipt(context, _invoice);
+      if (!mounted || !saved) return;
+      final msg = kIsWeb
+          ? 'Đã tải ảnh QR về máy.'
+          : 'Đã lưu ảnh QR vào bộ sưu tập.';
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(msg)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Không thể tải ảnh QR. Vui lòng thử lại.'),
+          ),
+        );
+    } finally {
+      if (mounted) setState(() => _downloadingQr = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = _PaymentVisualTheme.fromInvoice(invoice);
+    final theme = _PaymentVisualTheme.fromInvoice(_invoice);
     final fields = <({String label, String value, IconData icon})>[
       (
         label: 'Ngân hàng',
-        value: invoice.bankShortName,
+        value: _invoice.bankShortName,
         icon: Icons.account_balance_rounded,
       ),
       (
         label: 'Số tài khoản',
-        value: invoice.accountNumber,
+        value: _invoice.displayAccountNumber,
         icon: Icons.credit_card_rounded,
       ),
       (
         label: 'Chủ tài khoản',
-        value: invoice.accountName,
+        value: _invoice.accountName,
         icon: Icons.person_outline_rounded,
       ),
       (
+        label: 'Số tiền',
+        value: '${_formatAmount(_invoice.remainingAmount)} VND',
+        icon: Icons.payments_outlined,
+      ),
+      (
         label: 'Nội dung chuyển khoản',
-        value: invoice.transferDescription,
+        value: _invoice.transferDescription,
         icon: Icons.notes_rounded,
       ),
     ].where((field) => field.value.trim().isNotEmpty).toList();
@@ -53,9 +198,14 @@ class QrPaymentPage extends StatelessWidget {
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
                       sliver: SliverList.list(
                         children: [
-                          _PaymentHero(invoice: invoice, theme: theme),
+                          _PaymentHero(invoice: _invoice, theme: theme),
                           const SizedBox(height: 18),
-                          _QrCard(qrCode: invoice.qrCode, theme: theme),
+                          _QrCard(
+                            qrCode: _invoice.qrCode,
+                            theme: theme,
+                            downloading: _downloadingQr,
+                            onDownload: _downloadQr,
+                          ),
                           if (fields.isNotEmpty) ...[
                             const SizedBox(height: 18),
                             _InformationCard(fields: fields, theme: theme),
@@ -65,7 +215,9 @@ class QrPaymentPage extends StatelessWidget {
                           const SizedBox(height: 20),
                           _ConfirmButton(
                             theme: theme,
-                            invoice: invoice,
+                            checking: _checking,
+                            onPressed: () =>
+                                _checkPaymentStatus(showPendingMessage: true),
                           ),
                         ],
                       ),
@@ -130,9 +282,7 @@ class _Header extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.18),
-              ),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
             ),
             child: const Row(
               mainAxisSize: MainAxisSize.min,
@@ -239,10 +389,17 @@ class _PaymentHero extends StatelessWidget {
 }
 
 class _QrCard extends StatelessWidget {
-  const _QrCard({required this.qrCode, required this.theme});
+  const _QrCard({
+    required this.qrCode,
+    required this.theme,
+    required this.downloading,
+    required this.onDownload,
+  });
 
   final String qrCode;
   final _PaymentVisualTheme theme;
+  final bool downloading;
+  final VoidCallback onDownload;
 
   @override
   Widget build(BuildContext context) {
@@ -268,11 +425,7 @@ class _QrCard extends StatelessWidget {
           Text(
             'Mở ứng dụng ngân hàng và quét mã bên dưới',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: theme.mutedInk,
-              fontSize: 12,
-              height: 1.4,
-            ),
+            style: TextStyle(color: theme.mutedInk, fontSize: 12, height: 1.4),
           ),
           const SizedBox(height: 18),
           LayoutBuilder(
@@ -329,6 +482,38 @@ class _QrCard extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: FilledButton.icon(
+              onPressed: downloading ? null : onDownload,
+              style: FilledButton.styleFrom(
+                backgroundColor: theme.primary,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: theme.primary.withValues(alpha: 0.55),
+                disabledForegroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              icon: downloading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(Icons.download_rounded, size: 20),
+              label: Text(downloading ? 'Đang tải ảnh...' : 'Tải ảnh QR'),
+            ),
+          ),
         ],
       ),
     );
@@ -344,21 +529,31 @@ class _QrImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final value = qrCode.trim();
+    if (value.isEmpty) {
+      return _QrFallback(theme: theme);
+    }
     if (value.startsWith('http://') || value.startsWith('https://')) {
       return Image.network(
         value,
         fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => _QrFallback(theme: theme),
+        errorBuilder: (context, error, stackTrace) => _QrFallback(theme: theme),
       );
     }
     final bytes = _decodeQrBytes(value);
-    return bytes == null
-        ? _QrFallback(theme: theme)
-        : Image.memory(
-            bytes,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => _QrFallback(theme: theme),
-          );
+    if (bytes != null) {
+      return Image.memory(
+        bytes,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) => _QrFallback(theme: theme),
+      );
+    }
+
+    return QrImageView(
+      data: value,
+      backgroundColor: Colors.white,
+      padding: EdgeInsets.zero,
+      errorCorrectionLevel: QrErrorCorrectLevel.M,
+    );
   }
 }
 
@@ -485,7 +680,11 @@ class _CopyableField extends StatelessWidget {
                 ),
                 IconButton(
                   onPressed: () => _copyValue(context, field.value),
-                  icon: Icon(Icons.copy_rounded, color: theme.primary, size: 20),
+                  icon: Icon(
+                    Icons.copy_rounded,
+                    color: theme.primary,
+                    size: 20,
+                  ),
                   tooltip: 'Sao chép ${field.label}',
                 ),
               ],
@@ -533,30 +732,43 @@ class _SecurityNote extends StatelessWidget {
 }
 
 class _ConfirmButton extends StatelessWidget {
-  const _ConfirmButton({required this.theme, required this.invoice});
+  const _ConfirmButton({
+    required this.theme,
+    required this.checking,
+    required this.onPressed,
+  });
 
   final _PaymentVisualTheme theme;
-  final TenantInvoice invoice;
+  final bool checking;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: 56,
       child: FilledButton.icon(
-        onPressed: () => _showPaymentSuccess(context, invoice, theme),
+        onPressed: checking ? null : onPressed,
         style: FilledButton.styleFrom(
           backgroundColor: theme.accent,
           foregroundColor: theme.iconColor,
+          disabledBackgroundColor: theme.accent.withValues(alpha: 0.55),
+          disabledForegroundColor: theme.iconColor.withValues(alpha: 0.75),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
           ),
-          textStyle: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w900,
-          ),
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
         ),
-        icon: const Icon(Icons.check_circle_outline_rounded),
-        label: const Text('Tôi đã hoàn tất thanh toán'),
+        icon: checking
+            ? SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: theme.iconColor,
+                ),
+              )
+            : const Icon(Icons.refresh_rounded),
+        label: Text(checking ? 'Đang kiểm tra...' : 'Tôi đã chuyển khoản'),
       ),
     );
   }
@@ -636,10 +848,7 @@ class _GlowOrb extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: RadialGradient(
-          colors: [
-            color.withValues(alpha: 0.28),
-            color.withValues(alpha: 0),
-          ],
+          colors: [color.withValues(alpha: 0.28), color.withValues(alpha: 0)],
         ),
       ),
     );
@@ -712,82 +921,6 @@ class _PaymentVisualTheme {
       softSurface: Color(0xFFF1F9F8),
     );
   }
-}
-
-Future<void> _showPaymentSuccess(
-  BuildContext context,
-  TenantInvoice invoice,
-  _PaymentVisualTheme theme,
-) {
-  return showDialog<void>(
-    context: context,
-    barrierDismissible: false,
-    builder: (dialogContext) {
-      return AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 76,
-              height: 76,
-              decoration: BoxDecoration(
-                color: theme.softAccent,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.check_rounded,
-                color: theme.primary,
-                size: 42,
-              ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              'Thanh toán thành công',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: theme.ink,
-                fontSize: 21,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Hệ thống đã ghi nhận ${_formatAmount(invoice.remainingAmount)}đ cho ${theme.title.toLowerCase()}.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: theme.mutedInk,
-                fontSize: 13,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 22),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: FilledButton(
-                onPressed: () {
-                  Navigator.of(dialogContext).pop();
-                  Navigator.of(context).maybePop();
-                },
-                style: FilledButton.styleFrom(
-                  backgroundColor: theme.primary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                child: const Text(
-                  'Hoàn tất',
-                  style: TextStyle(fontWeight: FontWeight.w800),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    },
-  );
 }
 
 Uint8List? _decodeQrBytes(String value) {
