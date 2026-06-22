@@ -1,12 +1,12 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
-import '../config/api_config.dart';
-import '../models/api_response.dart';
-import '../models/file_metadata_model.dart';
-import 'authenticated_client.dart';
+import 'package:hdbhms_mobile/config/api_config.dart';
+import 'package:hdbhms_mobile/models/api_response.dart';
+import 'package:hdbhms_mobile/models/maintenance/file_metadata_model.dart';
+import 'package:hdbhms_mobile/services/authenticated_client.dart';
 
 class FileService {
   const FileService({http.Client? client}) : _client = client;
@@ -22,7 +22,7 @@ class FileService {
   }) async {
     final client = _effectiveClient;
     final uri = Uri.parse('${ApiConfig.baseUrl}/files/upload');
-    
+
     final request = http.MultipartRequest('POST', uri)
       ..fields['category'] = category.name
       ..fields['isSensitive'] = isSensitive.toString()
@@ -38,7 +38,7 @@ class FileService {
     final streamedResponse = await client.send(request);
     final response = await http.Response.fromStream(streamedResponse);
 
-    if (response.statusCode == 201) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       final apiResponse = ApiResponse<FileMetadataResponse>.fromJson(
         data,
@@ -76,7 +76,7 @@ class FileService {
     final streamedResponse = await client.send(request);
     final response = await http.Response.fromStream(streamedResponse);
 
-    if (response.statusCode == 201) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       final apiResponse = ApiResponse<BatchFileResponse>.fromJson(
         data,
@@ -90,7 +90,7 @@ class FileService {
 
   Future<Uint8List> download(int fileId) async {
     final client = _effectiveClient;
-    
+
     try {
       final response = await client.get(
         Uri.parse('${ApiConfig.baseUrl}/files/download/$fileId'),
@@ -114,6 +114,8 @@ class FileService {
         return MediaType('image', 'jpeg');
       case 'png':
         return MediaType('image', 'png');
+      case 'webp':
+        return MediaType('image', 'webp');
       case 'pdf':
         return MediaType('application', 'pdf');
       default:

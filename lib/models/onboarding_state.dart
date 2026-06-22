@@ -1,4 +1,4 @@
-import 'onboarding_action.dart';
+﻿import 'package:hdbhms_mobile/models/onboarding_action.dart';
 
 class OnboardingState {
   const OnboardingState({

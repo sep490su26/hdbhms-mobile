@@ -1,9 +1,9 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-import '../theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 /// Màn WebView dùng chung – nhận [url] và [title] từ ngoài truyền vào.
 ///
@@ -115,7 +115,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   Widget _buildHeader() {
     return Container(
-      height: 54,
+      height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -141,12 +141,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
               widget.title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppColors.deepBlue,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                height: 20 / 16,
-              ),
+              style: AppColors.topBarTitleStyle,
             ),
           ),
           if (!kIsWeb)
@@ -156,8 +151,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
               constraints: const BoxConstraints.tightFor(width: 36, height: 36),
               icon: const Icon(
                 Icons.refresh_rounded,
-                color: AppColors.inputText,
-                size: 22,
+                color: AppColors.topBarIconColor,
+                size: AppColors.topBarIconSize,
               ),
               tooltip: 'Tải lại',
             ),

@@ -5,16 +5,16 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:hdbhms_mobile/app.dart';
-import 'package:hdbhms_mobile/models/home_summary_model.dart';
-import 'package:hdbhms_mobile/models/login_response.dart';
+import 'package:hdbhms_mobile/models/home/home_summary_model.dart';
+import 'package:hdbhms_mobile/models/auth/login_response.dart';
 import 'package:hdbhms_mobile/models/onboarding_state.dart';
-import 'package:hdbhms_mobile/models/tenant_profile_model.dart';
+import 'package:hdbhms_mobile/models/profile_request/tenant_profile_model.dart';
 import 'package:hdbhms_mobile/models/onboarding_action.dart';
-import 'package:hdbhms_mobile/screens/change_password_page.dart';
-import 'package:hdbhms_mobile/screens/tenant_profile_screen.dart';
-import 'package:hdbhms_mobile/services/auth_service.dart';
-import 'package:hdbhms_mobile/services/home_service.dart';
-import 'package:hdbhms_mobile/services/tenant_profile_service.dart';
+import 'package:hdbhms_mobile/screens/auth/change_password_page.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
+import 'package:hdbhms_mobile/services/auth/auth_service.dart';
+import 'package:hdbhms_mobile/services/home/home_service.dart';
+import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 
 class _FakeAuthService extends AuthService {
   const _FakeAuthService();
@@ -149,6 +149,7 @@ final _homeSummary = HomeSummary(
     name: 'Phòng 101',
     currentStatus: 'OCCUPIED',
   ),
+  rooms: const [],
   contract: HomeContract(
     id: 1,
     contractCode: 'HD-TEST-001',

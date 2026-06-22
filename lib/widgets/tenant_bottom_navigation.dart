@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 enum TenantBottomNavTab { home, bills, support, requests, profile }
 
@@ -54,8 +54,8 @@ class TenantBottomNavigation extends StatelessWidget {
                 onTap: onBillsTap,
               ),
               _BottomNavItem(
-                icon: Icons.support_agent_outlined,
-                label: 'Hỗ trợ',
+                icon: Icons.handyman_outlined,
+                label: 'Sự cố',
                 isSelected: activeTab == TenantBottomNavTab.support,
                 onTap: onSupportTap,
               ),
