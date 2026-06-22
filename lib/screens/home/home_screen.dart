@@ -13,6 +13,7 @@ import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.da
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
+import 'package:hdbhms_mobile/screens/payment/payment_preview_page.dart';
 import 'package:hdbhms_mobile/screens/payment/qr_payment_page.dart';
 import 'package:hdbhms_mobile/screens/contract/contract_hub_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
@@ -154,6 +155,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   _PaymentStatusCard(
                     invoiceSummary: _provider.invoiceSummary,
                     onPay: _openPayment,
+                  ),
+                  const SizedBox(height: 10),
+                  // TEMPORARY: Xóa nút này sau khi xem xong UI thanh toán.
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const PaymentPreviewPage(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.visibility_outlined),
+                    label: const Text('XEM DEMO THANH TOÁN (TẠM)'),
                   ),
                   const SizedBox(height: 18),
                   const _SectionHeading('Điện & Nước'),

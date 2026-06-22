@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/payment/tenant_invoice_service.dart';
+import 'payment_success_page.dart';
+import 'qr_receipt_download_page.dart';
 
 class QrPaymentPage extends StatefulWidget {
   const QrPaymentPage({
@@ -29,6 +32,7 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
   Timer? _pollTimer;
   bool _checking = false;
   bool _completed = false;
+  bool _downloadingQr = false;
 
   @override
   void initState() {
@@ -67,7 +71,11 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
             ..showSnackBar(
               const SnackBar(content: Text('Thanh toán đã được xác nhận.')),
             );
-          Navigator.of(context).pop(true);
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => PaymentSuccessPage(invoice: updated),
+            ),
+          );
           return;
         }
       }
@@ -115,6 +123,32 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
       }
     }
     return null;
+  }
+
+  Future<void> _downloadQr() async {
+    if (_downloadingQr) return;
+    setState(() => _downloadingQr = true);
+    try {
+      final saved = await downloadQrReceipt(context, _invoice);
+      if (!mounted || !saved) return;
+      final msg = kIsWeb
+          ? 'Đã tải ảnh QR về máy.'
+          : 'Đã lưu ảnh QR vào bộ sưu tập.';
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(msg)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Không thể tải ảnh QR. Vui lòng thử lại.'),
+          ),
+        );
+    } finally {
+      if (mounted) setState(() => _downloadingQr = false);
+    }
   }
 
   @override
@@ -166,7 +200,12 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
                         children: [
                           _PaymentHero(invoice: _invoice, theme: theme),
                           const SizedBox(height: 18),
-                          _QrCard(qrCode: _invoice.qrCode, theme: theme),
+                          _QrCard(
+                            qrCode: _invoice.qrCode,
+                            theme: theme,
+                            downloading: _downloadingQr,
+                            onDownload: _downloadQr,
+                          ),
                           if (fields.isNotEmpty) ...[
                             const SizedBox(height: 18),
                             _InformationCard(fields: fields, theme: theme),
@@ -350,10 +389,17 @@ class _PaymentHero extends StatelessWidget {
 }
 
 class _QrCard extends StatelessWidget {
-  const _QrCard({required this.qrCode, required this.theme});
+  const _QrCard({
+    required this.qrCode,
+    required this.theme,
+    required this.downloading,
+    required this.onDownload,
+  });
 
   final String qrCode;
   final _PaymentVisualTheme theme;
+  final bool downloading;
+  final VoidCallback onDownload;
 
   @override
   Widget build(BuildContext context) {
@@ -434,6 +480,38 @@ class _QrCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: FilledButton.icon(
+              onPressed: downloading ? null : onDownload,
+              style: FilledButton.styleFrom(
+                backgroundColor: theme.primary,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: theme.primary.withValues(alpha: 0.55),
+                disabledForegroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              icon: downloading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(Icons.download_rounded, size: 20),
+              label: Text(downloading ? 'Đang tải ảnh...' : 'Tải ảnh QR'),
             ),
           ),
         ],
