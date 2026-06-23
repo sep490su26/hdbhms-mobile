@@ -1,8 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
 import 'package:hdbhms_mobile/services/maintenance/maintenance_ticket_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/star_rating_input.dart';
 import 'package:hdbhms_mobile/widgets/ticket_attachment_grid.dart';
 
@@ -538,15 +539,7 @@ class _SectionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: AppColors.deepBlue,
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              height: 24 / 20,
-            ),
-          ),
+          Text(title, style: AppTypography.sectionTitle),
           const SizedBox(height: 12),
           const Divider(height: 1, color: Color(0xFFE3E1E5)),
           const SizedBox(height: 16),

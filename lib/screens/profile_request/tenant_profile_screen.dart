@@ -1,4 +1,4 @@
-﻿import 'dart:typed_data';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -15,6 +15,7 @@ import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/contract/lease_contract_list_screen.dart';
+import 'package:hdbhms_mobile/screens/auth/change_password_page.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
 import 'package:hdbhms_mobile/screens/profile_request/update_profile_screen.dart';
@@ -72,79 +73,111 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
     );
   }
 
+  Future<void> _openChangePassword() async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => ChangePasswordPage(
+          authService: widget.authService,
+          homeService: widget.homeService,
+        ),
+      ),
+    );
+
+    if (!mounted || changed != true) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Đổi mật khẩu thành công')));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 390),
-            child: Column(
-              children: [
-                const _ProfileHeader(),
-                Expanded(
-                  child: FutureBuilder<TenantProfileResponse>(
-                    future: _profileFuture,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.deepBlue,
-                          ),
-                        );
-                      }
+        child: Column(
+          children: [
+            const _ProfileHeader(),
+            Expanded(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 448),
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: FutureBuilder<TenantProfileResponse>(
+                          future: _profileFuture,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Center(
+                                child: CircularProgressIndicator(
+                                  color: AppColors.primary,
+                                ),
+                              );
+                            }
 
-                      if (snapshot.hasError) {
-                        final error = snapshot.error;
-                        return _ProfileErrorState(
-                          message: _messageForError(error),
-                          onRetry: () {
-                            setState(() {
-                              _profileFuture = _loadProfile();
-                            });
+                            if (snapshot.hasError) {
+                              final error = snapshot.error;
+                              return _ProfileErrorState(
+                                message: _messageForError(error),
+                                onRetry: () {
+                                  setState(() {
+                                    _profileFuture = _loadProfile();
+                                  });
+                                },
+                              );
+                            }
+
+                            final profile = snapshot.data;
+                            if (profile == null) {
+                              return _ProfileErrorState(
+                                message: 'Chưa có hồ sơ cá nhân',
+                                onRetry: () {
+                                  setState(() {
+                                    _profileFuture = _loadProfile();
+                                  });
+                                },
+                              );
+                            }
+
+                            return RefreshIndicator(
+                              color: AppColors.primary,
+                              onRefresh: _refresh,
+                              child: _ProfileContent(
+                                profile: profile,
+                                onProfileUpdated: _refresh,
+                              ),
+                            );
                           },
-                        );
-                      }
-
-                      final profile = snapshot.data;
-                      if (profile == null) {
-                        return _ProfileErrorState(
-                          message: 'Chưa có hồ sơ cá nhân',
-                          onRetry: () {
-                            setState(() {
-                              _profileFuture = _loadProfile();
-                            });
-                          },
-                        );
-                      }
-
-                      return RefreshIndicator(
-                        color: AppColors.deepBlue,
-                        onRefresh: _refresh,
-                        child: _ProfileContent(
-                          profile: profile,
-                          onProfileUpdated: _refresh,
                         ),
-                      );
-                    },
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+                        child: Column(
+                          children: [
+                            _ChangePasswordButton(
+                              onChangePassword: _openChangePassword,
+                            ),
+                            const SizedBox(height: 10),
+                            _LogoutButton(onLogout: _handleLogout),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                // Logout button is always visible, outside the FutureBuilder
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
-                  child: _LogoutButton(onLogout: _handleLogout),
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
       bottomNavigationBar: Builder(
         builder: (ctx) => TenantBottomNavigation(
           activeTab: TenantBottomNavTab.profile,
-          onHomeTap: () =>
-              Navigator.of(ctx).popUntil((route) => route.isFirst),
+          onHomeTap: () => Navigator.of(ctx).popUntil((route) => route.isFirst),
           onBillsTap: () {
             Navigator.of(ctx).push(
               MaterialPageRoute(
@@ -161,10 +194,10 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
           },
           onProfileTap: () {},
           onRequestsTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const TenantRequestScreen(),
-              ),
+            MaterialPageRoute(
+              builder: (context) => const TenantRequestScreen(),
             ),
+          ),
         ),
       ),
     );
@@ -199,10 +232,7 @@ class _ProfileHeader extends StatelessWidget {
             tooltip: 'Trở về',
           ),
           const Expanded(
-            child: Text(
-              'Hồ sơ cá nhân',
-              style: AppColors.topBarTitleStyle,
-            ),
+            child: Text('Hồ sơ cá nhân', style: AppColors.topBarTitleStyle),
           ),
           IconButton(
             onPressed: () => Navigator.of(context).push(
@@ -211,9 +241,9 @@ class _ProfileHeader extends StatelessWidget {
               ),
             ),
             padding: EdgeInsets.zero,
-constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-icon: const Icon(
-Icons.notifications_none_rounded,
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            icon: const Icon(
+              Icons.notifications_none_rounded,
               color: AppColors.topBarIconColor,
               size: 24,
             ),
@@ -312,9 +342,7 @@ class _UpdateProfileButton extends StatelessWidget {
           backgroundColor: AppColors.darkBlue,
           foregroundColor: Colors.white,
           elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           textStyle: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w900,
@@ -325,7 +353,6 @@ class _UpdateProfileButton extends StatelessWidget {
     );
   }
 }
-
 
 class _LogoutButton extends StatelessWidget {
   const _LogoutButton({required this.onLogout});
@@ -348,6 +375,38 @@ class _LogoutButton extends StatelessWidget {
           textStyle: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w900,
+            height: 18 / 14,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChangePasswordButton extends StatelessWidget {
+  const _ChangePasswordButton({required this.onChangePassword});
+
+  final VoidCallback onChangePassword;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: OutlinedButton.icon(
+        onPressed: onChangePassword,
+        icon: const Icon(Icons.lock_reset_rounded, size: 20),
+        label: const Text('Đổi mật khẩu'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          backgroundColor: AppColors.surface,
+          side: const BorderSide(color: AppColors.primary),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
             height: 18 / 14,
           ),
         ),
@@ -987,7 +1046,6 @@ class _EmptyText extends StatelessWidget {
     );
   }
 }
-
 
 BoxDecoration _cardDecoration() {
   return BoxDecoration(

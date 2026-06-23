@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/payment/tenant_invoice_service.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_typography.dart';
 import '../../widgets/tenant_bottom_navigation.dart';
+import '../../widgets/app_screen_shell.dart';
 import '../maintenance/maintenance_ticket_list_screen.dart';
 import '../notification/notification_list_screen.dart';
 import '../profile_request/tenant_profile_screen.dart';
@@ -33,66 +35,43 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 390),
+        child: AppScreenShell(
+          header: const _BillHeader(),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(14, 22, 14, 18),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _BillHeader(),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(14, 22, 14, 18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Tất cả hoá đơn',
-                          style: TextStyle(
-                            color: AppColors.deepBlue,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                            height: 30 / 24,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        _BillFilterBar(
-                          active: _activeFilter,
-                          onChanged: (filter) {
-                            setState(() => _activeFilter = filter);
-                          },
-                        ),
-                        const SizedBox(height: 18),
-                        FutureBuilder<List<TenantInvoice>>(
-                          future: _invoicesFuture,
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return const _BillLoadingState();
-                            }
-                            if (snapshot.hasError) {
-                              return _BillErrorState(
-                                message:
-                                    snapshot.error is TenantInvoiceException
-                                    ? (snapshot.error as TenantInvoiceException)
-                                          .message
-                                    : 'Không tải được hóa đơn. Vui lòng thử lại.',
-                                onRetry: _reloadInvoices,
-                              );
-                            }
-                            final visibleInvoices = (snapshot.data ?? const [])
-                                .where((invoice) => invoice.isTenantVisible)
-                                .toList();
-                            return Column(
-                              children: _buildFilteredBills(
-                                context,
-                                visibleInvoices,
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
+                const Text('Tất cả hoá đơn', style: AppTypography.pageTitle),
+                const SizedBox(height: 14),
+                _BillFilterBar(
+                  active: _activeFilter,
+                  onChanged: (filter) {
+                    setState(() => _activeFilter = filter);
+                  },
+                ),
+                const SizedBox(height: 18),
+                FutureBuilder<List<TenantInvoice>>(
+                  future: _invoicesFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const _BillLoadingState();
+                    }
+                    if (snapshot.hasError) {
+                      return _BillErrorState(
+                        message: snapshot.error is TenantInvoiceException
+                            ? (snapshot.error as TenantInvoiceException).message
+                            : 'Không tải được hóa đơn. Vui lòng thử lại.',
+                        onRetry: _reloadInvoices,
+                      );
+                    }
+                    final visibleInvoices = (snapshot.data ?? const [])
+                        .where((invoice) => invoice.isTenantVisible)
+                        .toList();
+                    return Column(
+                      children: _buildFilteredBills(context, visibleInvoices),
+                    );
+                  },
                 ),
               ],
             ),

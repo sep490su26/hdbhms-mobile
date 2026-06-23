@@ -1,6 +1,7 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 
 class AuthTextField extends StatefulWidget {
   const AuthTextField({
@@ -52,15 +53,9 @@ class _AuthTextFieldState extends State<AuthTextField> {
       children: [
         Text(
           widget.uppercaseLabel ? widget.label.toUpperCase() : widget.label,
-          style: const TextStyle(
-            color: AppColors.bodyText,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            height: 16 / 12,
-            letterSpacing: 0.6,
-          ),
+          style: AppTypography.label,
         ),
-        const SizedBox(height: 4.5),
+        const SizedBox(height: 8),
         TextFormField(
           controller: widget.controller,
           enabled: widget.enabled,
@@ -68,19 +63,11 @@ class _AuthTextFieldState extends State<AuthTextField> {
           obscureText: _isObscured,
           textInputAction: widget.textInputAction,
           cursorColor: AppColors.darkBlue,
-          style: const TextStyle(
-            color: AppColors.inputText,
-            fontSize: 16,
-            fontWeight: FontWeight.w400,
-            height: 24 / 16,
-          ),
+          style: AppTypography.bodyLarge.copyWith(color: AppColors.inputText),
           decoration: InputDecoration(
             hintText: widget.hintText,
-            hintStyle: TextStyle(
+            hintStyle: AppTypography.bodyLarge.copyWith(
               color: widget.hintColor,
-              fontSize: 16,
-              fontWeight: FontWeight.w400,
-              height: 24 / 16,
             ),
             filled: true,
             fillColor: AppColors.inputFill,
@@ -121,7 +108,10 @@ class _AuthTextFieldState extends State<AuthTextField> {
             border: _fieldBorder,
             enabledBorder: _fieldBorder,
             focusedBorder: _fieldBorder.copyWith(
-              borderSide: const BorderSide(color: AppColors.darkBlue),
+              borderSide: const BorderSide(
+                color: AppColors.primary,
+                width: 1.5,
+              ),
             ),
           ),
         ),
@@ -130,7 +120,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
   }
 
   static final OutlineInputBorder _fieldBorder = OutlineInputBorder(
-    borderRadius: BorderRadius.circular(8),
-    borderSide: BorderSide.none,
+    borderRadius: BorderRadius.circular(14),
+    borderSide: const BorderSide(color: AppColors.border),
   );
 }

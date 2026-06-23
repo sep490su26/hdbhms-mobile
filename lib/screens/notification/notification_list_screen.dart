@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/notification/notification_model.dart';
 import '../../services/notification/notification_service.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/app_screen_shell.dart';
 
 /// Màn danh sách thông báo với filter Tất cả / Chưa đọc / Đã đọc.
 class NotificationListScreen extends StatefulWidget {
@@ -134,63 +135,63 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
-            child: Column(
-              children: [
-                _buildHeader(),
-                _FilterBar(
-                  active: _activeFilter,
-                  unreadCount: _unreadCount,
-                  onChanged: (f) => setState(() => _activeFilter = f),
-                ),
-                Expanded(
-                  child: _isLoading
-                      ? const Center(
-                          child: CircularProgressIndicator(color: AppColors.deepBlue),
-                        )
-                      : _errorMessage != null && _items.isEmpty
-                          ? _ErrorState(
-                              message: _errorMessage!,
-                              onRetry: _fetchNotifications,
-                            )
-                          : filtered.isEmpty
-                              ? _buildEmpty()
-                              : RefreshIndicator(
-                                  color: AppColors.deepBlue,
-                                  onRefresh: _fetchNotifications,
-                                  child: ListView.separated(
-                                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
-                                    itemCount: filtered.length + (_hasMore ? 1 : 0),
-                                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                                    itemBuilder: (_, i) {
-                                      if (i == filtered.length) {
-                                        _loadMore();
-                                        return const Padding(
-                                          padding: EdgeInsets.symmetric(vertical: 16.0),
-                                          child: Center(
-                                            child: SizedBox(
-                                              width: 24,
-                                              height: 24,
-                                              child: CircularProgressIndicator(
-                                                color: AppColors.deepBlue,
-                                                strokeWidth: 2,
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                      return _NotificationCard(
-                                        item: filtered[i],
-                                        onTap: () => _openDetail(filtered[i]),
-                                      );
-                                    },
+        child: AppScreenShell(
+          header: _buildHeader(),
+          child: Column(
+            children: [
+              _FilterBar(
+                active: _activeFilter,
+                unreadCount: _unreadCount,
+                onChanged: (f) => setState(() => _activeFilter = f),
+              ),
+              Expanded(
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.deepBlue,
+                        ),
+                      )
+                    : _errorMessage != null && _items.isEmpty
+                    ? _ErrorState(
+                        message: _errorMessage!,
+                        onRetry: _fetchNotifications,
+                      )
+                    : filtered.isEmpty
+                    ? _buildEmpty()
+                    : RefreshIndicator(
+                        color: AppColors.deepBlue,
+                        onRefresh: _fetchNotifications,
+                        child: ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
+                          itemCount: filtered.length + (_hasMore ? 1 : 0),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 8),
+                          itemBuilder: (_, i) {
+                            if (i == filtered.length) {
+                              _loadMore();
+                              return const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16.0),
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      color: AppColors.deepBlue,
+                                      strokeWidth: 2,
+                                    ),
                                   ),
                                 ),
-                ),
-              ],
-            ),
+                              );
+                            }
+                            return _NotificationCard(
+                              item: filtered[i],
+                              onTap: () => _openDetail(filtered[i]),
+                            );
+                          },
+                        ),
+                      ),
+              ),
+            ],
           ),
         ),
       ),
@@ -245,10 +246,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
                 icon: const Icon(Icons.done_all_rounded, size: 18),
                 label: const Text(
                   'Đọc tất cả',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                 ),
               ),
             ),
@@ -292,8 +290,8 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
               _activeFilter == _NotifFilter.all
                   ? 'Bạn chưa có thông báo nào.'
                   : _activeFilter == _NotifFilter.unread
-                      ? 'Không có thông báo chưa đọc.'
-                      : 'Không có thông báo đã đọc.',
+                  ? 'Không có thông báo chưa đọc.'
+                  : 'Không có thông báo đã đọc.',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: AppColors.bodyText,
@@ -418,8 +416,7 @@ class _FilterChip extends StatelessWidget {
                 style: TextStyle(
                   color: isActive ? AppColors.deepBlue : AppColors.bodyText,
                   fontSize: 12,
-                  fontWeight:
-                      isActive ? FontWeight.w800 : FontWeight.w600,
+                  fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
                   height: 16 / 12,
                 ),
               ),
@@ -552,7 +549,8 @@ class _NotificationCard extends StatelessWidget {
     final diff = now.difference(dt);
     if (diff.inMinutes < 60) return '${diff.inMinutes} phút trước';
     if (diff.inHours < 24) return '${diff.inHours} giờ trước';
-    if (diff.inDays == 1) return 'Hôm qua ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    if (diff.inDays == 1)
+      return 'Hôm qua ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 }
@@ -563,11 +561,11 @@ class _TypeBadge extends StatelessWidget {
   final NotificationType type;
 
   IconData get _icon => switch (type) {
-        NotificationType.invoice => Icons.receipt_long_outlined,
-        NotificationType.contract => Icons.description_outlined,
-        NotificationType.maintenance => Icons.build_outlined,
-        NotificationType.general => Icons.info_outline_rounded,
-      };
+    NotificationType.invoice => Icons.receipt_long_outlined,
+    NotificationType.contract => Icons.description_outlined,
+    NotificationType.maintenance => Icons.build_outlined,
+    NotificationType.general => Icons.info_outline_rounded,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -683,8 +681,10 @@ class _NotificationDetailDialog extends StatelessWidget {
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
                     padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints.tightFor(width: 36, height: 36),
+                    constraints: const BoxConstraints.tightFor(
+                      width: 36,
+                      height: 36,
+                    ),
                     icon: const Icon(
                       Icons.close_rounded,
                       color: AppColors.bodyText,
@@ -794,7 +794,15 @@ class _NotificationDetailDialog extends StatelessWidget {
   }
 
   String _formatDetailTime(DateTime dt) {
-    const days = ['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật'];
+    const days = [
+      'Thứ Hai',
+      'Thứ Ba',
+      'Thứ Tư',
+      'Thứ Năm',
+      'Thứ Sáu',
+      'Thứ Bảy',
+      'Chủ Nhật',
+    ];
     final dayName = days[dt.weekday - 1];
     final h = dt.hour.toString().padLeft(2, '0');
     final m = dt.minute.toString().padLeft(2, '0');
@@ -816,7 +824,11 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_rounded, color: AppColors.deepBlue, size: 42),
+            const Icon(
+              Icons.cloud_off_rounded,
+              color: AppColors.deepBlue,
+              size: 42,
+            ),
             const SizedBox(height: 14),
             Text(
               message,
@@ -830,7 +842,9 @@ class _ErrorState extends StatelessWidget {
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: onRetry,
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.deepBlue),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.deepBlue,
+              ),
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('Thử lại'),
             ),

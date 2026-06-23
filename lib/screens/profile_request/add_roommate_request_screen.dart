@@ -1,7 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
 
 const Color _kLabel = Color(0xFF000666);
@@ -70,19 +71,7 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
-            child: Column(
-              children: [
-                _buildHeader(),
-                Expanded(
-                  child: _buildForm(),
-                ),
-              ],
-            ),
-          ),
-        ),
+        child: AppScreenShell(header: _buildHeader(), child: _buildForm()),
       ),
     );
   }
@@ -111,16 +100,11 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
             ),
           ),
           const Expanded(
-            child: Text(
-              'Thêm người ở cùng',
-              style: AppColors.topBarTitleStyle,
-            ),
+            child: Text('Thêm người ở cùng', style: AppColors.topBarTitleStyle),
           ),
           IconButton(
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const NotificationListScreen(),
-              ),
+              MaterialPageRoute(builder: (_) => const NotificationListScreen()),
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
@@ -149,8 +133,10 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
             icon: Icons.group_add_outlined,
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFEFF8FF),
                   borderRadius: BorderRadius.circular(8),
@@ -161,8 +147,11 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
                 child: const Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.info_outline_rounded,
-                        size: 16, color: Color(0xFF0284C7)),
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 16,
+                      color: Color(0xFF0284C7),
+                    ),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -220,7 +209,10 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
               ),
               const SizedBox(height: 14),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFEFF1FF),
                   borderRadius: BorderRadius.circular(8),
@@ -230,8 +222,11 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
                 ),
                 child: Row(
                   children: const [
-                    Icon(Icons.info_outline_rounded,
-                        size: 16, color: AppColors.deepBlue),
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 16,
+                      color: AppColors.deepBlue,
+                    ),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -276,8 +271,9 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.deepBlue,
-                disabledBackgroundColor:
-                    AppColors.deepBlue.withValues(alpha: 0.5),
+                disabledBackgroundColor: AppColors.deepBlue.withValues(
+                  alpha: 0.5,
+                ),
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
@@ -302,10 +298,7 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
               ),
               child: const Text(
                 'Hủy',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -441,7 +434,9 @@ class _SuccessDialogState extends State<_SuccessDialog>
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFEFF1FF),
                           borderRadius: BorderRadius.circular(12),
@@ -650,8 +645,10 @@ class _Field extends StatelessWidget {
             ),
             filled: true,
             fillColor: AppColors.background,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 13,
+              vertical: 12,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: AppColors.cardBorder),
@@ -662,8 +659,10 @@ class _Field extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide:
-                  const BorderSide(color: AppColors.deepBlue, width: 1.5),
+              borderSide: const BorderSide(
+                color: AppColors.deepBlue,
+                width: 1.5,
+              ),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),

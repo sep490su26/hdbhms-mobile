@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
@@ -12,13 +12,11 @@ import 'package:hdbhms_mobile/models/profile_request/tenant_profile_model.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 
 /// Dữ liệu được pre-fill từ TenantProfileResponse truyền vào.
 class UpdateProfileScreen extends StatefulWidget {
-  const UpdateProfileScreen({
-    super.key,
-    required this.profile,
-  });
+  const UpdateProfileScreen({super.key, required this.profile});
 
   final TenantProfileResponse profile;
 
@@ -48,19 +46,22 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     _phoneController = TextEditingController(text: p.person.phone);
     _emailController = TextEditingController(text: p.person.email);
 
-    final firstContact =
-        p.emergencyContacts.isNotEmpty ? p.emergencyContacts.first : null;
+    final firstContact = p.emergencyContacts.isNotEmpty
+        ? p.emergencyContacts.first
+        : null;
     _relativeName = TextEditingController(text: firstContact?.fullName ?? '');
     _relativePhone = TextEditingController(text: firstContact?.phone ?? '');
 
     _vehicles = p.vehicles.isEmpty
         ? [_VehicleFormData()]
         : p.vehicles
-            .map((v) => _VehicleFormData(
+              .map(
+                (v) => _VehicleFormData(
                   licensePlate: v.licensePlate,
                   existingImageUrl: v.imageUrl,
-                ))
-            .toList();
+                ),
+              )
+              .toList();
   }
 
   @override
@@ -113,7 +114,9 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
 
     if (phone.isEmpty || email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập đủ số điện thoại và email')),
+        const SnackBar(
+          content: Text('Vui lòng nhập đủ số điện thoại và email'),
+        ),
       );
       return;
     }
@@ -122,12 +125,13 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
 
     try {
       final service = const TenantProfileService();
-      
+
       final vehiclesData = <Map<String, dynamic>>[];
       for (final v in _vehicles) {
         final plate = v.licensePlateController.text.trim();
-        if (plate.isEmpty && v.localImage == null && v.existingImageUrl.isEmpty) continue;
-        
+        if (plate.isEmpty && v.localImage == null && v.existingImageUrl.isEmpty)
+          continue;
+
         int? fileId;
         if (v.localImage != null) {
           fileId = await service.uploadVehicleImage(
@@ -135,7 +139,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
             fileName: v.localImage!.name,
           );
         }
-        
+
         vehiclesData.add({
           'license_plate': plate,
           'vehicle_type': 'MOTORBIKE',
@@ -152,7 +156,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
               'full_name': relName,
               'phone': relPhone,
               'relationship': 'Người thân',
-            }
+            },
         ],
         vehicles: vehiclesData,
       );
@@ -187,35 +191,32 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 390),
-            child: Column(
-              children: [
-                _buildHeader(context),
-                Expanded(
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildContactInfoSection(),
+        child: AppScreenShell(
+          header: _buildHeader(context),
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildContactInfoSection(),
+                      const SizedBox(height: 15),
+                      _buildRelativeSection(),
+                      const SizedBox(height: 15),
+                      _buildVehicleSection(),
+                      if (_vehicles.length < _maxVehicles) ...[
                         const SizedBox(height: 15),
-                        _buildRelativeSection(),
-                        const SizedBox(height: 15),
-                        _buildVehicleSection(),
-                        if (_vehicles.length < _maxVehicles) ...[
-                          const SizedBox(height: 15),
-                          _buildAddVehicleButton(),
-                        ],
+                        _buildAddVehicleButton(),
                       ],
-                    ),
+                    ],
                   ),
                 ),
-                _buildBottomSaveButton(),
-              ],
-            ),
+              ),
+              _buildBottomSaveButton(),
+            ],
           ),
         ),
       ),
@@ -248,10 +249,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
             tooltip: 'Trở về',
           ),
           const Expanded(
-            child: Text(
-              'Cập nhật hồ sơ',
-              style: AppColors.topBarTitleStyle,
-            ),
+            child: Text('Cập nhật hồ sơ', style: AppColors.topBarTitleStyle),
           ),
           IconButton(
             onPressed: () {},
@@ -298,10 +296,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
       icon: Icons.contact_emergency_outlined,
       title: 'Thông tin liên hệ người thân',
       children: [
-        _EditableField(
-          label: 'TÊN NGƯỜI THÂN',
-          controller: _relativeName,
-        ),
+        _EditableField(label: 'TÊN NGƯỜI THÂN', controller: _relativeName),
         const SizedBox(height: 16),
         _EditableField(
           label: 'SỐ ĐIỆN THOẠI',
@@ -366,10 +361,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: buttonColor,
-                width: 2,
-              ),
+              border: Border.all(color: buttonColor, width: 2),
             ),
             child: Center(
               child: Row(
@@ -408,9 +400,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(
-          top: BorderSide(
-            color: AppColors.cardBorder.withValues(alpha: 0.6),
-          ),
+          top: BorderSide(color: AppColors.cardBorder.withValues(alpha: 0.6)),
         ),
       ),
       child: SizedBox(
@@ -418,13 +408,16 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         height: 56,
         child: ElevatedButton.icon(
           onPressed: _isLoading ? null : _handleSave,
-          icon: _isLoading 
-            ? const SizedBox(
-                width: 18, 
-                height: 18, 
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-              ) 
-            : const Icon(Icons.save_rounded, size: 18),
+          icon: _isLoading
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(Icons.save_rounded, size: 18),
           label: Text(
             _isLoading ? 'ĐANG LƯU...' : 'LƯU THAY ĐỔI',
             style: const TextStyle(
@@ -572,8 +565,10 @@ class _EditableField extends StatelessWidget {
           decoration: InputDecoration(
             filled: true,
             fillColor: AppColors.inputFill,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide.none,
@@ -584,8 +579,10 @@ class _EditableField extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide:
-                  const BorderSide(color: AppColors.deepBlue, width: 1.5),
+              borderSide: const BorderSide(
+                color: AppColors.deepBlue,
+                width: 1.5,
+              ),
             ),
           ),
         ),
@@ -627,8 +624,10 @@ class _VehicleCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 3,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.cardBorder.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(4),
@@ -678,10 +677,7 @@ class _VehicleCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          _VehicleImagePicker(
-            data: data,
-            onPickImage: onPickImage,
-          ),
+          _VehicleImagePicker(data: data, onPickImage: onPickImage),
         ],
       ),
     );
@@ -690,10 +686,7 @@ class _VehicleCard extends StatelessWidget {
 
 /// A single image area that can be tapped to upload or replace the image.
 class _VehicleImagePicker extends StatelessWidget {
-  const _VehicleImagePicker({
-    required this.data,
-    required this.onPickImage,
-  });
+  const _VehicleImagePicker({required this.data, required this.onPickImage});
 
   final _VehicleFormData data;
   final VoidCallback onPickImage;
@@ -715,14 +708,14 @@ class _VehicleImagePicker extends StatelessWidget {
               if (hasImage)
                 data.localImage != null
                     ? (kIsWeb
-                        ? Image.network(
-                            data.localImage!.path,
-                            fit: BoxFit.cover,
-                          )
-                        : Image.file(
-                            File(data.localImage!.path),
-                            fit: BoxFit.cover,
-                          ))
+                          ? Image.network(
+                              data.localImage!.path,
+                              fit: BoxFit.cover,
+                            )
+                          : Image.file(
+                              File(data.localImage!.path),
+                              fit: BoxFit.cover,
+                            ))
                     : _NetworkVehicleThumb(url: data.existingImageUrl)
               else
                 Container(
@@ -848,8 +841,11 @@ class _NetworkVehicleThumbState extends State<_NetworkVehicleThumb> {
           return Container(
             color: const Color(0xFFEDECF1),
             child: const Center(
-              child: Icon(Icons.broken_image_outlined,
-                  color: AppColors.bodyText, size: 24),
+              child: Icon(
+                Icons.broken_image_outlined,
+                color: AppColors.bodyText,
+                size: 24,
+              ),
             ),
           );
         }
@@ -873,10 +869,8 @@ class _NetworkVehicleThumbState extends State<_NetworkVehicleThumb> {
 
 /// Mutable form data for a single vehicle entry
 class _VehicleFormData {
-  _VehicleFormData({
-    String licensePlate = '',
-    this.existingImageUrl = '',
-  }) : licensePlateController = TextEditingController(text: licensePlate);
+  _VehicleFormData({String licensePlate = '', this.existingImageUrl = ''})
+    : licensePlateController = TextEditingController(text: licensePlate);
 
   final TextEditingController licensePlateController;
   final String existingImageUrl;

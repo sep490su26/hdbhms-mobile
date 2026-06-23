@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 
@@ -27,16 +27,22 @@ class TenantBottomNavigation extends StatelessWidget {
     return Center(
       heightFactor: 1,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 390),
+        constraints: const BoxConstraints(maxWidth: 440),
         child: Container(
-          height: 74,
-          padding: const EdgeInsets.fromLTRB(4, 8, 4, 6),
+          height: 78,
+          margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+          padding: const EdgeInsets.fromLTRB(6, 8, 6, 7),
           decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-            border: Border.all(
-              color: AppColors.cardBorder.withValues(alpha: 0.7),
-            ),
+            color: AppColors.surface.withValues(alpha: 0.98),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: AppColors.cardBorder),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.inputText.withValues(alpha: 0.10),
+                blurRadius: 24,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -94,9 +100,9 @@ class _BottomNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const activeColor = AppColors.deepBlue;
+    const activeColor = AppColors.primary;
     const inactiveColor = AppColors.bodyText;
-    const activeBg = Color(0xFFA7B4FF);
+    const activeBg = AppColors.primaryLight;
 
     final color = isSelected ? activeColor : inactiveColor;
 
@@ -104,18 +110,19 @@ class _BottomNavItem extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        width: 58,
+        width: 62,
         child: isSelected
             ? Container(
-                height: 50,
+                height: 54,
                 decoration: BoxDecoration(
                   color: activeBg,
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(17),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(icon, color: activeColor, size: 20),
+                    Icon(icon, color: activeColor, size: 21),
+                    const SizedBox(height: 2),
                     Text(
                       label,
                       textAlign: TextAlign.center,
@@ -123,9 +130,9 @@ class _BottomNavItem extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: activeColor,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
-                        height: 13 / 9,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        height: 13 / 10,
                       ),
                     ),
                   ],
@@ -134,8 +141,8 @@ class _BottomNavItem extends StatelessWidget {
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(icon, color: color, size: 21),
-                  const SizedBox(height: 3),
+                  Icon(icon, color: color, size: 22),
+                  const SizedBox(height: 4),
                   Text(
                     label,
                     textAlign: TextAlign.center,
@@ -143,9 +150,9 @@ class _BottomNavItem extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: color,
-                      fontSize: 9,
+                      fontSize: 10,
                       fontWeight: FontWeight.w700,
-                      height: 13 / 9,
+                      height: 13 / 10,
                     ),
                   ),
                 ],
