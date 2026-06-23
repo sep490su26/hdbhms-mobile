@@ -116,25 +116,31 @@ class _WebPdfViewerState extends State<WebPdfViewer> {
         elevation: 0,
         title: Text(widget.title, style: AppColors.topBarTitleStyle),
         actions: [
-          IconButton(
-            onPressed: _objectUrl == null || _isDownloading
-                ? null
-                : _downloadFile,
-            icon: _isDownloading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              onPressed: _objectUrl == null || _isDownloading
+                  ? null
+                  : _downloadFile,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+              alignment: Alignment.center,
+              icon: _isDownloading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: AppColors.topBarIconColor,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.file_download_outlined,
                       color: AppColors.topBarIconColor,
-                      strokeWidth: 2,
+                      size: AppColors.topBarIconSize,
                     ),
-                  )
-                : const Icon(
-                    Icons.download_rounded,
-                    color: AppColors.topBarIconColor,
-                    size: AppColors.topBarIconSize,
-                  ),
-            tooltip: 'Tải xuống',
+              tooltip: 'Tải xuống',
+            ),
           ),
         ],
       ),

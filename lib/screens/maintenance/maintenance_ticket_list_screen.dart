@@ -6,7 +6,9 @@ import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/maintenance/maintenance_ticket_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
+import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/create_maintenance_ticket_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
@@ -71,9 +73,8 @@ class _MaintenanceTicketListScreenState
   Future<void> _openCreateTicket() async {
     final created = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (context) => CreateMaintenanceTicketScreen(
-          ticketService: widget.ticketService,
-        ),
+        builder: (context) =>
+            CreateMaintenanceTicketScreen(ticketService: widget.ticketService),
       ),
     );
     if (created == true && mounted) {
@@ -110,70 +111,57 @@ class _MaintenanceTicketListScreenState
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
-            child: Column(
-              children: [
-                _buildHeader(),
-                Expanded(
-                  child: FutureBuilder<List<MaintenanceTicketModel>>(
-                    future: _ticketsFuture,
-                    builder: (context, snapshot) {
-                      final tickets =
-                          snapshot.data ?? const <MaintenanceTicketModel>[];
+        child: AppScreenShell(
+          header: _buildHeader(),
+          child: FutureBuilder<List<MaintenanceTicketModel>>(
+            future: _ticketsFuture,
+            builder: (context, snapshot) {
+              final tickets = snapshot.data ?? const <MaintenanceTicketModel>[];
 
-                      return RefreshIndicator(
-                        color: AppColors.deepBlue,
-                        onRefresh: _refresh,
-                        child: ListView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(14, 18, 14, 96),
-                          children: [
-                            _MaintenanceSectionHeader(
-                              ticketCount: snapshot.hasData
-                                  ? tickets.length
-                                  : null,
-                              onCreateTicket: _openCreateTicket,
-                            ),
-                            const SizedBox(height: 18),
-                            _FilterPanel(
-                              keywordController: _keywordController,
-                              selectedStatus: _selectedStatus,
-                              selectedCategory: _selectedCategory,
-                              onStatusChanged: (value) {
-                                setState(() {
-                                  _selectedStatus = value ?? _allOption;
-                                });
-                              },
-                              onCategoryChanged: (value) {
-                                setState(() {
-                                  _selectedCategory = value ?? _allOption;
-                                });
-                              },
-                              onFilter: _applyFilter,
-                            ),
-                            const SizedBox(height: 20),
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting)
-                              const _LoadingState()
-                            else if (snapshot.hasError)
-                              _ErrorState(onRetry: _applyFilter)
-                            else if (tickets.isEmpty)
-                              _EmptyState(onRetry: _applyFilter)
-                            else
-                              _TicketTableCard(
-                                tickets: tickets,
-                                onTicketTap: _openTicketDetail,
-                              ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+              return RefreshIndicator(
+                color: AppColors.deepBlue,
+                onRefresh: _refresh,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(14, 18, 14, 96),
+                  children: [
+                    _MaintenanceSectionHeader(
+                      ticketCount: snapshot.hasData ? tickets.length : null,
+                      onCreateTicket: _openCreateTicket,
+                    ),
+                    const SizedBox(height: 18),
+                    _FilterPanel(
+                      keywordController: _keywordController,
+                      selectedStatus: _selectedStatus,
+                      selectedCategory: _selectedCategory,
+                      onStatusChanged: (value) {
+                        setState(() {
+                          _selectedStatus = value ?? _allOption;
+                        });
+                      },
+                      onCategoryChanged: (value) {
+                        setState(() {
+                          _selectedCategory = value ?? _allOption;
+                        });
+                      },
+                      onFilter: _applyFilter,
+                    ),
+                    const SizedBox(height: 20),
+                    if (snapshot.connectionState == ConnectionState.waiting)
+                      const _LoadingState()
+                    else if (snapshot.hasError)
+                      _ErrorState(onRetry: _applyFilter)
+                    else if (tickets.isEmpty)
+                      _EmptyState(onRetry: _applyFilter)
+                    else
+                      _TicketTableCard(
+                        tickets: tickets,
+                        onTicketTap: _openTicketDetail,
+                      ),
+                  ],
                 ),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ),
@@ -195,10 +183,8 @@ class _MaintenanceTicketListScreenState
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const TenantRequestScreen(),
-              ),
-            ),
+          MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+        ),
       ),
     );
   }
@@ -227,10 +213,7 @@ class _MaintenanceTicketListScreenState
             tooltip: 'Trở về',
           ),
           const Expanded(
-            child: Text(
-              'Sự cố',
-              style: AppColors.topBarTitleStyle,
-            ),
+            child: Text('Sự cố', style: AppColors.topBarTitleStyle),
           ),
           IconButton(
             onPressed: () => Navigator.of(context).push(
@@ -239,9 +222,9 @@ class _MaintenanceTicketListScreenState
               ),
             ),
             padding: EdgeInsets.zero,
-constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-icon: const Icon(
-Icons.notifications_none_rounded,
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            icon: const Icon(
+              Icons.notifications_none_rounded,
               color: AppColors.topBarIconColor,
               size: 24,
             ),
@@ -270,15 +253,7 @@ class _MaintenanceSectionHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Danh sách sự cố',
-                style: TextStyle(
-                  color: AppColors.deepBlue,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  height: 23 / 18,
-                ),
-              ),
+              const Text('Danh sách sự cố', style: AppTypography.sectionTitle),
               const SizedBox(height: 3),
               Text(
                 ticketCount == null ? 'Đang tải...' : '$ticketCount phiếu',

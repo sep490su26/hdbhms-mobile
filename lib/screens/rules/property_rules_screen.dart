@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
@@ -7,8 +7,10 @@ import 'package:hdbhms_mobile/models/rules/property_rule_model.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/rules/property_rule_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
+import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
@@ -58,42 +60,33 @@ class _PropertyRulesScreenState extends State<PropertyRulesScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
-            child: Column(
-              children: [
-                const _RulesHeader(),
-                Expanded(
-                  child: FutureBuilder<PropertyRulesResponse>(
-                    future: _rulesFuture,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const _RulesLoadingState();
-                      }
+        child: AppScreenShell(
+          header: const _RulesHeader(),
+          child: FutureBuilder<PropertyRulesResponse>(
+            future: _rulesFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const _RulesLoadingState();
+              }
 
-                      if (snapshot.hasError) {
-                        return _RulesErrorState(
-                          message: _messageForError(snapshot.error),
-                          onRetry: _retry,
-                        );
-                      }
+              if (snapshot.hasError) {
+                return _RulesErrorState(
+                  message: _messageForError(snapshot.error),
+                  onRetry: _retry,
+                );
+              }
 
-                      final response = snapshot.data;
-                      if (response == null || response.items.isEmpty) {
-                        return _RulesEmptyState(onRetry: _retry);
-                      }
+              final response = snapshot.data;
+              if (response == null || response.items.isEmpty) {
+                return _RulesEmptyState(onRetry: _retry);
+              }
 
-                      return RefreshIndicator(
-                        color: AppColors.deepBlue,
-                        onRefresh: _refresh,
-                        child: _RulesContent(response: response),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
+              return RefreshIndicator(
+                color: AppColors.deepBlue,
+                onRefresh: _refresh,
+                child: _RulesContent(response: response),
+              );
+            },
           ),
         ),
       ),
@@ -156,10 +149,7 @@ class _RulesHeader extends StatelessWidget {
             tooltip: 'Trở về',
           ),
           const Expanded(
-            child: Text(
-              'Nội quy nhà trọ',
-              style: AppColors.topBarTitleStyle,
-            ),
+            child: Text('Nội quy nhà trọ', style: AppColors.topBarTitleStyle),
           ),
           IconButton(
             onPressed: () => Navigator.of(context).push(
@@ -410,15 +400,7 @@ class _RuleSection extends StatelessWidget {
                 Icon(config.icon, color: AppColors.deepBlue, size: 22),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
-                    config.title,
-                    style: const TextStyle(
-                      color: AppColors.deepBlue,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      height: 24 / 20,
-                    ),
-                  ),
+                  child: Text(config.title, style: AppTypography.sectionTitle),
                 ),
               ],
             ),
@@ -513,9 +495,9 @@ class _FineSection extends StatelessWidget {
                     'Các khoản phạt',
                     style: TextStyle(
                       color: Color(0xFFC8171F),
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      height: 24 / 20,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      height: 24 / 18,
                     ),
                   ),
                 ),

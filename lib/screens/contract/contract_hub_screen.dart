@@ -1,9 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
+import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/contract/deposit_contract_list_screen.dart';
 import 'package:hdbhms_mobile/screens/contract/lease_contract_list_screen.dart';
@@ -56,24 +57,18 @@ class _ContractHubScreenState extends State<ContractHubScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 390),
-            child: Column(
-              children: [
-                _buildHeader(),
-                _buildTabBar(),
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: const [
-                      _LeaseContractTab(),
-                      _DepositContractTab(),
-                    ],
-                  ),
+        child: AppScreenShell(
+          header: _buildHeader(),
+          child: Column(
+            children: [
+              _buildTabBar(),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: const [_LeaseContractTab(), _DepositContractTab()],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -101,10 +96,8 @@ class _ContractHubScreenState extends State<ContractHubScreen>
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const TenantRequestScreen(),
-              ),
-            ),
+          MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+        ),
       ),
     );
   }
@@ -133,10 +126,7 @@ class _ContractHubScreenState extends State<ContractHubScreen>
             tooltip: 'Trở về',
           ),
           const Expanded(
-            child: Text(
-              'Hợp Đồng',
-              style: AppColors.topBarTitleStyle,
-            ),
+            child: Text('Hợp đồng', style: AppColors.topBarTitleStyle),
           ),
         ],
       ),
@@ -150,10 +140,7 @@ class _ContractHubScreenState extends State<ContractHubScreen>
         controller: _tabController,
         labelColor: AppColors.deepBlue,
         unselectedLabelColor: AppColors.bodyText,
-        labelStyle: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w900,
-        ),
+        labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
         unselectedLabelStyle: const TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,

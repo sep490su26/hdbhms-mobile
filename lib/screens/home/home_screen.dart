@@ -11,7 +11,9 @@ import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
 import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
+import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/payment/payment_preview_page.dart';
 import 'package:hdbhms_mobile/screens/payment/qr_payment_page.dart';
@@ -97,14 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, _) {
         return Scaffold(
           backgroundColor: AppColors.background,
-          body: SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 390),
-                child: _buildBody(),
-              ),
-            ),
-          ),
+          body: SafeArea(child: _buildBody()),
           bottomNavigationBar: _HomeBottomNavigation(
             authService: widget.authService,
             homeService: widget.homeService,
@@ -137,52 +132,48 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    return Column(
-      children: [
-        _HomeHeader(summary: summary, provider: _provider),
-        Expanded(
-          child: RefreshIndicator(
-            color: AppColors.deepBlue,
-            onRefresh: _refresh,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 15, 16, 28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _Greeting(user: summary.user),
-                  const SizedBox(height: 17),
-                  _PaymentStatusCard(
-                    invoiceSummary: _provider.invoiceSummary,
-                    onPay: _openPayment,
-                  ),
-                  const SizedBox(height: 10),
-                  // TEMPORARY: Xóa nút này sau khi xem xong UI thanh toán.
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const PaymentPreviewPage(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.visibility_outlined),
-                    label: const Text('XEM DEMO THANH TOÁN (TẠM)'),
-                  ),
-                  const SizedBox(height: 18),
-                  const _SectionHeading('Điện & Nước'),
-                  const SizedBox(height: 17),
-                  _UtilitiesSection(summary: summary),
-                  const SizedBox(height: 17),
-                  const _SectionHeading('Thao tác nhanh'),
-                  const SizedBox(height: 17),
-                  const _QuickActions(),
-                ],
+    return AppScreenShell(
+      header: _HomeHeader(summary: summary, provider: _provider),
+      child: RefreshIndicator(
+        color: AppColors.deepBlue,
+        onRefresh: _refresh,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 15, 16, 28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _Greeting(user: summary.user),
+              const SizedBox(height: 17),
+              _PaymentStatusCard(
+                invoiceSummary: _provider.invoiceSummary,
+                onPay: _openPayment,
               ),
-            ),
+              const SizedBox(height: 10),
+              // TEMPORARY: Xóa nút này sau khi xem xong UI thanh toán.
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const PaymentPreviewPage(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.visibility_outlined),
+                label: const Text('XEM DEMO THANH TOÁN (TẠM)'),
+              ),
+              const SizedBox(height: 18),
+              const _SectionHeading('Điện & Nước'),
+              const SizedBox(height: 17),
+              _UtilitiesSection(summary: summary),
+              const SizedBox(height: 17),
+              const _SectionHeading('Thao tác nhanh'),
+              const SizedBox(height: 17),
+              const _QuickActions(),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 
@@ -956,15 +947,7 @@ class _SectionHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: const TextStyle(
-        color: AppColors.inputText,
-        fontSize: 20,
-        fontWeight: FontWeight.w900,
-        height: 24 / 20,
-      ),
-    );
+    return Text(title, style: AppTypography.sectionTitle);
   }
 }
 
