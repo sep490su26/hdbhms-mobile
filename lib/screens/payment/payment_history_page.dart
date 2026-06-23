@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/payment/tenant_invoice_service.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/app_screen_shell.dart';
 import '../notification/notification_list_screen.dart';
 import '../profile_request/tenant_profile_screen.dart';
 
@@ -43,73 +44,59 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 390),
-            child: Column(
-              children: [
-                _HistoryHeader(onRefresh: _reload),
-                Expanded(
-                  child: FutureBuilder<List<TenantInvoice>>(
-                    future: _invoicesFuture,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const _HistoryLoading();
-                      }
-                      if (snapshot.hasError) {
-                        return _HistoryError(
-                          message: snapshot.error is TenantInvoiceException
-                              ? (snapshot.error as TenantInvoiceException)
-                                    .message
-                              : 'Không tải được lịch sử thanh toán.',
-                          onRetry: _reload,
-                        );
-                      }
-                      final paidInvoices = _paidInvoices(
-                        snapshot.data ?? const [],
-                      );
-                      final monthOptions = _monthOptions(paidInvoices);
-                      if (_selectedMonthKey != 'all' &&
-                          !monthOptions.any(
-                            (item) => item.key == _selectedMonthKey,
-                          )) {
-                        _selectedMonthKey = 'all';
-                      }
-                      final filteredInvoices = _filterInvoices(paidInvoices);
+        child: AppScreenShell(
+          header: _HistoryHeader(onRefresh: _reload),
+          child: FutureBuilder<List<TenantInvoice>>(
+            future: _invoicesFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const _HistoryLoading();
+              }
+              if (snapshot.hasError) {
+                return _HistoryError(
+                  message: snapshot.error is TenantInvoiceException
+                      ? (snapshot.error as TenantInvoiceException).message
+                      : 'Không tải được lịch sử thanh toán.',
+                  onRetry: _reload,
+                );
+              }
+              final paidInvoices = _paidInvoices(snapshot.data ?? const []);
+              final monthOptions = _monthOptions(paidInvoices);
+              if (_selectedMonthKey != 'all' &&
+                  !monthOptions.any((item) => item.key == _selectedMonthKey)) {
+                _selectedMonthKey = 'all';
+              }
+              final filteredInvoices = _filterInvoices(paidInvoices);
 
-                      return SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(14, 22, 14, 22),
-                        child: Column(
-                          children: [
-                            _SearchField(controller: _searchController),
-                            const SizedBox(height: 16),
-                            _FilterRow(
-                              selectedMonthKey: _selectedMonthKey,
-                              monthOptions: monthOptions,
-                              onChanged: (value) {
-                                if (value == null) return;
-                                setState(() => _selectedMonthKey = value);
-                              },
-                            ),
-                            const SizedBox(height: 24),
-                            if (filteredInvoices.isEmpty)
-                              _HistoryEmpty(
-                                hasAnyPaidInvoice: paidInvoices.isNotEmpty,
-                                onClearFilter: () {
-                                  _searchController.clear();
-                                  setState(() => _selectedMonthKey = 'all');
-                                },
-                              )
-                            else
-                              _HistoryListCard(invoices: filteredInvoices),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+              return SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(14, 22, 14, 22),
+                child: Column(
+                  children: [
+                    _SearchField(controller: _searchController),
+                    const SizedBox(height: 16),
+                    _FilterRow(
+                      selectedMonthKey: _selectedMonthKey,
+                      monthOptions: monthOptions,
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => _selectedMonthKey = value);
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    if (filteredInvoices.isEmpty)
+                      _HistoryEmpty(
+                        hasAnyPaidInvoice: paidInvoices.isNotEmpty,
+                        onClearFilter: () {
+                          _searchController.clear();
+                          setState(() => _selectedMonthKey = 'all');
+                        },
+                      )
+                    else
+                      _HistoryListCard(invoices: filteredInvoices),
+                  ],
                 ),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ),

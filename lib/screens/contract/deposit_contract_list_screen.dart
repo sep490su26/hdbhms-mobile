@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
 import 'package:hdbhms_mobile/models/contract/contract_list_item_model.dart';
@@ -6,6 +6,7 @@ import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/contract/deposit_contract_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
+import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/contract/deposit_contract_detail_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
@@ -98,9 +99,7 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
     await const AuthService().logout();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => const LoginPage(),
-      ),
+      MaterialPageRoute(builder: (context) => const LoginPage()),
       (route) => false,
     );
   }
@@ -108,7 +107,6 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
   Widget _buildListContent() {
     return Column(
       children: [
-        if (!widget.embeddedMode) _buildHeader(),
         _FilterBar(
           selectedStatus: _selectedStatus,
           selectedDateRange: _selectedDateRange,
@@ -127,9 +125,7 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(
-                  child: CircularProgressIndicator(
-                    color: AppColors.deepBlue,
-                  ),
+                  child: CircularProgressIndicator(color: AppColors.deepBlue),
                 );
               }
 
@@ -158,8 +154,7 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(14, 12, 14, 28),
                   itemCount: filtered.length,
-                  separatorBuilder: (_, _) =>
-                      const SizedBox(height: 10),
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     return _DepositCard(
                       item: filtered[index],
@@ -184,11 +179,9 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 390),
-            child: _buildListContent(),
-          ),
+        child: AppScreenShell(
+          header: _buildHeader(),
+          child: _buildListContent(),
         ),
       ),
       bottomNavigationBar: TenantBottomNavigation(
@@ -210,10 +203,8 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const TenantRequestScreen(),
-              ),
-            ),
+          MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+        ),
       ),
     );
   }
@@ -242,10 +233,7 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
             tooltip: 'Trở về',
           ),
           const Expanded(
-            child: Text(
-              'Danh sách HĐ cọc',
-              style: AppColors.topBarTitleStyle,
-            ),
+            child: Text('Danh sách HĐ cọc', style: AppColors.topBarTitleStyle),
           ),
         ],
       ),
@@ -529,7 +517,9 @@ class _DepositCard extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.cardBorder.withValues(alpha: 0.6)),
+            border: Border.all(
+              color: AppColors.cardBorder.withValues(alpha: 0.6),
+            ),
           ),
           child: Row(
             children: [
@@ -570,9 +560,7 @@ class _DepositCard extends StatelessWidget {
                         Flexible(
                           child: _InfoChip(
                             icon: Icons.meeting_room_outlined,
-                            text: item.roomCode.isEmpty
-                                ? '--'
-                                : item.roomCode,
+                            text: item.roomCode.isEmpty ? '--' : item.roomCode,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -681,8 +669,11 @@ class _EmptyState extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         children: [
           const SizedBox(height: 120),
-          const Icon(Icons.account_balance_wallet_outlined,
-              color: AppColors.deepBlue, size: 46),
+          const Icon(
+            Icons.account_balance_wallet_outlined,
+            color: AppColors.deepBlue,
+            size: 46,
+          ),
           const SizedBox(height: 14),
           const Text(
             'Bạn chưa có hợp đồng cọc nào',
@@ -725,8 +716,11 @@ class _EmptyFilterState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.filter_list_off_rounded,
-                color: AppColors.deepBlue, size: 42),
+            const Icon(
+              Icons.filter_list_off_rounded,
+              color: AppColors.deepBlue,
+              size: 42,
+            ),
             const SizedBox(height: 14),
             const Text(
               'Không có HĐ cọc phù hợp với bộ lọc',
@@ -768,8 +762,11 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline_rounded,
-                color: AppColors.deepBlue, size: 42),
+            const Icon(
+              Icons.error_outline_rounded,
+              color: AppColors.deepBlue,
+              size: 42,
+            ),
             const SizedBox(height: 14),
             Text(
               message,
@@ -811,14 +808,34 @@ String _fmtShort(DateTime date) {
 
 (String, Color, Color) _statusStyle(String status) {
   return switch (status.trim().toUpperCase()) {
-    'CONFIRMED' => ('Đã xác nhận', const Color(0xFFD4F8DE), const Color(0xFF159447)),
-    'PAID' => ('Đã thanh toán', const Color(0xFFD4F8DE), const Color(0xFF159447)),
-    'PENDING_PAYMENT' => ('Chờ thanh toán', const Color(0xFFFFF3CD), const Color(0xFF856404)),
+    'CONFIRMED' => (
+      'Đã xác nhận',
+      const Color(0xFFD4F8DE),
+      const Color(0xFF159447),
+    ),
+    'PAID' => (
+      'Đã thanh toán',
+      const Color(0xFFD4F8DE),
+      const Color(0xFF159447),
+    ),
+    'PENDING_PAYMENT' => (
+      'Chờ thanh toán',
+      const Color(0xFFFFF3CD),
+      const Color(0xFF856404),
+    ),
     'DRAFT' => ('Bản nháp', const Color(0xFFE7E9F0), AppColors.bodyText),
-    'CONVERTED_TO_LEASE' => ('Đã chuyển HĐ thuê', const Color(0xFFD4F8DE), const Color(0xFF159447)),
+    'CONVERTED_TO_LEASE' => (
+      'Đã chuyển HĐ thuê',
+      const Color(0xFFD4F8DE),
+      const Color(0xFF159447),
+    ),
     'EXTENDED' => ('Đã gia hạn', const Color(0xFFEFF1FF), AppColors.deepBlue),
     'REFUNDED' => ('Đã hoàn tiền', const Color(0xFFE7E9F0), AppColors.bodyText),
-    'FORFEITED' => ('Đã mất cọc', const Color(0xFFFFD8D5), const Color(0xFFB00020)),
+    'FORFEITED' => (
+      'Đã mất cọc',
+      const Color(0xFFFFD8D5),
+      const Color(0xFFB00020),
+    ),
     'CANCELLED' => ('Đã hủy', const Color(0xFFE7E9F0), AppColors.bodyText),
     _ => (_displayStatus(status), const Color(0xFFE7E9F0), AppColors.bodyText),
   };

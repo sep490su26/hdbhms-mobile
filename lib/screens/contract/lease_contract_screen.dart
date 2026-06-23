@@ -8,6 +8,7 @@ import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
+import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/contract/contract_pdf_viewer_screen.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
@@ -63,50 +64,41 @@ class _LeaseContractScreenState extends State<LeaseContractScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 390),
-            child: Column(
-              children: [
-                const _ContractHeader(),
-                Expanded(
-                  child: FutureBuilder<LeaseContract>(
-                    future: _contractFuture,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const _ContractLoadingState();
-                      }
+        child: AppScreenShell(
+          header: const _ContractHeader(),
+          child: FutureBuilder<LeaseContract>(
+            future: _contractFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const _ContractLoadingState();
+              }
 
-                      if (snapshot.hasError) {
-                        final error = snapshot.error;
-                        if (error is LeaseContractNotFoundException) {
-                          return _ContractEmptyState(onRetry: _retry);
-                        }
-                        return _ContractErrorState(
-                          message: _messageForError(error),
-                          onRetry: _retry,
-                        );
-                      }
+              if (snapshot.hasError) {
+                final error = snapshot.error;
+                if (error is LeaseContractNotFoundException) {
+                  return _ContractEmptyState(onRetry: _retry);
+                }
+                return _ContractErrorState(
+                  message: _messageForError(error),
+                  onRetry: _retry,
+                );
+              }
 
-                      final contract = snapshot.data;
-                      if (contract == null) {
-                        return _ContractEmptyState(onRetry: _retry);
-                      }
+              final contract = snapshot.data;
+              if (contract == null) {
+                return _ContractEmptyState(onRetry: _retry);
+              }
 
-                      return RefreshIndicator(
-                        color: AppColors.deepBlue,
-                        onRefresh: _refresh,
-                        child: _ContractContent(
-                          contract: contract,
-                          contractService: widget.contractService,
-                          onChanged: _refresh,
-                        ),
-                      );
-                    },
-                  ),
+              return RefreshIndicator(
+                color: AppColors.deepBlue,
+                onRefresh: _refresh,
+                child: _ContractContent(
+                  contract: contract,
+                  contractService: widget.contractService,
+                  onChanged: _refresh,
                 ),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ),

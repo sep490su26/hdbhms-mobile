@@ -1,9 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
 import 'package:hdbhms_mobile/services/maintenance/maintenance_ticket_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/ticket_attachment_grid.dart';
 import 'package:hdbhms_mobile/widgets/ticket_status_badge.dart';
 import 'package:hdbhms_mobile/widgets/ticket_timeline.dart';
@@ -309,10 +310,7 @@ class _MaintenanceTicketDetailScreenState
           icon: const Icon(Icons.arrow_back_rounded),
           tooltip: 'Trở về',
         ),
-        title: const Text(
-          'Chi tiết sự cố',
-          style: AppColors.topBarTitleStyle,
-        ),
+        title: const Text('Chi tiết sự cố', style: AppColors.topBarTitleStyle),
         actions: [
           IconButton(
             onPressed: () {},
@@ -696,25 +694,12 @@ class _SectionCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (title.isNotEmpty)
-                          Text(
-                            title,
-                            style: const TextStyle(
-                              color: AppColors.deepBlue,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                              height: 24 / 20,
-                            ),
-                          ),
+                          Text(title, style: AppTypography.sectionTitle),
                         if (titleSubtitle != null) ...[
                           const SizedBox(height: 4),
                           Text(
                             titleSubtitle!,
-                            style: const TextStyle(
-                              color: AppColors.deepBlue,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                              height: 24 / 20,
-                            ),
+                            style: AppTypography.sectionTitle,
                           ),
                         ],
                       ],
@@ -1180,14 +1165,7 @@ class _BottomSheetFrame extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: const TextStyle(
-                color: AppColors.deepBlue,
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
+            Text(title, style: AppTypography.sectionTitle),
             const SizedBox(height: 16),
             child,
           ],

@@ -1,8 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/models/profile_request/tenant_request_model.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
+import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/profile_request/add_roommate_request_screen.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
@@ -44,9 +46,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
     // "Thêm người ở cùng" có màn riêng
     if (type == TenantRequestType.addRoommate) {
       Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => const AddRoommateRequestScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const AddRoommateRequestScreen()),
       );
       return;
     }
@@ -54,9 +54,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
     // "Thanh lý hợp đồng" có màn riêng
     if (type == TenantRequestType.terminateContract) {
       Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => const TerminateContractScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const TerminateContractScreen()),
       );
       return;
     }
@@ -125,96 +123,91 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
         },
       ),
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(),
-                Expanded(
-                  child: CustomScrollView(
-                    slivers: [
-                      // ── Phần 1: Tạo yêu cầu mới ──────────────────────
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _sectionTitle('Tạo yêu cầu mới'),
-                              const SizedBox(height: 14),
-                              _buildCreateGrid(),
-                            ],
-                          ),
+        child: AppScreenShell(
+          header: _buildHeader(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: CustomScrollView(
+                  slivers: [
+                    // ── Phần 1: Tạo yêu cầu mới ──────────────────────
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _sectionTitle('Tạo yêu cầu mới'),
+                            const SizedBox(height: 14),
+                            _buildCreateGrid(),
+                          ],
                         ),
                       ),
+                    ),
 
-                      // ── Divider ──────────────────────────────────────
-                      const SliverToBoxAdapter(
-                        child: Padding(
-                          padding: EdgeInsets.fromLTRB(16, 22, 16, 0),
-                          child: Divider(
-                            height: 1,
-                            thickness: 1,
-                            color: Color(0xFFEEECEE),
-                          ),
+                    // ── Divider ──────────────────────────────────────
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(16, 22, 16, 0),
+                        child: Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: Color(0xFFEEECEE),
                         ),
                       ),
+                    ),
 
-                      // ── Phần 2: Tiêu đề danh sách ─────────────────────
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-                          child: Row(
-                            children: [
-                              _sectionTitle('Danh sách yêu cầu'),
-                              const Spacer(),
-                              _RequestCountBadge(count: filtered.length),
-                            ],
-                          ),
+                    // ── Phần 2: Tiêu đề danh sách ─────────────────────
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                        child: Row(
+                          children: [
+                            _sectionTitle('Danh sách yêu cầu'),
+                            const Spacer(),
+                            _RequestCountBadge(count: filtered.length),
+                          ],
                         ),
                       ),
+                    ),
 
-                      // ── Filter chips ───────────────────────────────────
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(0, 12, 0, 4),
-                          child: _FilterBar(
-                            active: _filterType,
-                            onChanged: (t) =>
-                                setState(() => _filterType = t),
-                          ),
+                    // ── Filter chips ───────────────────────────────────
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(0, 12, 0, 4),
+                        child: _FilterBar(
+                          active: _filterType,
+                          onChanged: (t) => setState(() => _filterType = t),
                         ),
                       ),
+                    ),
 
-                      // ── List items ────────────────────────────────────
-                      filtered.isEmpty
-                          ? SliverFillRemaining(
-                              hasScrollBody: false,
-                              child: _buildEmpty(),
-                            )
-                          : SliverPadding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(14, 8, 14, 28),
-                              sliver: SliverList(
-                                delegate: SliverChildBuilderDelegate(
-                                  (_, i) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 8),
-                                    child: _RequestCard(
-                                      request: filtered[i],
-                                      onTap: () => _openDetail(filtered[i]),
-                                    ),
+                    // ── List items ────────────────────────────────────
+                    filtered.isEmpty
+                        ? SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: _buildEmpty(),
+                          )
+                        : SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(14, 8, 14, 28),
+                            sliver: SliverList(
+                              delegate: SliverChildBuilderDelegate(
+                                (_, i) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: _RequestCard(
+                                    request: filtered[i],
+                                    onTap: () => _openDetail(filtered[i]),
                                   ),
-                                  childCount: filtered.length,
                                 ),
+                                childCount: filtered.length,
                               ),
                             ),
-                    ],
-                  ),
+                          ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -295,10 +288,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
             tooltip: 'Trở về',
           ),
           const Expanded(
-            child: Text(
-              'Yêu cầu',
-              style: AppColors.topBarTitleStyle,
-            ),
+            child: Text('Yêu cầu', style: AppColors.topBarTitleStyle),
           ),
           IconButton(
             onPressed: () => Navigator.of(context).push(
@@ -321,15 +311,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
   }
 
   Widget _sectionTitle(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        color: _kLabelColor,
-        fontSize: 17,
-        fontWeight: FontWeight.w900,
-        height: 22 / 17,
-      ),
-    );
+    return Text(text, style: AppTypography.sectionTitle);
   }
 
   // ── Grid tạo yêu cầu ──────────────────────────────────────────────────────
@@ -343,10 +325,8 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
       childAspectRatio: 1.35,
       children: TenantRequestType.values
           .map(
-            (type) => _CreateTypeCard(
-              type: type,
-              onTap: () => _openCreateForm(type),
-            ),
+            (type) =>
+                _CreateTypeCard(type: type, onTap: () => _openCreateForm(type)),
           )
           .toList(),
     );
@@ -376,11 +356,7 @@ class _RequestCountBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.inventory_2_outlined,
-            color: Colors.white,
-            size: 15,
-          ),
+          const Icon(Icons.inventory_2_outlined, color: Colors.white, size: 15),
           const SizedBox(width: 6),
           Text(
             '$count',
@@ -415,25 +391,25 @@ class _CreateTypeCard extends StatelessWidget {
   final VoidCallback onTap;
 
   IconData get _icon => switch (type) {
-        TenantRequestType.renewContract => Icons.autorenew_rounded,
-        TenantRequestType.terminateContract => Icons.cancel_outlined,
-        TenantRequestType.changeRoom => Icons.swap_horiz_rounded,
-        TenantRequestType.addRoommate => Icons.person_add_outlined,
-      };
+    TenantRequestType.renewContract => Icons.autorenew_rounded,
+    TenantRequestType.terminateContract => Icons.cancel_outlined,
+    TenantRequestType.changeRoom => Icons.swap_horiz_rounded,
+    TenantRequestType.addRoommate => Icons.person_add_outlined,
+  };
 
   Color get _iconBg => switch (type) {
-        TenantRequestType.renewContract => const Color(0xFFEFF1FF),
-        TenantRequestType.terminateContract => const Color(0xFFFFF0F0),
-        TenantRequestType.changeRoom => const Color(0xFFEFF8FF),
-        TenantRequestType.addRoommate => const Color(0xFFF0FFF4),
-      };
+    TenantRequestType.renewContract => const Color(0xFFEFF1FF),
+    TenantRequestType.terminateContract => const Color(0xFFFFF0F0),
+    TenantRequestType.changeRoom => const Color(0xFFEFF8FF),
+    TenantRequestType.addRoommate => const Color(0xFFF0FFF4),
+  };
 
   Color get _iconColor => switch (type) {
-        TenantRequestType.renewContract => AppColors.deepBlue,
-        TenantRequestType.terminateContract => const Color(0xFFDC2626),
-        TenantRequestType.changeRoom => const Color(0xFF0284C7),
-        TenantRequestType.addRoommate => const Color(0xFF16A34A),
-      };
+    TenantRequestType.renewContract => AppColors.deepBlue,
+    TenantRequestType.terminateContract => const Color(0xFFDC2626),
+    TenantRequestType.changeRoom => const Color(0xFF0284C7),
+    TenantRequestType.addRoommate => const Color(0xFF16A34A),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -548,9 +524,7 @@ class _FilterChip extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: isActive
-              ? AppColors.deepBlue
-              : AppColors.surface,
+          color: isActive ? AppColors.deepBlue : AppColors.surface,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: isActive
@@ -675,11 +649,11 @@ class _TypeTag extends StatelessWidget {
   final TenantRequestType type;
 
   IconData get _icon => switch (type) {
-        TenantRequestType.renewContract => Icons.autorenew_rounded,
-        TenantRequestType.terminateContract => Icons.cancel_outlined,
-        TenantRequestType.changeRoom => Icons.swap_horiz_rounded,
-        TenantRequestType.addRoommate => Icons.person_add_outlined,
-      };
+    TenantRequestType.renewContract => Icons.autorenew_rounded,
+    TenantRequestType.terminateContract => Icons.cancel_outlined,
+    TenantRequestType.changeRoom => Icons.swap_horiz_rounded,
+    TenantRequestType.addRoommate => Icons.person_add_outlined,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -709,18 +683,18 @@ class _StatusBadge extends StatelessWidget {
   final TenantRequestStatus status;
 
   Color get _bg => switch (status) {
-        TenantRequestStatus.pending => const Color(0xFFFFF7ED),
-        TenantRequestStatus.processing => const Color(0xFFEFF1FF),
-        TenantRequestStatus.approved => const Color(0xFFD4F8DE),
-        TenantRequestStatus.rejected => const Color(0xFFFFE4E4),
-      };
+    TenantRequestStatus.pending => const Color(0xFFFFF7ED),
+    TenantRequestStatus.processing => const Color(0xFFEFF1FF),
+    TenantRequestStatus.approved => const Color(0xFFD4F8DE),
+    TenantRequestStatus.rejected => const Color(0xFFFFE4E4),
+  };
 
   Color get _fg => switch (status) {
-        TenantRequestStatus.pending => const Color(0xFFD97706),
-        TenantRequestStatus.processing => AppColors.deepBlue,
-        TenantRequestStatus.approved => const Color(0xFF16A34A),
-        TenantRequestStatus.rejected => const Color(0xFFDC2626),
-      };
+    TenantRequestStatus.pending => const Color(0xFFD97706),
+    TenantRequestStatus.processing => AppColors.deepBlue,
+    TenantRequestStatus.approved => const Color(0xFF16A34A),
+    TenantRequestStatus.rejected => const Color(0xFFDC2626),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -818,8 +792,15 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
               IconButton(
                 onPressed: () => Navigator.of(context).pop(),
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints.tightFor(width: 32, height: 32),
-                icon: const Icon(Icons.close_rounded, color: AppColors.bodyText, size: 20),
+                constraints: const BoxConstraints.tightFor(
+                  width: 32,
+                  height: 32,
+                ),
+                icon: const Icon(
+                  Icons.close_rounded,
+                  color: AppColors.bodyText,
+                  size: 20,
+                ),
               ),
             ],
           ),
@@ -865,8 +846,10 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
               ),
               filled: true,
               fillColor: AppColors.background,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: const BorderSide(color: AppColors.cardBorder),
@@ -890,8 +873,9 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
               onPressed: _submitting ? null : _submit,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.deepBlue,
-                disabledBackgroundColor:
-                    AppColors.deepBlue.withValues(alpha: 0.5),
+                disabledBackgroundColor: AppColors.deepBlue.withValues(
+                  alpha: 0.5,
+                ),
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
@@ -929,39 +913,39 @@ class _RequestDetailDialog extends StatelessWidget {
   final TenantRequest request;
 
   IconData get _icon => switch (request.type) {
-        TenantRequestType.renewContract => Icons.autorenew_rounded,
-        TenantRequestType.terminateContract => Icons.cancel_outlined,
-        TenantRequestType.changeRoom => Icons.swap_horiz_rounded,
-        TenantRequestType.addRoommate => Icons.person_add_outlined,
-      };
+    TenantRequestType.renewContract => Icons.autorenew_rounded,
+    TenantRequestType.terminateContract => Icons.cancel_outlined,
+    TenantRequestType.changeRoom => Icons.swap_horiz_rounded,
+    TenantRequestType.addRoommate => Icons.person_add_outlined,
+  };
 
   Color get _accentColor => switch (request.type) {
-        TenantRequestType.renewContract => AppColors.deepBlue,
-        TenantRequestType.terminateContract => const Color(0xFFDC2626),
-        TenantRequestType.changeRoom => const Color(0xFF0284C7),
-        TenantRequestType.addRoommate => const Color(0xFF16A34A),
-      };
+    TenantRequestType.renewContract => AppColors.deepBlue,
+    TenantRequestType.terminateContract => const Color(0xFFDC2626),
+    TenantRequestType.changeRoom => const Color(0xFF0284C7),
+    TenantRequestType.addRoommate => const Color(0xFF16A34A),
+  };
 
   Color get _accentBg => switch (request.type) {
-        TenantRequestType.renewContract => const Color(0xFFEFF1FF),
-        TenantRequestType.terminateContract => const Color(0xFFFFF0F0),
-        TenantRequestType.changeRoom => const Color(0xFFEFF8FF),
-        TenantRequestType.addRoommate => const Color(0xFFF0FFF4),
-      };
+    TenantRequestType.renewContract => const Color(0xFFEFF1FF),
+    TenantRequestType.terminateContract => const Color(0xFFFFF0F0),
+    TenantRequestType.changeRoom => const Color(0xFFEFF8FF),
+    TenantRequestType.addRoommate => const Color(0xFFF0FFF4),
+  };
 
   Color get _statusColor => switch (request.status) {
-        TenantRequestStatus.pending => const Color(0xFFD97706),
-        TenantRequestStatus.processing => AppColors.deepBlue,
-        TenantRequestStatus.approved => const Color(0xFF16A34A),
-        TenantRequestStatus.rejected => const Color(0xFFDC2626),
-      };
+    TenantRequestStatus.pending => const Color(0xFFD97706),
+    TenantRequestStatus.processing => AppColors.deepBlue,
+    TenantRequestStatus.approved => const Color(0xFF16A34A),
+    TenantRequestStatus.rejected => const Color(0xFFDC2626),
+  };
 
   String get _detailTitle => switch (request.type) {
-        TenantRequestType.renewContract => 'Thông tin gia hạn',
-        TenantRequestType.terminateContract => 'Thông tin thanh lý',
-        TenantRequestType.changeRoom => 'Thông tin chuyển phòng',
-        TenantRequestType.addRoommate => 'Thông tin người ở cùng',
-      };
+    TenantRequestType.renewContract => 'Thông tin gia hạn',
+    TenantRequestType.terminateContract => 'Thông tin thanh lý',
+    TenantRequestType.changeRoom => 'Thông tin chuyển phòng',
+    TenantRequestType.addRoommate => 'Thông tin người ở cùng',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -1028,8 +1012,10 @@ class _RequestDetailDialog extends StatelessWidget {
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
                     padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints.tightFor(width: 34, height: 34),
+                    constraints: const BoxConstraints.tightFor(
+                      width: 34,
+                      height: 34,
+                    ),
                     icon: const Icon(
                       Icons.close_rounded,
                       color: AppColors.bodyText,
@@ -1113,10 +1099,7 @@ class _RequestDetailDialog extends StatelessWidget {
                   ),
                   child: const Text(
                     'Đóng',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
                   ),
                 ),
               ),
@@ -1138,66 +1121,63 @@ class _RequestDetailDialog extends StatelessWidget {
 
     return switch (request.type) {
       TenantRequestType.renewContract => [
-          _DetailRow(
-            label: 'Mã hợp đồng',
-            value: d['Mã hợp đồng'] ?? 'Chưa có thông tin',
-          ),
-          _DetailRow(
-            label: 'Thời gian gia hạn',
-            value: d['Thời gian gia hạn'] ?? 'Chưa có thông tin',
-          ),
-          _DetailRow(
-            label: 'Ngày bắt đầu dự kiến',
-            value: d['Ngày bắt đầu dự kiến'] ?? 'Chưa có thông tin',
-          ),
-        ],
+        _DetailRow(
+          label: 'Mã hợp đồng',
+          value: d['Mã hợp đồng'] ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Thời gian gia hạn',
+          value: d['Thời gian gia hạn'] ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Ngày bắt đầu dự kiến',
+          value: d['Ngày bắt đầu dự kiến'] ?? 'Chưa có thông tin',
+        ),
+      ],
       TenantRequestType.terminateContract => [
-          _DetailRow(
-            label: 'Mã hợp đồng',
-            value: d['Mã hợp đồng'] ?? 'Chưa có thông tin',
-          ),
-          _DetailRow(
-            label: 'Ngày hết hạn',
-            value: d['Ngày hết hạn'] ?? 'Chưa có thông tin',
-          ),
-          _DetailRow(
-            label: 'Ngày trả phòng dự kiến',
-            value: d['Ngày trả phòng dự kiến'] ?? 'Chưa có thông tin',
-            valueColor: const Color(0xFFDC2626),
-          ),
-        ],
+        _DetailRow(
+          label: 'Mã hợp đồng',
+          value: d['Mã hợp đồng'] ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Ngày hết hạn',
+          value: d['Ngày hết hạn'] ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Ngày trả phòng dự kiến',
+          value: d['Ngày trả phòng dự kiến'] ?? 'Chưa có thông tin',
+          valueColor: const Color(0xFFDC2626),
+        ),
+      ],
       TenantRequestType.changeRoom => [
-          _DetailRow(
-            label: 'Phòng hiện tại',
-            value: d['Phòng hiện tại'] ?? 'Chưa có thông tin',
-          ),
-          _DetailRow(
-            label: 'Phòng mong muốn',
-            value: d['Phòng mong muốn'] ?? 'Chưa có thông tin',
-          ),
-          _DetailRow(
-            label: 'Tầng/khu vực',
-            value: d['Tầng/khu vực'] ?? 'Chưa có thông tin',
-          ),
-        ],
+        _DetailRow(
+          label: 'Phòng hiện tại',
+          value: d['Phòng hiện tại'] ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Phòng mong muốn',
+          value: d['Phòng mong muốn'] ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Tầng/khu vực',
+          value: d['Tầng/khu vực'] ?? 'Chưa có thông tin',
+        ),
+      ],
       TenantRequestType.addRoommate => [
-          _DetailRow(
-            label: 'Họ và tên',
-            value: d['Họ và tên'] ?? 'Chưa có thông tin',
-          ),
-          _DetailRow(
-            label: 'Số điện thoại',
-            value: d['Số điện thoại'] ?? 'Chưa có thông tin',
-          ),
-          _DetailRow(
-            label: 'Email',
-            value: d['Email'] ?? 'Chưa có thông tin',
-          ),
-          _DetailRow(
-            label: 'Ngày bắt đầu ở',
-            value: d['Ngày bắt đầu ở'] ?? 'Chưa có thông tin',
-          ),
-        ],
+        _DetailRow(
+          label: 'Họ và tên',
+          value: d['Họ và tên'] ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Số điện thoại',
+          value: d['Số điện thoại'] ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(label: 'Email', value: d['Email'] ?? 'Chưa có thông tin'),
+        _DetailRow(
+          label: 'Ngày bắt đầu ở',
+          value: d['Ngày bắt đầu ở'] ?? 'Chưa có thông tin',
+        ),
+      ],
     };
   }
 }
@@ -1216,9 +1196,7 @@ class _DetailSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: AppColors.cardBorder.withValues(alpha: 0.65),
-        ),
+        border: Border.all(color: AppColors.cardBorder.withValues(alpha: 0.65)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1241,11 +1219,7 @@ class _DetailSection extends StatelessWidget {
 }
 
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({
-    required this.label,
-    required this.value,
-    this.valueColor,
-  });
+  const _DetailRow({required this.label, required this.value, this.valueColor});
 
   final String label;
   final String value;

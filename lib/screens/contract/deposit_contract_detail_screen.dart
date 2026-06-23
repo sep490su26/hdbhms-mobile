@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
@@ -8,6 +8,7 @@ import 'package:hdbhms_mobile/services/contract/deposit_contract_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
+import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/contract/contract_pdf_viewer_screen.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
@@ -61,49 +62,38 @@ class _DepositContractDetailScreenState
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 390),
-            child: Column(
-              children: [
-                const _DetailHeader(),
-                Expanded(
-                  child: FutureBuilder<DepositContract>(
-                    future: _depositFuture,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.deepBlue,
-                          ),
-                        );
-                      }
+        child: AppScreenShell(
+          header: const _DetailHeader(),
+          child: FutureBuilder<DepositContract>(
+            future: _depositFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(color: AppColors.deepBlue),
+                );
+              }
 
-                      if (snapshot.hasError) {
-                        return _ErrorState(
-                          message: _errorMessage(snapshot.error),
-                          onRetry: _retry,
-                        );
-                      }
+              if (snapshot.hasError) {
+                return _ErrorState(
+                  message: _errorMessage(snapshot.error),
+                  onRetry: _retry,
+                );
+              }
 
-                      final deposit = snapshot.data;
-                      if (deposit == null) {
-                        return _ErrorState(
-                          message: 'Không tìm thấy HĐ cọc',
-                          onRetry: _retry,
-                        );
-                      }
+              final deposit = snapshot.data;
+              if (deposit == null) {
+                return _ErrorState(
+                  message: 'Không tìm thấy HĐ cọc',
+                  onRetry: _retry,
+                );
+              }
 
-                      return RefreshIndicator(
-                        color: AppColors.deepBlue,
-                        onRefresh: _refresh,
-                        child: _DepositContent(deposit: deposit),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
+              return RefreshIndicator(
+                color: AppColors.deepBlue,
+                onRefresh: _refresh,
+                child: _DepositContent(deposit: deposit),
+              );
+            },
           ),
         ),
       ),
@@ -147,10 +137,7 @@ class _DetailHeader extends StatelessWidget {
             tooltip: 'Trở về',
           ),
           const Expanded(
-            child: Text(
-              'Thông tin HĐ cọc',
-              style: AppColors.topBarTitleStyle,
-            ),
+            child: Text('Thông tin HĐ cọc', style: AppColors.topBarTitleStyle),
           ),
           IconButton(
             onPressed: () => Navigator.of(context).push(
@@ -159,9 +146,9 @@ class _DetailHeader extends StatelessWidget {
               ),
             ),
             padding: EdgeInsets.zero,
-constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-icon: const Icon(
-Icons.notifications_none_rounded,
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            icon: const Icon(
+              Icons.notifications_none_rounded,
               color: AppColors.topBarIconColor,
               size: 24,
             ),
@@ -351,14 +338,8 @@ class _DepositInfoGrid extends StatelessWidget {
     final items = [
       _InfoGridItem(label: 'Mã HĐ cọc', value: deposit.depositCode),
       _InfoGridItem(label: 'Mã phòng', value: deposit.room.roomCode),
-      _InfoGridItem(
-        label: 'Số tiền cọc',
-        value: _formatMoney(deposit.amount),
-      ),
-      _InfoGridItem(
-        label: 'Trạng thái',
-        value: _statusLabel(deposit.status),
-      ),
+      _InfoGridItem(label: 'Số tiền cọc', value: _formatMoney(deposit.amount)),
+      _InfoGridItem(label: 'Trạng thái', value: _statusLabel(deposit.status)),
       _InfoGridItem(
         label: 'Ngày dọn vào (DK)',
         value: _formatDate(deposit.expectedMoveInDate),
@@ -371,10 +352,7 @@ class _DepositInfoGrid extends StatelessWidget {
         label: 'HĐ cọc hết hạn',
         value: _formatDate(deposit.depositExpiresAt),
       ),
-      _InfoGridItem(
-        label: 'Ngày tạo',
-        value: _formatDate(deposit.createdAt),
-      ),
+      _InfoGridItem(label: 'Ngày tạo', value: _formatDate(deposit.createdAt)),
     ];
 
     return Container(
@@ -582,8 +560,11 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline_rounded,
-                color: AppColors.deepBlue, size: 42),
+            const Icon(
+              Icons.error_outline_rounded,
+              color: AppColors.deepBlue,
+              size: 42,
+            ),
             const SizedBox(height: 14),
             Text(
               message,
@@ -616,10 +597,8 @@ class _ErrorState extends StatelessWidget {
 void _showFile(BuildContext context, String url) {
   Navigator.of(context).push(
     MaterialPageRoute(
-      builder: (context) => ContractPdfViewerScreen(
-        pdfUrl: url,
-        title: 'Hợp đồng cọc',
-      ),
+      builder: (context) =>
+          ContractPdfViewerScreen(pdfUrl: url, title: 'Hợp đồng cọc'),
     ),
   );
 }
@@ -685,8 +664,7 @@ class _DepositBottomNavigation extends StatelessWidget {
   Widget build(BuildContext context) {
     return TenantBottomNavigation(
       activeTab: TenantBottomNavTab.home,
-      onHomeTap: () =>
-          Navigator.of(context).popUntil((route) => route.isFirst),
+      onHomeTap: () => Navigator.of(context).popUntil((route) => route.isFirst),
       onSupportTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
@@ -696,23 +674,17 @@ class _DepositBottomNavigation extends StatelessWidget {
       },
       onBillsTap: () {
         Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => const BillSelectionPage(),
-          ),
+          MaterialPageRoute(builder: (context) => const BillSelectionPage()),
         );
       },
       onProfileTap: () {
         Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => const TenantProfileScreen(),
-          ),
+          MaterialPageRoute(builder: (context) => const TenantProfileScreen()),
         );
       },
       onRequestsTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const TenantRequestScreen(),
-              ),
-            ),
+        MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+      ),
     );
   }
 }

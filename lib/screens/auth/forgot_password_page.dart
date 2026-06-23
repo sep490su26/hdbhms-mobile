@@ -1,7 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/services/auth/forgot_password_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/auth_text_field.dart';
 import 'package:hdbhms_mobile/screens/auth/reset_password_page.dart';
 
@@ -91,7 +92,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 448),
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 24, 16, 159),
+                      padding: const EdgeInsets.fromLTRB(20, 28, 20, 80),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -117,7 +118,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                           const SizedBox(height: 24),
                           SizedBox(
                             width: double.infinity,
-                            height: 60,
+                            height: 56,
                             child: ElevatedButton.icon(
                               onPressed: (_isSending || _emailSent)
                                   ? null
@@ -143,21 +144,17 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                       _emailSent
                                           ? 'ĐÃ GỬI YÊU CẦU'
                                           : 'GỬI MÃ OTP',
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w600,
-                                        height: 28 / 20,
-                                      ),
+                                      style: AppTypography.button,
                                     ),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.darkBlue,
+                                backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,
                                 elevation: 0,
                                 shadowColor: Colors.black.withValues(
                                   alpha: 0.05,
                                 ),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
                               ),
                             ),
@@ -166,7 +163,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                             const SizedBox(height: 24),
                             SizedBox(
                               width: double.infinity,
-                              height: 60,
+                              height: 56,
                               child: OutlinedButton(
                                 onPressed: () {
                                   Navigator.of(context).push(
@@ -178,18 +175,16 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                 },
                                 style: OutlinedButton.styleFrom(
                                   side: const BorderSide(
-                                    color: AppColors.darkBlue,
+                                    color: AppColors.primary,
                                   ),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(16),
                                   ),
                                 ),
-                                child: const Text(
+                                child: Text(
                                   'NHẬP MÃ XÁC MINH',
-                                  style: TextStyle(
-                                    color: AppColors.darkBlue,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
+                                  style: AppTypography.button.copyWith(
+                                    color: AppColors.primary,
                                   ),
                                 ),
                               ),
@@ -219,7 +214,7 @@ class _ForgotPasswordHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.background,
+      color: AppColors.surface,
       padding: const EdgeInsets.fromLTRB(16, 16, 56, 16),
       child: Row(
         children: [
@@ -238,11 +233,7 @@ class _ForgotPasswordHeader extends StatelessWidget {
             ),
           ),
           const Expanded(
-            child: Text(
-              'QUÊN MẬT KHẨU',
-              textAlign: TextAlign.center,
-              style: AppColors.topBarTitleStyle,
-            ),
+            child: Text('Quên mật khẩu', style: AppColors.topBarTitleStyle),
           ),
         ],
       ),
@@ -261,24 +252,13 @@ class _ForgotPasswordIntro extends StatelessWidget {
           Text(
             'Quên mật khẩu?',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.deepBlue,
-              fontSize: 26,
-              fontWeight: FontWeight.w700,
-              height: 32 / 26,
-              letterSpacing: -0.52,
-            ),
+            style: AppTypography.pageTitle,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Vui lòng nhập email hoặc số điện thoại đã\nđăng ký để nhận mã OTP xác minh.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.bodyText,
-              fontSize: 16,
-              fontWeight: FontWeight.w400,
-              height: 24 / 16,
-            ),
+            style: AppTypography.bodyLarge,
           ),
         ],
       ),
@@ -297,25 +277,21 @@ class _SuccessMessage extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.deepBlue.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.deepBlue.withValues(alpha: 0.1)),
+        color: AppColors.primaryLight.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
       ),
       child: Column(
         children: [
           const Icon(
             Icons.mark_email_read_outlined,
-            color: AppColors.deepBlue,
+            color: AppColors.primary,
             size: 48,
           ),
           const SizedBox(height: 16),
           const Text(
             'Kiểm tra thông tin của bạn',
-            style: TextStyle(
-              color: AppColors.deepBlue,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-            ),
+            style: AppTypography.sectionTitle,
           ),
           const SizedBox(height: 8),
           Text(
@@ -330,7 +306,7 @@ class _SuccessMessage extends StatelessWidget {
           Text(
             identity,
             style: const TextStyle(
-              color: AppColors.deepBlue,
+              color: AppColors.primary,
               fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
