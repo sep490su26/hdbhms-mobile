@@ -31,12 +31,21 @@ class HomeProvider extends ChangeNotifier {
   List<ActiveRoomItem> _activeRooms = const [];
   ActiveRoomItem? _selectedRoom;
 
+  // Room-specific utility summary (loaded on demand when room is selected)
+  UtilitySummary? _roomUtilitySummary;
+  bool _loadingUtilities = false;
+
   HomeSummary? get summary => _summary;
   String? get errorMessage => _errorMessage;
   bool get isLoading => _isLoading;
   bool get sessionExpired => _sessionExpired;
   List<ActiveRoomItem> get activeRooms => _activeRooms;
   ActiveRoomItem? get selectedRoom => _selectedRoom;
+  UtilitySummary get roomUtilitySummary {
+    // Return room-specific summary if loaded, otherwise fall back to home summary
+    return _roomUtilitySummary ?? _summary?.utilitySummary ?? const UtilitySummary();
+  }
+  bool get loadingUtilities => _loadingUtilities;
   List<TenantInvoice> get invoices => List.unmodifiable(_invoices);
 
   List<TenantInvoice> get selectedRoomInvoices {
@@ -183,6 +192,28 @@ class HomeProvider extends ChangeNotifier {
   void selectRoom(ActiveRoomItem room) {
     if (_selectedRoom?.contractId == room.contractId) return;
     _selectedRoom = room;
+    _roomUtilitySummary = null; // Clear cached utility data
     notifyListeners();
+    _loadRoomUtilities();
+  }
+
+  Future<void> _loadRoomUtilities() async {
+    final contractId = _selectedRoom?.contractId;
+    if (contractId == null || contractId <= 0) return;
+
+    _loadingUtilities = true;
+    notifyListeners();
+
+    try {
+      final roomSummary = await _homeService.fetchHomeSummary(
+        contractId: contractId,
+      );
+      _roomUtilitySummary = roomSummary.utilitySummary;
+    } catch (_) {
+      // Keep the previous data as fallback
+    } finally {
+      _loadingUtilities = false;
+      notifyListeners();
+    }
   }
 }

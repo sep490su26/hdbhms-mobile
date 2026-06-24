@@ -165,7 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 18),
               const _SectionHeading('Điện & Nước'),
               const SizedBox(height: 17),
-              _UtilitiesSection(summary: summary),
+              _UtilitiesSection(provider: _provider),
               const SizedBox(height: 17),
               const _SectionHeading('Thao tác nhanh'),
               const SizedBox(height: 17),
@@ -776,13 +776,29 @@ class _PaymentBadge extends StatelessWidget {
 }
 
 class _UtilitiesSection extends StatelessWidget {
-  const _UtilitiesSection({required this.summary});
+  const _UtilitiesSection({required this.provider});
 
-  final HomeSummary summary;
+  final HomeProvider provider;
 
   @override
   Widget build(BuildContext context) {
-    final utilities = summary.utilitySummary;
+    if (provider.loadingUtilities) {
+      return const SizedBox(
+        height: 83,
+        child: Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              color: AppColors.deepBlue,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final utilities = provider.roomUtilitySummary;
 
     return Column(
       children: [

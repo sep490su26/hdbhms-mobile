@@ -4,6 +4,7 @@ import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart
 
 import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/contract/lease_contract_model.dart';
+import 'package:hdbhms_mobile/models/profile_request/tenant_request_model.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
@@ -13,6 +14,9 @@ import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/contract/contract_pdf_viewer_screen.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
+import 'package:hdbhms_mobile/screens/profile_request/add_roommate_request_screen.dart';
+import 'package:hdbhms_mobile/screens/contract/terminate_contract_screen.dart';
+import 'package:hdbhms_mobile/screens/room_transfer/create_room_transfer_screen.dart';
 
 class LeaseContractScreen extends StatefulWidget {
   const LeaseContractScreen({
@@ -186,6 +190,7 @@ class _ContractContent extends StatelessWidget {
             contractService: contractService,
             onChanged: onChanged,
           ),
+          _CreateRequestGrid(contract: contract),
           _RoomHeroCard(contract: contract),
           const SizedBox(height: 12),
           _ContractInfoGrid(contract: contract),
@@ -194,6 +199,251 @@ class _ContractContent extends StatelessWidget {
           const SizedBox(height: 12),
           _DocumentSection(contractFileUrl: contract.contractFileUrl),
         ],
+      ),
+    );
+  }
+}
+
+const Color _kLabelColor = Color(0xFF000666);
+
+class _CreateRequestGrid extends StatelessWidget {
+  const _CreateRequestGrid({required this.contract});
+
+  final LeaseContract contract;
+
+  void _openCreateForm(BuildContext context, TenantRequestType type) {
+    final contractId = contract.id;
+    if (contractId == null) return;
+
+    if (type == TenantRequestType.addRoommate) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const AddRoommateRequestScreen()),
+      );
+      return;
+    }
+
+    if (type == TenantRequestType.terminateContract) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const TerminateContractScreen()),
+      );
+      return;
+    }
+
+    if (type == TenantRequestType.changeRoom) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => CreateRoomTransferScreen(
+            preloadedContractId: contractId,
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Renew contract & other types: use bottom sheet
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _CreateRequestSheet(
+        type: type,
+        onSubmit: (note) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Đã gửi yêu cầu ${type.fullLabel}.')),
+          );
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: _SectionCard(
+        title: 'Tạo yêu cầu mới',
+        icon: Icons.add_circle_outline_rounded,
+        child: GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 1.35,
+          children: TenantRequestType.values
+              .map(
+                (type) => _CreateTypeCard(
+                  type: type,
+                  onTap: () => _openCreateForm(context, type),
+                ),
+              )
+              .toList(),
+        ),
+      ),
+    );
+  }
+}
+
+class _CreateRequestSheet extends StatefulWidget {
+  const _CreateRequestSheet({required this.type, required this.onSubmit});
+
+  final TenantRequestType type;
+  final void Function(String note) onSubmit;
+
+  @override
+  State<_CreateRequestSheet> createState() => _CreateRequestSheetState();
+}
+
+class _CreateRequestSheetState extends State<_CreateRequestSheet> {
+  final _ctrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Gửi yêu cầu: ${widget.type.fullLabel}',
+              style: const TextStyle(
+                color: _kLabelColor,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _ctrl,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'Ghi chú / mô tả',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  widget.onSubmit(_ctrl.text.trim());
+                  Navigator.of(context).pop();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.deepBlue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text('Gửi yêu cầu'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CreateTypeCard extends StatelessWidget {
+  const _CreateTypeCard({required this.type, required this.onTap});
+
+  final TenantRequestType type;
+  final VoidCallback onTap;
+
+  IconData get _icon => switch (type) {
+    TenantRequestType.renewContract => Icons.autorenew_rounded,
+    TenantRequestType.terminateContract => Icons.cancel_outlined,
+    TenantRequestType.changeRoom => Icons.swap_horiz_rounded,
+    TenantRequestType.addRoommate => Icons.person_add_outlined,
+  };
+
+  Color get _iconBg => switch (type) {
+    TenantRequestType.renewContract => const Color(0xFFEFF1FF),
+    TenantRequestType.terminateContract => const Color(0xFFFFF0F0),
+    TenantRequestType.changeRoom => const Color(0xFFEFF8FF),
+    TenantRequestType.addRoommate => const Color(0xFFF0FFF4),
+  };
+
+  Color get _iconColor => switch (type) {
+    TenantRequestType.renewContract => AppColors.deepBlue,
+    TenantRequestType.terminateContract => const Color(0xFFDC2626),
+    TenantRequestType.changeRoom => const Color(0xFF0284C7),
+    TenantRequestType.addRoommate => const Color(0xFF16A34A),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.cardBorder),
+          ),
+          padding: const EdgeInsets.fromLTRB(12, 14, 10, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _iconBg,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(_icon, color: _iconColor, size: 22),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                type.fullLabel,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: _kLabelColor,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  height: 17 / 13,
+                ),
+              ),
+              Text(
+                type.description,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.bodyText,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  height: 15 / 11,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
