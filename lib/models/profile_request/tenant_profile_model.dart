@@ -17,30 +17,24 @@ class TenantProfileResponse {
 
   factory TenantProfileResponse.fromJson(Map<String, dynamic> json) {
     return TenantProfileResponse(
-      tenantProfileId: _asInt(json['tenant_profile_id'] ?? json['id']),
+      tenantProfileId: _asInt(json['id']),
       status: json['status']?.toString() ?? '',
       person: PersonProfileDto.fromJson(
-        json['person'] as Map<String, dynamic>? ??
-            json['person_profile'] as Map<String, dynamic>? ??
-            {},
+        json['person'] as Map<String, dynamic>? ?? {},
       ),
-      identityDocument:
-          (json['identity_document'] ?? json['identityDocument'])
-              is Map<String, dynamic>
+      identityDocument: json['identityDocument'] is Map<String, dynamic>
           ? IdentityDocumentDto.fromJson(
-              (json['identity_document'] ?? json['identityDocument'])
-                  as Map<String, dynamic>,
+              json['identityDocument'] as Map<String, dynamic>,
             )
           : null,
       vehicles: _asList(json['vehicles'])
           .whereType<Map<String, dynamic>>()
           .map(VehicleDto.fromJson)
           .toList(growable: false),
-      emergencyContacts:
-          _asList(json['emergency_contacts'] ?? json['emergencyContacts'])
-              .whereType<Map<String, dynamic>>()
-              .map(EmergencyContactDto.fromJson)
-              .toList(growable: false),
+      emergencyContacts: _asList(json['emergencyContacts'])
+          .whereType<Map<String, dynamic>>()
+          .map(EmergencyContactDto.fromJson)
+          .toList(growable: false),
     );
   }
 }
@@ -62,14 +56,11 @@ class PersonProfileDto {
 
   factory PersonProfileDto.fromJson(Map<String, dynamic> json) {
     return PersonProfileDto(
-      fullName: _firstString(json, ['full_name', 'fullName']),
+      fullName: _firstString(json, ['fullName']),
       phone: json['phone']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
-      permanentAddress: _firstString(json, ['permanent_address', 'permanentAddress']),
-      portraitFileUrl: _firstString(json, [
-        'portrait_file_url',
-        'portraitFileUrl',
-      ]),
+      permanentAddress: _firstString(json, ['permanentAddress']),
+      portraitFileUrl: _firstString(json, ['portraitFileUrl']),
     );
   }
 }
@@ -93,20 +84,12 @@ class IdentityDocumentDto {
 
   factory IdentityDocumentDto.fromJson(Map<String, dynamic> json) {
     return IdentityDocumentDto(
-      docType: _firstString(json, ['doc_type', 'docType']),
-      docNumber: _visibleDocNumber(_firstString(json, ['doc_number', 'docNumber'])),
-      issuedDate: DateTime.tryParse(_firstString(json, ['issued_date', 'issuedDate'])),
-      issuedPlace: _firstString(json, ['issued_place', 'issuedPlace']),
-      frontFileUrl: _firstString(json, [
-        'front_file_url',
-        'frontFileUrl',
-        'id_card_front_url',
-      ]),
-      backFileUrl: _firstString(json, [
-        'back_file_url',
-        'backFileUrl',
-        'id_card_back_url',
-      ]),
+      docType: _firstString(json, ['docType']),
+      docNumber: _visibleDocNumber(_firstString(json, ['docNumber'])),
+      issuedDate: DateTime.tryParse(_firstString(json, ['issuedDate'])),
+      issuedPlace: _firstString(json, ['issuedPlace']),
+      frontFileUrl: _firstString(json, ['frontFileUrl']),
+      backFileUrl: _firstString(json, ['backFileUrl']),
     );
   }
 }
@@ -127,15 +110,9 @@ class VehicleDto {
   factory VehicleDto.fromJson(Map<String, dynamic> json) {
     return VehicleDto(
       id: _asInt(json['id']),
-      vehicleType: _firstString(json, ['vehicle_type', 'vehicleType']),
-      licensePlate: _firstString(json, ['license_plate', 'licensePlate']),
-      imageUrl: _firstString(json, [
-        'image_url',
-        'imageUrl',
-        'signed_url',
-        'signedUrl',
-        'vehicle_image_url',
-      ]),
+      vehicleType: _firstString(json, ['vehicleType']),
+      licensePlate: _firstString(json, ['licensePlate']),
+      imageUrl: _firstString(json, ['imageUrl', 'signedUrl']),
     );
   }
 }
@@ -153,7 +130,7 @@ class EmergencyContactDto {
 
   factory EmergencyContactDto.fromJson(Map<String, dynamic> json) {
     return EmergencyContactDto(
-      fullName: _firstString(json, ['full_name', 'fullName']),
+      fullName: _firstString(json, ['fullName']),
       relationship: json['relationship']?.toString() ?? '',
       phone: json['phone']?.toString() ?? '',
     );

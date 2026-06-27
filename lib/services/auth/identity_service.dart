@@ -56,15 +56,15 @@ class IdentityService {
     return _sendMultipart(
       tenantId: tenantId,
       portraitPart: await _multipartFileFromPath(
-        'portrait_file',
+        'portraitFile',
         portraitFile.path,
       ),
       frontIdPart: await _multipartFileFromPath(
-        'id_card_front_file',
+        'idCardFrontFile',
         idCardFrontFile.path,
       ),
       backIdPart: await _multipartFileFromPath(
-        'id_card_back_file',
+        'idCardBackFile',
         idCardBackFile.path,
       ),
     );
@@ -84,9 +84,9 @@ class IdentityService {
 
     return _sendMultipart(
       tenantId: tenantId,
-      portraitPart: await _multipartFile('portrait_file', portrait),
-      frontIdPart: await _multipartFile('id_card_front_file', frontId),
-      backIdPart: await _multipartFile('id_card_back_file', backId),
+      portraitPart: await _multipartFile('portraitFile', portrait),
+      frontIdPart: await _multipartFile('idCardFrontFile', frontId),
+      backIdPart: await _multipartFile('idCardBackFile', backId),
     );
   }
 
@@ -123,15 +123,24 @@ class IdentityService {
           success: body['success'] == true,
           message: body['message']?.toString() ?? '',
           identityCompleted:
+              body['identityCompleted'] == true ||
+              body['profileCompleted'] == true ||
               body['identity_completed'] == true ||
               body['profile_completed'] == true,
           profileCompleted:
+              body['profileCompleted'] == true ||
+              body['identityCompleted'] == true ||
               body['profile_completed'] == true ||
               body['identity_completed'] == true,
           onboarding: onboarding,
-          portraitFileId: _asInt(body['portrait_file_id']),
-          idCardFrontFileId: _asInt(body['id_card_front_file_id']),
-          idCardBackFileId: _asInt(body['id_card_back_file_id']),
+          portraitFileId:
+              _asInt(body['portraitFileId']) ?? _asInt(body['portrait_file_id']),
+          idCardFrontFileId:
+              _asInt(body['idCardFrontFileId']) ??
+              _asInt(body['id_card_front_file_id']),
+          idCardBackFileId:
+              _asInt(body['idCardBackFileId']) ??
+              _asInt(body['id_card_back_file_id']),
         );
       }
 

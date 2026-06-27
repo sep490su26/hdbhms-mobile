@@ -154,6 +154,7 @@ class ChangeRequest {
     required this.description,
     required this.status,
     required this.requesterId,
+    this.targetId,
     this.resolutionNote,
     this.createdAt,
     this.resolvedAt,
@@ -167,6 +168,7 @@ class ChangeRequest {
   final String description;
   final ChangeRequestStatus status;
   final int requesterId;
+  final int? targetId;
   final String? resolutionNote;
   final DateTime? createdAt;
   final DateTime? resolvedAt;
@@ -175,32 +177,25 @@ class ChangeRequest {
   factory ChangeRequest.fromJson(Map<String, dynamic> json) {
     return ChangeRequest(
       id: _asInt(json['id']) ?? 0,
-      requestCode: _str(json, 'request_code', 'requestCode'),
-      requestType: ChangeRequestType.fromBackend(
-        _str(json, 'request_type', 'requestType'),
-      ),
+      requestCode: _str(json, 'requestCode'),
+      requestType: ChangeRequestType.fromBackend(_str(json, 'requestType')),
       title: _str(json, 'title'),
       description: _str(json, 'description'),
       status: ChangeRequestStatus.fromBackend(_str(json, 'status')),
-      requesterId: _asInt(json['requester_id'] ?? json['requesterId']) ?? 0,
-      resolutionNote: json['resolution_note']?.toString() ??
-          json['resolutionNote']?.toString(),
-      createdAt: _parseDateTime(
-        json['created_at']?.toString() ?? json['createdAt']?.toString() ?? '',
-      ),
-      resolvedAt: _parseDateTime(
-        json['resolved_at']?.toString() ?? json['resolvedAt']?.toString() ?? '',
-      ),
-      requestPayload: json['request_payload']?.toString() ??
-          json['requestPayload']?.toString(),
+      requesterId: _asInt(json['requesterId']) ?? 0,
+      targetId: _asInt(json['targetId']),
+      resolutionNote: json['resolutionNote']?.toString(),
+      createdAt: _parseDateTime(json['createdAt']?.toString() ?? ''),
+      resolvedAt: _parseDateTime(json['resolvedAt']?.toString() ?? ''),
+      requestPayload: json['requestPayload']?.toString(),
     );
   }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-String _str(Map<String, dynamic> json, String key, [String? altKey]) {
-  final v = json[key] ?? (altKey != null ? json[altKey] : null);
+String _str(Map<String, dynamic> json, String key) {
+  final v = json[key];
   return v?.toString() ?? '';
 }
 

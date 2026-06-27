@@ -23,11 +23,11 @@ class LoginResponse {
     return LoginResponse(
       token: json['token']?.toString() ?? '',
       sessionId:
-          json['sessionId']?.toString() ?? json['session_id']?.toString() ?? '',
+          json['sessionId']?.toString() ?? '',
       role: json['role']?.toString() ?? '',
       authorized: json['authorized'] == true,
-      tenantId: _asInt(json['tenantId'] ?? json['tenant_id']),
-      propertyId: _asInt(json['propertyId'] ?? json['property_id']),
+      tenantId: _asInt(json['tenantId']),
+      propertyId: _asInt(json['propertyId']),
       onboarding: json['onboarding'] != null
           ? OnboardingState.fromJson(json['onboarding'] as Map<String, dynamic>)
           : null,

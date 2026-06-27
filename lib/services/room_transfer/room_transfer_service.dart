@@ -31,12 +31,12 @@ class RoomTransferService {
     String? reason,
   }) async {
     final body = <String, dynamic>{
-      'source_contract_id': sourceContractId,
-      'target_room_id': targetRoomId,
-      'requested_transfer_date': _dateOnly(requestedTransferDate),
+      'sourceContractId': sourceContractId,
+      'targetRoomId': targetRoomId,
+      'requestedTransferDate': _dateOnly(requestedTransferDate),
       if (transferredTenantProfileIds != null &&
           transferredTenantProfileIds.isNotEmpty)
-        'transferred_tenant_profile_ids': transferredTenantProfileIds,
+        'transferredTenantProfileIds': transferredTenantProfileIds,
       if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
     };
     final json = await _postJson(
@@ -116,7 +116,7 @@ class RoomTransferService {
   }) async {
     await _postJson(
       _uri('/occupant-transfer-requests/$requestId/holder-replacement'),
-      {'nominated_holder_profile_id': nominatedHolderProfileId},
+      {'nominatedHolderProfileId': nominatedHolderProfileId},
     );
   }
 
@@ -182,10 +182,10 @@ class RoomTransferService {
   }) async {
     final body = <String, dynamic>{};
     if (transferOutHandover != null) {
-      body['transfer_out_handover'] = transferOutHandover.toJson();
+      body['transferOutHandover'] = transferOutHandover.toJson();
     }
     if (transferInHandover != null) {
-      body['transfer_in_handover'] = transferInHandover.toJson();
+      body['transferInHandover'] = transferInHandover.toJson();
     }
     await _postJson(
       _uri('/occupant-transfer-requests/$requestId/execute'),
@@ -332,7 +332,7 @@ class TransferHandoverData {
 
   Map<String, dynamic> toJson() {
     return {
-      'handover_date':
+      'handoverDate':
           '${handoverDate.year.toString().padLeft(4, '0')}-'
           '${handoverDate.month.toString().padLeft(2, '0')}-'
           '${handoverDate.day.toString().padLeft(2, '0')}',
@@ -358,10 +358,10 @@ class MeterReadingData {
 
   Map<String, dynamic> toJson() {
     return {
-      'current_value': currentValue,
-      if (photoFileId != null) 'photo_file_id': photoFileId,
+      'currentValue': currentValue,
+      if (photoFileId != null) 'photoFileId': photoFileId,
       if (readingDate != null)
-        'reading_date':
+        'readingDate':
             '${readingDate!.year.toString().padLeft(4, '0')}-'
             '${readingDate!.month.toString().padLeft(2, '0')}-'
             '${readingDate!.day.toString().padLeft(2, '0')}',
@@ -391,13 +391,13 @@ class AssetData {
   Map<String, dynamic> toJson() {
     return {
       if (id != null) 'id': id,
-      'asset_name': assetName,
-      'asset_category': assetCategory,
+      'assetName': assetName,
+      'assetCategory': assetCategory,
       'quantity': quantity,
-      'current_condition': currentCondition,
+      'currentCondition': currentCondition,
       if (description != null && description!.trim().isNotEmpty)
         'description': description!.trim(),
-      if (fileImageId != null) 'file_image_id': fileImageId,
+      if (fileImageId != null) 'fileImageId': fileImageId,
     };
   }
 }

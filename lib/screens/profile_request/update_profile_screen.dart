@@ -141,9 +141,9 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         }
 
         vehiclesData.add({
-          'license_plate': plate,
-          'vehicle_type': 'MOTORBIKE',
-          if (fileId != null) 'image_file_id': fileId,
+          'licensePlate': plate,
+          'vehicleType': 'MOTORBIKE',
+          if (fileId != null) 'imageFileId': fileId,
         });
       }
 
@@ -153,7 +153,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         emergencyContacts: [
           if (relName.isNotEmpty || relPhone.isNotEmpty)
             {
-              'full_name': relName,
+              'fullName': relName,
               'phone': relPhone,
               'relationship': 'Người thân',
             },

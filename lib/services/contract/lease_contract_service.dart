@@ -35,15 +35,23 @@ class ActiveRoomItem {
 
   factory ActiveRoomItem.fromJson(Map<String, dynamic> json) {
     return ActiveRoomItem(
-      contractId: _asInt(json['contract_id']) ?? 0,
-      contractCode: json['contract_code']?.toString() ?? '',
-      roomId: _asInt(json['room_id']) ?? 0,
-      roomCode: json['room_code']?.toString() ?? '',
-      roomName: json['room_name']?.toString() ?? '',
-      propertyName: json['property_name']?.toString() ?? '',
+      contractId: _asInt(json['contractId']) ?? _asInt(json['contract_id']) ?? 0,
+      contractCode:
+          json['contractCode']?.toString() ??
+          json['contract_code']?.toString() ??
+          '',
+      roomId: _asInt(json['roomId']) ?? _asInt(json['room_id']) ?? 0,
+      roomCode:
+          json['roomCode']?.toString() ?? json['room_code']?.toString() ?? '',
+      roomName:
+          json['roomName']?.toString() ?? json['room_name']?.toString() ?? '',
+      propertyName:
+          json['propertyName']?.toString() ??
+          json['property_name']?.toString() ??
+          '',
       contractStatus:
-          json['contract_status']?.toString() ??
           json['contractStatus']?.toString() ??
+          json['contract_status']?.toString() ??
           '',
     );
   }
@@ -307,7 +315,7 @@ class LeaseContractService {
   }
 
   Map<String, dynamic>? _contractPayload(Map<String, dynamic> body) {
-    for (final key in ['data', 'contract', 'lease_contract', 'leaseContract']) {
+    for (final key in ['data', 'contract', 'leaseContract', 'lease_contract']) {
       final value = body[key];
       if (value is Map<String, dynamic>) {
         return value;
@@ -319,13 +327,14 @@ class LeaseContractService {
     }
     final hasContractFields = [
       'id',
+      'contractId',
       'contract_id',
-      'contract_code',
       'contractCode',
+      'contract_code',
       'status',
       'room',
-      'monthly_rent',
       'monthlyRent',
+      'monthly_rent',
     ].any(body.containsKey);
     if (!hasContractFields) {
       return null;

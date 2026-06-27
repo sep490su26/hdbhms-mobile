@@ -94,7 +94,7 @@ class TenantProfileService {
             body: jsonEncode({
               'phone': phone,
               'email': email,
-              'emergency_contacts': emergencyContacts,
+              'emergencyContacts': emergencyContacts,
               'vehicles': vehicles,
             }),
           )

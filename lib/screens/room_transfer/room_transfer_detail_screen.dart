@@ -1,9 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:hdbhms_mobile/models/change_request/change_request_model.dart';
 import 'package:hdbhms_mobile/models/room_transfer/room_transfer_model.dart';
 import 'package:hdbhms_mobile/screens/room_transfer/transfer_execution_screen.dart';
+import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
@@ -16,10 +18,12 @@ class RoomTransferDetailScreen extends StatefulWidget {
     super.key,
     required this.changeRequest,
     this.transferService = const RoomTransferService(),
+    this.leaseContractService = const LeaseContractService(),
   });
 
   final ChangeRequest changeRequest;
   final RoomTransferService transferService;
+  final LeaseContractService leaseContractService;
 
   @override
   State<RoomTransferDetailScreen> createState() =>
@@ -30,7 +34,8 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen> {
   RoomTransferRequest? _transfer;
   bool _loadingTransfer = false;
   bool _actionInProgress = false;
-  int? _currentUserId;
+  bool _checkingTargetHolderAccess = false;
+  bool _isVerifiedTargetHolder = false;
 
   ChangeRequest get _req => widget.changeRequest;
 
@@ -39,21 +44,10 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCurrentUserId();
     _tryLoadTransfer();
   }
 
-  Future<void> _loadCurrentUserId() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _currentUserId = prefs.getInt('user_id');
-    });
-  }
-
   void _tryLoadTransfer() {
-    // Try to extract transfer ID from change request description or title
-    // Backend may store transfer ID in description as "Transfer Request ID: 12345"
-    // or we can parse it from the change request's targetId field
     final transferId = _extractTransferId();
     if (transferId == null) return;
 
@@ -61,34 +55,53 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen> {
 
     widget.transferService
         .getTransferRequest(transferId)
-        .then((transfer) {
-      if (mounted) {
-        setState(() {
-          _transfer = transfer;
-          _loadingTransfer = false;
-        });
-      }
-    }).catchError((e) {
+        .then((transfer) async {
+      if (!mounted) return;
+      setState(() {
+        _transfer = transfer;
+        _loadingTransfer = false;
+      });
+      await _resolveTargetHolderAccess(transfer);
+    }).catchError((_) {
       if (mounted) {
         setState(() => _loadingTransfer = false);
-        // Silently fail - transfer data is optional
       }
     });
   }
 
   int? _extractTransferId() {
-    // Try to parse transfer ID from title or description
-    // Backend may store it as "Transfer Request ID: 12345" or just the ID
+    if (_req.targetId != null && _req.targetId! > 0) {
+      return _req.targetId;
+    }
+
+    final rawPayload = _req.requestPayload;
+    if (rawPayload != null && rawPayload.trim().isNotEmpty) {
+      try {
+        final payload = jsonDecode(rawPayload);
+        if (payload is Map<String, dynamic>) {
+          final fromPayload =
+              int.tryParse(payload['transferRequestId']?.toString() ?? '') ??
+              int.tryParse(payload['targetId']?.toString() ?? '') ??
+              int.tryParse(payload['id']?.toString() ?? '');
+          if (fromPayload != null && fromPayload > 0) {
+            return fromPayload;
+          }
+        }
+      } catch (_) {
+        // Ignore malformed payload and continue with legacy fallback.
+      }
+    }
+
+    // Legacy fallback only when structured linkage is absent.
     final textToSearch = '${_req.title} ${_req.description}';
-    
-    // Try pattern: "ID: 12345" or "ID 12345"
-    final match = RegExp(r'(?:transfer.*id|id)[:\s]*(\d+)', caseSensitive: false)
-        .firstMatch(textToSearch);
+
+    final match =
+        RegExp(r'(?:transfer.*id|id)[:\s]*(\d+)', caseSensitive: false)
+            .firstMatch(textToSearch);
     if (match != null) {
       return int.tryParse(match.group(1)!);
     }
 
-    // Fallback: try to find any large number (likely a snowflake ID)
     final numbers = RegExp(r'\b(\d{8,})\b').allMatches(textToSearch);
     for (final m in numbers) {
       final num = int.tryParse(m.group(1)!);
@@ -96,6 +109,43 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen> {
     }
 
     return null;
+  }
+
+  Future<void> _resolveTargetHolderAccess(RoomTransferRequest transfer) async {
+    if (!mounted) return;
+    if (transfer.status != TransferRequestStatus.waitingTargetHolderApproval ||
+        transfer.targetTransferType != TargetTransferType.otherContract ||
+        transfer.targetContractId == null ||
+        transfer.targetContractId! <= 0) {
+      setState(() {
+        _checkingTargetHolderAccess = false;
+        _isVerifiedTargetHolder = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _checkingTargetHolderAccess = true;
+      _isVerifiedTargetHolder = false;
+    });
+
+    try {
+      final contract = await widget.leaseContractService.getContractById(
+        transfer.targetContractId!,
+      );
+      if (!mounted) return;
+      setState(() {
+        _checkingTargetHolderAccess = false;
+        _isVerifiedTargetHolder =
+            contract.isPrimary || contract.roleInContract == 'PRIMARY';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _checkingTargetHolderAccess = false;
+        _isVerifiedTargetHolder = false;
+      });
+    }
   }
 
   // ── Actions ────────────────────────────────────────────────────────────────
@@ -249,12 +299,11 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen> {
   }
 
   bool get _isTargetHolder {
-    if (_currentUserId == null || _transfer == null) return false;
-    // NOTE: This is a simplified check. In production, you'd want to fetch
-    // the target contract details and compare primaryTenantProfileId.
-    // For now, we show the approval UI when status is WAITING_TARGET_HOLDER_APPROVAL
-    // and let the backend validate authorization.
-    return _transfer!.status == TransferRequestStatus.waitingTargetHolderApproval;
+    if (_transfer == null) return false;
+    return !_checkingTargetHolderAccess &&
+        _isVerifiedTargetHolder &&
+        _transfer!.status == TransferRequestStatus.waitingTargetHolderApproval &&
+        _transfer!.targetTransferType == TargetTransferType.otherContract;
   }
 
   void _navigateToExecution() {

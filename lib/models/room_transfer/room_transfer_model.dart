@@ -180,41 +180,40 @@ class RoomTransferRequest {
   factory RoomTransferRequest.fromJson(Map<String, dynamic> json) {
     return RoomTransferRequest(
       id: _asInt(json['id']) ?? 0,
-      requestCode: _str(json, 'request_code', 'requestCode'),
-      requesterId: _asInt(json['requester_id'] ?? json['requesterId']) ?? 0,
-      oldContractId: _asInt(json['old_contract_id'] ?? json['oldContractId']) ?? 0,
-      oldRoomId: _asInt(json['old_room_id'] ?? json['oldRoomId']) ?? 0,
-      targetRoomId: _asInt(json['target_room_id'] ?? json['targetRoomId']) ?? 0,
+      requestCode: _str(json, 'requestCode'),
+      requesterId: _asInt(json['requesterId']) ?? 0,
+      oldContractId: _asInt(json['oldContractId']) ?? 0,
+      oldRoomId: _asInt(json['oldRoomId']) ?? 0,
+      targetRoomId: _asInt(json['targetRoomId']) ?? 0,
       transferringTenantProfileIds: _parseIntList(
-        json['transferring_tenant_profile_ids'] ??
-            json['transferringTenantProfileIds'],
+        json['transferringTenantProfileIds'],
       ),
       targetTransferType: TargetTransferType.fromBackend(
-        _str(json, 'target_transfer_type', 'targetTransferType'),
+        _str(json, 'targetTransferType'),
       ),
       requestedTransferDate: _parseDate(
-        _str(json, 'requested_transfer_date', 'requestedTransferDate'),
+        _str(json, 'requestedTransferDate'),
       ),
       status: TransferRequestStatus.fromBackend(
         _str(json, 'status'),
       ),
-      oldRoomName: _str(json, 'old_room_name', 'oldRoomName'),
-      oldRoomCode: _str(json, 'old_room_code', 'oldRoomCode'),
-      oldContractCode: _str(json, 'old_contract_code', 'oldContractCode'),
-      targetRoomName: _str(json, 'target_room_name', 'targetRoomName'),
-      targetRoomCode: _str(json, 'target_room_code', 'targetRoomCode'),
+      oldRoomName: _str(json, 'oldRoomName'),
+      oldRoomCode: _str(json, 'oldRoomCode'),
+      oldContractCode: _str(json, 'oldContractCode'),
+      targetRoomName: _str(json, 'targetRoomName'),
+      targetRoomCode: _str(json, 'targetRoomCode'),
       nominatedHolderProfileId: _asInt(
-        json['nominated_holder_profile_id'] ?? json['nominatedHolderProfileId'],
+        json['nominatedHolderProfileId'],
       ),
-      targetContractId: _asInt(json['target_contract_id'] ?? json['targetContractId']),
-      newContractId: _asInt(json['new_contract_id'] ?? json['newContractId']),
+      targetContractId: _asInt(json['targetContractId']),
+      newContractId: _asInt(json['newContractId']),
       reason: _str(json, 'reason'),
-      reservedSlots: _asInt(json['reserved_slots'] ?? json['reservedSlots']),
+      reservedSlots: _asInt(json['reservedSlots']),
       reservationExpiresAt: _parseDateTime(
-        _str(json, 'reservation_expires_at', 'reservationExpiresAt'),
+        _str(json, 'reservationExpiresAt'),
       ),
-      createdAt: _parseDateTime(_str(json, 'created_at', 'createdAt')),
-      updatedAt: _parseDateTime(_str(json, 'updated_at', 'updatedAt')),
+      createdAt: _parseDateTime(_str(json, 'createdAt')),
+      updatedAt: _parseDateTime(_str(json, 'updatedAt')),
     );
   }
 }
@@ -252,22 +251,22 @@ class AvailableRoom {
   factory AvailableRoom.fromJson(Map<String, dynamic> json) {
     return AvailableRoom(
       id: _asInt(json['id']) ?? 0,
-      roomCode: _str(json, 'room_code', 'roomCode'),
-      roomName: _str(json, 'room_name', 'roomName'),
-      propertyName: _str(json, 'property_name', 'propertyName'),
-      floorName: _str(json, 'floor_name', 'floorName'),
-      currentStatus: _str(json, 'current_status', 'currentStatus'),
-      listedPrice: _asInt(json['listed_price'] ?? json['listedPrice']) ?? 0,
-      maxOccupants: _asInt(json['max_occupants'] ?? json['maxOccupants']) ?? 0,
-      areaM2: _asInt(json['area_m2'] ?? json['areaM2']),
+      roomCode: _str(json, 'roomCode'),
+      roomName: _str(json, 'roomName'),
+      propertyName: _str(json, 'propertyName'),
+      floorName: _str(json, 'floorName'),
+      currentStatus: _str(json, 'currentStatus'),
+      listedPrice: _asInt(json['listedPrice']) ?? 0,
+      maxOccupants: _asInt(json['maxOccupants']) ?? 0,
+      areaM2: _asInt(json['areaM2']),
     );
   }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-String _str(Map<String, dynamic> json, String key, [String? altKey]) {
-  final v = json[key] ?? (altKey != null ? json[altKey] : null);
+String _str(Map<String, dynamic> json, String key) {
+  final v = json[key];
   return v?.toString() ?? '';
 }
 
