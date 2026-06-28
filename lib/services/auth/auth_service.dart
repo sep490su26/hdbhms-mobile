@@ -93,9 +93,10 @@ class AuthService {
   }
 
   Future<OnboardingState> fetchOnboarding() async {
-    final token = await accessToken;
+    var token = await accessToken;
     if (token == null || token.isEmpty) {
-      throw const AuthException('Phiên đăng nhập không hợp lệ');
+      final refreshed = await refreshToken();
+      token = refreshed.token;
     }
     return _fetchOnboardingWithToken(token);
   }
@@ -170,8 +171,12 @@ class AuthService {
       }
 
       if (response.statusCode == 401) {
-        await AuthService.clearLocalSession();
-        throw const SessionExpiredException();
+        try {
+          final refreshed = await refreshToken();
+          return _fetchOnboardingWithToken(refreshed.token);
+        } on SessionExpiredException {
+          rethrow;
+        }
       }
 
       throw AuthException(

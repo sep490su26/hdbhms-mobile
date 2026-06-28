@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:hdbhms_mobile/config/app_config.dart';
 import 'package:hdbhms_mobile/models/onboarding_state.dart';
@@ -93,8 +94,13 @@ class _AppRootState extends State<_AppRoot> {
     final minimumSplashTime = Future<void>.delayed(
       const Duration(milliseconds: 1800),
     );
+    final prefs = await SharedPreferences.getInstance();
     final token = await widget.authService.accessToken;
-    if (token == null || token.isEmpty) {
+    final sessionId = prefs.getString(AuthService.sessionIdKey);
+    final hasToken = token != null && token.isNotEmpty;
+    final hasSessionId = sessionId != null && sessionId.isNotEmpty;
+
+    if (!hasToken && !hasSessionId) {
       await minimumSplashTime;
       return LoginPage(
         authService: widget.authService,
