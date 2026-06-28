@@ -33,11 +33,17 @@ class RoomTransferDetailScreen extends StatefulWidget {
 class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen> {
   RoomTransferRequest? _transfer;
   bool _loadingTransfer = false;
+  bool _transferLoadAttempted = false;
+  String? _transferLoadError;
   bool _actionInProgress = false;
   bool _checkingTargetHolderAccess = false;
   bool _isVerifiedTargetHolder = false;
 
   ChangeRequest get _req => widget.changeRequest;
+
+  bool get _isResolvingScreenState =>
+      _loadingTransfer ||
+      (_transfer != null && _checkingTargetHolderAccess);
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -49,9 +55,20 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen> {
 
   void _tryLoadTransfer() {
     final transferId = _extractTransferId();
-    if (transferId == null) return;
+    if (transferId == null) {
+      setState(() {
+        _transferLoadAttempted = true;
+        _loadingTransfer = false;
+        _transferLoadError = 'Không tìm thấy liên kết yêu cầu chuyển phòng.';
+      });
+      return;
+    }
 
-    setState(() => _loadingTransfer = true);
+    setState(() {
+      _loadingTransfer = true;
+      _transferLoadAttempted = true;
+      _transferLoadError = null;
+    });
 
     widget.transferService
         .getTransferRequest(transferId)
@@ -60,11 +77,15 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen> {
       setState(() {
         _transfer = transfer;
         _loadingTransfer = false;
+        _transferLoadError = null;
       });
       await _resolveTargetHolderAccess(transfer);
     }).catchError((_) {
       if (mounted) {
-        setState(() => _loadingTransfer = false);
+        setState(() {
+          _loadingTransfer = false;
+          _transferLoadError = 'Không tải được chi tiết chuyển phòng. Vui lòng thử lại.';
+        });
       }
     });
   }
@@ -114,9 +135,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen> {
   Future<void> _resolveTargetHolderAccess(RoomTransferRequest transfer) async {
     if (!mounted) return;
     if (transfer.status != TransferRequestStatus.waitingTargetHolderApproval ||
-        transfer.targetTransferType != TargetTransferType.otherContract ||
-        transfer.targetContractId == null ||
-        transfer.targetContractId! <= 0) {
+        transfer.targetTransferType != TargetTransferType.otherContract) {
       setState(() {
         _checkingTargetHolderAccess = false;
         _isVerifiedTargetHolder = false;
@@ -130,6 +149,34 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen> {
     });
 
     try {
+      final pendingApprovals = await widget.transferService
+          .fetchPendingTargetHolderApprovals();
+      final isPendingForCurrentUser = pendingApprovals.any(
+        (item) => item.id == transfer.id,
+      );
+      if (!mounted) return;
+
+      if (isPendingForCurrentUser) {
+        setState(() {
+          _checkingTargetHolderAccess = false;
+          _isVerifiedTargetHolder = true;
+        });
+        return;
+      }
+    } catch (_) {
+      // Fall back to contract-role check below when pending list is unavailable.
+    }
+
+    if (transfer.targetContractId == null || transfer.targetContractId! <= 0) {
+      if (!mounted) return;
+      setState(() {
+        _checkingTargetHolderAccess = false;
+        _isVerifiedTargetHolder = false;
+      });
+      return;
+    }
+
+    try {
       final contract = await widget.leaseContractService.getContractById(
         transfer.targetContractId!,
       );
@@ -137,7 +184,8 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen> {
       setState(() {
         _checkingTargetHolderAccess = false;
         _isVerifiedTargetHolder =
-            contract.isPrimary || contract.roleInContract == 'PRIMARY';
+            contract.isPrimary ||
+            contract.roleInContract.toUpperCase() == 'PRIMARY';
       });
     } catch (_) {
       if (!mounted) return;
@@ -416,11 +464,22 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen> {
 
         const SizedBox(height: 14),
 
-        // ── Transfer Status Timeline (only when transfer is loaded) ───
-        if (_transfer != null)
+        // ── Transfer Status Timeline / loading state ───────────────────
+        if (_isResolvingScreenState)
+          _TransferLoadingCard(
+            message: _loadingTransfer
+                ? 'Đang tải chi tiết chuyển phòng...'
+                : 'Đang xác định quyền phê duyệt và hành động khả dụng...',
+          )
+        else if (_transfer != null)
           _StatusTimeline(
             currentStatus: _transfer!.status,
             targetTransferType: _transfer!.targetTransferType,
+          )
+        else if (_transferLoadAttempted)
+          _TransferLoadStateCard(
+            message: _transferLoadError ?? 'Không có dữ liệu chuyển phòng.',
+            onRetry: _tryLoadTransfer,
           ),
 
         const SizedBox(height: 14),
@@ -528,13 +587,6 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen> {
           ),
         ],
 
-        if (_loadingTransfer) ...[
-          const SizedBox(height: 14),
-          const Center(
-            child: CircularProgressIndicator(color: AppColors.deepBlue, strokeWidth: 2),
-          ),
-        ],
-
         // ── Action buttons ─────────────────────────────────────────────
         const SizedBox(height: 24),
         ..._buildActions(),
@@ -545,6 +597,15 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen> {
   List<Widget> _buildActions() {
     final actions = <Widget>[];
     final busy = _actionInProgress;
+
+    if (_isResolvingScreenState) {
+      actions.add(_TransferActionLoadingCard(
+        message: _loadingTransfer
+            ? 'Đang tải chi tiết yêu cầu...'
+            : 'Đang xác định hành động khả dụng...',
+      ));
+      return actions;
+    }
 
     // Cancel: available when pending and transfer exists
     if (_req.status == ChangeRequestStatus.pending && _transfer != null) {
@@ -605,7 +666,9 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen> {
     }
 
     // If no transfer-specific actions, show generic close
-    if (actions.isEmpty && !_isTargetHolder) {
+    if (actions.isEmpty &&
+        !_isTargetHolder &&
+        (!_transferLoadAttempted || _transferLoadError == null)) {
       actions.add(SizedBox(
         width: double.infinity,
         height: 46,
@@ -864,6 +927,167 @@ class _ActionButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _TransferLoadingCard extends StatelessWidget {
+  const _TransferLoadingCard({
+    this.message = 'Đang tải chi tiết chuyển phòng...',
+  });
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.2,
+              color: AppColors.deepBlue,
+            ),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: AppColors.inputText,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TransferLoadStateCard extends StatelessWidget {
+  const _TransferLoadStateCard({
+    required this.message,
+    required this.onRetry,
+  });
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons.error_outline_rounded,
+                color: Color(0xFFD97706),
+                size: 20,
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Không tải được chi tiết',
+                style: TextStyle(
+                  color: Color(0xFF000666),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            style: const TextStyle(
+              color: AppColors.bodyText,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 40,
+            child: OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text(
+                'Tải lại',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.deepBlue,
+                side: const BorderSide(color: AppColors.deepBlue),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TransferActionLoadingCard extends StatelessWidget {
+  const _TransferActionLoadingCard({
+    this.message = 'Đang xác định hành động khả dụng...',
+  });
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF1FF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD7DCFF)),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.deepBlue,
+            ),
+          ),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: AppColors.deepBlue,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

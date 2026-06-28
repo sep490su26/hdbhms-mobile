@@ -87,6 +87,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
     return switch (type) {
       ChangeRequestType.roomTransfer => TenantRequestType.changeRoom,
       ChangeRequestType.moveOut => TenantRequestType.terminateContract,
+      ChangeRequestType.addCoOccupant => TenantRequestType.addRoommate,
       _ => TenantRequestType.renewContract, // fallback for unmapped types
     };
   }
@@ -109,13 +110,13 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
   }
 
   void _openDetail(TenantRequest req) {
-    // If this came from the API and is a change-room request, navigate
-    // to the dedicated transfer detail screen.
-    if (req.id.startsWith('API-')) {
-      final apiId = int.tryParse(req.id.substring(4));
-      final changeRequest = apiId != null ? _changeRequestMap[apiId] : null;
-      if (changeRequest != null &&
-          req.type == TenantRequestType.changeRoom) {
+    final apiId = req.id.startsWith('API-')
+        ? int.tryParse(req.id.substring(4))
+        : null;
+    final changeRequest = apiId != null ? _changeRequestMap[apiId] : null;
+
+    if (changeRequest != null) {
+      if (changeRequest.requestType == ChangeRequestType.roomTransfer) {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) =>
@@ -126,22 +127,14 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
         });
         return;
       }
+
+      showDialog<void>(
+        context: context,
+        builder: (_) => _ApiRequestDetailDialog(changeRequest: changeRequest),
+      );
+      return;
     }
 
-    // For API requests, show detail based on request type
-    if (req.id.startsWith('API-')) {
-      final apiId = int.tryParse(req.id.substring(4));
-      final changeRequest = apiId != null ? _changeRequestMap[apiId] : null;
-      if (changeRequest != null) {
-        showDialog<void>(
-          context: context,
-          builder: (_) => _ApiRequestDetailDialog(changeRequest: changeRequest),
-        );
-        return;
-      }
-    }
-
-    // Fallback: show local detail dialog
     showDialog<void>(
       context: context,
       builder: (_) => _RequestDetailDialog(request: req),
@@ -1042,6 +1035,7 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
     ChangeRequestType.roomTransfer => Icons.swap_horiz_rounded,
     ChangeRequestType.moveOut => Icons.cancel_outlined,
     ChangeRequestType.depositRefundRequest => Icons.account_balance_wallet_outlined,
+    ChangeRequestType.addCoOccupant => Icons.person_add_outlined,
     ChangeRequestType.complaint => Icons.report_problem_outlined,
     ChangeRequestType.meterReadingCorrection => Icons.speed_outlined,
     ChangeRequestType.invoiceAdjustment => Icons.receipt_long_outlined,
@@ -1052,6 +1046,7 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
     ChangeRequestType.roomTransfer => const Color(0xFF0284C7),
     ChangeRequestType.moveOut => const Color(0xFFDC2626),
     ChangeRequestType.depositRefundRequest => const Color(0xFF16A34A),
+    ChangeRequestType.addCoOccupant => const Color(0xFF16A34A),
     ChangeRequestType.complaint => const Color(0xFFEA580C),
     ChangeRequestType.meterReadingCorrection => AppColors.deepBlue,
     ChangeRequestType.invoiceAdjustment => const Color(0xFF7C3AED),
@@ -1062,6 +1057,7 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
     ChangeRequestType.roomTransfer => const Color(0xFFEFF8FF),
     ChangeRequestType.moveOut => const Color(0xFFFFF0F0),
     ChangeRequestType.depositRefundRequest => const Color(0xFFF0FFF4),
+    ChangeRequestType.addCoOccupant => const Color(0xFFF0FFF4),
     ChangeRequestType.complaint => const Color(0xFFFFF7ED),
     ChangeRequestType.meterReadingCorrection => const Color(0xFFEFF1FF),
     ChangeRequestType.invoiceAdjustment => const Color(0xFFF3E8FF),
@@ -1305,6 +1301,11 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
       ChangeRequestType.depositRefundRequest => [
         _DetailRow(label: 'Phòng', value: p['room']?.toString() ?? 'Chưa có thông tin'),
         _DetailRow(label: 'Số tiền cọc', value: p['depositAmount']?.toString() ?? 'Chưa có thông tin'),
+      ],
+      ChangeRequestType.addCoOccupant => [
+        _DetailRow(label: 'Họ tên', value: p['fullName']?.toString() ?? 'Chưa có thông tin'),
+        _DetailRow(label: 'Số điện thoại', value: p['phoneNumber']?.toString() ?? 'Chưa có thông tin'),
+        _DetailRow(label: 'Ngày bắt đầu ở', value: p['moveInDate']?.toString() ?? 'Chưa có thông tin'),
       ],
       ChangeRequestType.complaint => [
         _DetailRow(label: 'Danh mục', value: p['category']?.toString() ?? 'Chưa có thông tin'),

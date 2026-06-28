@@ -6,6 +6,7 @@ enum ChangeRequestType {
   depositRefundRequest,
   roomTransfer,
   moveOut,
+  addCoOccupant,
   complaint;
 
   static ChangeRequestType fromBackend(String value) {
@@ -22,6 +23,8 @@ enum ChangeRequestType {
         return ChangeRequestType.roomTransfer;
       case 'MOVE_OUT':
         return ChangeRequestType.moveOut;
+      case 'ADD_CO_OCCUPANT':
+        return ChangeRequestType.addCoOccupant;
       case 'COMPLAINT':
         return ChangeRequestType.complaint;
       default:
@@ -43,6 +46,8 @@ enum ChangeRequestType {
         return 'ROOM_TRANSFER';
       case ChangeRequestType.moveOut:
         return 'MOVE_OUT';
+      case ChangeRequestType.addCoOccupant:
+        return 'ADD_CO_OCCUPANT';
       case ChangeRequestType.complaint:
         return 'COMPLAINT';
     }
@@ -62,6 +67,8 @@ enum ChangeRequestType {
         return 'Chuyển phòng';
       case ChangeRequestType.moveOut:
         return 'Trả phòng';
+      case ChangeRequestType.addCoOccupant:
+        return 'Thêm người ở cùng';
       case ChangeRequestType.complaint:
         return 'Khiếu nại';
     }
