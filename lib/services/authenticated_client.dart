@@ -67,7 +67,7 @@ class AuthenticatedClient extends http.BaseClient {
       reasonPhrase: response.reasonPhrase,
     );
 
-    if (clonedResponse.statusCode == 401 || clonedResponse.statusCode == 403) {
+    if (clonedResponse.statusCode == 401) {
       final isRetryable = request is http.Request;
       if (!isRetryable) {
         // Cannot retry streams safely
@@ -87,6 +87,10 @@ class AuthenticatedClient extends http.BaseClient {
         _redirectToLogin();
         return clonedResponse;
       }
+    }
+
+    if (clonedResponse.statusCode == 403) {
+      return clonedResponse;
     }
 
     return clonedResponse;
