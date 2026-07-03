@@ -269,7 +269,7 @@ class _ForgotPasswordIntro extends StatelessWidget {
               letterSpacing: -0.52,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Vui lòng nhập email hoặc số điện thoại đã\nđăng ký để nhận mã OTP xác minh.',
             textAlign: TextAlign.center,

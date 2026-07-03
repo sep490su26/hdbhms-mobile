@@ -1,10 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/models/onboarding_state.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/auth_text_field.dart';
+import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/home/home_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/identity_verification_page.dart';
 
@@ -58,11 +59,10 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     });
 
     try {
-      await widget.authService.changePassword(
+      final onboarding = await widget.authService.changePassword(
         newPassword: newPassword,
         confirmPassword: confirmPassword,
       );
-      final onboarding = await widget.authService.fetchOnboarding();
 
       if (!mounted) {
         return;
@@ -88,6 +88,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     }
     if (newPassword.length < 8) {
       return 'Mật khẩu mới phải có ít nhất 8 ký tự';
+    }
+    if (!RegExp(r'[a-zA-Z]').hasMatch(newPassword)) {
+      return 'Mật khẩu mới phải có ít nhất một chữ cái';
     }
     if (!RegExp(r'\d').hasMatch(newPassword)) {
       return 'Mật khẩu mới phải có ít nhất một chữ số';
@@ -125,6 +128,24 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _handleBack() async {
+    if (widget.isRequired) {
+      await AuthService.clearLocalSession();
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => LoginPage(
+            authService: widget.authService,
+            homeService: widget.homeService,
+          ),
+        ),
+        (route) => false,
+      );
+    } else {
+      Navigator.of(context).maybePop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -137,7 +158,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _ChangePasswordHeader(
-                canGoBack: !widget.isRequired && !_isLoading,
+                canGoBack: !_isLoading,
+                onBack: _handleBack,
               ),
               Expanded(
                 child: SingleChildScrollView(
@@ -174,9 +196,10 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 }
 
 class _ChangePasswordHeader extends StatelessWidget {
-  const _ChangePasswordHeader({required this.canGoBack});
+  const _ChangePasswordHeader({required this.canGoBack, required this.onBack});
 
   final bool canGoBack;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -190,9 +213,7 @@ class _ChangePasswordHeader extends StatelessWidget {
             width: 40,
             height: 40,
             child: IconButton(
-              onPressed: canGoBack
-                  ? () => Navigator.of(context).maybePop()
-                  : null,
+              onPressed: canGoBack ? onBack : null,
               padding: EdgeInsets.zero,
               icon: const Icon(
                 Icons.arrow_back,
@@ -202,10 +223,7 @@ class _ChangePasswordHeader extends StatelessWidget {
               tooltip: 'Quay lại',
             ),
           ),
-          const Text(
-            'Đổi mật khẩu',
-            style: AppColors.topBarTitleStyle,
-          ),
+          const Text('Đổi mật khẩu', style: AppColors.topBarTitleStyle),
         ],
       ),
     );
@@ -353,6 +371,7 @@ class _PasswordRequirements extends StatelessWidget {
       builder: (context, value, child) {
         final password = value.text;
         final hasMinimumLength = password.length >= 8;
+        final hasLetter = RegExp(r'[a-zA-Z]').hasMatch(password);
         final hasNumber = RegExp(r'\d').hasMatch(password);
 
         return Container(
@@ -379,6 +398,11 @@ class _PasswordRequirements extends StatelessWidget {
               _RequirementItem(
                 text: 'Tối thiểu 8 ký tự',
                 isMet: hasMinimumLength,
+              ),
+              const SizedBox(height: 8),
+              _RequirementItem(
+                text: 'Có ít nhất một chữ cái',
+                isMet: hasLetter,
               ),
               const SizedBox(height: 8),
               _RequirementItem(text: 'Có ít nhất một chữ số', isMet: hasNumber),

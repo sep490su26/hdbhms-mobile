@@ -17,7 +17,7 @@ class FileService {
   Future<FileMetadataResponse> uploadSingle({
     required Uint8List bytes,
     required String fileName,
-    FileCategory category = FileCategory.OTHER,
+    FileCategory category = FileCategory.other,
     bool isSensitive = false,
   }) async {
     final client = _effectiveClient;

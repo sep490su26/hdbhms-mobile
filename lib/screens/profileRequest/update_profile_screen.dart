@@ -1,6 +1,6 @@
-﻿import 'dart:io';
-import 'dart:typed_data';
+// ignore_for_file: use_null_aware_elements
 
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -8,9 +8,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:hdbhms_mobile/config/api_config.dart';
-import 'package:hdbhms_mobile/models/profile_request/tenant_profile_model.dart';
+import 'package:hdbhms_mobile/models/profileRequest/tenant_profile_model.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
-import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
+import 'package:hdbhms_mobile/services/profileRequest/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 /// Dữ liệu được pre-fill từ TenantProfileResponse truyền vào.
@@ -137,9 +137,9 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         }
         
         vehiclesData.add({
-          'license_plate': plate,
-          'vehicle_type': 'MOTORBIKE',
-          if (fileId != null) 'image_file_id': fileId,
+          'licensePlate': plate,
+          'vehicleType': 'MOTORBIKE',
+          if (fileId != null) 'imageFileId': fileId,
         });
       }
 
@@ -149,7 +149,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         emergencyContacts: [
           if (relName.isNotEmpty || relPhone.isNotEmpty)
             {
-              'full_name': relName,
+              'fullName': relName,
               'phone': relPhone,
               'relationship': 'Người thân',
             }

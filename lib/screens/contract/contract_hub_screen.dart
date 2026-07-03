@@ -1,5 +1,7 @@
-﻿import 'package:flutter/material.dart';
-import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
+// ignore_for_file: unused_element
+
+import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/screens/profileRequest/tenant_request_screen.dart';
 
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
@@ -9,7 +11,7 @@ import 'package:hdbhms_mobile/screens/contract/deposit_contract_list_screen.dart
 import 'package:hdbhms_mobile/screens/contract/lease_contract_list_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
+import 'package:hdbhms_mobile/screens/profileRequest/tenant_profile_screen.dart';
 
 /// Màn hub "Hợp Đồng" – chứa 2 tab: HĐ thuê + HĐ cọc.
 class ContractHubScreen extends StatefulWidget {

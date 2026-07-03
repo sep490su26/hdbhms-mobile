@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/services/auth/forgot_password_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
@@ -71,7 +71,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       if (!mounted) return;
 
       _showMessage('Đặt lại mật khẩu thành công! Vui lòng đăng nhập lại.');
-      
+
       Future.delayed(const Duration(seconds: 2), () {
         if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
@@ -95,6 +95,12 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   String? _validate(String newPassword, String confirmPassword) {
     if (newPassword.isEmpty) return 'Vui lòng nhập mật khẩu mới';
     if (newPassword.length < 8) return 'Mật khẩu phải có ít nhất 8 ký tự';
+    if (!RegExp(r'[a-zA-Z]').hasMatch(newPassword)) {
+      return 'Mật khẩu phải có ít nhất một chữ cái';
+    }
+    if (!RegExp(r'\d').hasMatch(newPassword)) {
+      return 'Mật khẩu phải có ít nhất một chữ số';
+    }
     if (confirmPassword.isEmpty) return 'Vui lòng xác nhận mật khẩu';
     if (newPassword != confirmPassword) return 'Mật khẩu xác nhận không khớp';
     return null;

@@ -1,11 +1,17 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/screens/home/home_screen.dart';
 import 'package:hdbhms_mobile/screens/payment/payment_history_page.dart';
+import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
 
 class PaymentSuccessPage extends StatelessWidget {
-  const PaymentSuccessPage({super.key});
+  const PaymentSuccessPage({
+    super.key,
+    this.invoiceService = const TenantInvoiceService(),
+  });
+
+  final TenantInvoiceService invoiceService;
 
   @override
   Widget build(BuildContext context) {
@@ -22,12 +28,12 @@ class PaymentSuccessPage extends StatelessWidget {
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(14, 34, 14, 18),
                     child: Column(
-                      children: const [
-                        _SuccessHero(),
-                        SizedBox(height: 18),
-                        _TransactionDetailCard(),
-                        SizedBox(height: 28),
-                        _SuccessActions(),
+                      children: [
+                        const _SuccessHero(),
+                        const SizedBox(height: 18),
+                        const _TransactionDetailCard(),
+                        const SizedBox(height: 28),
+                        _SuccessActions(invoiceService: invoiceService),
                       ],
                     ),
                   ),
@@ -72,10 +78,7 @@ class _SuccessHeader extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           const Expanded(
-            child: Text(
-              'Thanh to\u00E1n',
-              style: AppColors.topBarTitleStyle,
-            ),
+            child: Text('Thanh to\u00E1n', style: AppColors.topBarTitleStyle),
           ),
           IconButton(
             onPressed: () {},
@@ -437,7 +440,9 @@ class _PaidBillItem extends StatelessWidget {
 }
 
 class _SuccessActions extends StatelessWidget {
-  const _SuccessActions();
+  const _SuccessActions({required this.invoiceService});
+
+  final TenantInvoiceService invoiceService;
 
   @override
   Widget build(BuildContext context) {
@@ -450,7 +455,8 @@ class _SuccessActions extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => const PaymentHistoryPage(),
+                  builder: (context) =>
+                      PaymentHistoryPage(invoiceService: invoiceService),
                 ),
               );
             },

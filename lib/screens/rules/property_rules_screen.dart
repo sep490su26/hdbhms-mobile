@@ -1,18 +1,16 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
+import 'package:hdbhms_mobile/screens/profileRequest/tenant_request_screen.dart';
 
 import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/rules/property_rule_model.dart';
-import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/rules/property_rule_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
-import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
+import 'package:hdbhms_mobile/screens/profileRequest/tenant_profile_screen.dart';
 
 class PropertyRulesScreen extends StatefulWidget {
   const PropertyRulesScreen({

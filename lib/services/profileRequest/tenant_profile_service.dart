@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -7,7 +7,7 @@ import 'dart:typed_data';
 
 import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/api_response.dart';
-import 'package:hdbhms_mobile/models/profile_request/tenant_profile_model.dart';
+import 'package:hdbhms_mobile/models/profileRequest/tenant_profile_model.dart';
 import 'package:hdbhms_mobile/services/authenticated_client.dart';
 
 class TenantProfileException implements Exception {
@@ -94,7 +94,7 @@ class TenantProfileService {
             body: jsonEncode({
               'phone': phone,
               'email': email,
-              'emergency_contacts': emergencyContacts,
+              'emergencyContacts': emergencyContacts,
               'vehicles': vehicles,
             }),
           )

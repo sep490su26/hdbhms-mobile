@@ -5,13 +5,18 @@ import '../../theme/app_colors.dart';
 import '../../widgets/tenant_bottom_navigation.dart';
 import '../maintenance/maintenance_ticket_list_screen.dart';
 import '../notification/notification_list_screen.dart';
-import '../profile_request/tenant_profile_screen.dart';
-import '../profile_request/tenant_request_screen.dart';
+import '../profileRequest/tenant_profile_screen.dart';
+import '../profileRequest/tenant_request_screen.dart';
 import 'payment_history_page.dart';
 import 'qr_payment_page.dart';
 
 class BillSelectionPage extends StatefulWidget {
-  const BillSelectionPage({super.key});
+  const BillSelectionPage({
+    super.key,
+    this.invoiceService = const TenantInvoiceService(),
+  });
+
+  final TenantInvoiceService invoiceService;
 
   @override
   State<BillSelectionPage> createState() => _BillSelectionPageState();
@@ -19,13 +24,12 @@ class BillSelectionPage extends StatefulWidget {
 
 class _BillSelectionPageState extends State<BillSelectionPage> {
   _BillFilter _activeFilter = _BillFilter.all;
-  final TenantInvoiceService _invoiceService = const TenantInvoiceService();
   late Future<List<TenantInvoice>> _invoicesFuture;
 
   @override
   void initState() {
     super.initState();
-    _invoicesFuture = _invoiceService.fetchMyInvoices();
+    _invoicesFuture = widget.invoiceService.fetchMyInvoices();
   }
 
   @override
@@ -127,7 +131,7 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
 
   void _reloadInvoices() {
     setState(() {
-      _invoicesFuture = _invoiceService.fetchMyInvoices();
+      _invoicesFuture = widget.invoiceService.fetchMyInvoices();
     });
   }
 
@@ -137,7 +141,10 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
       Navigator.of(context)
           .push(
             MaterialPageRoute(
-              builder: (context) => QrPaymentPage(invoice: invoice),
+              builder: (context) => QrPaymentPage(
+                invoice: invoice,
+                invoiceService: widget.invoiceService,
+              ),
             ),
           )
           .then((_) => _reloadInvoices());
@@ -178,7 +185,10 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
     final historyButton = _ViewHistoryButton(
       onTap: () {
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const PaymentHistoryPage()),
+          MaterialPageRoute(
+            builder: (context) =>
+                PaymentHistoryPage(invoiceService: widget.invoiceService),
+          ),
         );
       },
     );

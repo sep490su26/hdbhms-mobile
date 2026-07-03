@@ -1,6 +1,8 @@
+// ignore_for_file: unused_element
+
 import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/config/app_config.dart';
-import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
+import 'package:hdbhms_mobile/screens/profileRequest/tenant_request_screen.dart';
 
 import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/home/home_summary_model.dart';
@@ -9,7 +11,7 @@ import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
-import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
+import 'package:hdbhms_mobile/services/profileRequest/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
@@ -19,7 +21,7 @@ import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
 import 'package:hdbhms_mobile/screens/rules/property_rules_screen.dart';
-import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
+import 'package:hdbhms_mobile/screens/profileRequest/tenant_profile_screen.dart';
 import 'package:hdbhms_mobile/screens/web_view_screen.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -108,6 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
             authService: widget.authService,
             homeService: widget.homeService,
             profileService: widget.profileService,
+            tenantInvoiceService: widget.tenantInvoiceService,
           ),
         );
       },
@@ -181,12 +184,18 @@ class _HomeScreenState extends State<HomeScreen> {
     if (invoices.length == 1) {
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (context) => QrPaymentPage(invoice: invoices.first),
+          builder: (context) => QrPaymentPage(
+            invoice: invoices.first,
+            invoiceService: widget.tenantInvoiceService,
+          ),
         ),
       );
     } else {
       await Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => const BillSelectionPage()),
+        MaterialPageRoute(
+          builder: (context) =>
+              BillSelectionPage(invoiceService: widget.tenantInvoiceService),
+        ),
       );
     }
 
@@ -1083,19 +1092,24 @@ class _HomeBottomNavigation extends StatelessWidget {
     required this.authService,
     required this.homeService,
     required this.profileService,
+    required this.tenantInvoiceService,
   });
 
   final AuthService authService;
   final HomeService homeService;
   final TenantProfileService profileService;
+  final TenantInvoiceService tenantInvoiceService;
 
   Future<void> _handleLogout(BuildContext context) async {
     await authService.logout();
     if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
-        builder: (context) =>
-            LoginPage(authService: authService, homeService: homeService),
+        builder: (context) => LoginPage(
+          authService: authService,
+          homeService: homeService,
+          tenantInvoiceService: tenantInvoiceService,
+        ),
       ),
       (route) => false,
     );
@@ -1107,7 +1121,10 @@ class _HomeBottomNavigation extends StatelessWidget {
       activeTab: TenantBottomNavTab.home,
       onBillsTap: () {
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const BillSelectionPage()),
+          MaterialPageRoute(
+            builder: (context) =>
+                BillSelectionPage(invoiceService: tenantInvoiceService),
+          ),
         );
       },
       onSupportTap: () {

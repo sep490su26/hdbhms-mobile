@@ -3,12 +3,12 @@ import 'package:app_links/app_links.dart';
 
 class DeepLinkService {
   DeepLinkService._();
-  
+
   static final DeepLinkService instance = DeepLinkService._();
-  
+
   final _appLinks = AppLinks();
   StreamSubscription<Uri>? _sub;
-  
+
   // A stream that emits the token detected from the deep link
   final _tokenController = StreamController<String>.broadcast();
   Stream<String> get onResetPasswordToken => _tokenController.stream;
@@ -27,9 +27,9 @@ class DeepLinkService {
 
   void _handleUri(Uri uri) {
     // Example: hdbhms://reset-password?token=ABCDEF
-    // Or: https://yourdomain.com/reset-password?token=ABCDEF
+    // Or: https://yourdomain.com/reset-password?code=ABCDEF
     if (uri.path.contains('reset-password')) {
-      final token = uri.queryParameters['token'];
+      final token = uri.queryParameters['token'] ?? uri.queryParameters['code'];
       if (token != null && token.isNotEmpty) {
         _tokenController.add(token);
       }

@@ -1,6 +1,8 @@
+// ignore_for_file: unused_element
+
 import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
+import 'package:hdbhms_mobile/screens/profileRequest/tenant_request_screen.dart';
 
 import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
@@ -11,7 +13,7 @@ import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/create_maintenance_ticket_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_detail_screen.dart';
-import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
+import 'package:hdbhms_mobile/screens/profileRequest/tenant_profile_screen.dart';
 
 class MaintenanceTicketListScreen extends StatefulWidget {
   const MaintenanceTicketListScreen({
@@ -477,7 +479,7 @@ class _TicketHeaderRow extends StatelessWidget {
           SizedBox(width: 70, child: _HeaderText('Mã phiếu')),
           Expanded(flex: 2, child: _HeaderText('Loại & mô tả')),
           SizedBox(width: 74, child: _HeaderText('Ngày tạo')),
-          SizedBox(width: 86, child: _HeaderText('Trạng thái')),
+          SizedBox(width: 112, child: _HeaderText('Trạng thái')),
         ],
       ),
     );
@@ -595,7 +597,7 @@ class _TicketRow extends StatelessWidget {
                   ),
                 ),
               ),
-              SizedBox(width: 86, child: _StatusBadge(status: ticket.status)),
+              SizedBox(width: 112, child: _StatusSummary(ticket: ticket)),
             ],
           ),
         ),
@@ -604,43 +606,69 @@ class _TicketRow extends StatelessWidget {
   }
 }
 
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status});
+class _StatusSummary extends StatelessWidget {
+  const _StatusSummary({required this.ticket});
 
-  final TicketStatus status;
+  final MaintenanceTicketModel ticket;
 
   @override
   Widget build(BuildContext context) {
-    final colors = _statusColors(status);
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
-        decoration: BoxDecoration(
-          color: colors.background,
-          borderRadius: BorderRadius.circular(5),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(colors.icon, color: colors.foreground, size: 13),
-            const SizedBox(width: 3),
-            Flexible(
-              child: Text(
-                status.label,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: colors.foreground,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  height: 14 / 11,
+    final colors = ticket.requiresTenantPayment
+        ? _billingStatusColors(ticket.billingStatus)
+        : _statusColors(ticket.status);
+    final secondaryText = ticket.requiresTenantPayment
+        ? 'Đã hoàn tất xử lý · Cần thanh toán ${_formatCurrency(ticket.chargeAmount ?? 0)}đ'
+        : ticket.billingStatusLabel.isNotEmpty &&
+              ticket.status == TicketStatus.completed
+        ? 'Đã hoàn tất xử lý · ${ticket.billingStatusLabel}'
+        : '';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+          decoration: BoxDecoration(
+            color: colors.background,
+            borderRadius: BorderRadius.circular(5),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(colors.icon, color: colors.foreground, size: 13),
+              const SizedBox(width: 3),
+              Flexible(
+                child: Text(
+                  ticket.primaryStatusLabel,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: colors.foreground,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    height: 14 / 11,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+        if (secondaryText.isNotEmpty) ...[
+          const SizedBox(height: 5),
+          Text(
+            secondaryText,
+            maxLines: 3,
+            textAlign: TextAlign.right,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.bodyText,
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+              height: 12 / 9,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -826,10 +854,37 @@ _BadgeColors _statusColors(TicketStatus status) {
   };
 }
 
+_BadgeColors _billingStatusColors(String status) {
+  return switch (status.toUpperCase()) {
+    'OVERDUE' => const _BadgeColors(
+      background: Color(0xFFFFDAD7),
+      foreground: Color(0xFFC8171F),
+      icon: Icons.warning_amber_rounded,
+    ),
+    'PAID' => const _BadgeColors(
+      background: Color(0xFFD6F7E1),
+      foreground: Color(0xFF138A42),
+      icon: Icons.check_circle_outline_rounded,
+    ),
+    _ => const _BadgeColors(
+      background: Color(0xFFFFE9C7),
+      foreground: Color(0xFFB45309),
+      icon: Icons.payments_outlined,
+    ),
+  };
+}
+
 String _formatDate(DateTime date) {
   return '${date.day.toString().padLeft(2, '0')}/'
       '${date.month.toString().padLeft(2, '0')}/'
       '${date.year}';
+}
+
+String _formatCurrency(num amount) {
+  return amount.round().toString().replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (_) => '.',
+  );
 }
 
 const _allOption = 'Tất cả';

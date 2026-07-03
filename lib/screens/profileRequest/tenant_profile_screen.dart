@@ -1,23 +1,23 @@
-﻿import 'dart:typed_data';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
+import 'package:hdbhms_mobile/screens/profileRequest/tenant_request_screen.dart';
 
 import 'package:hdbhms_mobile/config/api_config.dart';
-import 'package:hdbhms_mobile/models/profile_request/tenant_profile_model.dart';
+import 'package:hdbhms_mobile/models/profileRequest/tenant_profile_model.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
-import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
+import 'package:hdbhms_mobile/services/profileRequest/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/contract/lease_contract_list_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profile_request/update_profile_screen.dart';
+import 'package:hdbhms_mobile/screens/profileRequest/update_profile_screen.dart';
 
 class TenantProfileScreen extends StatefulWidget {
   const TenantProfileScreen({
@@ -143,8 +143,7 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
       bottomNavigationBar: Builder(
         builder: (ctx) => TenantBottomNavigation(
           activeTab: TenantBottomNavTab.profile,
-          onHomeTap: () =>
-              Navigator.of(ctx).popUntil((route) => route.isFirst),
+          onHomeTap: () => Navigator.of(ctx).popUntil((route) => route.isFirst),
           onBillsTap: () {
             Navigator.of(ctx).push(
               MaterialPageRoute(
@@ -161,10 +160,10 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
           },
           onProfileTap: () {},
           onRequestsTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const TenantRequestScreen(),
-              ),
+            MaterialPageRoute(
+              builder: (context) => const TenantRequestScreen(),
             ),
+          ),
         ),
       ),
     );
@@ -199,10 +198,7 @@ class _ProfileHeader extends StatelessWidget {
             tooltip: 'Trở về',
           ),
           const Expanded(
-            child: Text(
-              'Hồ sơ cá nhân',
-              style: AppColors.topBarTitleStyle,
-            ),
+            child: Text('Hồ sơ cá nhân', style: AppColors.topBarTitleStyle),
           ),
           IconButton(
             onPressed: () => Navigator.of(context).push(
@@ -211,9 +207,9 @@ class _ProfileHeader extends StatelessWidget {
               ),
             ),
             padding: EdgeInsets.zero,
-constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-icon: const Icon(
-Icons.notifications_none_rounded,
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            icon: const Icon(
+              Icons.notifications_none_rounded,
               color: AppColors.topBarIconColor,
               size: 24,
             ),
@@ -312,9 +308,7 @@ class _UpdateProfileButton extends StatelessWidget {
           backgroundColor: AppColors.darkBlue,
           foregroundColor: Colors.white,
           elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           textStyle: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w900,
@@ -325,7 +319,6 @@ class _UpdateProfileButton extends StatelessWidget {
     );
   }
 }
-
 
 class _LogoutButton extends StatelessWidget {
   const _LogoutButton({required this.onLogout});
@@ -726,7 +719,10 @@ class _VehiclesSection extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                _VehicleImage(vehicle: vehicles[i]),
+                _VehicleImage(
+                  key: ValueKey('vehicle-image-${vehicles[i].id ?? i}'),
+                  vehicle: vehicles[i],
+                ),
               ],
             ],
     );
@@ -819,7 +815,7 @@ class _ReadOnlyField extends StatelessWidget {
 }
 
 class _VehicleImage extends StatelessWidget {
-  const _VehicleImage({required this.vehicle});
+  const _VehicleImage({super.key, required this.vehicle});
 
   final VehicleDto vehicle;
 
@@ -832,10 +828,30 @@ class _VehicleImage extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(top: 8.0),
-      child: _TenantProfileImage(
-        imageUrl: imageUrl,
-        title: _display(vehicle.licensePlate),
-        fallbackText: 'Không tải được ảnh phương tiện',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => VehicleImagePreviewPage(
+                imageUrl: imageUrl,
+                title: _display(vehicle.licensePlate),
+              ),
+            ),
+          );
+        },
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: Image.network(
+              imageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  const _EmptyImage(text: 'Không tải được ảnh phương tiện'),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -987,7 +1003,6 @@ class _EmptyText extends StatelessWidget {
     );
   }
 }
-
 
 BoxDecoration _cardDecoration() {
   return BoxDecoration(

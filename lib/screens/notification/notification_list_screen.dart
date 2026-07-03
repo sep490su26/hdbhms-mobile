@@ -163,7 +163,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
                                   child: ListView.separated(
                                     padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
                                     itemCount: filtered.length + (_hasMore ? 1 : 0),
-                                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                    separatorBuilder: (context, index) => const SizedBox(height: 8),
                                     itemBuilder: (_, i) {
                                       if (i == filtered.length) {
                                         _loadMore();

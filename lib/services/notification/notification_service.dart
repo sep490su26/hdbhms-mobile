@@ -54,7 +54,7 @@ class NotificationService {
         final body = jsonDecode(utf8.decode(response.bodyBytes));
         if (body is Map<String, dynamic> && body.containsKey('data')) {
           final data = body['data'] as Map<String, dynamic>;
-          final hasMore = data['has_more'] as bool? ?? false;
+          final hasMore = data['hasMore'] as bool? ?? false;
           final itemsList = (data['items'] as List<dynamic>? ?? [])
               .whereType<Map<String, dynamic>>()
               .map(NotificationItem.fromJson)

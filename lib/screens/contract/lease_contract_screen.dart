@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
+import 'package:hdbhms_mobile/screens/profileRequest/tenant_request_screen.dart';
 
 import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/contract/lease_contract_model.dart';
@@ -10,8 +10,9 @@ import 'package:hdbhms_mobile/utils/currency_formatter.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/contract/contract_pdf_viewer_screen.dart';
+import 'package:hdbhms_mobile/screens/contract/equipment_handover_screen.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
+import 'package:hdbhms_mobile/screens/profileRequest/tenant_profile_screen.dart';
 
 class LeaseContractScreen extends StatefulWidget {
   const LeaseContractScreen({
@@ -198,6 +199,10 @@ class _ContractContent extends StatelessWidget {
           const SizedBox(height: 12),
           _ContractInfoGrid(contract: contract),
           const SizedBox(height: 12),
+          if (contract.id != null) ...[
+            _EquipmentHandoverSection(contractId: contract.id!),
+            const SizedBox(height: 12),
+          ],
           _TermsSection(terms: contract.terms),
           const SizedBox(height: 12),
           _DocumentSection(contractFileUrl: contract.contractFileUrl),
@@ -905,6 +910,42 @@ class _TermsSection extends StatelessWidget {
                 ],
               ],
             ),
+    );
+  }
+}
+
+class _EquipmentHandoverSection extends StatelessWidget {
+  const _EquipmentHandoverSection({required this.contractId});
+
+  final int contractId;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      title: 'Bàn giao thiết bị',
+      icon: Icons.inventory_2_outlined,
+      child: SizedBox(
+        width: double.infinity,
+        height: 48,
+        child: ElevatedButton.icon(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) =>
+                  EquipmentHandoverScreen(contractId: contractId),
+            ),
+          ),
+          icon: const Icon(Icons.assignment_turned_in_outlined, size: 20),
+          label: const Text('Xem bảng bàn giao thiết bị'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.deepBlue,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

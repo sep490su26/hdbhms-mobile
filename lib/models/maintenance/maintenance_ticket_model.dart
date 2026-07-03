@@ -13,6 +13,17 @@ class MaintenanceTicketModel {
     this.roomCode = '',
     this.priority = TicketPriority.medium,
     this.ticketScope = TicketScope.tenantRoom,
+    this.ticketStatusLabel = '',
+    this.billingStatus = '',
+    this.billingStatusLabel = '',
+    this.invoiceId,
+    this.invoiceCode = '',
+    this.invoiceStatus = '',
+    this.paymentStatus = '',
+    this.chargeAmount,
+    this.chargeToTenant = false,
+    this.payer = '',
+    this.lineType = '',
   });
 
   final int id;
@@ -26,6 +37,30 @@ class MaintenanceTicketModel {
   final String roomCode;
   final TicketPriority priority;
   final TicketScope ticketScope;
+  final String ticketStatusLabel;
+  final String billingStatus;
+  final String billingStatusLabel;
+  final int? invoiceId;
+  final String invoiceCode;
+  final String invoiceStatus;
+  final String paymentStatus;
+  final num? chargeAmount;
+  final bool chargeToTenant;
+  final String payer;
+  final String lineType;
+
+  bool get requiresTenantPayment => const {
+    'PENDING_PAYMENT',
+    'PARTIALLY_PAID',
+    'OVERDUE',
+  }.contains(billingStatus.toUpperCase());
+
+  String get primaryStatusLabel {
+    if (requiresTenantPayment && billingStatusLabel.isNotEmpty) {
+      return billingStatusLabel;
+    }
+    return ticketStatusLabel.isNotEmpty ? ticketStatusLabel : status.label;
+  }
 
   MaintenanceTicketModel copyWith({
     String? code,
@@ -51,6 +86,17 @@ class MaintenanceTicketModel {
       roomCode: roomCode ?? this.roomCode,
       priority: priority ?? this.priority,
       ticketScope: ticketScope ?? this.ticketScope,
+      ticketStatusLabel: ticketStatusLabel,
+      billingStatus: billingStatus,
+      billingStatusLabel: billingStatusLabel,
+      invoiceId: invoiceId,
+      invoiceCode: invoiceCode,
+      invoiceStatus: invoiceStatus,
+      paymentStatus: paymentStatus,
+      chargeAmount: chargeAmount,
+      chargeToTenant: chargeToTenant,
+      payer: payer,
+      lineType: lineType,
     );
   }
 
@@ -90,6 +136,25 @@ class MaintenanceTicketModel {
             json['ticketScope']?.toString() ??
             '',
       ),
+      ticketStatusLabel: _firstString(json, [
+        'ticket_status_label',
+        'ticketStatusLabel',
+      ]),
+      billingStatus: _firstString(json, ['billing_status', 'billingStatus']),
+      billingStatusLabel: _firstString(json, [
+        'billing_status_label',
+        'billingStatusLabel',
+      ]),
+      invoiceId: _asInt(json['invoice_id'] ?? json['invoiceId']),
+      invoiceCode: _firstString(json, ['invoice_code', 'invoiceCode']),
+      invoiceStatus: _firstString(json, ['invoice_status', 'invoiceStatus']),
+      paymentStatus: _firstString(json, ['payment_status', 'paymentStatus']),
+      chargeAmount: _asNum(json['charge_amount'] ?? json['chargeAmount']),
+      chargeToTenant: _asBool(
+        json['charge_to_tenant'] ?? json['chargeToTenant'],
+      ),
+      payer: _firstString(json, ['payer', 'paid_by', 'paidBy']),
+      lineType: _firstString(json, ['line_type', 'lineType']),
     );
   }
 }
@@ -180,6 +245,11 @@ class MaintenanceTicketDetail {
     this.billingStatusLabel = '',
     this.invoiceStatus = '',
     this.invoiceCode = '',
+    this.ticketStatusLabel = '',
+    this.paymentStatus = '',
+    this.invoiceId,
+    this.chargeToTenant = false,
+    this.payer = '',
     this.lineType = '',
     this.chargeAmount,
   });
@@ -207,6 +277,11 @@ class MaintenanceTicketDetail {
   final String billingStatusLabel;
   final String invoiceStatus;
   final String invoiceCode;
+  final String ticketStatusLabel;
+  final String paymentStatus;
+  final int? invoiceId;
+  final bool chargeToTenant;
+  final String payer;
   final String lineType;
   final num? chargeAmount;
 
@@ -238,6 +313,11 @@ class MaintenanceTicketDetail {
     String? billingStatusLabel,
     String? invoiceStatus,
     String? invoiceCode,
+    String? ticketStatusLabel,
+    String? paymentStatus,
+    int? invoiceId,
+    bool? chargeToTenant,
+    String? payer,
     String? lineType,
     num? chargeAmount,
   }) {
@@ -265,6 +345,11 @@ class MaintenanceTicketDetail {
       billingStatusLabel: billingStatusLabel ?? this.billingStatusLabel,
       invoiceStatus: invoiceStatus ?? this.invoiceStatus,
       invoiceCode: invoiceCode ?? this.invoiceCode,
+      ticketStatusLabel: ticketStatusLabel ?? this.ticketStatusLabel,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
+      invoiceId: invoiceId ?? this.invoiceId,
+      chargeToTenant: chargeToTenant ?? this.chargeToTenant,
+      payer: payer ?? this.payer,
       lineType: lineType ?? this.lineType,
       chargeAmount: chargeAmount ?? this.chargeAmount,
     );
@@ -284,6 +369,17 @@ class MaintenanceTicketDetail {
       priority: ticket.priority,
       createdAt: ticket.createdDate,
       ticketScope: ticket.ticketScope,
+      ticketStatusLabel: ticket.ticketStatusLabel,
+      billingStatus: ticket.billingStatus,
+      billingStatusLabel: ticket.billingStatusLabel,
+      invoiceId: ticket.invoiceId,
+      invoiceCode: ticket.invoiceCode,
+      invoiceStatus: ticket.invoiceStatus,
+      paymentStatus: ticket.paymentStatus,
+      chargeAmount: ticket.chargeAmount,
+      chargeToTenant: ticket.chargeToTenant,
+      payer: ticket.payer,
+      lineType: ticket.lineType,
       events: [
         TicketTimelineEvent(
           status: TicketStatus.pending.key,
@@ -387,6 +483,16 @@ class MaintenanceTicketDetail {
           json['invoice_code']?.toString() ??
           json['invoiceCode']?.toString() ??
           '',
+      ticketStatusLabel: _firstString(json, [
+        'ticket_status_label',
+        'ticketStatusLabel',
+      ]),
+      paymentStatus: _firstString(json, ['payment_status', 'paymentStatus']),
+      invoiceId: _asInt(json['invoice_id'] ?? json['invoiceId']),
+      chargeToTenant: _asBool(
+        json['charge_to_tenant'] ?? json['chargeToTenant'],
+      ),
+      payer: _firstString(json, ['payer', 'paid_by', 'paidBy']),
       lineType:
           json['line_type']?.toString() ?? json['lineType']?.toString() ?? '',
       chargeAmount: _asNum(json['charge_amount'] ?? json['chargeAmount']),
@@ -797,6 +903,19 @@ int? _asInt(Object? value) {
 num? _asNum(Object? value) {
   if (value is num) return value;
   return num.tryParse(value?.toString() ?? '');
+}
+
+bool _asBool(Object? value) {
+  if (value is bool) return value;
+  return value?.toString().toLowerCase() == 'true';
+}
+
+String _firstString(Map<String, dynamic> json, List<String> keys) {
+  for (final key in keys) {
+    final value = json[key]?.toString();
+    if (value != null && value.isNotEmpty) return value;
+  }
+  return '';
 }
 
 Map<String, dynamic> _asMap(Object? value) {

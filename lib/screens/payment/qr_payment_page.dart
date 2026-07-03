@@ -7,6 +7,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/payment/tenant_invoice_service.dart';
+import 'payment_success_page.dart';
 
 class QrPaymentPage extends StatefulWidget {
   const QrPaymentPage({
@@ -67,7 +68,12 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
             ..showSnackBar(
               const SnackBar(content: Text('Thanh toán đã được xác nhận.')),
             );
-          Navigator.of(context).pop(true);
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) =>
+                  PaymentSuccessPage(invoiceService: widget.invoiceService),
+            ),
+          );
           return;
         }
       }
@@ -414,26 +420,33 @@ class _QrCard extends StatelessWidget {
             },
           ),
           const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: theme.softAccent,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.bolt_rounded, color: theme.primary, size: 16),
-                const SizedBox(width: 5),
-                Text(
-                  'Tự động đối soát sau khi chuyển khoản',
-                  style: TextStyle(
-                    color: theme.primary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 310),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: theme.softAccent,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.bolt_rounded, color: theme.primary, size: 16),
+                  const SizedBox(width: 5),
+                  Flexible(
+                    child: Text(
+                      'Tự động đối soát sau khi chuyển khoản',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: theme.primary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
