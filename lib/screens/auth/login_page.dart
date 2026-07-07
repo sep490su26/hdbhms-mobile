@@ -4,6 +4,7 @@ import 'package:hdbhms_mobile/models/onboarding_state.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/auth/forgot_password_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
+import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/auth_text_field.dart';
@@ -18,11 +19,13 @@ class LoginPage extends StatefulWidget {
     this.authService = const AuthService(),
     this.homeService = const HomeService(),
     this.forgotPasswordService = const ForgotPasswordService(),
+    this.tenantInvoiceService = const TenantInvoiceService(),
   });
 
   final AuthService authService;
   final HomeService homeService;
   final ForgotPasswordService forgotPasswordService;
+  final TenantInvoiceService tenantInvoiceService;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -105,6 +108,7 @@ class _LoginPageState extends State<LoginPage> {
           builder: (context) => HomeScreen(
             authService: widget.authService,
             homeService: widget.homeService,
+            tenantInvoiceService: widget.tenantInvoiceService,
           ),
         ),
       );
@@ -126,6 +130,7 @@ class _LoginPageState extends State<LoginPage> {
       _ => HomeScreen(
         authService: widget.authService,
         homeService: widget.homeService,
+        tenantInvoiceService: widget.tenantInvoiceService,
       ),
     };
 

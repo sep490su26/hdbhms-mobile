@@ -1,12 +1,16 @@
 enum FileCategory {
-  ID_CARD,
-  CONTRACT,
-  INVOICE,
-  MAINTENANCE,
-  TICKET_ATTACHMENT,
-  OTHER;
+  idCard('ID_CARD'),
+  contract('CONTRACT'),
+  invoice('INVOICE'),
+  maintenance('MAINTENANCE'),
+  ticketAttachment('TICKET_ATTACHMENT'),
+  other('OTHER');
 
-  String toJson() => name;
+  const FileCategory(this.value);
+
+  final String value;
+
+  String toJson() => value;
 }
 
 class FileMetadataResponse {

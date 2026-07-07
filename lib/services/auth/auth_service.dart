@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/api_response.dart';
 import 'package:hdbhms_mobile/models/auth/login_response.dart';
+import 'package:hdbhms_mobile/models/auth/user_model.dart';
 import 'package:hdbhms_mobile/models/onboarding_state.dart';
 import 'package:hdbhms_mobile/models/onboarding_action.dart';
 
@@ -307,8 +308,8 @@ class AuthService {
     }
   }
 
-  // Legacy stubs for ChangePassword (if needed later)
-  Future<void> changePassword({
+  Future<OnboardingState> changePassword({
+    String? oldPassword,
     required String newPassword,
     required String confirmPassword,
   }) async {
@@ -328,13 +329,30 @@ class AuthService {
           )
           .timeout(_timeout);
 
-      final apiResponse = ApiResponse<void>.fromJson(
+      final apiResponse = ApiResponse<UserResponse>.fromJson(
         _decodeBody(response.body),
-        (_) {},
+        (data) => UserResponse.fromJson(data as Map<String, dynamic>),
       );
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        return;
+        final user = apiResponse.data;
+        if (user == null) {
+          throw const AuthException('Dữ liệu đổi mật khẩu không hợp lệ');
+        }
+
+        if (!user.mustChangePassword) {
+          await markFirstPasswordChanged(userId: user.id);
+        }
+
+        try {
+          return await fetchOnboarding();
+        } on AuthException {
+          final cachedOnboarding = await getCachedOnboarding();
+          if (cachedOnboarding != null) {
+            return cachedOnboarding;
+          }
+          rethrow;
+        }
       }
 
       throw AuthException(apiResponse.message ?? 'Đổi mật khẩu thất bại');
@@ -349,5 +367,55 @@ class AuthService {
         client.close();
       }
     }
+  }
+
+  static Future<void> markFirstPasswordChanged({int? userId}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final actionsRaw = prefs.getString(onboardingActionsKey);
+    final actions = <OnboardingAction>[];
+
+    if (actionsRaw != null) {
+      try {
+        final List<dynamic> actionsJson = jsonDecode(actionsRaw);
+        actions.addAll(
+          actionsJson.whereType<Map<String, dynamic>>().map(
+            OnboardingAction.fromJson,
+          ),
+        );
+      } catch (_) {
+        actions.clear();
+      }
+    }
+
+    final changePasswordIndex = actions.indexWhere(
+      (action) => action.actionKey == OnboardingState.changePassword,
+    );
+    if (changePasswordIndex >= 0) {
+      final current = actions[changePasswordIndex];
+      actions[changePasswordIndex] = OnboardingAction(
+        actionKey: current.actionKey,
+        label: current.label.isEmpty ? 'Change password' : current.label,
+        completed: true,
+        priority: current.priority,
+        actionUrl: null,
+      );
+    } else {
+      actions.add(
+        const OnboardingAction(
+          actionKey: OnboardingState.changePassword,
+          label: 'Change password',
+          completed: true,
+          priority: 1,
+        ),
+      );
+    }
+
+    actions.sort((a, b) => a.priority.compareTo(b.priority));
+    final onboarding = OnboardingState(
+      userId: userId ?? prefs.getInt(userIdKey),
+      onBoardingCompleted: actions.every((action) => action.completed),
+      actions: actions,
+    );
+    await saveOnboarding(onboarding);
   }
 }

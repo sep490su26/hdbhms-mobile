@@ -170,7 +170,7 @@ class MaintenanceTicketService {
       final uploaded = await _fileService.uploadSingle(
         bytes: bytes,
         fileName: attachment.name,
-        category: FileCategory.MAINTENANCE,
+        category: FileCategory.maintenance,
       );
       if (uploaded.fileId > 0) {
         fileIds.add(uploaded.fileId);

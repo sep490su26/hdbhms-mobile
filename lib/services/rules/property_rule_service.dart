@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -29,12 +29,12 @@ class PropertyRuleService {
       throw const PropertyRuleException('Không tìm thấy tenant hiện tại');
     }
 
-    final client = _client ?? AuthenticatedClient();
+    final client = _client == null
+        ? AuthenticatedClient()
+        : AuthenticatedClient(inner: _client);
     try {
       final response = await client
-          .get(
-            Uri.parse('${ApiConfig.baseUrl}/tenants/$currentTenantId/rules'),
-          )
+          .get(Uri.parse('${ApiConfig.baseUrl}/tenants/$currentTenantId/rules'))
           .timeout(_timeout);
 
       if (response.statusCode == 200) {

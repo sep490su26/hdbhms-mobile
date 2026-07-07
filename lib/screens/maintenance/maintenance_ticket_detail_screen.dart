@@ -9,6 +9,7 @@ import 'package:hdbhms_mobile/widgets/ticket_attachment_grid.dart';
 import 'package:hdbhms_mobile/widgets/ticket_status_badge.dart';
 import 'package:hdbhms_mobile/widgets/ticket_timeline.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_review_screen.dart';
+import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 
 class MaintenanceTicketDetailScreen extends StatefulWidget {
   const MaintenanceTicketDetailScreen({
@@ -373,6 +374,10 @@ class _MaintenanceTicketDetailScreenState
                             const SizedBox(height: 18),
                             _RepairInfoCard(detail: detail),
                           ],
+                          if (_shouldShowBillingInfo(detail)) ...[
+                            const SizedBox(height: 18),
+                            _BillingInfoCard(detail: detail),
+                          ],
                           if (_shouldShowReview(detail)) ...[
                             const SizedBox(height: 18),
                             _ReviewCard(review: detail.review),
@@ -445,9 +450,17 @@ class _RepairInfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final repair = detail.repairInfo;
     return _SectionCard(
-      title: 'Thông tin xử lý thực tế',
+      title: 'Kết quả xử lý',
       child: Column(
         children: [
+          _RepairLine(
+            icon: Icons.task_alt_rounded,
+            label: 'Trạng thái xử lý',
+            value: detail.ticketStatusLabel.isNotEmpty
+                ? detail.ticketStatusLabel
+                : detail.status.label,
+          ),
+          const SizedBox(height: 20),
           _RepairLine(
             icon: Icons.payments_outlined,
             label: 'Chi phí thực tế',
@@ -473,6 +486,77 @@ class _RepairInfoCard extends StatelessWidget {
               icon: Icons.notes_rounded,
               label: 'Ghi chú hoàn tất',
               value: repair!.completionNote!.trim(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _BillingInfoCard extends StatelessWidget {
+  const _BillingInfoCard({required this.detail});
+
+  final MaintenanceTicketDetail detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final isPaid = detail.billingStatus.toUpperCase() == 'PAID';
+    final responsibility = detail.chargeToTenant ||
+            detail.payer.toUpperCase() == 'TENANT'
+        ? 'Khách thuê chịu'
+        : 'Không thu khách';
+    return _SectionCard(
+      title: 'Thanh toán phát sinh',
+      child: Column(
+        children: [
+          _RepairLine(
+            icon: Icons.account_balance_wallet_outlined,
+            label: 'Trách nhiệm chi phí',
+            value: responsibility,
+          ),
+          const SizedBox(height: 20),
+          _RepairLine(
+            icon: Icons.payments_outlined,
+            label: 'Số tiền',
+            value: '${_formatCurrency(detail.chargeAmount ?? 0)}đ',
+          ),
+          if (detail.invoiceCode.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            _RepairLine(
+              icon: Icons.receipt_long_outlined,
+              label: 'Mã hóa đơn',
+              value: detail.invoiceCode,
+            ),
+          ],
+          const SizedBox(height: 20),
+          _RepairLine(
+            icon: isPaid
+                ? Icons.check_circle_outline_rounded
+                : Icons.schedule_rounded,
+            label: 'Trạng thái thanh toán',
+            value: detail.billingStatusLabel.isNotEmpty
+                ? detail.billingStatusLabel
+                : responsibility,
+          ),
+          if (detail.chargeToTenant && detail.invoiceId != null && !isPaid) ...[
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const BillSelectionPage(),
+                  ),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.deepBlue,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(46),
+                ),
+                icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                label: const Text('Xem hóa đơn / Thanh toán ngay'),
+              ),
             ),
           ],
         ],
@@ -1276,6 +1360,12 @@ bool _shouldShowRepairInfo(MaintenanceTicketDetail detail) {
       detail.status == TicketStatus.inProgress ||
       detail.status == TicketStatus.waitingConfirmation ||
       detail.status == TicketStatus.completed;
+}
+
+bool _shouldShowBillingInfo(MaintenanceTicketDetail detail) {
+  return detail.billingStatus.isNotEmpty &&
+      (detail.status == TicketStatus.waitingConfirmation ||
+          detail.status == TicketStatus.completed);
 }
 
 bool _shouldShowReview(MaintenanceTicketDetail detail) {

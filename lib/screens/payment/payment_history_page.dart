@@ -5,17 +5,21 @@ import '../../services/payment/tenant_invoice_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/app_screen_shell.dart';
 import '../notification/notification_list_screen.dart';
-import '../profile_request/tenant_profile_screen.dart';
+import '../profileRequest/tenant_profile_screen.dart';
 
 class PaymentHistoryPage extends StatefulWidget {
-  const PaymentHistoryPage({super.key});
+  const PaymentHistoryPage({
+    super.key,
+    this.invoiceService = const TenantInvoiceService(),
+  });
+
+  final TenantInvoiceService invoiceService;
 
   @override
   State<PaymentHistoryPage> createState() => _PaymentHistoryPageState();
 }
 
 class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
-  final TenantInvoiceService _invoiceService = const TenantInvoiceService();
   final TextEditingController _searchController = TextEditingController();
   late Future<List<TenantInvoice>> _invoicesFuture;
   String _selectedMonthKey = 'all';
@@ -23,7 +27,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
   @override
   void initState() {
     super.initState();
-    _invoicesFuture = _invoiceService.fetchMyInvoices();
+    _invoicesFuture = widget.invoiceService.fetchMyInvoices();
     _searchController.addListener(() => setState(() {}));
   }
 
@@ -35,7 +39,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
 
   void _reload() {
     setState(() {
-      _invoicesFuture = _invoiceService.fetchMyInvoices();
+      _invoicesFuture = widget.invoiceService.fetchMyInvoices();
     });
   }
 

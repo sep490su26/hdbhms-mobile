@@ -29,12 +29,22 @@ class UserResponse {
       phone: json['phone']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
       role: json['role']?.toString() ?? '',
-      mustChangePassword: json['mustChangePassword'] == true,
+      mustChangePassword:
+          json['must_change_password'] == true ||
+          json['mustChangePassword'] == true,
       status: json['status']?.toString() ?? '',
-      lastLoginAt: DateTime.tryParse(json['lastLoginAt']?.toString() ?? ''),
-      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? ''),
-      updatedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? ''),
-      deletedAt: DateTime.tryParse(json['deletedAt']?.toString() ?? ''),
+      lastLoginAt: DateTime.tryParse(
+        (json['last_login_at'] ?? json['lastLoginAt'])?.toString() ?? '',
+      ),
+      createdAt: DateTime.tryParse(
+        (json['created_at'] ?? json['createdAt'])?.toString() ?? '',
+      ),
+      updatedAt: DateTime.tryParse(
+        (json['updated_at'] ?? json['updatedAt'])?.toString() ?? '',
+      ),
+      deletedAt: DateTime.tryParse(
+        (json['deleted_at'] ?? json['deletedAt'])?.toString() ?? '',
+      ),
     );
   }
 }

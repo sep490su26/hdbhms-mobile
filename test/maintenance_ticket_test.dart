@@ -1,9 +1,12 @@
+// ignore_for_file: use_null_aware_elements
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
+import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_detail_screen.dart';
 import 'package:hdbhms_mobile/services/maintenance/maintenance_ticket_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -119,6 +122,137 @@ void main() {
     expect(_ticketCodeFinder('SC-0002'), findsNothing);
     expect(_ticketCodeFinder('SC-0003'), findsNothing);
   });
+  testWidgets(
+    'completed tenant charge prioritizes pending payment on ticket list',
+    (tester) async {
+      final service = MaintenanceTicketService(
+        client: MockClient((request) async => _jsonResponse(
+          _ticketPage([
+            _ticketJson(
+              billingStatus: 'PENDING_PAYMENT',
+              billingStatusLabel: 'Chờ thanh toán',
+              chargeAmount: 2000,
+              chargeToTenant: true,
+            ),
+          ]),
+        )),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(home: MaintenanceTicketListScreen(ticketService: service)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Chờ thanh toán'), findsOneWidget);
+      expect(
+        find.text('Đã hoàn tất xử lý · Cần thanh toán 2.000đ'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  test('completed paid and landlord-paid tickets keep billing semantics', () {
+    final paid = MaintenanceTicketModel.fromJson(
+      _ticketJson(
+        billingStatus: 'PAID',
+        billingStatusLabel: 'Đã thanh toán',
+        chargeToTenant: true,
+      ),
+    );
+    final noCharge = MaintenanceTicketModel.fromJson(
+      _ticketJson(
+        billingStatus: 'NO_CHARGE',
+        billingStatusLabel: 'Không thu khách',
+        payer: 'LANDLORD',
+      ),
+    );
+
+    expect(paid.requiresTenantPayment, isFalse);
+    expect(paid.billingStatusLabel, 'Đã thanh toán');
+    expect(noCharge.chargeToTenant, isFalse);
+    expect(noCharge.billingStatusLabel, 'Không thu khách');
+
+    final inProgress = MaintenanceTicketModel.fromJson(
+      _ticketJson(status: 'IN_PROGRESS'),
+    );
+    final violation = MaintenanceTicketModel.fromJson(
+      _ticketJson(
+        category: 'RULE_VIOLATION',
+        billingStatus: 'PENDING_PAYMENT',
+        billingStatusLabel: 'Chờ thanh toán',
+        lineType: 'VIOLATION_FINE',
+      ),
+    );
+    final compensation = MaintenanceTicketModel.fromJson(
+      _ticketJson(lineType: 'MAINTENANCE_COMPENSATION'),
+    );
+
+    expect(inProgress.primaryStatusLabel, isNot('Hoàn tất xử lý'));
+    expect(violation.lineType, 'VIOLATION_FINE');
+    expect(violation.primaryStatusLabel, 'Chờ thanh toán');
+    expect(compensation.lineType, 'MAINTENANCE_COMPENSATION');
+  });
+
+  testWidgets('ticket detail shows incidental payment section and CTA', (
+    tester,
+  ) async {
+    final service = MaintenanceTicketService(
+      client: MockClient((request) async => _jsonResponse({
+        'data': _ticketJson(
+          billingStatus: 'PENDING_PAYMENT',
+          billingStatusLabel: 'Chờ thanh toán',
+          chargeAmount: 2000,
+          chargeToTenant: true,
+          invoiceId: 41,
+          invoiceCode: 'INV-MNT-4-0618094846',
+          lineType: 'MAINTENANCE_COMPENSATION',
+        ),
+      })),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MaintenanceTicketDetailScreen(
+          ticketId: 1,
+          ticketService: service,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Thanh toán phát sinh'), findsOneWidget);
+    expect(find.text('INV-MNT-4-0618094846'), findsOneWidget);
+    expect(find.text('Chờ thanh toán'), findsOneWidget);
+    expect(find.text('Xem hóa đơn / Thanh toán ngay'), findsOneWidget);
+  });
+
+  testWidgets('paid ticket detail hides payment CTA', (tester) async {
+    final service = MaintenanceTicketService(
+      client: MockClient((request) async => _jsonResponse({
+        'data': _ticketJson(
+          billingStatus: 'PAID',
+          billingStatusLabel: 'Đã thanh toán',
+          chargeAmount: 2000,
+          chargeToTenant: true,
+          invoiceId: 41,
+          invoiceCode: 'INV-MNT-4-0618094846',
+        ),
+      })),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MaintenanceTicketDetailScreen(
+          ticketId: 1,
+          ticketService: service,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Đã thanh toán'), findsOneWidget);
+    expect(find.text('Xem hóa đơn / Thanh toán ngay'), findsNothing);
+  });
 }
 
 MaintenanceTicketService _ticketService() {
@@ -180,6 +314,14 @@ Map<String, dynamic> _ticketJson({
   String status = 'COMPLETED',
   String category = 'WATER',
   String title = 'Nước chảy yếu tại vòi sen.',
+  String? billingStatus,
+  String? billingStatusLabel,
+  int? chargeAmount,
+  bool chargeToTenant = false,
+  String? payer,
+  int? invoiceId,
+  String? invoiceCode,
+  String? lineType,
 }) {
   return {
     'id': id,
@@ -194,6 +336,15 @@ Map<String, dynamic> _ticketJson({
     'severity': 'MEDIUM',
     'scope': 'ROOM',
     'created_at': '2026-06-12T21:00:00',
+    if (billingStatus != null) 'billing_status': billingStatus,
+    if (billingStatusLabel != null)
+      'billing_status_label': billingStatusLabel,
+    if (chargeAmount != null) 'charge_amount': chargeAmount,
+    'charge_to_tenant': chargeToTenant,
+    if (payer != null) 'payer': payer,
+    if (invoiceId != null) 'invoice_id': invoiceId,
+    if (invoiceCode != null) 'invoice_code': invoiceCode,
+    if (lineType != null) 'line_type': lineType,
   };
 }
 

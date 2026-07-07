@@ -1,9 +1,10 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
 import 'package:hdbhms_mobile/config/api_config.dart';
+import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 
 class ForgotPasswordException implements Exception {
   const ForgotPasswordException(this.message);
@@ -17,7 +18,7 @@ class ForgotPasswordService {
   static const _timeout = Duration(seconds: 20);
   final http.Client? _client;
 
-  /// Phase 1: Request a password reset. 
+  /// Phase 1: Request a password reset.
   /// The backend will send an email containing a reset token (or magic link).
   Future<void> requestResetPassword(String email) async {
     final client = _client ?? http.Client();
@@ -48,9 +49,7 @@ class ForgotPasswordService {
     } on http.ClientException {
       throw const ForgotPasswordException('Không kết nối được máy chủ');
     } on FormatException {
-      throw const ForgotPasswordException(
-        'Có lỗi xảy ra, vui lòng thử lại',
-      );
+      throw const ForgotPasswordException('Có lỗi xảy ra, vui lòng thử lại');
     } finally {
       if (_client == null) {
         client.close();
@@ -80,6 +79,7 @@ class ForgotPasswordService {
           .timeout(_timeout);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
+        await AuthService.clearLocalSession();
         return;
       }
 
