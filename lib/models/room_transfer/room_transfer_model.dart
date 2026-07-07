@@ -367,7 +367,9 @@ class RoomTransferRequest {
       ),
       targetTransferType: targetTransferType,
       requestedTransferDate: _parseDate(
-        _str(json, 'expectedTransferDate') ?? _str(json, 'requestedTransferDate'),
+        _str(json, 'expectedTransferDate').isNotEmpty
+            ? _str(json, 'expectedTransferDate')
+            : _str(json, 'requestedTransferDate'),
       ),
       status: status,
       oldRoomName: _str(json, 'oldRoomName'),

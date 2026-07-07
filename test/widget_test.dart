@@ -150,6 +150,7 @@ class _TitledTenantInvoice extends TenantInvoice {
     super.transferDescription = '',
     super.qrCode = '000201010212',
     super.lines = const [],
+    super.priceDifferenceSettlementType = '',
   }) : _title = title,
        super(
          roomId: 1,

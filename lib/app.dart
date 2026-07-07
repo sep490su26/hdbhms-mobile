@@ -9,7 +9,8 @@ import 'package:hdbhms_mobile/screens/auth/identity_verification_page.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
-import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
+import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
+import 'package:hdbhms_mobile/services/profileRequest/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/screens/auth/reset_password_page.dart';
 import 'package:hdbhms_mobile/screens/splash/app_splash_screen.dart';
 import 'package:hdbhms_mobile/services/deep_link_service.dart';
@@ -21,6 +22,7 @@ class App extends StatelessWidget {
     this.authService = const AuthService(),
     this.homeService = const HomeService(),
     this.profileService = const TenantProfileService(),
+    this.tenantInvoiceService = const TenantInvoiceService(),
   });
 
   static final GlobalKey<NavigatorState> navigatorKey =
@@ -29,6 +31,7 @@ class App extends StatelessWidget {
   final AuthService authService;
   final HomeService homeService;
   final TenantProfileService profileService;
+  final TenantInvoiceService tenantInvoiceService;
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +44,7 @@ class App extends StatelessWidget {
         authService: authService,
         homeService: homeService,
         profileService: profileService,
+        tenantInvoiceService: tenantInvoiceService,
       ),
     );
   }
@@ -51,11 +55,13 @@ class _AppRoot extends StatefulWidget {
     required this.authService,
     required this.homeService,
     required this.profileService,
+    required this.tenantInvoiceService,
   });
 
   final AuthService authService;
   final HomeService homeService;
   final TenantProfileService profileService;
+  final TenantInvoiceService tenantInvoiceService;
 
   @override
   State<_AppRoot> createState() => _AppRootState();
@@ -105,6 +111,7 @@ class _AppRootState extends State<_AppRoot> {
       return LoginPage(
         authService: widget.authService,
         homeService: widget.homeService,
+        tenantInvoiceService: widget.tenantInvoiceService,
       );
     }
 
@@ -117,6 +124,7 @@ class _AppRootState extends State<_AppRoot> {
       return LoginPage(
         authService: widget.authService,
         homeService: widget.homeService,
+        tenantInvoiceService: widget.tenantInvoiceService,
       );
     } on AuthException {
       final cachedOnboarding = await widget.authService.getCachedOnboarding();
@@ -128,6 +136,7 @@ class _AppRootState extends State<_AppRoot> {
       return LoginPage(
         authService: widget.authService,
         homeService: widget.homeService,
+        tenantInvoiceService: widget.tenantInvoiceService,
       );
     }
   }
@@ -138,6 +147,7 @@ class _AppRootState extends State<_AppRoot> {
         authService: widget.authService,
         homeService: widget.homeService,
         profileService: widget.profileService,
+        tenantInvoiceService: widget.tenantInvoiceService,
       );
     }
 
@@ -157,6 +167,7 @@ class _AppRootState extends State<_AppRoot> {
         authService: widget.authService,
         homeService: widget.homeService,
         profileService: widget.profileService,
+        tenantInvoiceService: widget.tenantInvoiceService,
       ),
     };
   }

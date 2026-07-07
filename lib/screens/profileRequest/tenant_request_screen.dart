@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/models/change_request/change_request_model.dart';
-import 'package:hdbhms_mobile/models/profile_request/tenant_request_model.dart';
+import 'package:hdbhms_mobile/models/profileRequest/tenant_request_model.dart';
 import 'package:hdbhms_mobile/models/room_transfer/room_transfer_model.dart';
 import 'package:hdbhms_mobile/services/change_request/change_request_service.dart';
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
@@ -14,7 +14,7 @@ import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
+import 'package:hdbhms_mobile/screens/profileRequest/tenant_profile_screen.dart';
 import 'package:hdbhms_mobile/screens/room_transfer/room_transfer_detail_screen.dart';
 
 /// Màn "Yêu cầu" – danh sách yêu cầu + filter theo loại

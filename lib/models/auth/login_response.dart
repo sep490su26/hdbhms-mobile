@@ -6,6 +6,7 @@ class LoginResponse {
     required this.sessionId,
     required this.role,
     required this.authorized,
+    this.mustChangePassword,
     this.tenantId,
     this.propertyId,
     this.onboarding,
@@ -15,6 +16,7 @@ class LoginResponse {
   final String sessionId;
   final String role;
   final bool authorized;
+  final bool? mustChangePassword;
   final int? tenantId;
   final int? propertyId;
   final OnboardingState? onboarding;
@@ -23,11 +25,17 @@ class LoginResponse {
     return LoginResponse(
       token: json['token']?.toString() ?? '',
       sessionId:
-          json['sessionId']?.toString() ?? '',
+          json['sessionId']?.toString() ?? json['session_id']?.toString() ?? '',
       role: json['role']?.toString() ?? '',
       authorized: json['authorized'] == true,
-      tenantId: _asInt(json['tenantId']),
-      propertyId: _asInt(json['propertyId']),
+      mustChangePassword:
+          json.containsKey('mustChangePassword') ||
+              json.containsKey('must_change_password')
+          ? json['mustChangePassword'] == true ||
+                json['must_change_password'] == true
+          : null,
+      tenantId: _asInt(json['tenantId'] ?? json['tenant_id']),
+      propertyId: _asInt(json['propertyId'] ?? json['property_id']),
       onboarding: json['onboarding'] != null
           ? OnboardingState.fromJson(json['onboarding'] as Map<String, dynamic>)
           : null,
@@ -41,6 +49,7 @@ class LoginResponse {
       sessionId: sessionId,
       role: role,
       authorized: authorized,
+      mustChangePassword: mustChangePassword,
       tenantId: tenantId,
       propertyId: propertyId,
       onboarding: onboarding ?? this.onboarding,
@@ -54,7 +63,7 @@ class LoginResponse {
 
   @override
   String toString() {
-    return 'LoginResponse{token: $token, sessionId: $sessionId, role: $role, authorized: $authorized, tenantId: $tenantId, propertyId: $propertyId, onboarding: $onboarding}';
+    return 'LoginResponse{token: $token, sessionId: $sessionId, role: $role, authorized: $authorized, mustChangePassword: $mustChangePassword, tenantId: $tenantId, propertyId: $propertyId, onboarding: $onboarding}';
   }
 }
 
