@@ -21,22 +21,27 @@ class PropertyRulesResponse {
   }
 
   factory PropertyRulesResponse.fromJson(Map<String, dynamic> json) {
-    final source = _firstMap(json, const ['data', 'rules_data', 'rulesData']);
+    final source = _firstMap(json, const ['data', 'rulesData', 'rules_data']);
     final data = source.isEmpty ? json : source;
     final rawItems =
-        data['items'] ?? data['rules'] ?? data['property_rules'] ?? const [];
+        data['items'] ??
+        data['rules'] ??
+        data['propertyRules'] ??
+        data['property_rules'] ??
+        const [];
 
     return PropertyRulesResponse(
       updatedAt: _firstDate(data, const [
-        'updated_at',
         'updatedAt',
+        'lastUpdatedAt',
+        'updated_at',
         'last_updated_at',
       ]),
       bannerImageUrl: _firstString(data, const [
-        'banner_image_url',
         'bannerImageUrl',
-        'image_url',
         'imageUrl',
+        'banner_image_url',
+        'image_url',
       ]),
       items:
           _asList(rawItems)
@@ -79,13 +84,13 @@ class PropertyRule {
 
   factory PropertyRule.fromJson(Map<String, dynamic> json) {
     final ruleCode = _firstString(json, const [
-      'rule_code',
       'ruleCode',
+      'rule_code',
       'code',
     ]);
     final rawCategory = _firstString(json, const [
-      'rule_category',
       'ruleCategory',
+      'rule_category',
       'category',
     ]);
 
@@ -96,14 +101,14 @@ class PropertyRule {
       title: _firstString(json, const ['title', 'name']),
       description: _firstString(json, const ['description', 'content', 'text']),
       defaultFineAmount: _firstDouble(json, const [
-        'default_fine_amount',
         'defaultFineAmount',
-        'fine_amount',
         'fineAmount',
+        'default_fine_amount',
+        'fine_amount',
       ]),
-      fineUnit: _firstString(json, const ['fine_unit', 'fineUnit', 'unit']),
+      fineUnit: _firstString(json, const ['fineUnit', 'fine_unit', 'unit']),
       sortOrder:
-          _asInt(json['sort_order'] ?? json['sortOrder'] ?? json['order']) ??
+          _asInt(json['sortOrder'] ?? json['sort_order'] ?? json['order']) ??
           9999,
       status: _firstString(json, const ['status']),
     );

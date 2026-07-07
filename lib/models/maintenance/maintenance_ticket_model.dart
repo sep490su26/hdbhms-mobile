@@ -58,8 +58,8 @@ class MaintenanceTicketModel {
     return MaintenanceTicketModel(
       id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
       code:
-          json['ticket_code']?.toString() ??
           json['ticketCode']?.toString() ??
+          json['ticket_code']?.toString() ??
           json['code']?.toString() ??
           '',
       category: TicketCategory.fromBackend(json['category']?.toString() ?? ''),
@@ -69,25 +69,26 @@ class MaintenanceTicketModel {
       ),
       createdDate:
           DateTime.tryParse(
-            json['created_at']?.toString() ??
-                json['createdAt']?.toString() ??
+            json['createdAt']?.toString() ??
+                json['created_at']?.toString() ??
+                json['createdDate']?.toString() ??
                 json['created_date']?.toString() ??
                 '',
           ) ??
           DateTime.now(),
       status: TicketStatus.fromBackend(json['status']?.toString() ?? ''),
       roomId: int.tryParse(
-        json['room_id']?.toString() ?? json['roomId']?.toString() ?? '',
+        json['roomId']?.toString() ?? json['room_id']?.toString() ?? '',
       ),
       roomCode:
-          json['room_code']?.toString() ?? json['roomCode']?.toString() ?? '',
+          json['roomCode']?.toString() ?? json['room_code']?.toString() ?? '',
       priority: TicketPriority.fromBackend(
         json['severity']?.toString() ?? json['priority']?.toString() ?? '',
       ),
       ticketScope: TicketScope.fromBackend(
         json['scope']?.toString() ??
-            json['ticket_scope']?.toString() ??
             json['ticketScope']?.toString() ??
+            json['ticket_scope']?.toString() ??
             '',
       ),
     );
@@ -297,10 +298,10 @@ class MaintenanceTicketDetail {
 
   factory MaintenanceTicketDetail.fromJson(Map<String, dynamic> json) {
     final beforeAttachments = _listOfMaps(
-      json['before_attachments'] ?? json['beforeAttachments'],
+      json['beforeAttachments'] ?? json['before_attachments'],
     ).map(TicketAttachment.fromJson).toList(growable: false);
     final afterAttachments = _listOfMaps(
-      json['after_attachments'] ?? json['afterAttachments'],
+      json['afterAttachments'] ?? json['after_attachments'],
     ).map(TicketAttachment.fromJson).toList(growable: false);
     final allAttachments = _listOfMaps(
       json['attachments'],
@@ -326,22 +327,22 @@ class MaintenanceTicketDetail {
     return MaintenanceTicketDetail(
       id: _asInt(json['id']) ?? 0,
       ticketCode:
-          json['ticket_code']?.toString() ??
           json['ticketCode']?.toString() ??
+          json['ticket_code']?.toString() ??
           json['code']?.toString() ??
           '',
       status: status,
-      roomId: _asInt(json['room_id'] ?? json['roomId']) ?? 0,
+      roomId: _asInt(json['roomId'] ?? json['room_id']) ?? 0,
       roomCode:
-          json['room_code']?.toString() ?? json['roomCode']?.toString() ?? '',
+          json['roomCode']?.toString() ?? json['room_code']?.toString() ?? '',
       propertyName:
-          json['property_name']?.toString() ??
           json['propertyName']?.toString() ??
+          json['property_name']?.toString() ??
           '',
       ticketScope: TicketScope.fromBackend(
         json['scope']?.toString() ??
-            json['ticket_scope']?.toString() ??
             json['ticketScope']?.toString() ??
+            json['ticket_scope']?.toString() ??
             '',
       ),
       category: category,
@@ -355,8 +356,8 @@ class MaintenanceTicketDetail {
       ),
       createdAt:
           DateTime.tryParse(
-            json['created_at']?.toString() ??
-                json['createdAt']?.toString() ??
+            json['createdAt']?.toString() ??
+                json['created_at']?.toString() ??
                 '',
           ) ??
           DateTime.now(),
@@ -372,24 +373,24 @@ class MaintenanceTicketDetail {
         json['events'],
       ).map(TicketTimelineEvent.fromJson).toList(growable: false),
       billingStatus:
-          json['billing_status']?.toString() ??
           json['billingStatus']?.toString() ??
+          json['billing_status']?.toString() ??
           '',
       billingStatusLabel:
-          json['billing_status_label']?.toString() ??
           json['billingStatusLabel']?.toString() ??
+          json['billing_status_label']?.toString() ??
           '',
       invoiceStatus:
-          json['invoice_status']?.toString() ??
           json['invoiceStatus']?.toString() ??
+          json['invoice_status']?.toString() ??
           '',
       invoiceCode:
-          json['invoice_code']?.toString() ??
           json['invoiceCode']?.toString() ??
+          json['invoice_code']?.toString() ??
           '',
       lineType:
-          json['line_type']?.toString() ?? json['lineType']?.toString() ?? '',
-      chargeAmount: _asNum(json['charge_amount'] ?? json['chargeAmount']),
+          json['lineType']?.toString() ?? json['line_type']?.toString() ?? '',
+      chargeAmount: _asNum(json['chargeAmount'] ?? json['charge_amount']),
     );
   }
 }
@@ -415,17 +416,17 @@ class TicketAttachment {
   bool get isVideo => mimeType.startsWith('video/');
 
   factory TicketAttachment.fromJson(Map<String, dynamic> json) {
-    final fileId = _asInt(json['file_id'] ?? json['fileId']);
+    final fileId = _asInt(json['fileId'] ?? json['file_id']);
     final rawUrl = json['url']?.toString() ?? '';
     return TicketAttachment(
       id: _asInt(json['id']) ?? fileId ?? 0,
       url: _resolveFileUrl(rawUrl, fileId),
       mimeType:
-          json['mime_type']?.toString() ??
           json['mimeType']?.toString() ??
+          json['mime_type']?.toString() ??
           'image/jpeg',
       phase: TicketAttachmentPhase.fromBackend(json['phase']?.toString() ?? ''),
-      sortOrder: _asInt(json['sort_order'] ?? json['sortOrder']) ?? 0,
+      sortOrder: _asInt(json['sortOrder'] ?? json['sort_order']) ?? 0,
       name: json['name']?.toString() ?? '',
     );
   }
@@ -504,25 +505,25 @@ class TicketRepairInfo {
 
   factory TicketRepairInfo.fromJson(Map<String, dynamic> json) {
     final workerName =
-        json['repairman_name']?.toString() ??
         json['repairmanName']?.toString() ??
-        json['worker_name']?.toString() ??
-        json['workerName']?.toString();
+        json['workerName']?.toString() ??
+        json['repairman_name']?.toString() ??
+        json['worker_name']?.toString();
     final repairItems =
-        json['repair_items']?.toString() ?? json['repairItems']?.toString();
+        json['repairItems']?.toString() ?? json['repair_items']?.toString();
     final rootCause =
-        json['root_cause']?.toString() ?? json['rootCause']?.toString();
+        json['rootCause']?.toString() ?? json['root_cause']?.toString();
     final completionNote =
-        json['completion_note']?.toString() ??
         json['completionNote']?.toString() ??
-        json['cost_description']?.toString() ??
-        json['costDescription']?.toString();
+        json['costDescription']?.toString() ??
+        json['completion_note']?.toString() ??
+        json['cost_description']?.toString();
     final totalCost =
-        _asNum(json['actual_cost'] ?? json['actualCost']) ??
-        _asNum(json['cost_amount'] ?? json['costAmount']) ??
-        _asNum(json['charge_amount'] ?? json['chargeAmount']);
+        _asNum(json['actualCost'] ?? json['actual_cost']) ??
+        _asNum(json['costAmount'] ?? json['cost_amount']) ??
+        _asNum(json['chargeAmount'] ?? json['charge_amount']);
     final completedAt = DateTime.tryParse(
-      json['completed_at']?.toString() ?? json['completedAt']?.toString() ?? '',
+      json['completedAt']?.toString() ?? json['completed_at']?.toString() ?? '',
     );
 
     if ((workerName == null || workerName.trim().isEmpty) &&
@@ -537,18 +538,18 @@ class TicketRepairInfo {
     return TicketRepairInfo(
       workerName: workerName,
       repairmanPhone:
-          json['repairman_phone']?.toString() ??
-          json['repairmanPhone']?.toString(),
+          json['repairmanPhone']?.toString() ??
+          json['repairman_phone']?.toString(),
       rootCause: rootCause,
       repairItems: repairItems,
       completionNote: completionNote,
       totalCost: totalCost,
       costCategory:
-          json['cost_description']?.toString() ??
-          json['costDescription']?.toString(),
+          json['costDescription']?.toString() ??
+          json['cost_description']?.toString(),
       costResponsibility:
-          json['cost_responsibility']?.toString() ??
-          json['costResponsibility']?.toString(),
+          json['costResponsibility']?.toString() ??
+          json['cost_responsibility']?.toString(),
       completedAt: completedAt,
     );
   }
@@ -571,8 +572,8 @@ class TicketReview {
       comment: json['comment']?.toString() ?? json['feedback']?.toString(),
       createdAt:
           DateTime.tryParse(
-            json['created_at']?.toString() ??
-                json['createdAt']?.toString() ??
+            json['createdAt']?.toString() ??
+                json['created_at']?.toString() ??
                 '',
           ) ??
           DateTime.now(),
@@ -596,8 +597,8 @@ class TicketTimelineEvent {
   factory TicketTimelineEvent.fromJson(Map<String, dynamic> json) {
     final action = json['action']?.toString() ?? '';
     final toStatus =
-        json['to_status']?.toString() ??
         json['toStatus']?.toString() ??
+        json['to_status']?.toString() ??
         json['status']?.toString() ??
         '';
     return TicketTimelineEvent(
@@ -608,8 +609,8 @@ class TicketTimelineEvent {
       description: _maintenanceDisplayText(json['note']?.toString() ?? ''),
       createdAt:
           DateTime.tryParse(
-            json['created_at']?.toString() ??
-                json['createdAt']?.toString() ??
+            json['createdAt']?.toString() ??
+                json['created_at']?.toString() ??
                 '',
           ) ??
           DateTime.now(),

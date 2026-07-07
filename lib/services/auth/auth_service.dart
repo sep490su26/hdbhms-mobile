@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -319,7 +319,7 @@ class AuthService {
           .patch(
             Uri.parse('${ApiConfig.baseUrl}/users/me/first-password'),
             headers: {..._headers, 'Authorization': 'Bearer $token'},
-            body: jsonEncode({'new_password': newPassword}),
+            body: jsonEncode({'newPassword': newPassword}),
           )
           .timeout(_timeout);
 

@@ -29,6 +29,7 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
   late final Animation<double> _checkProgress;
   late final Animation<double> _contentOpacity;
   late final Animation<Offset> _contentOffset;
+  bool _animationStarted = false;
 
   @override
   void initState() {
@@ -68,7 +69,20 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
             curve: const Interval(0.42, 1, curve: Curves.easeOutCubic),
           ),
         );
-    _controller.forward();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_animationStarted) return;
+    _animationStarted = true;
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reduceMotion) {
+      _controller.value = 1;
+    } else {
+      _controller.forward();
+    }
   }
 
   @override
@@ -800,7 +814,7 @@ class _GlowOrb extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: RadialGradient(
-          colors: [color.withValues(alpha: 0.26), color.withValues(alpha: 0)],
+          colors: [color.withValues(alpha: 0.15), color.withValues(alpha: 0)],
         ),
       ),
     );

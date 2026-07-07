@@ -73,7 +73,7 @@ class _ContractHubScreenState extends State<ContractHubScreen>
         ),
       ),
       bottomNavigationBar: TenantBottomNavigation(
-        activeTab: TenantBottomNavTab.bills,
+        activeTab: TenantBottomNavTab.home,
         onHomeTap: () =>
             Navigator.of(context).popUntil((route) => route.isFirst),
         onBillsTap: () {

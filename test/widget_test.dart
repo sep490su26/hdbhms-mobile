@@ -74,7 +74,7 @@ class _FakeHomeService extends HomeService {
   const _FakeHomeService();
 
   @override
-  Future<HomeSummary> fetchHomeSummary() async {
+  Future<HomeSummary> fetchHomeSummary({int? contractId}) async {
     return _homeSummary;
   }
 }
@@ -262,6 +262,11 @@ Future<void> login(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> openFirstRoomFromOverview(WidgetTester tester) async {
+  await tester.tap(find.text('PhÃ²ng 101').first);
+  await tester.pumpAndSettle();
+}
+
 Future<void> openBillsFromHomeCta(WidgetTester tester) async {
   final cta = find.text('Thanh to\u00E1n ngay');
   await tester.ensureVisible(cta);
@@ -307,10 +312,9 @@ void main() {
 
     await login(tester);
 
-    expect(find.text('XIN CH\u00C0O,'), findsOneWidget);
-    expect(find.text('Test User'), findsOneWidget);
     expect(find.text('Test Tenant'), findsOneWidget);
-    expect(find.text('2.800.000'), findsOneWidget);
+    expect(find.text('Phòng của tôi'), findsOneWidget);
+    expect(find.text('PhÃ²ng 101'), findsOneWidget);
   });
 
   testWidgets('opens bill selection from payment CTA', (
@@ -320,6 +324,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await login(tester);
+    await openFirstRoomFromOverview(tester);
 
     await openBillsFromHomeCta(tester);
 
@@ -338,6 +343,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await login(tester);
+    await openFirstRoomFromOverview(tester);
 
     await tester.tap(find.text('Bills'));
     await tester.pumpAndSettle();
@@ -354,6 +360,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await login(tester);
+    await openFirstRoomFromOverview(tester);
 
     await openBillsFromHomeCta(tester);
 
@@ -373,6 +380,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await login(tester);
+    await openFirstRoomFromOverview(tester);
 
     await openBillsFromHomeCta(tester);
 
@@ -398,6 +406,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await login(tester);
+    await openFirstRoomFromOverview(tester);
 
     await openBillsFromHomeCta(tester);
 
@@ -427,6 +436,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await login(tester);
+    await openFirstRoomFromOverview(tester);
 
     await tester.tap(find.text('Bills'));
     await tester.pumpAndSettle();
@@ -447,6 +457,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await login(tester);
+    await openFirstRoomFromOverview(tester);
 
     await tester.tap(find.text('Bills'));
     await tester.pumpAndSettle();
@@ -465,6 +476,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await login(tester);
+    await openFirstRoomFromOverview(tester);
 
     await tester.tap(find.text('Bills'));
     await tester.pumpAndSettle();

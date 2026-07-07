@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -129,8 +128,11 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
       final vehiclesData = <Map<String, dynamic>>[];
       for (final v in _vehicles) {
         final plate = v.licensePlateController.text.trim();
-        if (plate.isEmpty && v.localImage == null && v.existingImageUrl.isEmpty)
+        if (plate.isEmpty &&
+            v.localImage == null &&
+            v.existingImageUrl.isEmpty) {
           continue;
+        }
 
         int? fileId;
         if (v.localImage != null) {
@@ -141,9 +143,11 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         }
 
         vehiclesData.add({
-          'license_plate': plate,
-          'vehicle_type': 'MOTORBIKE',
-          if (fileId != null) 'image_file_id': fileId,
+          'licensePlate': plate,
+          'vehicleType': 'MOTORBIKE',
+          ...fileId == null
+              ? const <String, Object>{}
+              : {'imageFileId': fileId},
         });
       }
 
@@ -153,7 +157,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         emergencyContacts: [
           if (relName.isNotEmpty || relPhone.isNotEmpty)
             {
-              'full_name': relName,
+              'fullName': relName,
               'phone': relPhone,
               'relationship': 'Người thân',
             },
@@ -322,7 +326,6 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         child: Text(
           '${_vehicles.length}/$_maxVehicles Xe',
           style: const TextStyle(
-            fontFamily: 'Inter',
             color: Colors.white,
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -376,7 +379,6 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                   const Text(
                     'Thêm phương tiện',
                     style: TextStyle(
-                      fontFamily: 'Inter',
                       color: buttonColor,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -421,7 +423,6 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
           label: Text(
             _isLoading ? 'ĐANG LƯU...' : 'LƯU THAY ĐỔI',
             style: const TextStyle(
-              fontFamily: 'Inter',
               fontSize: 16,
               fontWeight: FontWeight.w700,
               height: 24 / 16,
@@ -491,7 +492,6 @@ class _SectionCard extends StatelessWidget {
                 child: Text(
                   title,
                   style: const TextStyle(
-                    fontFamily: 'Inter',
                     color: AppColors.inputText,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -499,7 +499,7 @@ class _SectionCard extends StatelessWidget {
                   ),
                 ),
               ),
-              if (trailing != null) trailing!,
+              ...trailing == null ? const <Widget>[] : [trailing!],
             ],
           ),
           if (subtitle != null) ...[
@@ -507,7 +507,6 @@ class _SectionCard extends StatelessWidget {
             Text(
               subtitle!,
               style: const TextStyle(
-                fontFamily: 'Inter',
                 color: AppColors.bodyText,
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
@@ -543,7 +542,6 @@ class _EditableField extends StatelessWidget {
         Text(
           label,
           style: const TextStyle(
-            fontFamily: 'Inter',
             color: AppColors.bodyText,
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -556,7 +554,6 @@ class _EditableField extends StatelessWidget {
           controller: controller,
           keyboardType: keyboardType,
           style: const TextStyle(
-            fontFamily: 'Inter',
             color: AppColors.inputText,
             fontSize: 16,
             fontWeight: FontWeight.w500,
@@ -635,7 +632,6 @@ class _VehicleCard extends StatelessWidget {
                 child: Text(
                   'PHƯƠNG TIỆN ${index + 1}',
                   style: const TextStyle(
-                    fontFamily: 'Inter',
                     color: Color(0xFF000666),
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -669,7 +665,6 @@ class _VehicleCard extends StatelessWidget {
           const Text(
             'Ảnh phương tiện',
             style: TextStyle(
-              fontFamily: 'Inter',
               color: AppColors.bodyText,
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -733,7 +728,6 @@ class _VehicleImagePicker extends StatelessWidget {
                       Text(
                         'Tải ảnh lên',
                         style: TextStyle(
-                          fontFamily: 'Inter',
                           color: AppColors.bodyText,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,

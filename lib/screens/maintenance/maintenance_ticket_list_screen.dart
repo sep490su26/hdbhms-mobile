@@ -154,7 +154,7 @@ class _MaintenanceTicketListScreenState
                     else if (tickets.isEmpty)
                       _EmptyState(onRetry: _applyFilter)
                     else
-                      _TicketTableCard(
+                      _TicketListCard(
                         tickets: tickets,
                         onTicketTap: _openTicketDetail,
                       ),
@@ -399,179 +399,178 @@ class _FieldLabel extends StatelessWidget {
   }
 }
 
-class _TicketTableCard extends StatelessWidget {
-  const _TicketTableCard({required this.tickets, required this.onTicketTap});
+class _TicketListCard extends StatelessWidget {
+  const _TicketListCard({required this.tickets, required this.onTicketTap});
 
   final List<MaintenanceTicketModel> tickets;
   final ValueChanged<MaintenanceTicketModel> onTicketTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
+    return Column(
+      children: [
+        for (var index = 0; index < tickets.length; index++) ...[
+          if (index > 0) const SizedBox(height: 10),
+          _TicketCard(
+            ticket: tickets[index],
+            onTap: () => onTicketTap(tickets[index]),
           ),
         ],
-      ),
-      child: Column(
-        children: [
-          const _TicketHeaderRow(),
-          for (var i = 0; i < tickets.length; i++) ...[
-            if (i > 0) const Divider(color: Color(0xFFD9D8DF), height: 1),
-            _TicketRow(
-              ticket: tickets[i],
-              onTap: () => onTicketTap(tickets[i]),
-            ),
-          ],
-        ],
-      ),
+      ],
     );
   }
 }
 
-class _TicketHeaderRow extends StatelessWidget {
-  const _TicketHeaderRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 18, 10, 18),
-      decoration: const BoxDecoration(
-        color: Color(0xFFF7F7F8),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
-      ),
-      child: const Row(
-        children: [
-          SizedBox(width: 70, child: _HeaderText('Mã phiếu')),
-          Expanded(flex: 2, child: _HeaderText('Loại & mô tả')),
-          SizedBox(width: 74, child: _HeaderText('Ngày tạo')),
-          SizedBox(width: 86, child: _HeaderText('Trạng thái')),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeaderText extends StatelessWidget {
-  const _HeaderText(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text.toUpperCase(),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: const TextStyle(
-        color: AppColors.bodyText,
-        fontSize: 10,
-        fontWeight: FontWeight.w900,
-        height: 14 / 10,
-      ),
-    );
-  }
-}
-
-class _TicketRow extends StatelessWidget {
-  const _TicketRow({required this.ticket, required this.onTap});
+class _TicketCard extends StatelessWidget {
+  const _TicketCard({required this.ticket, required this.onTap});
 
   final MaintenanceTicketModel ticket;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 18, 10, 18),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 70,
-                child: Text(
-                  ticket.code,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.deepBlue,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    height: 16 / 12,
-                  ),
+    final roomText = ticket.roomCode.trim().isEmpty
+        ? 'Chưa có phòng'
+        : 'Phòng ${ticket.roomCode.trim()}';
+
+    return Semantics(
+      button: true,
+      label: 'Mở chi tiết phiếu ${ticket.code}',
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Ink(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.cardBorder),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.inputText.withValues(alpha: 0.045),
+                  blurRadius: 18,
+                  offset: const Offset(0, 7),
                 ),
-              ),
-              Expanded(
-                flex: 2,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: Column(
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 13),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Icon(
-                            _categoryIcon(ticket.category),
-                            color: AppColors.bodyText,
-                            size: 14,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryLight,
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: Icon(
+                          _categoryIcon(ticket.category),
+                          color: AppColors.deepBlue,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    ticket.code,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: AppColors.deepBlue,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w900,
+                                      height: 17 / 13,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                _StatusBadge(status: ticket.status),
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
                               ticket.category.label,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: AppColors.bodyText,
                                 fontSize: 12,
-                                fontWeight: FontWeight.w900,
+                                fontWeight: FontWeight.w800,
                                 height: 16 / 12,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        ticket.description,
-                        maxLines: 5,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.inputText,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          height: 18 / 13,
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ),
-              ),
-              SizedBox(
-                width: 74,
-                child: Text(
-                  _formatDate(ticket.createdDate),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppColors.bodyText,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    height: 15 / 11,
+                  const SizedBox(height: 12),
+                  Text(
+                    ticket.description,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.inputText,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      height: 20 / 14,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.meeting_room_outlined,
+                        color: AppColors.bodyText,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          roomText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.bodyText,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            height: 16 / 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Icon(
+                        Icons.calendar_today_outlined,
+                        color: AppColors.bodyText,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        _formatDate(ticket.createdDate),
+                        style: const TextStyle(
+                          color: AppColors.bodyText,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          height: 16 / 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              SizedBox(width: 86, child: _StatusBadge(status: ticket.status)),
-            ],
+            ),
           ),
         ),
       ),

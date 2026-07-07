@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -17,7 +17,7 @@ class ForgotPasswordService {
   static const _timeout = Duration(seconds: 20);
   final http.Client? _client;
 
-  /// Phase 1: Request a password reset. 
+  /// Phase 1: Request a password reset.
   /// The backend will send an email containing a reset token (or magic link).
   Future<void> requestResetPassword(String email) async {
     final client = _client ?? http.Client();
@@ -48,9 +48,7 @@ class ForgotPasswordService {
     } on http.ClientException {
       throw const ForgotPasswordException('Không kết nối được máy chủ');
     } on FormatException {
-      throw const ForgotPasswordException(
-        'Có lỗi xảy ra, vui lòng thử lại',
-      );
+      throw const ForgotPasswordException('Có lỗi xảy ra, vui lòng thử lại');
     } finally {
       if (_client == null) {
         client.close();
@@ -74,7 +72,7 @@ class ForgotPasswordService {
             },
             body: jsonEncode({
               'token': token.trim(),
-              'new_password': newPassword,
+              'newPassword': newPassword,
             }),
           )
           .timeout(_timeout);

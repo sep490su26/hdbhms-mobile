@@ -30,31 +30,34 @@ class NotificationService {
 
   final http.Client? _client;
 
-  http.Client get _effectiveClient => _client ?? AuthenticatedClient(inner: http.Client());
+  http.Client get _effectiveClient =>
+      _client ?? AuthenticatedClient(inner: http.Client());
 
   static const _timeout = Duration(seconds: 15);
 
-  Future<NotificationScrollResponse> getNotifications({int limit = 20, int after = 0}) async {
+  Future<NotificationScrollResponse> getNotifications({
+    int limit = 20,
+    int after = 0,
+  }) async {
     final client = _effectiveClient;
     try {
-      final uri = Uri.parse('${ApiConfig.baseUrl}/notifications/scroll').replace(
-        queryParameters: {
-          'limit': limit.toString(),
-          'after': after.toString(),
-        },
-      );
+      final uri = Uri.parse('${ApiConfig.baseUrl}/notifications/scroll')
+          .replace(
+            queryParameters: {
+              'limit': limit.toString(),
+              'after': after.toString(),
+            },
+          );
       final response = await client
-          .get(
-            uri,
-            headers: {'X-Client-Type': 'mobile'},
-          )
+          .get(uri, headers: {'X-Client-Type': 'mobile'})
           .timeout(_timeout);
 
       if (response.statusCode == 200) {
         final body = jsonDecode(utf8.decode(response.bodyBytes));
         if (body is Map<String, dynamic> && body.containsKey('data')) {
           final data = body['data'] as Map<String, dynamic>;
-          final hasMore = data['has_more'] as bool? ?? false;
+          final hasMore =
+              data['hasMore'] as bool? ?? data['has_more'] as bool? ?? false;
           final itemsList = (data['items'] as List<dynamic>? ?? [])
               .whereType<Map<String, dynamic>>()
               .map(NotificationItem.fromJson)

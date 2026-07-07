@@ -26,11 +26,13 @@ class TenantProfileScreen extends StatefulWidget {
     this.profileService = const TenantProfileService(),
     this.authService = const AuthService(),
     this.homeService = const HomeService(),
+    this.showBottomNavigation = true,
   });
 
   final TenantProfileService profileService;
   final AuthService authService;
   final HomeService homeService;
+  final bool showBottomNavigation;
 
   @override
   State<TenantProfileScreen> createState() => _TenantProfileScreenState();
@@ -174,32 +176,35 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: Builder(
-        builder: (ctx) => TenantBottomNavigation(
-          activeTab: TenantBottomNavTab.profile,
-          onHomeTap: () => Navigator.of(ctx).popUntil((route) => route.isFirst),
-          onBillsTap: () {
-            Navigator.of(ctx).push(
-              MaterialPageRoute(
-                builder: (context) => const BillSelectionPage(),
+      bottomNavigationBar: widget.showBottomNavigation
+          ? Builder(
+              builder: (ctx) => TenantBottomNavigation(
+                activeTab: TenantBottomNavTab.profile,
+                onHomeTap: () =>
+                    Navigator.of(ctx).popUntil((route) => route.isFirst),
+                onBillsTap: () {
+                  Navigator.of(ctx).push(
+                    MaterialPageRoute(
+                      builder: (context) => const BillSelectionPage(),
+                    ),
+                  );
+                },
+                onSupportTap: () {
+                  Navigator.of(ctx).push(
+                    MaterialPageRoute(
+                      builder: (context) => const MaintenanceTicketListScreen(),
+                    ),
+                  );
+                },
+                onProfileTap: () {},
+                onRequestsTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const TenantRequestScreen(),
+                  ),
+                ),
               ),
-            );
-          },
-          onSupportTap: () {
-            Navigator.of(ctx).push(
-              MaterialPageRoute(
-                builder: (context) => const MaintenanceTicketListScreen(),
-              ),
-            );
-          },
-          onProfileTap: () {},
-          onRequestsTap: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const TenantRequestScreen(),
-            ),
-          ),
-        ),
-      ),
+            )
+          : null,
     );
   }
 }

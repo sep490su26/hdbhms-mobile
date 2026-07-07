@@ -412,7 +412,7 @@ class _QrCard extends StatelessWidget {
               Icon(Icons.qr_code_scanner_rounded, color: theme.primary),
               const SizedBox(width: 8),
               Text(
-                'Quét mã VietQR',
+                'Quét mã QR',
                 style: TextStyle(
                   color: theme.ink,
                   fontSize: 18,
@@ -848,7 +848,7 @@ class _GlowOrb extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: RadialGradient(
-          colors: [color.withValues(alpha: 0.28), color.withValues(alpha: 0)],
+          colors: [color.withValues(alpha: 0.16), color.withValues(alpha: 0)],
         ),
       ),
     );

@@ -37,44 +37,41 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
       body: SafeArea(
         child: AppScreenShell(
           header: const _BillHeader(),
-          child: SingleChildScrollView(
+          child: ListView(
             padding: const EdgeInsets.fromLTRB(14, 22, 14, 18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Tất cả hoá đơn', style: AppTypography.pageTitle),
-                const SizedBox(height: 14),
-                _BillFilterBar(
-                  active: _activeFilter,
-                  onChanged: (filter) {
-                    setState(() => _activeFilter = filter);
-                  },
-                ),
-                const SizedBox(height: 18),
-                FutureBuilder<List<TenantInvoice>>(
-                  future: _invoicesFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const _BillLoadingState();
-                    }
-                    if (snapshot.hasError) {
-                      return _BillErrorState(
-                        message: snapshot.error is TenantInvoiceException
-                            ? (snapshot.error as TenantInvoiceException).message
-                            : 'Không tải được hóa đơn. Vui lòng thử lại.',
-                        onRetry: _reloadInvoices,
-                      );
-                    }
-                    final visibleInvoices = (snapshot.data ?? const [])
-                        .where((invoice) => invoice.isTenantVisible)
-                        .toList();
-                    return Column(
-                      children: _buildFilteredBills(context, visibleInvoices),
+            children: [
+              const Text('Tất cả hoá đơn', style: AppTypography.pageTitle),
+              const SizedBox(height: 14),
+              _BillFilterBar(
+                active: _activeFilter,
+                onChanged: (filter) {
+                  setState(() => _activeFilter = filter);
+                },
+              ),
+              const SizedBox(height: 18),
+              FutureBuilder<List<TenantInvoice>>(
+                future: _invoicesFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const _BillLoadingState();
+                  }
+                  if (snapshot.hasError) {
+                    return _BillErrorState(
+                      message: snapshot.error is TenantInvoiceException
+                          ? (snapshot.error as TenantInvoiceException).message
+                          : 'Không tải được hóa đơn. Vui lòng thử lại.',
+                      onRetry: _reloadInvoices,
                     );
-                  },
-                ),
-              ],
-            ),
+                  }
+                  final visibleInvoices = (snapshot.data ?? const [])
+                      .where((invoice) => invoice.isTenantVisible)
+                      .toList();
+                  return Column(
+                    children: _buildFilteredBills(context, visibleInvoices),
+                  );
+                },
+              ),
+            ],
           ),
         ),
       ),
@@ -163,7 +160,12 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
     );
 
     if (invoices.isEmpty) {
-      return const [_BillEmptyState(message: 'Chưa có hóa đơn đã phát hành.')];
+      return const [
+        _BillEmptyState(
+          title: 'Chưa có hóa đơn',
+          message: 'Khi chủ trọ phát hành hóa đơn, bạn sẽ thấy tại đây.',
+        ),
+      ];
     }
 
     return switch (_activeFilter) {
@@ -181,12 +183,20 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
       _BillFilter.unpaid =>
         pendingBills.isEmpty
             ? const [
-                _BillEmptyState(message: 'Không có hóa đơn chờ thanh toán.'),
+                _BillEmptyState(
+                  title: 'Không có khoản cần trả',
+                  message: 'Phòng hiện tại chưa có hóa đơn chờ thanh toán.',
+                ),
               ]
             : pendingBills,
       _BillFilter.paid =>
         paidBills.isEmpty
-            ? const [_BillEmptyState(message: 'Chưa có hóa đơn đã thanh toán.')]
+            ? const [
+                _BillEmptyState(
+                  title: 'Chưa có lịch sử thanh toán',
+                  message: 'Các hóa đơn đã thanh toán sẽ được lưu ở đây.',
+                ),
+              ]
             : [...paidBills, const SizedBox(height: 18), historyButton],
     };
   }
@@ -279,28 +289,67 @@ class _BillErrorState extends StatelessWidget {
 }
 
 class _BillEmptyState extends StatelessWidget {
-  const _BillEmptyState({required this.message});
+  const _BillEmptyState({required this.title, required this.message});
 
+  final String title;
   final String message;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.cardBorder),
       ),
-      child: Text(
-        message,
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: AppColors.bodyText,
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
-        ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.receipt_long_outlined,
+              color: AppColors.deepBlue,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  textAlign: TextAlign.left,
+                  style: const TextStyle(
+                    color: AppColors.inputText,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    height: 18 / 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  message,
+                  textAlign: TextAlign.left,
+                  style: const TextStyle(
+                    color: AppColors.bodyText,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 18 / 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

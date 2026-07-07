@@ -186,7 +186,7 @@ class _LeaseContractListScreenState extends State<LeaseContractListScreen> {
         ),
       ),
       bottomNavigationBar: TenantBottomNavigation(
-        activeTab: TenantBottomNavTab.bills,
+        activeTab: TenantBottomNavTab.profile,
         onBillsTap: () {},
         onHomeTap: () => Navigator.of(context).pop(),
         onSupportTap: () {

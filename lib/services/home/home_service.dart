@@ -20,11 +20,16 @@ class HomeService {
   http.Client get _effectiveClient => _client ?? AuthenticatedClient();
   static const _timeout = Duration(seconds: 15);
 
-  Future<HomeSummary> fetchHomeSummary() async {
+  Future<HomeSummary> fetchHomeSummary({int? contractId}) async {
     final client = _effectiveClient;
     try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/home').replace(
+        queryParameters: contractId == null
+            ? null
+            : {'contractId': contractId.toString()},
+      );
       final response = await client
-          .get(Uri.parse('${ApiConfig.baseUrl}/home'))
+          .get(uri)
           .timeout(_timeout);
       if (response.statusCode == 200) {
         final decoded = _decodeBody(response.body);

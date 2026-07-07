@@ -29,7 +29,9 @@ class NotificationItem {
 
   factory NotificationItem.fromJson(Map<String, dynamic> json) {
     NotificationType parsedType = NotificationType.general;
-    final eventType = json['event_type']?.toString().toUpperCase() ?? '';
+    final eventType =
+        (json['eventType'] ?? json['event_type'])?.toString().toUpperCase() ??
+        '';
 
     if (eventType.contains('INVOICE') || eventType.contains('PAYMENT')) {
       parsedType = NotificationType.invoice;
@@ -45,10 +47,13 @@ class NotificationItem {
       id: json['id']?.toString() ?? '',
       title: json['title']?.toString() ?? 'Thông báo',
       content: json['body']?.toString() ?? '',
-      createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
+      createdAt: (json['createdAt'] ?? json['created_at']) != null
+          ? DateTime.tryParse(
+                  (json['createdAt'] ?? json['created_at']).toString(),
+                ) ??
+                DateTime.now()
           : DateTime.now(),
-      isRead: json['is_read'] as bool? ?? false,
+      isRead: json['isRead'] as bool? ?? json['is_read'] as bool? ?? false,
       type: parsedType,
     );
   }
