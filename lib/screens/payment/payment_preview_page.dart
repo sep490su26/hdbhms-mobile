@@ -130,6 +130,7 @@ class PaymentPreviewPage extends StatelessWidget {
     required int totalAmount,
     required String transferDescription,
     required List<TenantInvoiceLine> lines,
+    String? priceDifferenceSettlementType,
   }) {
     return TenantInvoice(
       id: id,
@@ -159,6 +160,7 @@ class PaymentPreviewPage extends StatelessWidget {
       accountName: 'CONG TY HDBHMS',
       transferDescription: transferDescription,
       lines: lines,
+      priceDifferenceSettlementType: priceDifferenceSettlementType,
     );
   }
 }

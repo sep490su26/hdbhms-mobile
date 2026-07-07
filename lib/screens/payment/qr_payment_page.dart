@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
+import '../../services/notification/notification_service.dart';
 import '../../services/payment/tenant_invoice_service.dart';
 import 'payment_success_page.dart';
 import 'qr_receipt_download_page.dart';
@@ -17,11 +18,13 @@ class QrPaymentPage extends StatefulWidget {
     required this.invoice,
     this.invoiceService = const TenantInvoiceService(),
     this.pollInterval = const Duration(seconds: 4),
+    this.onPaymentConfirmed,
   });
 
   final TenantInvoice invoice;
   final TenantInvoiceService invoiceService;
   final Duration pollInterval;
+  final Future<void> Function()? onPaymentConfirmed;
 
   @override
   State<QrPaymentPage> createState() => _QrPaymentPageState();
@@ -33,11 +36,13 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
   bool _checking = false;
   bool _completed = false;
   bool _downloadingQr = false;
+  final NotificationService _notificationService = const NotificationService();
 
   @override
   void initState() {
     super.initState();
     _invoice = widget.invoice;
+    unawaited(_markInvoiceNotificationsRead());
     _startPolling();
   }
 
@@ -54,6 +59,19 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
     });
   }
 
+  Future<void> _markInvoiceNotificationsRead() async {
+    final invoiceId = _invoice.id;
+    if (invoiceId == null || invoiceId <= 0) return;
+    try {
+      await _notificationService.markTargetAsRead(
+        targetType: 'INVOICE',
+        targetId: invoiceId,
+      );
+    } catch (_) {
+      // Best-effort read sync; payment flow should not be blocked.
+    }
+  }
+
   Future<void> _checkPaymentStatus({required bool showPendingMessage}) async {
     if (_checking || _completed) return;
     setState(() => _checking = true);
@@ -66,6 +84,12 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
         if (updated.isPaid) {
           _completed = true;
           _pollTimer?.cancel();
+          try {
+            await widget.onPaymentConfirmed?.call();
+          } catch (_) {
+            // Payment success must still be shown even if the caller refresh fails.
+          }
+          if (!mounted) return;
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
             ..showSnackBar(
@@ -75,6 +99,7 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
             MaterialPageRoute(
               builder: (context) => PaymentSuccessPage(invoice: updated),
             ),
+            result: true,
           );
           return;
         }

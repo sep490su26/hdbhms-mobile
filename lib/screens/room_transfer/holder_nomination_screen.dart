@@ -5,9 +5,8 @@ import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart'
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 
-/// Screen for nominating a holder for the room transfer.
-/// The nominating tenant selects which transferring tenant will be the
-/// contract holder for the target room.
+/// Screen for nominating a replacement holder for the source room.
+/// The nominating tenant selects one remaining occupant from the old contract.
 class HolderNominationScreen extends StatefulWidget {
   const HolderNominationScreen({
     super.key,
@@ -23,26 +22,81 @@ class HolderNominationScreen extends StatefulWidget {
 }
 
 class _HolderNominationScreenState extends State<HolderNominationScreen> {
-  final _profileIdCtrl = TextEditingController();
+  late RoomTransferRequest _transfer;
+  int? _selectedProfileId;
   bool _submitting = false;
-
-  RoomTransferRequest get _transfer => widget.transferRequest;
+  bool _loadingTransfer = true;
 
   @override
-  void dispose() {
-    _profileIdCtrl.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _transfer = widget.transferRequest;
+    _syncSelectedProfile();
+    _refreshTransfer();
+  }
+
+  void _syncSelectedProfile() {
+    final candidates = _holderCandidateIds;
+    if (candidates.isEmpty) {
+      _selectedProfileId = null;
+      return;
+    }
+
+    final current = _selectedProfileId;
+    final nominated = _transfer.nominatedHolderProfileId;
+    if (current != null && candidates.contains(current)) {
+      _selectedProfileId = current;
+    } else if (nominated != null && candidates.contains(nominated)) {
+      _selectedProfileId = nominated;
+    } else {
+      _selectedProfileId = candidates.first;
+    }
+  }
+
+  Future<void> _refreshTransfer() async {
+    if (!_loadingTransfer) {
+      setState(() => _loadingTransfer = true);
+    }
+    try {
+      final latest = await widget.transferService.getTransferRequest(
+        _transfer.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        _transfer = latest;
+        _syncSelectedProfile();
+        _loadingTransfer = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingTransfer = false);
+    }
+  }
+
+  List<int> get _holderCandidateIds {
+    final ids = _transfer.sourceHolderCandidateProfileIds
+        .where((id) => id > 0)
+        .toSet()
+        .toList();
+    ids.sort(
+      (a, b) => _holderDisplayName(
+        a,
+      ).toLowerCase().compareTo(_holderDisplayName(b).toLowerCase()),
+    );
+    return ids;
+  }
+
+  String _holderDisplayName(int profileId) {
+    final name = _transfer.sourceHolderCandidateNames[profileId]?.trim();
+    if (name != null && name.isNotEmpty) {
+      return name;
+    }
+    return 'Người thuê #$profileId';
   }
 
   Future<void> _submit() async {
-    final rawId = _profileIdCtrl.text.trim();
-    if (rawId.isEmpty) {
-      _snack('Vui lòng nhập ID người được đề cử.');
-      return;
-    }
-    final profileId = int.tryParse(rawId);
+    final profileId = _selectedProfileId;
     if (profileId == null || profileId <= 0) {
-      _snack('ID không hợp lệ.');
+      _snack('Vui lòng chọn người ở lại phòng cũ làm holder mới.');
       return;
     }
 
@@ -95,10 +149,16 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        icon: const Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 48),
-        title: const Text('Đề cử thành công',
-            style: TextStyle(fontWeight: FontWeight.w800)),
-        content: const Text('Đã đề cử người giữ hợp đồng mới cho phòng đích.'),
+        icon: const Icon(
+          Icons.check_circle,
+          color: Color(0xFF16A34A),
+          size: 48,
+        ),
+        title: const Text(
+          'Đề cử thành công',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        content: const Text('Đã đề cử holder mới cho phòng cũ.'),
         actions: [
           ElevatedButton(
             onPressed: () {
@@ -127,10 +187,7 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: AppScreenShell(
-          header: _buildHeader(),
-          child: _buildBody(),
-        ),
+        child: AppScreenShell(header: _buildHeader(), child: _buildBody()),
       ),
     );
   }
@@ -159,7 +216,10 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
             tooltip: 'Trở về',
           ),
           const Expanded(
-            child: Text('Đề cử chủ hợp đồng', style: AppColors.topBarTitleStyle),
+            child: Text(
+              'Đề cử chủ hợp đồng',
+              style: AppColors.topBarTitleStyle,
+            ),
           ),
         ],
       ),
@@ -209,8 +269,7 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
           icon: Icons.person_outline_rounded,
           children: [
             const Text(
-              'Chọn người sẽ đứng tên hợp đồng tại phòng đích. '
-              'Người này phải nằm trong danh sách người chuyển đi.',
+              'Chọn người ở lại phòng cũ sẽ trở thành holder mới sau khi bạn chuyển phòng.',
               style: TextStyle(
                 color: AppColors.bodyText,
                 fontSize: 12.5,
@@ -219,34 +278,56 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
-              'ID người được đề cử',
-              style: TextStyle(
-                color: AppColors.inputText,
-                fontSize: 13,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 6),
-            TextField(
-              controller: _profileIdCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                hintText: 'Nhập ID profile người được đề cử',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(10)),
-                  borderSide: BorderSide(color: AppColors.border),
+            if (_holderCandidateIds.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBEB),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFF59E0B)),
                 ),
-                filled: true,
-                fillColor: AppColors.inputFill,
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                child: const Text(
+                  'Không tìm thấy người ở lại phòng cũ phù hợp để đề cử làm holder mới.',
+                  style: TextStyle(
+                    color: Color(0xFF92400E),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 1.4,
+                  ),
+                ),
+              )
+            else
+              DropdownButtonFormField<int>(
+                initialValue: _selectedProfileId,
+                decoration: const InputDecoration(
+                  labelText: 'Holder mới của phòng cũ',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(10)),
+                    borderSide: BorderSide(color: AppColors.border),
+                  ),
+                  filled: true,
+                  fillColor: AppColors.inputFill,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                ),
+                items: _holderCandidateIds
+                    .map(
+                      (profileId) => DropdownMenuItem<int>(
+                        value: profileId,
+                        child: Text(_holderDisplayName(profileId)),
+                      ),
+                    )
+                    .toList(growable: false),
+                onChanged: _submitting || _loadingTransfer
+                    ? null
+                    : (value) {
+                        if (value == null) return;
+                        setState(() => _selectedProfileId = value);
+                      },
               ),
-              style: const TextStyle(
-                color: AppColors.inputText,
-                fontSize: 14,
-              ),
-            ),
           ],
         ),
 
@@ -256,12 +337,16 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
         SizedBox(
           height: 48,
           child: ElevatedButton(
-            onPressed: _submitting ? null : _submit,
+            onPressed:
+                _submitting || _loadingTransfer || _holderCandidateIds.isEmpty
+                ? null
+                : _submit,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.deepBlue,
               foregroundColor: Colors.white,
-              disabledBackgroundColor:
-                  AppColors.deepBlue.withValues(alpha: 0.5),
+              disabledBackgroundColor: AppColors.deepBlue.withValues(
+                alpha: 0.5,
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -278,16 +363,13 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
                   )
                 : const Text(
                     'Đề cử',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                   ),
           ),
         ),
 
         // ── Accept nomination (if nominated) ───────────────────────────
-        if (_transfer.nominatedHolderProfileId != null) ...[
+        if (!_loadingTransfer && _transfer.nominatedHolderProfileId != null) ...[
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(12),
@@ -297,12 +379,15 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline,
-                    color: AppColors.deepBlue, size: 20),
+                const Icon(
+                  Icons.info_outline,
+                  color: AppColors.deepBlue,
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Đã đề cử profile ID: ${_transfer.nominatedHolderProfileId}',
+                    'Đã đề cử: ${_holderDisplayName(_transfer.nominatedHolderProfileId!)}',
                     style: const TextStyle(
                       color: AppColors.deepBlue,
                       fontSize: 13,

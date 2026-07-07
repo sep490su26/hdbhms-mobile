@@ -151,7 +151,7 @@ class _SuccessHeader extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => Navigator.of(context).maybePop(),
+            onPressed: () => Navigator.of(context).maybePop(true),
             style: IconButton.styleFrom(
               backgroundColor: Colors.white.withValues(alpha: 0.12),
               foregroundColor: Colors.white,

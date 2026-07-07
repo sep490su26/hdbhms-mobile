@@ -17,7 +17,7 @@ class TenantProfileResponse {
 
   factory TenantProfileResponse.fromJson(Map<String, dynamic> json) {
     return TenantProfileResponse(
-      tenantProfileId: _asInt(json['id']),
+      tenantProfileId: _asInt(json['tenantProfileId'] ?? json['id']),
       status: json['status']?.toString() ?? '',
       person: PersonProfileDto.fromJson(
         json['person'] as Map<String, dynamic>? ?? {},

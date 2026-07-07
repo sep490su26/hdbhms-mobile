@@ -22,15 +22,18 @@ class TenantRequestScreen extends StatefulWidget {
   const TenantRequestScreen({
     super.key,
     this.changeRequestService = const ChangeRequestService(),
+    this.roomTransferService = const RoomTransferService(),
   });
 
   final ChangeRequestService changeRequestService;
+  final RoomTransferService roomTransferService;
 
   @override
   State<TenantRequestScreen> createState() => _TenantRequestScreenState();
 }
 
-class _TenantRequestScreenState extends State<TenantRequestScreen> {
+class _TenantRequestScreenState extends State<TenantRequestScreen>
+    with WidgetsBindingObserver {
   // null = Tất cả
   TenantRequestType? _filterType;
 
@@ -38,38 +41,94 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
 
   // ChangeRequest objects keyed by their id, for navigating to detail screens
   final Map<int, ChangeRequest> _changeRequestMap = {};
+  final Map<int, ChangeRequest> _holderNominationMap = {};
 
   bool _loadingApi = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadApiRequests();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted && !_loadingApi) {
+      _loadApiRequests();
+    }
   }
 
   /// Fetches change requests from the backend API and converts them to
   /// [TenantRequest] objects for display in the unified list.
   Future<void> _loadApiRequests() async {
     setState(() => _loadingApi = true);
+    var apiRequests = const <ChangeRequest>[];
+    var holderNominations = const <RoomTransferRequest>[];
+
     try {
-      final apiRequests = await widget.changeRequestService.getMyRequests();
-      if (!mounted) return;
-      setState(() {
-        // Index API requests for detail navigation
-        for (final cr in apiRequests) {
-          _changeRequestMap[cr.id] = cr;
-        }
-        // Convert and prepend API requests (newest first)
-        final converted = apiRequests.map(_toTenantRequest).toList();
-        _requests
-          ..removeWhere((r) => r.id.startsWith('API-'))
-          ..insertAll(0, converted);
-        _loadingApi = false;
-      });
+      apiRequests = await widget.changeRequestService.getMyRequests();
     } catch (_) {
-      if (!mounted) return;
-      setState(() => _loadingApi = false);
+      // Keep the screen usable when one request source is temporarily down.
     }
+
+    try {
+      holderNominations = await widget.roomTransferService
+          .fetchPendingHolderNominations();
+    } catch (_) {
+      // Older backends may not expose nomination inbox yet.
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _changeRequestMap.clear();
+      _holderNominationMap.clear();
+
+      for (final cr in apiRequests) {
+        _changeRequestMap[cr.id] = cr;
+      }
+      for (final transfer in holderNominations) {
+        _holderNominationMap[transfer.id] = _toHolderNominationChangeRequest(
+          transfer,
+        );
+      }
+
+      final holderNominationTransferIds = holderNominations
+          .map((transfer) => transfer.id)
+          .where((id) => id > 0)
+          .toSet();
+      final holderNominationCodes = holderNominations
+          .map((transfer) => transfer.requestCode.trim())
+          .where((code) => code.isNotEmpty)
+          .toSet();
+      final visibleApiRequests = apiRequests.where((cr) {
+        if (cr.requestType != ChangeRequestType.roomTransfer) return true;
+        final transferId = _extractTransferId(cr);
+        if (transferId != null &&
+            holderNominationTransferIds.contains(transferId)) {
+          return false;
+        }
+        return !holderNominationCodes.contains(cr.requestCode.trim());
+      });
+
+      final converted = <TenantRequest>[
+        ...visibleApiRequests.map(_toTenantRequest),
+        ...holderNominations.map(_toHolderNominationRequest),
+      ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      _requests
+        ..removeWhere(
+          (r) => r.id.startsWith('API-') || r.id.startsWith('NOMINATION-'),
+        )
+        ..insertAll(0, converted);
+      _loadingApi = false;
+    });
   }
 
   /// Maps a [ChangeRequest] to a [TenantRequest] for display.
@@ -83,6 +142,65 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
     );
   }
 
+  TenantRequest _toHolderNominationRequest(RoomTransferRequest transfer) {
+    final roomName = transfer.oldRoomName.isNotEmpty
+        ? transfer.oldRoomName
+        : (transfer.oldRoomCode.isNotEmpty
+              ? transfer.oldRoomCode
+              : '#${transfer.oldRoomId}');
+    return TenantRequest(
+      id: 'NOMINATION-${transfer.id}',
+      type: TenantRequestType.changeRoom,
+      status: TenantRequestStatus.pending,
+      note:
+          'Bạn được đề cử làm holder mới cho phòng $roomName. Vui lòng xác nhận để yêu cầu chuyển phòng tiếp tục.',
+      createdAt: transfer.updatedAt ?? transfer.createdAt ?? DateTime.now(),
+      details: {
+        'Mã yêu cầu': transfer.requestCode,
+        'Phòng hiện tại': roomName,
+        'Trạng thái': transfer.status.label,
+      },
+    );
+  }
+
+  ChangeRequest _toHolderNominationChangeRequest(RoomTransferRequest transfer) {
+    final payload = jsonEncode({
+      'transferRequestId': transfer.id,
+      'transferRequestCode': transfer.requestCode,
+      'source': 'holderNomination',
+    });
+    return ChangeRequest(
+      id: transfer.id,
+      requestCode: transfer.requestCode,
+      requestType: ChangeRequestType.roomTransfer,
+      title: 'Xác nhận holder mới',
+      description: 'Bạn được đề cử làm holder mới cho phòng cũ.',
+      status: ChangeRequestStatus.processing,
+      requesterId: transfer.requesterId,
+      targetId: transfer.id,
+      createdAt: transfer.createdAt,
+      requestPayload: payload,
+    );
+  }
+
+  int? _extractTransferId(ChangeRequest cr) {
+    if (cr.targetId != null && cr.targetId! > 0) {
+      return cr.targetId;
+    }
+
+    final rawPayload = cr.requestPayload;
+    if (rawPayload == null || rawPayload.trim().isEmpty) return null;
+    try {
+      final payload = jsonDecode(rawPayload);
+      if (payload is! Map<String, dynamic>) return null;
+      return int.tryParse(payload['transferRequestId']?.toString() ?? '') ??
+          int.tryParse(payload['targetId']?.toString() ?? '') ??
+          int.tryParse(payload['id']?.toString() ?? '');
+    } catch (_) {
+      return null;
+    }
+  }
+
   TenantRequestType _mapRequestType(ChangeRequestType type) {
     return switch (type) {
       ChangeRequestType.roomTransfer => TenantRequestType.changeRoom,
@@ -94,13 +212,13 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
 
   TenantRequestStatus _mapRequestStatus(ChangeRequestStatus status) {
     return switch (status) {
-      ChangeRequestStatus.pending || ChangeRequestStatus.underReview =>
-        TenantRequestStatus.pending,
+      ChangeRequestStatus.pending ||
+      ChangeRequestStatus.underReview => TenantRequestStatus.pending,
       ChangeRequestStatus.processing => TenantRequestStatus.processing,
-      ChangeRequestStatus.approved || ChangeRequestStatus.completed =>
-        TenantRequestStatus.approved,
-      ChangeRequestStatus.rejected || ChangeRequestStatus.cancelled =>
-        TenantRequestStatus.rejected,
+      ChangeRequestStatus.approved ||
+      ChangeRequestStatus.completed => TenantRequestStatus.approved,
+      ChangeRequestStatus.rejected ||
+      ChangeRequestStatus.cancelled => TenantRequestStatus.rejected,
     };
   }
 
@@ -113,18 +231,25 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
     final apiId = req.id.startsWith('API-')
         ? int.tryParse(req.id.substring(4))
         : null;
-    final changeRequest = apiId != null ? _changeRequestMap[apiId] : null;
+    final nominationId = req.id.startsWith('NOMINATION-')
+        ? int.tryParse(req.id.substring('NOMINATION-'.length))
+        : null;
+    final changeRequest = apiId != null
+        ? _changeRequestMap[apiId]
+        : (nominationId != null ? _holderNominationMap[nominationId] : null);
 
     if (changeRequest != null) {
       if (changeRequest.requestType == ChangeRequestType.roomTransfer) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) =>
-                RoomTransferDetailScreen(changeRequest: changeRequest),
-          ),
-        ).then((refreshed) {
-          if (refreshed == true) _loadApiRequests();
-        });
+        Navigator.of(context)
+            .push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    RoomTransferDetailScreen(changeRequest: changeRequest),
+              ),
+            )
+            .then((refreshed) {
+              if (refreshed == true) _loadApiRequests();
+            });
         return;
       }
 
@@ -154,7 +279,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
         onBillsTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(builder: (context) => const BillSelectionPage()),
-          );
+          ).then((_) => _loadApiRequests());
         },
         onSupportTap: () {
           Navigator.of(context).push(
@@ -212,13 +337,15 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
                 else if (filtered.isEmpty)
                   _buildEmpty()
                 else
-                  ...filtered.map((req) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _RequestCard(
-                          request: req,
-                          onTap: () => _openDetail(req),
-                        ),
-                      )),
+                  ...filtered.map(
+                    (req) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _RequestCard(
+                        request: req,
+                        onTap: () => _openDetail(req),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -991,7 +1118,8 @@ class _ApiRequestDetailDialog extends StatefulWidget {
   final ChangeRequest changeRequest;
 
   @override
-  State<_ApiRequestDetailDialog> createState() => _ApiRequestDetailDialogState();
+  State<_ApiRequestDetailDialog> createState() =>
+      _ApiRequestDetailDialogState();
 }
 
 class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
@@ -1034,7 +1162,8 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
   IconData get _icon => switch (widget.changeRequest.requestType) {
     ChangeRequestType.roomTransfer => Icons.swap_horiz_rounded,
     ChangeRequestType.moveOut => Icons.cancel_outlined,
-    ChangeRequestType.depositRefundRequest => Icons.account_balance_wallet_outlined,
+    ChangeRequestType.depositRefundRequest =>
+      Icons.account_balance_wallet_outlined,
     ChangeRequestType.addCoOccupant => Icons.person_add_outlined,
     ChangeRequestType.complaint => Icons.report_problem_outlined,
     ChangeRequestType.meterReadingCorrection => Icons.speed_outlined,
@@ -1077,7 +1206,8 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
   Map<String, dynamic> get _payload {
     if (widget.changeRequest.requestPayload == null) return {};
     try {
-      return jsonDecode(widget.changeRequest.requestPayload!) as Map<String, dynamic>;
+      return jsonDecode(widget.changeRequest.requestPayload!)
+          as Map<String, dynamic>;
     } catch (_) {
       return {};
     }
@@ -1174,7 +1304,10 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
                     _DetailSection(
                       title: 'Tổng quan',
                       children: [
-                        _DetailRow(label: 'Mã yêu cầu', value: widget.changeRequest.requestCode),
+                        _DetailRow(
+                          label: 'Mã yêu cầu',
+                          value: widget.changeRequest.requestCode,
+                        ),
                         _DetailRow(
                           label: 'Ngày tạo',
                           value: _formatTime(widget.changeRequest.createdAt),
@@ -1191,7 +1324,9 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
                       const Center(
                         child: Padding(
                           padding: EdgeInsets.all(20),
-                          child: CircularProgressIndicator(color: AppColors.deepBlue),
+                          child: CircularProgressIndicator(
+                            color: AppColors.deepBlue,
+                          ),
                         ),
                       )
                     else
@@ -1216,7 +1351,8 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
                         ],
                       ),
                     ],
-                    if (widget.changeRequest.resolutionNote != null && widget.changeRequest.resolutionNote!.isNotEmpty) ...[
+                    if (widget.changeRequest.resolutionNote != null &&
+                        widget.changeRequest.resolutionNote!.isNotEmpty) ...[
                       const SizedBox(height: 12),
                       _DetailSection(
                         title: 'Ghi chú giải quyết',
@@ -1274,14 +1410,27 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
 
   List<Widget> _buildTypeDetails() {
     // If room transfer data is available, use it
-    if (widget.changeRequest.requestType == ChangeRequestType.roomTransfer && _roomTransferRequest != null) {
+    if (widget.changeRequest.requestType == ChangeRequestType.roomTransfer &&
+        _roomTransferRequest != null) {
       final tr = _roomTransferRequest!;
       return [
-        _DetailRow(label: 'Phòng hiện tại', value: tr.oldRoomName ?? 'Chưa có thông tin'),
-        _DetailRow(label: 'Phòng đích', value: tr.targetRoomName ?? 'Chưa có thông tin'),
-        _DetailRow(label: 'Ngày chuyển dự kiến', value: _formatDate(tr.requestedTransferDate)),
-        if (tr.reason != null && tr.reason!.isNotEmpty)
-          _DetailRow(label: 'Lý do', value: tr.reason!),
+        _DetailRow(
+          label: 'Phòng hiện tại',
+          value: tr.oldRoomName.isNotEmpty
+              ? tr.oldRoomName
+              : 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Phòng đích',
+          value: tr.targetRoomName.isNotEmpty
+              ? tr.targetRoomName
+              : 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Ngày chuyển dự kiến',
+          value: _formatDate(tr.requestedTransferDate),
+        ),
+        if (tr.reason.isNotEmpty) _DetailRow(label: 'Lý do', value: tr.reason),
       ];
     }
 
@@ -1290,40 +1439,103 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
 
     return switch (widget.changeRequest.requestType) {
       ChangeRequestType.roomTransfer => [
-        _DetailRow(label: 'Phòng hiện tại', value: p['currentRoom']?.toString() ?? 'Chưa có thông tin'),
-        _DetailRow(label: 'Phòng đích', value: p['targetRoom']?.toString() ?? 'Chưa có thông tin'),
-        _DetailRow(label: 'Ngày chuyển dự kiến', value: p['requestedTransferDate']?.toString() ?? 'Chưa có thông tin'),
+        _DetailRow(
+          label: 'Phòng hiện tại',
+          value: p['currentRoom']?.toString() ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Phòng đích',
+          value: p['targetRoom']?.toString() ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Ngày chuyển dự kiến',
+          value:
+              (p['expectedTransferDate'] ?? p['requestedTransferDate'])
+                      ?.toString() ??
+                  'Chưa có thông tin',
+        ),
       ],
       ChangeRequestType.moveOut => [
-        _DetailRow(label: 'Phòng', value: p['room']?.toString() ?? 'Chưa có thông tin'),
-        _DetailRow(label: 'Ngày trả phòng dự kiến', value: p['requestedMoveOutDate']?.toString() ?? 'Chưa có thông tin'),
+        _DetailRow(
+          label: 'Phòng',
+          value: p['room']?.toString() ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Ngày trả phòng dự kiến',
+          value: p['requestedMoveOutDate']?.toString() ?? 'Chưa có thông tin',
+        ),
       ],
       ChangeRequestType.depositRefundRequest => [
-        _DetailRow(label: 'Phòng', value: p['room']?.toString() ?? 'Chưa có thông tin'),
-        _DetailRow(label: 'Số tiền cọc', value: p['depositAmount']?.toString() ?? 'Chưa có thông tin'),
+        _DetailRow(
+          label: 'Phòng',
+          value: p['room']?.toString() ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Số tiền cọc',
+          value: p['depositAmount']?.toString() ?? 'Chưa có thông tin',
+        ),
       ],
       ChangeRequestType.addCoOccupant => [
-        _DetailRow(label: 'Họ tên', value: p['fullName']?.toString() ?? 'Chưa có thông tin'),
-        _DetailRow(label: 'Số điện thoại', value: p['phoneNumber']?.toString() ?? 'Chưa có thông tin'),
-        _DetailRow(label: 'Ngày bắt đầu ở', value: p['moveInDate']?.toString() ?? 'Chưa có thông tin'),
+        _DetailRow(
+          label: 'Họ tên',
+          value: p['fullName']?.toString() ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Số điện thoại',
+          value: p['phoneNumber']?.toString() ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Ngày bắt đầu ở',
+          value: p['moveInDate']?.toString() ?? 'Chưa có thông tin',
+        ),
       ],
       ChangeRequestType.complaint => [
-        _DetailRow(label: 'Danh mục', value: p['category']?.toString() ?? 'Chưa có thông tin'),
-        _DetailRow(label: 'Mức độ ưu tiên', value: p['priority']?.toString() ?? 'Chưa có thông tin'),
+        _DetailRow(
+          label: 'Danh mục',
+          value: p['category']?.toString() ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Mức độ ưu tiên',
+          value: p['priority']?.toString() ?? 'Chưa có thông tin',
+        ),
       ],
       ChangeRequestType.meterReadingCorrection => [
-        _DetailRow(label: 'Loại đồng hồ', value: p['meterType']?.toString() ?? 'Chưa có thông tin'),
-        _DetailRow(label: 'Số cũ', value: p['oldValue']?.toString() ?? 'Chưa có thông tin'),
-        _DetailRow(label: 'Số mới', value: p['newValue']?.toString() ?? 'Chưa có thông tin'),
+        _DetailRow(
+          label: 'Loại đồng hồ',
+          value: p['meterType']?.toString() ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Số cũ',
+          value: p['oldValue']?.toString() ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Số mới',
+          value: p['newValue']?.toString() ?? 'Chưa có thông tin',
+        ),
       ],
       ChangeRequestType.invoiceAdjustment => [
-        _DetailRow(label: 'Mã hóa đơn', value: p['invoiceCode']?.toString() ?? 'Chưa có thông tin'),
-        _DetailRow(label: 'Số tiền điều chỉnh', value: p['adjustmentAmount']?.toString() ?? 'Chưa có thông tin'),
+        _DetailRow(
+          label: 'Mã hóa đơn',
+          value: p['invoiceCode']?.toString() ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Số tiền điều chỉnh',
+          value: p['adjustmentAmount']?.toString() ?? 'Chưa có thông tin',
+        ),
       ],
       ChangeRequestType.rentPriceAdjustment => [
-        _DetailRow(label: 'Phòng', value: p['room']?.toString() ?? 'Chưa có thông tin'),
-        _DetailRow(label: 'Giá cũ', value: p['oldPrice']?.toString() ?? 'Chưa có thông tin'),
-        _DetailRow(label: 'Giá mới', value: p['newPrice']?.toString() ?? 'Chưa có thông tin'),
+        _DetailRow(
+          label: 'Phòng',
+          value: p['room']?.toString() ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Giá cũ',
+          value: p['oldPrice']?.toString() ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Giá mới',
+          value: p['newPrice']?.toString() ?? 'Chưa có thông tin',
+        ),
       ],
     };
   }

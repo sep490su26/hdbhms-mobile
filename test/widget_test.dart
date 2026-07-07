@@ -74,7 +74,7 @@ class _FakeHomeService extends HomeService {
   const _FakeHomeService();
 
   @override
-  Future<HomeSummary> fetchHomeSummary() async {
+  Future<HomeSummary> fetchHomeSummary({int? contractId}) async {
     return _homeSummary;
   }
 }

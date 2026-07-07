@@ -113,7 +113,7 @@ class IdentityService {
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final body = _decodeBody(response.body);
+        final body = _responsePayload(_decodeBody(response.body));
         final onboarding = OnboardingState.fromJson(
           body['onboarding'] as Map<String, dynamic>? ?? {},
         );
@@ -255,7 +255,7 @@ class IdentityService {
 
   String _readBackendMessage(String body) {
     try {
-      final data = _decodeBody(body);
+      final data = _responsePayload(_decodeBody(body));
       final message = data['message'] ?? data['error'];
       return message?.toString() ?? '';
     } on FormatException {
@@ -269,5 +269,16 @@ class IdentityService {
       return decoded;
     }
     throw const FormatException('Invalid response body');
+  }
+
+  Map<String, dynamic> _responsePayload(Map<String, dynamic> body) {
+    final data = body['data'];
+    if (data is Map<String, dynamic>) {
+      return data;
+    }
+    if (data is Map) {
+      return Map<String, dynamic>.from(data);
+    }
+    return body;
   }
 }

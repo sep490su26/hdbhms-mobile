@@ -139,6 +139,44 @@ class NotificationService {
     }
   }
 
+  Future<void> markTargetAsRead({
+    required String targetType,
+    required int targetId,
+  }) async {
+    final client = _effectiveClient;
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/notifications/target/read')
+          .replace(
+        queryParameters: {
+          'targetType': targetType,
+          'targetId': targetId.toString(),
+        },
+      );
+      final response = await client
+          .post(
+            uri,
+            headers: {'X-Client-Type': 'mobile'},
+          )
+          .timeout(_timeout);
+
+      if (response.statusCode == 200) return;
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        throw const NotificationForbiddenException();
+      }
+      throw NotificationException(_messageForError(response));
+    } on NotificationException {
+      rethrow;
+    } on TimeoutException {
+      throw const NotificationException('KhÃ´ng káº¿t ná»‘i Ä‘Æ°á»£c mÃ¡y chá»§');
+    } on http.ClientException {
+      throw const NotificationException('KhÃ´ng káº¿t ná»‘i Ä‘Æ°á»£c mÃ¡y chá»§');
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
+
   String _messageForError(http.Response response) {
     try {
       final body = jsonDecode(utf8.decode(response.bodyBytes));

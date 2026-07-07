@@ -36,6 +36,13 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
   DateTime? _inDate;
 
   bool _submitting = false;
+  SettlementType _positiveDifferenceSettlementType =
+      SettlementType.tenantPayMore;
+
+  bool get _hasPositiveDifference =>
+      (widget.transferRequest.priceDifferenceToPay ?? 0) > 0;
+  bool get _isCompletePhase =>
+      widget.transferRequest.status == TransferRequestStatus.waitingExecution;
 
   @override
   void initState() {
@@ -123,6 +130,17 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
       return;
     }
 
+    if (!_isCompletePhase && outData == null) {
+      _snack('Transfer checkout requires old-room readings.');
+      return;
+    }
+    if (_isCompletePhase &&
+        widget.transferRequest.targetTransferType == TargetTransferType.newContract &&
+        inData == null) {
+      _snack('Transfer completion requires new-room readings.');
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -157,11 +175,21 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
 
     setState(() => _submitting = true);
     try {
-      await widget.transferService.executeTransfer(
-        requestId: widget.transferRequest.id,
-        transferOutHandover: outData,
-        transferInHandover: inData,
-      );
+      if (_isCompletePhase) {
+        await widget.transferService.completeTransfer(
+          requestId: widget.transferRequest.id,
+          transferInHandover: inData,
+          positiveDifferenceSettlementType: _hasPositiveDifference
+              ? _positiveDifferenceSettlementType
+              : null,
+        );
+      } else {
+        await widget.transferService.executeTransfer(
+          requestId: widget.transferRequest.id,
+          transferOutHandover: outData,
+          positiveDifferenceSettlementType: null,
+        );
+      }
       if (!mounted) return;
       _showSuccessDialog();
     } on RoomTransferException catch (e) {
@@ -371,6 +399,19 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
           formatDate: _formatDate,
         ),
 
+        if (_hasPositiveDifference) ...[
+          const SizedBox(height: 16),
+          _SettlementSection(
+            amount: transfer.priceDifferenceToPay ?? 0,
+            selectedType: _positiveDifferenceSettlementType,
+            enabled: !_submitting,
+            onChanged: (type) => setState(
+              () => _positiveDifferenceSettlementType = type,
+            ),
+            formatCurrency: _formatCurrency,
+          ),
+        ],
+
         const SizedBox(height: 24),
 
         // ── Execute button ─────────────────────────────────────────────
@@ -407,6 +448,178 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  String _formatCurrency(num value) {
+    final digits = value.round().toString();
+    final buffer = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      final remaining = digits.length - i;
+      buffer.write(digits[i]);
+      if (remaining > 1 && remaining % 3 == 1) {
+        buffer.write('.');
+      }
+    }
+    return '${buffer.toString()} đ';
+  }
+}
+
+// ── Settlement section ────────────────────────────────────────────────────────
+
+class _SettlementSection extends StatelessWidget {
+  const _SettlementSection({
+    required this.amount,
+    required this.selectedType,
+    required this.enabled,
+    required this.onChanged,
+    required this.formatCurrency,
+  });
+
+  final num amount;
+  final SettlementType selectedType;
+  final bool enabled;
+  final ValueChanged<SettlementType> onChanged;
+  final String Function(num) formatCurrency;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons.receipt_long_rounded,
+                color: AppColors.deepBlue,
+                size: 20,
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Xử lý chênh lệch hóa đơn',
+                style: TextStyle(
+                  color: Color(0xFF000666),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Phát sinh chênh lệch cần thanh toán: ${formatCurrency(amount)}',
+            style: const TextStyle(
+              color: Color(0xFF000666),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _SettlementOptionTile(
+            selected: selectedType == SettlementType.tenantPayMore,
+            enabled: enabled,
+            title: 'Thanh toán khoản chênh lệch luôn',
+            subtitle:
+                'Tạo/yêu cầu thanh toán riêng cho phần chênh lệch hiện tại.',
+            onTap: () => onChanged(SettlementType.tenantPayMore),
+          ),
+          const SizedBox(height: 8),
+          _SettlementOptionTile(
+            selected: selectedType == SettlementType.addToNextInvoice,
+            enabled: enabled,
+            title: 'Cộng vào hóa đơn kỳ kế tiếp',
+            subtitle: 'Khoản chênh lệch sẽ được cộng vào hóa đơn tháng sau.',
+            onTap: () => onChanged(SettlementType.addToNextInvoice),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SettlementOptionTile extends StatelessWidget {
+  const _SettlementOptionTile({
+    required this.selected,
+    required this.enabled,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final bool selected;
+  final bool enabled;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final activeColor = selected ? AppColors.deepBlue : const Color(0xFF9CA3AF);
+    final textColor =
+        enabled ? const Color(0xFF111827) : const Color(0xFF9CA3AF);
+
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.deepBlue.withValues(alpha: 0.06)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected
+                ? AppColors.deepBlue.withValues(alpha: 0.55)
+                : AppColors.cardBorder,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              selected
+                  ? Icons.radio_button_checked_rounded
+                  : Icons.radio_button_off_rounded,
+              color: enabled ? activeColor : const Color(0xFFD1D5DB),
+              size: 21,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: enabled
+                          ? const Color(0xFF6B7280)
+                          : const Color(0xFF9CA3AF),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

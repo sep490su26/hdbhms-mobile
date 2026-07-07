@@ -338,6 +338,10 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
               TextFormField(
                 controller: _reasonCtrl,
                 maxLines: 3,
+                keyboardType: TextInputType.multiline,
+                textCapitalization: TextCapitalization.sentences,
+                enableSuggestions: true,
+                autocorrect: true,
                 decoration: const InputDecoration(
                   hintText: 'Nhập lý do chuyển phòng (không bắt buộc)',
                   border: OutlineInputBorder(

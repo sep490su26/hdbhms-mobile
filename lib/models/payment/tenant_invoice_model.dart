@@ -26,6 +26,7 @@ class TenantInvoice {
     required this.accountName,
     required this.transferDescription,
     required this.lines,
+    required this.priceDifferenceSettlementType,
   });
 
   final int? id;
@@ -54,6 +55,7 @@ class TenantInvoice {
   final String accountName;
   final String transferDescription;
   final List<TenantInvoiceLine> lines;
+  final String? priceDifferenceSettlementType;
 
   bool get isPaid => status.toUpperCase() == 'PAID' || remainingAmount <= 0;
 
@@ -149,6 +151,7 @@ class TenantInvoice {
           .whereType<Map<String, dynamic>>()
           .map(TenantInvoiceLine.fromJson)
           .toList(),
+      priceDifferenceSettlementType: _firstString(json, ['priceDifferenceSettlementType']),
     );
   }
 }

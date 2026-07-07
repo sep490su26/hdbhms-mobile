@@ -22,7 +22,7 @@ class ChangeRequestService {
 
   // ── List (tenant's own requests, or filtered) ─────────────────────────────
 
-  /// GET /api/v1/change-requests
+  /// GET /api/v1/change-requests/my
   Future<List<ChangeRequest>> getMyRequests({
     ChangeRequestType? type,
     ChangeRequestStatus? status,
@@ -41,7 +41,7 @@ class ChangeRequestService {
       query['search'] = search.trim();
     }
 
-    final json = await _getJson(_uri('/change-requests', query));
+    final json = await _getJson(_uri('/change-requests/my', query));
     final list = _extractList(json);
     return list
         .map(ChangeRequest.fromJson)

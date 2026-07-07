@@ -5,6 +5,11 @@ class NotificationItem {
     required this.title,
     required this.content,
     required this.createdAt,
+    this.eventType = '',
+    this.targetType,
+    this.targetId,
+    this.data = const {},
+    this.readAt,
     this.isRead = false,
     this.type = NotificationType.general,
   });
@@ -13,6 +18,11 @@ class NotificationItem {
   final String title;
   final String content;
   final DateTime createdAt;
+  final String eventType;
+  final String? targetType;
+  final int? targetId;
+  final Map<String, String> data;
+  final DateTime? readAt;
   final bool isRead;
   final NotificationType type;
 
@@ -22,6 +32,11 @@ class NotificationItem {
       title: title,
       content: content,
       createdAt: createdAt,
+      eventType: eventType,
+      targetType: targetType,
+      targetId: targetId,
+      data: data,
+      readAt: isRead == true && readAt == null ? DateTime.now() : readAt,
       isRead: isRead ?? this.isRead,
       type: type,
     );
@@ -29,15 +44,40 @@ class NotificationItem {
 
   factory NotificationItem.fromJson(Map<String, dynamic> json) {
     NotificationType parsedType = NotificationType.general;
-    final eventType = json['eventType']?.toString().toUpperCase() ?? '';
+    final eventType = json['eventType']?.toString() ?? '';
+    final normalizedEventType = eventType.toUpperCase();
+    final rawData = json['data'];
+    final data = rawData is Map
+        ? rawData.map(
+            (key, value) => MapEntry(key.toString(), value?.toString() ?? ''),
+          )
+        : <String, String>{};
+    final rawTargetType = json['targetType']?.toString().trim();
+    final targetType = rawTargetType != null && rawTargetType.isNotEmpty
+        ? rawTargetType
+        : data['targetType'];
+    final targetId =
+        _asInt(json['targetId']) ??
+        _asInt(data['targetId']) ??
+        _asInt(data['transferRequestId']) ??
+        _asInt(data['invoiceId']);
+    final normalizedTargetType = targetType?.toUpperCase() ?? '';
 
-    if (eventType.contains('INVOICE') || eventType.contains('PAYMENT')) {
+    if (normalizedEventType.contains('INVOICE') ||
+        normalizedEventType.contains('PAYMENT') ||
+        normalizedTargetType.contains('INVOICE')) {
       parsedType = NotificationType.invoice;
-    } else if (eventType.contains('CONTRACT') || eventType.contains('LEASE')) {
+    } else if (normalizedEventType.contains('CONTRACT') ||
+        normalizedEventType.contains('LEASE') ||
+        normalizedEventType.contains('ROOM_TRANSFER') ||
+        normalizedTargetType.contains('CONTRACT') ||
+        normalizedTargetType.contains('ROOM_TRANSFER')) {
       parsedType = NotificationType.contract;
-    } else if (eventType.contains('MAINTENANCE') ||
-        eventType.contains('REPAIR') ||
-        eventType.contains('TICKET')) {
+    } else if (normalizedEventType.contains('MAINTENANCE') ||
+        normalizedEventType.contains('REPAIR') ||
+        normalizedEventType.contains('TICKET') ||
+        normalizedTargetType.contains('MAINTENANCE') ||
+        normalizedTargetType.contains('TICKET')) {
       parsedType = NotificationType.maintenance;
     }
 
@@ -48,9 +88,24 @@ class NotificationItem {
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),
-      isRead: json['isRead'] as bool? ?? false,
+      eventType: eventType,
+      targetType: targetType,
+      targetId: targetId,
+      data: data,
+      readAt: json['readAt'] == null
+          ? null
+          : DateTime.tryParse(json['readAt'].toString()),
+      isRead: _asBool(json['isRead']),
       type: parsedType,
     );
+  }
+
+  static int? _asInt(Object? value) => int.tryParse(value?.toString() ?? '');
+
+  static bool _asBool(Object? value) {
+    if (value is bool) return value;
+    final normalized = value?.toString().toLowerCase();
+    return normalized == 'true' || normalized == '1';
   }
 }
 

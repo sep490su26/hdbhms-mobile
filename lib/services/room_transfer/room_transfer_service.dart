@@ -34,16 +34,13 @@ class RoomTransferService {
       'sourceContractId': sourceContractId,
       'targetRoomId': targetRoomId,
       'requestedTransferDate': _dateOnly(requestedTransferDate),
+      'expectedTransferDate': _dateOnly(requestedTransferDate),
       if (transferredTenantProfileIds != null &&
           transferredTenantProfileIds.isNotEmpty)
         'transferredTenantProfileIds': transferredTenantProfileIds,
       if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
     };
-    final json = await _postJson(
-      _uri('/occupant-transfer-requests'),
-      body,
-    );
-    // Backend returns the transfer request ID as Long directly.
+    final json = await _postJson(_uri('/occupant-transfer-requests'), body);
     final data = json['data'];
     if (data is int) return data;
     if (data is num) return data.toInt();
@@ -57,20 +54,14 @@ class RoomTransferService {
 
   /// POST /api/v1/occupant-transfer-requests/{id}/cancel
   Future<void> cancelTransferRequest(int requestId) async {
-    await _postJson(
-      _uri('/occupant-transfer-requests/$requestId/cancel'),
-      {},
-    );
+    await _postJson(_uri('/occupant-transfer-requests/$requestId/cancel'), {});
   }
 
-  // ── Get by ID (placeholder – backend needs GET endpoint) ──────────────────
+  // ── Get by ID ─────────────────────────────────────────────────────────────
 
   /// GET /occupant-transfer-requests/{id}
-  /// Note: Requires backend to expose this endpoint.
   Future<RoomTransferRequest> getTransferRequest(int requestId) async {
-    final json = await _getJson(
-      _uri('/occupant-transfer-requests/$requestId'),
-    );
+    final json = await _getJson(_uri('/occupant-transfer-requests/$requestId'));
     final data = json['data'];
     if (data is Map<String, dynamic>) {
       return RoomTransferRequest.fromJson(data);
@@ -78,10 +69,12 @@ class RoomTransferService {
     return RoomTransferRequest.fromJson(json);
   }
 
-  // ── Get by request code ─────────────────────────────────────────────────────
+  // ── Get by request code ───────────────────────────────────────────────────
 
   /// GET /occupant-transfer-requests/code/{requestCode}
-  Future<RoomTransferRequest> getTransferRequestByCode(String requestCode) async {
+  Future<RoomTransferRequest> getTransferRequestByCode(
+    String requestCode,
+  ) async {
     final json = await _getJson(
       _uri('/occupant-transfer-requests/code/$requestCode'),
     );
@@ -92,19 +85,24 @@ class RoomTransferService {
     return RoomTransferRequest.fromJson(json);
   }
 
-  // ── Pending Approvals (for target holder) ────────────────────────────────
+  // ── Pending approvals ─────────────────────────────────────────────────────
 
   /// GET /occupant-transfer-requests/pending-target-holder-approvals
-  /// Returns transfer requests awaiting current user's approval as target contract holder.
-  /// Note: Requires backend to expose this endpoint.
   Future<List<RoomTransferRequest>> fetchPendingTargetHolderApprovals() async {
     final json = await _getJson(
       _uri('/occupant-transfer-requests/pending-target-holder-approvals'),
     );
     final list = _extractList(json);
-    return list
-        .map(RoomTransferRequest.fromJson)
-        .toList(growable: false);
+    return list.map(RoomTransferRequest.fromJson).toList(growable: false);
+  }
+
+  /// GET /occupant-transfer-requests/pending-holder-nominations
+  Future<List<RoomTransferRequest>> fetchPendingHolderNominations() async {
+    final json = await _getJson(
+      _uri('/occupant-transfer-requests/pending-holder-nominations'),
+    );
+    final list = _extractList(json);
+    return list.map(RoomTransferRequest.fromJson).toList(growable: false);
   }
 
   // ── Holder nomination ─────────────────────────────────────────────────────
@@ -128,7 +126,33 @@ class RoomTransferService {
     );
   }
 
+  /// POST /api/v1/occupant-transfer-requests/{id}/reject-holder-nomination
+  Future<void> rejectHolderNomination(int requestId) async {
+    await _postJson(
+      _uri('/occupant-transfer-requests/$requestId/reject-holder-nomination'),
+      {},
+    );
+  }
+
   // ── Contract ──────────────────────────────────────────────────────────────
+
+  /// POST /occupant-transfer-requests/{id}/confirm
+  Future<void> confirmTenantTransfer({
+    required int requestId,
+    required SettlementType settlementType,
+    int? nominatedHolderProfileId,
+  }) async {
+    final body = <String, dynamic>{
+      'settlementType': settlementType.backendValue,
+    };
+    if (nominatedHolderProfileId != null) {
+      body['nominatedHolderProfileId'] = nominatedHolderProfileId;
+    }
+    await _postJson(
+      _uri('/occupant-transfer-requests/$requestId/confirm'),
+      body,
+    );
+  }
 
   /// POST /api/v1/occupant-transfer-requests/{id}/contract/confirm
   Future<void> confirmTransferContract(int requestId) async {
@@ -154,7 +178,7 @@ class RoomTransferService {
     );
   }
 
-  // ── Target holder approval (other-contract transfers) ─────────────────────
+  // ── Target holder approval ────────────────────────────────────────────────
 
   /// POST /api/v1/occupant-transfer-requests/{id}/target-holder/approve
   Future<void> approveTargetHolderTransfer(int requestId) async {
@@ -179,6 +203,7 @@ class RoomTransferService {
     required int requestId,
     TransferHandoverData? transferOutHandover,
     TransferHandoverData? transferInHandover,
+    SettlementType? positiveDifferenceSettlementType,
   }) async {
     final body = <String, dynamic>{};
     if (transferOutHandover != null) {
@@ -187,13 +212,74 @@ class RoomTransferService {
     if (transferInHandover != null) {
       body['transferInHandover'] = transferInHandover.toJson();
     }
+    if (positiveDifferenceSettlementType != null) {
+      body['positiveDifferenceSettlementType'] =
+          positiveDifferenceSettlementType.backendValue;
+    }
     await _postJson(
       _uri('/occupant-transfer-requests/$requestId/execute'),
       body,
     );
   }
 
-  // ── Rooms (for picker) ────────────────────────────────────────────────────
+  /// POST /api/v1/occupant-transfer-requests/{id}/complete-with-handover
+  Future<void> completeTransfer({
+    required int requestId,
+    TransferHandoverData? transferInHandover,
+    SettlementType? positiveDifferenceSettlementType,
+  }) async {
+    final body = <String, dynamic>{};
+    if (transferInHandover != null) {
+      body['transferInHandover'] = transferInHandover.toJson();
+    }
+    if (positiveDifferenceSettlementType != null) {
+      body['positiveDifferenceSettlementType'] =
+          positiveDifferenceSettlementType.backendValue;
+    }
+    await _postJson(
+      _uri('/occupant-transfer-requests/$requestId/complete-with-handover'),
+      body,
+    );
+  }
+
+  /// GET /api/v1/rooms/{roomId}/meter-readings/latest
+  Future<LatestRoomMeterReadings?> getLatestRoomMeterReadings(
+    int roomId,
+  ) async {
+    final json = await _getJson(
+      _uriWithApiPrefix('/rooms/$roomId/meter-readings/latest'),
+    );
+    final data = json['data'];
+    if (data is Map<String, dynamic>) {
+      return LatestRoomMeterReadings.fromJson(data);
+    }
+    if (data is Map) {
+      return LatestRoomMeterReadings.fromJson(Map<String, dynamic>.from(data));
+    }
+    return null;
+  }
+
+  /// GET /api/v1/lease-contracts/{contractId}/handover?type=MOVE_OUT
+  Future<ContractHandoverDetails?> getContractHandoverDetails({
+    required int contractId,
+    String type = 'MOVE_OUT',
+  }) async {
+    final json = await _getJson(
+      _uriWithApiPrefix('/lease-contracts/$contractId/handover', {
+        'type': type,
+      }),
+    );
+    final data = json['data'];
+    if (data is Map<String, dynamic>) {
+      return ContractHandoverDetails.fromJson(data);
+    }
+    if (data is Map) {
+      return ContractHandoverDetails.fromJson(Map<String, dynamic>.from(data));
+    }
+    return null;
+  }
+
+  // ── Rooms ─────────────────────────────────────────────────────────────────
 
   /// GET /api/v1/rooms — list available rooms for transfer target.
   Future<List<AvailableRoom>> fetchAvailableRooms({
@@ -209,9 +295,7 @@ class RoomTransferService {
       }),
     );
     final list = _extractList(json);
-    return list
-        .map(AvailableRoom.fromJson)
-        .toList(growable: false);
+    return list.map(AvailableRoom.fromJson).toList(growable: false);
   }
 
   // ── Internal helpers ──────────────────────────────────────────────────────
@@ -266,18 +350,15 @@ class RoomTransferService {
   }
 
   Uri _uri(String path, [Map<String, String>? query]) {
-    // RoomTransferController is at /occupant-transfer-requests (no /api/v1 prefix)
-    final base = ApiConfig.baseUrl.replaceAll('/api/v1', '');
-    return Uri.parse('$base$path').replace(
-      queryParameters: query == null || query.isEmpty ? null : query,
-    );
+    return Uri.parse(
+      '${ApiConfig.baseUrl}$path',
+    ).replace(queryParameters: query == null || query.isEmpty ? null : query);
   }
 
-  /// For endpoints that DO have /api/v1 prefix (e.g. /rooms).
   Uri _uriWithApiPrefix(String path, [Map<String, String>? query]) {
-    return Uri.parse('${ApiConfig.baseUrl}$path').replace(
-      queryParameters: query == null || query.isEmpty ? null : query,
-    );
+    return Uri.parse(
+      '${ApiConfig.baseUrl}$path',
+    ).replace(queryParameters: query == null || query.isEmpty ? null : query);
   }
 
   List<Map<String, dynamic>> _extractList(Map<String, dynamic> json) {
@@ -314,7 +395,127 @@ class RoomTransferService {
   }
 }
 
-/// Handover data payload for the execute-transfer endpoint.
+int? _topLevelAsInt(Object? value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '');
+}
+
+double? _asDouble(Object? value) {
+  if (value is double) return value;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value?.toString() ?? '');
+}
+
+DateTime? _parseDateTimeFlexible(Object? value) {
+  final raw = value?.toString().trim() ?? '';
+  if (raw.isEmpty) return null;
+  return DateTime.tryParse(raw);
+}
+
+class LatestRoomMeterReadings {
+  const LatestRoomMeterReadings({this.electricity, this.water});
+
+  final LatestMeterReadingItem? electricity;
+  final LatestMeterReadingItem? water;
+
+  factory LatestRoomMeterReadings.fromJson(Map<String, dynamic> json) {
+    return LatestRoomMeterReadings(
+      electricity: _readingOrNull(json['electricity']),
+      water: _readingOrNull(json['water']),
+    );
+  }
+}
+
+class ContractHandoverDetails {
+  const ContractHandoverDetails({
+    this.handoverRecordId,
+    this.handoverType,
+    this.status,
+    this.handoverDate,
+    this.note,
+    this.electricity,
+    this.water,
+  });
+
+  final int? handoverRecordId;
+  final String? handoverType;
+  final String? status;
+  final DateTime? handoverDate;
+  final String? note;
+  final LatestMeterReadingItem? electricity;
+  final LatestMeterReadingItem? water;
+
+  bool get hasAnyData =>
+      handoverRecordId != null ||
+      handoverDate != null ||
+      (note?.trim().isNotEmpty ?? false) ||
+      electricity?.currentValue != null ||
+      water?.currentValue != null;
+
+  factory ContractHandoverDetails.fromJson(Map<String, dynamic> json) {
+    return ContractHandoverDetails(
+      handoverRecordId: _topLevelAsInt(json['handoverRecordId']),
+      handoverType: json['handoverType']?.toString(),
+      status: json['status']?.toString(),
+      handoverDate: _parseDateTimeFlexible(json['handoverDate']),
+      note: json['note']?.toString(),
+      electricity: _readingOrNull(json['electricity']),
+      water: _readingOrNull(json['water']),
+    );
+  }
+}
+
+class LatestMeterReadingItem {
+  const LatestMeterReadingItem({
+    this.id,
+    this.currentValue,
+    this.previousValue,
+    this.readingDate,
+    this.photoFileId,
+  });
+
+  final int? id;
+  final double? currentValue;
+  final double? previousValue;
+  final DateTime? readingDate;
+  final int? photoFileId;
+
+  factory LatestMeterReadingItem.fromJson(Map<String, dynamic> json) {
+    return LatestMeterReadingItem(
+      id: _topLevelAsInt(json['id']),
+      currentValue: _asDouble(json['currentValue']),
+      previousValue: _asDouble(json['previousValue']),
+      readingDate: _parseDateTimeFlexible(json['readingDate']),
+      photoFileId: _topLevelAsInt(json['photoFileId']),
+    );
+  }
+}
+
+LatestMeterReadingItem? _readingOrNull(Object? value) {
+  if (value is Map<String, dynamic>) {
+    return LatestMeterReadingItem.fromJson(value);
+  }
+  if (value is Map) {
+    return LatestMeterReadingItem.fromJson(Map<String, dynamic>.from(value));
+  }
+  return null;
+}
+
+/// Settlement option for positive room-rent difference during transfer.
+enum SettlementType {
+  tenantPayMore('TENANT_PAY_MORE'),
+  addToNextInvoice('ADD_TO_NEXT_INVOICE'),
+  refundNow('REFUND_NOW'),
+  creditNextContract('CREDIT_NEXT_CONTRACT'),
+  noDifference('NO_DIFFERENCE');
+
+  const SettlementType(this.backendValue);
+
+  final String backendValue;
+}
+
+/// Handover data payload for execute-transfer endpoint.
 class TransferHandoverData {
   const TransferHandoverData({
     required this.handoverDate,
