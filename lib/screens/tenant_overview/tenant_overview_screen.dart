@@ -12,6 +12,7 @@ import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/utils/display_formatters.dart';
 
 class TenantOverviewScreen extends StatefulWidget {
   const TenantOverviewScreen({
@@ -106,7 +107,7 @@ class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
             roomCode: room.roomCode,
             roomName: room.name,
             roomStatus: room.currentStatus,
-            propertyName: summary.tenant?.name ?? '',
+            propertyName: formatPropertyName(summary.tenant?.name ?? ''),
             contractStatus: summary.contract?.status ?? '',
           );
         })
@@ -125,7 +126,7 @@ class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
         roomCode: summaryRoom.roomCode,
         roomName: summaryRoom.name,
         roomStatus: summaryRoom.currentStatus,
-        propertyName: summary.tenant?.name ?? '',
+        propertyName: formatPropertyName(summary.tenant?.name ?? ''),
         contractStatus: summary.contract?.status ?? '',
       ),
     ];
@@ -237,11 +238,9 @@ class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
 
     final tenant = summary.tenant;
     final tenantName = tenant?.name.trim().isNotEmpty == true
-        ? tenant!.name.trim()
+        ? formatPropertyName(tenant!.name.trim())
         : 'Nhà trọ của tôi';
-    final phone = tenant?.phone.trim().isNotEmpty == true
-        ? tenant!.phone.trim()
-        : summary.user.phone.trim();
+    final phone = tenant?.propertyPhone.trim() ?? '';
     final address = tenant?.address.trim().isNotEmpty == true
         ? tenant!.address.trim()
         : 'Chưa cập nhật địa chỉ';
@@ -269,7 +268,9 @@ class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
               children: [
                 _PropertySummaryCard(
                   tenantName: tenantName,
-                  phone: phone.isEmpty ? 'Chưa cập nhật SĐT' : phone,
+                  phone: phone.isEmpty
+                      ? 'Chưa cập nhật SĐT nhà trọ'
+                      : 'SĐT nhà trọ: $phone',
                   address: address,
                 ),
                 const SizedBox(height: 20),
@@ -629,7 +630,7 @@ class _FallbackPropertyImage extends StatelessWidget {
     ];
     final colors = [
       const Color(0xFF071426),
-      const Color(0xFF0F766E),
+      const Color(0xFF12345C),
       const Color(0xFF1D4ED8),
     ];
     return DecoratedBox(
@@ -767,7 +768,7 @@ class _RoomOverviewCard extends StatelessWidget {
                     if (room.propertyName.isNotEmpty) ...[
                       const SizedBox(height: 3),
                       Text(
-                        room.propertyName,
+                        formatPropertyName(room.propertyName),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(

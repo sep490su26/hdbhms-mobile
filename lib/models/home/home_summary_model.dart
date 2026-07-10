@@ -101,6 +101,7 @@ class HomeTenant {
     required this.id,
     required this.name,
     this.phone = '',
+    this.propertyPhone = '',
     this.address = '',
     this.imageUrls = const [],
   });
@@ -108,10 +109,21 @@ class HomeTenant {
   final int? id;
   final String name;
   final String phone;
+  final String propertyPhone;
   final String address;
   final List<String> imageUrls;
 
   factory HomeTenant.fromJson(Map<String, dynamic> json) {
+    final property = _firstMap(json, const [
+      'property',
+      'propertyInfo',
+      'property_info',
+      'building',
+      'motel',
+      'boardingHouse',
+      'boarding_house',
+    ]);
+
     return HomeTenant(
       id: int.tryParse(json['id']?.toString() ?? ''),
       name: json['name']?.toString() ?? '',
@@ -123,6 +135,36 @@ class HomeTenant {
         'contact_phone',
         'hotline',
       ]),
+      propertyPhone: _firstString(
+        json,
+        [
+          'propertyPhone',
+          'property_phone',
+          'propertyContactPhone',
+          'property_contact_phone',
+          'managerPhone',
+          'manager_phone',
+          'ownerPhone',
+          'owner_phone',
+          'landlordPhone',
+          'landlord_phone',
+          'hotline',
+        ],
+        fallback: _firstString(property, [
+          'phone',
+          'phoneNumber',
+          'contactPhone',
+          'hotline',
+          'managerPhone',
+          'ownerPhone',
+          'landlordPhone',
+          'phone_number',
+          'contact_phone',
+          'manager_phone',
+          'owner_phone',
+          'landlord_phone',
+        ]),
+      ),
       address: _firstString(json, [
         'address',
         'addressLine',

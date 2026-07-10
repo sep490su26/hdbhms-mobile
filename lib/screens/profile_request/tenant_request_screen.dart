@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/models/profile_request/tenant_request_model.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
+import 'package:hdbhms_mobile/widgets/app_action_tile.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/profile_request/add_roommate_request_screen.dart';
@@ -13,7 +14,6 @@ import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart
 import 'package:hdbhms_mobile/screens/contract/terminate_contract_screen.dart';
 
 // Màu chữ đặc biệt theo yêu cầu
-const Color _kLabelColor = Color(0xFF000666);
 
 /// Màn "Yêu cầu" – gồm 2 phần:
 ///  1. Tạo yêu cầu mới (4 loại)
@@ -185,9 +185,10 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
 
                     // ── List items ────────────────────────────────────
                     filtered.isEmpty
-                        ? SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: _buildEmpty(),
+                        ? SliverToBoxAdapter(
+                            child: _RequestEmptyState(
+                              hasFilter: _filterType != null,
+                            ),
                           )
                         : SliverPadding(
                             padding: const EdgeInsets.fromLTRB(14, 8, 14, 28),
@@ -322,13 +323,13 @@ class _TenantRequestScreenState extends State<TenantRequestScreen> {
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 10,
       crossAxisSpacing: 10,
-      childAspectRatio: 1.35,
+      childAspectRatio: 1.62,
       children: TenantRequestType.values
           .map(
             (type) =>
                 _CreateTypeCard(type: type, onTap: () => _openCreateForm(type)),
           )
-          .toList(),
+          .toList(growable: false),
     );
   }
 }
@@ -343,11 +344,13 @@ class _RequestCountBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 7, 11, 7),
       decoration: BoxDecoration(
-        color: AppColors.deepBlue,
+        gradient: const LinearGradient(
+          colors: [AppColors.deepBlue, AppColors.primary],
+        ),
         borderRadius: BorderRadius.circular(999),
         boxShadow: [
           BoxShadow(
-            color: AppColors.deepBlue.withValues(alpha: 0.24),
+            color: AppColors.primary.withValues(alpha: 0.20),
             blurRadius: 12,
             offset: const Offset(0, 5),
           ),
@@ -384,6 +387,82 @@ class _RequestCountBadge extends StatelessWidget {
 }
 
 // ── Create type card ─────────────────────────────────────────────────────────
+class _RequestEmptyState extends StatelessWidget {
+  const _RequestEmptyState({required this.hasFilter});
+
+  final bool hasFilter;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 28),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.cardBorder),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.deepBlue.withValues(alpha: 0.045),
+              blurRadius: 18,
+              offset: const Offset(0, 9),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(
+                Icons.inbox_outlined,
+                color: AppColors.deepBlue,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Chưa có yêu cầu nào',
+                    style: TextStyle(
+                      color: AppColors.inputText,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      height: 19 / 14,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    hasFilter
+                        ? 'Không có yêu cầu phù hợp với bộ lọc hiện tại.'
+                        : 'Tạo yêu cầu mới ở phía trên khi bạn cần đổi phòng, gia hạn hoặc thêm người ở cùng.',
+                    style: const TextStyle(
+                      color: AppColors.bodyText,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      height: 18 / 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _CreateTypeCard extends StatelessWidget {
   const _CreateTypeCard({required this.type, required this.onTap});
 
@@ -391,80 +470,26 @@ class _CreateTypeCard extends StatelessWidget {
   final VoidCallback onTap;
 
   IconData get _icon => switch (type) {
-    TenantRequestType.renewContract => Icons.autorenew_rounded,
-    TenantRequestType.terminateContract => Icons.cancel_outlined,
-    TenantRequestType.changeRoom => Icons.swap_horiz_rounded,
-    TenantRequestType.addRoommate => Icons.person_add_outlined,
-  };
-
-  Color get _iconBg => switch (type) {
-    TenantRequestType.renewContract => const Color(0xFFEFF1FF),
-    TenantRequestType.terminateContract => const Color(0xFFFFF0F0),
-    TenantRequestType.changeRoom => const Color(0xFFEFF8FF),
-    TenantRequestType.addRoommate => const Color(0xFFF0FFF4),
+    TenantRequestType.renewContract => Icons.event_repeat_rounded,
+    TenantRequestType.terminateContract => Icons.gavel_rounded,
+    TenantRequestType.changeRoom => Icons.compare_arrows_rounded,
+    TenantRequestType.addRoommate => Icons.group_add_rounded,
   };
 
   Color get _iconColor => switch (type) {
-    TenantRequestType.renewContract => AppColors.deepBlue,
-    TenantRequestType.terminateContract => const Color(0xFFDC2626),
-    TenantRequestType.changeRoom => const Color(0xFF0284C7),
-    TenantRequestType.addRoommate => const Color(0xFF16A34A),
+    TenantRequestType.renewContract => AppColors.actionBlue,
+    TenantRequestType.terminateContract => AppColors.actionRose,
+    TenantRequestType.changeRoom => AppColors.actionViolet,
+    TenantRequestType.addRoommate => AppColors.actionEmerald,
   };
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.cardBorder),
-          ),
-          padding: const EdgeInsets.fromLTRB(12, 14, 10, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: _iconBg,
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Icon(_icon, color: _iconColor, size: 22),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                type.fullLabel,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: _kLabelColor,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                  height: 17 / 13,
-                ),
-              ),
-              Text(
-                type.description,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.bodyText,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  height: 15 / 11,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return AppActionTile(
+      icon: _icon,
+      label: type.fullLabel,
+      accentColor: _iconColor,
+      onTap: onTap,
     );
   }
 }
@@ -524,13 +549,27 @@ class _FilterChip extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.deepBlue : AppColors.surface,
+          gradient: isActive
+              ? const LinearGradient(
+                  colors: [AppColors.deepBlue, AppColors.primary],
+                )
+              : null,
+          color: isActive ? null : AppColors.surface,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: isActive
-                ? AppColors.deepBlue
+                ? Colors.white.withValues(alpha: 0.2)
                 : AppColors.cardBorder.withValues(alpha: 0.9),
           ),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.18),
+                    blurRadius: 14,
+                    offset: const Offset(0, 7),
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           label,
@@ -547,6 +586,20 @@ class _FilterChip extends StatelessWidget {
 }
 
 // ── Request card ─────────────────────────────────────────────────────────────
+IconData _typeIcon(TenantRequestType type) => switch (type) {
+  TenantRequestType.renewContract => Icons.autorenew_rounded,
+  TenantRequestType.terminateContract => Icons.cancel_outlined,
+  TenantRequestType.changeRoom => Icons.swap_horiz_rounded,
+  TenantRequestType.addRoommate => Icons.person_add_outlined,
+};
+
+Color _typeAccent(TenantRequestType type) => switch (type) {
+  TenantRequestType.renewContract => AppColors.actionBlue,
+  TenantRequestType.terminateContract => AppColors.actionRose,
+  TenantRequestType.changeRoom => AppColors.actionViolet,
+  TenantRequestType.addRoommate => AppColors.actionEmerald,
+};
+
 class _RequestCard extends StatelessWidget {
   const _RequestCard({required this.request, required this.onTap});
 
@@ -555,23 +608,41 @@ class _RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accent = _typeAccent(request.type);
     return Material(
       color: AppColors.surface,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: AppColors.cardBorder.withValues(alpha: 0.8),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.deepBlue.withValues(alpha: 0.045),
+                blurRadius: 18,
+                offset: const Offset(0, 9),
+              ),
+            ],
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(_typeIcon(request.type), color: accent, size: 22),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -648,24 +719,18 @@ class _TypeTag extends StatelessWidget {
 
   final TenantRequestType type;
 
-  IconData get _icon => switch (type) {
-    TenantRequestType.renewContract => Icons.autorenew_rounded,
-    TenantRequestType.terminateContract => Icons.cancel_outlined,
-    TenantRequestType.changeRoom => Icons.swap_horiz_rounded,
-    TenantRequestType.addRoommate => Icons.person_add_outlined,
-  };
-
   @override
   Widget build(BuildContext context) {
+    final accent = _typeAccent(type);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(_icon, size: 12, color: AppColors.deepBlue),
+        Icon(_typeIcon(type), size: 12, color: accent),
         const SizedBox(width: 4),
         Text(
           type.label.toUpperCase(),
-          style: const TextStyle(
-            color: AppColors.deepBlue,
+          style: TextStyle(
+            color: accent,
             fontSize: 10,
             fontWeight: FontWeight.w900,
             letterSpacing: 0.4,
@@ -684,14 +749,14 @@ class _StatusBadge extends StatelessWidget {
 
   Color get _bg => switch (status) {
     TenantRequestStatus.pending => const Color(0xFFFFF7ED),
-    TenantRequestStatus.processing => const Color(0xFFEFF1FF),
+    TenantRequestStatus.processing => AppColors.primaryLight,
     TenantRequestStatus.approved => const Color(0xFFD4F8DE),
     TenantRequestStatus.rejected => const Color(0xFFFFE4E4),
   };
 
   Color get _fg => switch (status) {
     TenantRequestStatus.pending => const Color(0xFFD97706),
-    TenantRequestStatus.processing => AppColors.deepBlue,
+    TenantRequestStatus.processing => AppColors.primary,
     TenantRequestStatus.approved => const Color(0xFF16A34A),
     TenantRequestStatus.rejected => const Color(0xFFDC2626),
   };
@@ -703,6 +768,7 @@ class _StatusBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: _bg,
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: _fg.withValues(alpha: 0.16)),
       ),
       child: Text(
         status.label,
@@ -757,7 +823,7 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(20, 0, 20, 24 + bottomInset),
       child: Column(
@@ -810,7 +876,7 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
               color: const Color(0xFFEFF1FF),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
               widget.type.fullLabel,
@@ -845,22 +911,22 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
                 fontWeight: FontWeight.w400,
               ),
               filled: true,
-              fillColor: AppColors.background,
+              fillColor: AppColors.inputFill,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 14,
                 vertical: 12,
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: const BorderSide(color: AppColors.cardBorder),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: const BorderSide(color: AppColors.cardBorder),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.deepBlue),
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: AppColors.primary),
               ),
             ),
           ),
@@ -872,14 +938,14 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
             child: ElevatedButton(
               onPressed: _submitting ? null : _submit,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
-                disabledBackgroundColor: AppColors.deepBlue.withValues(
+                backgroundColor: AppColors.primary,
+                disabledBackgroundColor: AppColors.primary.withValues(
                   alpha: 0.5,
                 ),
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
               child: _submitting
@@ -920,17 +986,17 @@ class _RequestDetailDialog extends StatelessWidget {
   };
 
   Color get _accentColor => switch (request.type) {
-    TenantRequestType.renewContract => AppColors.deepBlue,
-    TenantRequestType.terminateContract => const Color(0xFFDC2626),
-    TenantRequestType.changeRoom => const Color(0xFF0284C7),
-    TenantRequestType.addRoommate => const Color(0xFF16A34A),
+    TenantRequestType.renewContract => AppColors.actionBlue,
+    TenantRequestType.terminateContract => AppColors.actionRose,
+    TenantRequestType.changeRoom => AppColors.actionViolet,
+    TenantRequestType.addRoommate => AppColors.actionEmerald,
   };
 
   Color get _accentBg => switch (request.type) {
-    TenantRequestType.renewContract => const Color(0xFFEFF1FF),
-    TenantRequestType.terminateContract => const Color(0xFFFFF0F0),
-    TenantRequestType.changeRoom => const Color(0xFFEFF8FF),
-    TenantRequestType.addRoommate => const Color(0xFFF0FFF4),
+    TenantRequestType.renewContract => AppColors.primaryLight,
+    TenantRequestType.terminateContract => const Color(0xFFFFF1F0),
+    TenantRequestType.changeRoom => const Color(0xFFE5FAF6),
+    TenantRequestType.addRoommate => const Color(0xFFF1F8E8),
   };
 
   Color get _statusColor => switch (request.status) {
@@ -956,7 +1022,7 @@ class _RequestDetailDialog extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 430),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.12),
@@ -978,7 +1044,7 @@ class _RequestDetailDialog extends StatelessWidget {
                     height: 38,
                     decoration: BoxDecoration(
                       color: _accentBg,
-                      borderRadius: BorderRadius.circular(9),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                     child: Icon(_icon, color: _accentColor, size: 22),
                   ),
@@ -1027,7 +1093,7 @@ class _RequestDetailDialog extends StatelessWidget {
             ),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 18),
-              child: Divider(height: 1, color: Color(0xFFEEECEE)),
+              child: Divider(height: 1, color: AppColors.cardBorder),
             ),
             Flexible(
               child: SingleChildScrollView(
@@ -1090,11 +1156,11 @@ class _RequestDetailDialog extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: () => Navigator.of(context).pop(),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.deepBlue,
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                   ),
                   child: const Text(

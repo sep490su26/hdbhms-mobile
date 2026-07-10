@@ -149,8 +149,9 @@ class QrReceiptTemplate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isRent = invoice.invoiceType.toUpperCase() == 'RENT';
-    final typeLabel =
-        isRent ? 'THANH TOÁN TIỀN PHÒNG' : 'THANH TOÁN ĐIỆN NƯỚC & DỊCH VỤ';
+    final typeLabel = isRent
+        ? 'THANH TOÁN TIỀN PHÒNG'
+        : 'THANH TOÁN ĐIỆN NƯỚC & DỊCH VỤ';
 
     final infoRows = <({String label, String value, bool highlight})>[
       (label: 'Ngân hàng', value: invoice.bankShortName, highlight: false),
@@ -288,7 +289,7 @@ class QrReceiptTemplate extends StatelessWidget {
                           color: Colors.white,
                           fontSize: 30,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: -0.8,
+                          letterSpacing: 0,
                         ),
                       ),
                     ],
@@ -587,8 +588,9 @@ class _InfoRow extends StatelessWidget {
               value,
               textAlign: TextAlign.right,
               style: TextStyle(
-                color:
-                    highlight ? const Color(0xFF1D4ED8) : const Color(0xFF0F172A),
+                color: highlight
+                    ? const Color(0xFF1D4ED8)
+                    : const Color(0xFF0F172A),
                 fontSize: highlight ? 11 : 10,
                 fontWeight: highlight ? FontWeight.w900 : FontWeight.w700,
               ),
@@ -655,10 +657,8 @@ class _CornerPainter extends CustomPainter {
   bool shouldRepaint(_CornerPainter old) => false;
 }
 
-
 class _ReceiptQrImage extends StatelessWidget {
   const _ReceiptQrImage({required this.qrCode});
-
 
   final String qrCode;
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
+import '../../theme/app_colors.dart';
+import '../../widgets/app_action_tile.dart';
 import 'payment_success_page.dart';
 import 'qr_payment_page.dart';
 
@@ -56,57 +58,69 @@ class PaymentPreviewPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Xem thử màn thanh toán')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const Text(
-            'Dữ liệu bên dưới chỉ để xem giao diện, không tạo giao dịch thật.',
-            style: TextStyle(fontSize: 14),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(title: const Text('Xem thử thanh toán')),
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFF6FAF9), Colors.white],
+            stops: [0, 0.82],
           ),
-          const SizedBox(height: 16),
-          _PreviewButton(
-            icon: Icons.apartment_rounded,
-            title: 'QR thanh toán tiền phòng',
-            subtitle: 'Xem giao diện QR loại RENT',
-            onTap: () => _openQr(context, _rentInvoice),
-          ),
-          const SizedBox(height: 12),
-          _PreviewButton(
-            icon: Icons.bolt_rounded,
-            title: 'QR điện nước & dịch vụ',
-            subtitle: 'Xem giao diện QR loại UTILITY',
-            onTap: () => _openQr(context, _utilityInvoice),
-          ),
-          const SizedBox(height: 12),
-          _PreviewButton(
-            icon: Icons.check_circle_rounded,
-            title: 'Thành công - tiền phòng',
-            subtitle: 'Danh sách chỉ hiển thị khoản tiền phòng',
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) =>
-                      PaymentSuccessPage(invoice: _rentInvoice),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          _PreviewButton(
-            icon: Icons.verified_rounded,
-            title: 'Thành công - điện nước',
-            subtitle: 'Danh sách hiển thị đúng điện và nước',
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) =>
-                      PaymentSuccessPage(invoice: _utilityInvoice),
-                ),
-              );
-            },
-          ),
-        ],
+        ),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+          children: [
+            const _PreviewIntroCard(),
+            const SizedBox(height: 16),
+            _PreviewButton(
+              icon: Icons.apartment_rounded,
+              title: 'QR thanh toán tiền phòng',
+              subtitle: 'Preview QR cho hóa đơn RENT',
+              accentColor: AppColors.actionBlue,
+              onTap: () => _openQr(context, _rentInvoice),
+            ),
+            const SizedBox(height: 12),
+            _PreviewButton(
+              icon: Icons.bolt_rounded,
+              title: 'QR điện nước & dịch vụ',
+              subtitle: 'Preview QR cho hóa đơn UTILITY',
+              accentColor: AppColors.actionOrange,
+              onTap: () => _openQr(context, _utilityInvoice),
+            ),
+            const SizedBox(height: 12),
+            _PreviewButton(
+              icon: Icons.check_circle_rounded,
+              title: 'Thành công - tiền phòng',
+              subtitle: 'Màn xác nhận với một khoản tiền phòng',
+              accentColor: AppColors.actionEmerald,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        PaymentSuccessPage(invoice: _rentInvoice),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            _PreviewButton(
+              icon: Icons.verified_rounded,
+              title: 'Thành công - điện nước',
+              subtitle: 'Màn xác nhận có breakdown điện và nước',
+              accentColor: AppColors.actionViolet,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        PaymentSuccessPage(invoice: _utilityInvoice),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -163,30 +177,80 @@ class PaymentPreviewPage extends StatelessWidget {
   }
 }
 
+class _PreviewIntroCard extends StatelessWidget {
+  const _PreviewIntroCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF061827), AppColors.deepBlue, AppColors.primary],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.accent.withValues(alpha: 0.2),
+            blurRadius: 28,
+            offset: const Offset(0, 14),
+          ),
+        ],
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Payment preview',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              height: 28 / 22,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Dữ liệu demo chỉ để xem giao diện, không tạo giao dịch thật.',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              height: 18 / 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _PreviewButton extends StatelessWidget {
   const _PreviewButton({
     required this.icon,
     required this.title,
     required this.subtitle,
+    required this.accentColor,
     required this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
+  final Color accentColor;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        minVerticalPadding: 16,
-        leading: CircleAvatar(child: Icon(icon)),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: onTap,
-      ),
+    return AppActionRowButton(
+      icon: icon,
+      title: title,
+      subtitle: subtitle,
+      accentColor: accentColor,
+      onTap: onTap,
     );
   }
 }

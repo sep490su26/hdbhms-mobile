@@ -263,7 +263,7 @@ class _Header extends StatelessWidget {
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
                 Text(
@@ -271,7 +271,7 @@ class _Header extends StatelessWidget {
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.72),
                     fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ],
@@ -366,7 +366,7 @@ class _PaymentHero extends StatelessWidget {
                     color: Colors.white,
                     fontSize: 30,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: -0.8,
+                    letterSpacing: 0,
                   ),
                 ),
                 if (invoice.invoiceCode.isNotEmpty) ...[
@@ -909,16 +909,16 @@ class _PaymentVisualTheme {
       title: 'Thanh toán điện nước & dịch vụ',
       subtitle: 'Chi phí tiện ích trong kỳ',
       icon: Icons.bolt_rounded,
-      background: Color(0xFF073B4C),
-      backgroundEnd: Color(0xFF075E63),
-      primary: Color(0xFF087F8C),
-      secondary: Color(0xFF22D3EE),
-      accent: Color(0xFF5EEAD4),
-      iconColor: Color(0xFF073B4C),
-      ink: Color(0xFF103A43),
-      mutedInk: Color(0xFF5F747A),
-      softAccent: Color(0xFFDDFBF6),
-      softSurface: Color(0xFFF1F9F8),
+      background: Color(0xFF061827),
+      backgroundEnd: Color(0xFF12345C),
+      primary: Color(0xFF1D4ED8),
+      secondary: Color(0xFF60A5FA),
+      accent: Color(0xFF93C5FD),
+      iconColor: Color(0xFF061827),
+      ink: Color(0xFF10233F),
+      mutedInk: Color(0xFF607089),
+      softAccent: Color(0xFFE0F2FE),
+      softSurface: Color(0xFFF5F7FB),
     );
   }
 }

@@ -10,29 +10,29 @@ class AppTypography {
     fontSize: 17,
     fontWeight: FontWeight.w700,
     height: 22 / 17,
-    letterSpacing: -0.2,
+    letterSpacing: 0,
   );
 
   static const pageTitle = TextStyle(
     color: AppColors.darkBlue,
     fontSize: 28,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w800,
     height: 36 / 28,
-    letterSpacing: -0.7,
+    letterSpacing: 0,
   );
 
   static const sectionTitle = TextStyle(
     color: AppColors.darkBlue,
     fontSize: 18,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w800,
     height: 24 / 18,
-    letterSpacing: -0.25,
+    letterSpacing: 0,
   );
 
   static const cardTitle = TextStyle(
     color: AppColors.inputText,
     fontSize: 16,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w800,
     height: 22 / 16,
   );
 

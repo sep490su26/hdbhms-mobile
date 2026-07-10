@@ -449,14 +449,14 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
-                disabledBackgroundColor: AppColors.deepBlue.withValues(
+                backgroundColor: AppColors.primary,
+                disabledBackgroundColor: AppColors.primary.withValues(
                   alpha: 0.5,
                 ),
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
             ),
@@ -473,7 +473,7 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                 foregroundColor: AppColors.bodyText,
                 side: const BorderSide(color: AppColors.cardBorder),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
               child: const Text(

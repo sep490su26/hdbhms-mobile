@@ -12,6 +12,8 @@ import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
 import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
+import 'package:hdbhms_mobile/utils/display_formatters.dart';
+import 'package:hdbhms_mobile/widgets/app_action_tile.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
@@ -356,7 +358,7 @@ class _RoomSelector extends StatelessWidget {
     final selected = provider.selectedRoom;
     if (selected != null && selected.roomCode.isNotEmpty) {
       return selected.propertyName.isNotEmpty
-          ? selected.propertyName
+          ? formatPropertyName(selected.propertyName)
           : 'Phòng ${selected.roomCode}';
     }
     final room = summary.room;
@@ -392,20 +394,20 @@ class _RoomSelector extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              _roomLabel,
+              formatTopBarTitle(_roomLabel),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppColors.topBarTitleStyle,
             ),
             if (_roomSubLabel.isNotEmpty)
               Text(
-                _roomSubLabel,
+                formatTopBarTitle(_roomSubLabel),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: AppColors.bodyText,
                   fontSize: 11,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w900,
                   height: 15 / 11,
                 ),
               ),
@@ -558,7 +560,7 @@ class _RoomSelector extends StatelessWidget {
                       ),
                       if (room.propertyName.isNotEmpty)
                         Text(
-                          room.propertyName,
+                          formatPropertyName(room.propertyName),
                           style: const TextStyle(
                             color: AppColors.bodyText,
                             fontSize: 11,
@@ -698,18 +700,39 @@ class _PaymentStatusCard extends StatelessWidget {
         ? 'Chọn khoản thanh toán'
         : 'Thanh toán ngay';
 
+    final cardGradient = hasUnpaid
+        ? const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF061827), AppColors.deepBlue, AppColors.primary],
+          )
+        : const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.white, Color(0xFFF0F7F4)],
+          );
+    final mainTextColor = hasUnpaid ? Colors.white : AppColors.inputText;
+    final mutedTextColor = hasUnpaid
+        ? Colors.white.withValues(alpha: 0.78)
+        : AppColors.bodyText;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.cardBorder),
+        gradient: cardGradient,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: hasUnpaid
+              ? Colors.white.withValues(alpha: 0.18)
+              : AppColors.cardBorder,
+        ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.inputText.withValues(alpha: 0.055),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: (hasUnpaid ? AppColors.accent : AppColors.inputText)
+                .withValues(alpha: hasUnpaid ? 0.22 : 0.06),
+            blurRadius: 30,
+            offset: const Offset(0, 16),
           ),
         ],
       ),
@@ -737,8 +760,8 @@ class _PaymentStatusCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             dueText,
-            style: const TextStyle(
-              color: AppColors.bodyText,
+            style: TextStyle(
+              color: mutedTextColor,
               fontSize: 14,
               fontWeight: FontWeight.w500,
               height: 19 / 14,
@@ -753,11 +776,11 @@ class _PaymentStatusCard extends StatelessWidget {
                   '${_formatAmount(invoiceSummary.totalUnpaidAmount)}đ',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.deepBlue,
-                    fontSize: 30,
+                  style: TextStyle(
+                    color: mainTextColor,
+                    fontSize: 32,
                     fontWeight: FontWeight.w900,
-                    height: 36 / 30,
+                    height: 38 / 32,
                   ),
                 ),
               ),
@@ -769,9 +792,14 @@ class _PaymentStatusCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
             decoration: BoxDecoration(
               color: hasUnpaid
-                  ? AppColors.primaryLight.withValues(alpha: 0.72)
+                  ? Colors.white.withValues(alpha: 0.13)
                   : AppColors.surfaceMuted,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: hasUnpaid
+                    ? Colors.white.withValues(alpha: 0.14)
+                    : AppColors.cardBorder,
+              ),
             ),
             child: Row(
               children: [
@@ -779,7 +807,7 @@ class _PaymentStatusCard extends StatelessWidget {
                   hasMultipleBills
                       ? Icons.fact_check_outlined
                       : Icons.receipt_long_outlined,
-                  color: hasUnpaid ? AppColors.deepBlue : AppColors.bodyText,
+                  color: hasUnpaid ? Colors.white : AppColors.bodyText,
                   size: 18,
                 ),
                 const SizedBox(width: 8),
@@ -787,9 +815,7 @@ class _PaymentStatusCard extends StatelessWidget {
                   child: Text(
                     helperText,
                     style: TextStyle(
-                      color: hasUnpaid
-                          ? AppColors.deepBlue
-                          : AppColors.bodyText,
+                      color: hasUnpaid ? Colors.white : AppColors.bodyText,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       height: 17 / 12,
@@ -806,15 +832,15 @@ class _PaymentStatusCard extends StatelessWidget {
             child: ElevatedButton(
               onPressed: hasUnpaid ? onPay : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
+                backgroundColor: hasUnpaid ? Colors.white : AppColors.primary,
                 disabledBackgroundColor: AppColors.deepBlue.withValues(
                   alpha: 0.42,
                 ),
-                foregroundColor: Colors.white,
+                foregroundColor: hasUnpaid ? AppColors.deepBlue : Colors.white,
                 disabledForegroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
               child: Text(
@@ -844,15 +870,22 @@ class _PaymentBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
       decoration: BoxDecoration(
-        color: isUnpaid ? const Color(0xFFFFF3D8) : const Color(0xFFE7E9F0),
+        color: isUnpaid
+            ? AppColors.accentWarm.withValues(alpha: 0.16)
+            : AppColors.success.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: isUnpaid
+              ? AppColors.accentWarm.withValues(alpha: 0.34)
+              : AppColors.success.withValues(alpha: 0.24),
+        ),
       ),
       child: Text(
         isUnpaid
             ? (unpaidCount > 1 ? '$unpaidCount khoản' : 'Chưa thanh toán')
             : 'Đã thanh toán',
         style: TextStyle(
-          color: isUnpaid ? const Color(0xFFB45309) : AppColors.bodyText,
+          color: isUnpaid ? const Color(0xFFB42318) : AppColors.success,
           fontSize: 12,
           fontWeight: FontWeight.w800,
           height: 16 / 12,
@@ -878,8 +911,8 @@ class _UtilitiesSection extends StatelessWidget {
           title: 'Điện',
           unit: 'kWh',
           icon: Icons.bolt_rounded,
-          iconColor: const Color(0xFFE8A100),
-          iconBackground: const Color(0xFFFCF8E9),
+          iconColor: AppColors.warning,
+          iconBackground: const Color(0xFFFFF7D6),
         ),
         const SizedBox(height: 16),
         _UtilityCard(
@@ -887,8 +920,8 @@ class _UtilitiesSection extends StatelessWidget {
           title: 'Nước',
           unit: 'm³',
           icon: Icons.water_drop_outlined,
-          iconColor: const Color(0xFF1F78FF),
-          iconBackground: const Color(0xFFEFF6FF),
+          iconColor: AppColors.accent,
+          iconBackground: const Color(0xFFE5FAF6),
         ),
       ],
     );
@@ -928,8 +961,15 @@ class _UtilityCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 15),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE9E7EA)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.deepBlue.withValues(alpha: 0.045),
+            blurRadius: 18,
+            offset: const Offset(0, 9),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -938,7 +978,7 @@ class _UtilityCard extends StatelessWidget {
             height: 48,
             decoration: BoxDecoration(
               color: iconBackground,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(icon, color: iconColor, size: 27),
           ),
@@ -1047,12 +1087,13 @@ class _QuickActions extends StatelessWidget {
       crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 8,
-      crossAxisSpacing: 8,
-      childAspectRatio: 1.42,
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 1.62,
       children: [
         _QuickActionButton(
-          icon: Icons.rule_folder_outlined,
+          icon: Icons.rule_rounded,
+          accentColor: AppColors.actionBlue,
           label: 'Nội quy nhà trọ',
           onTap: () {
             Navigator.of(context).push(
@@ -1063,7 +1104,8 @@ class _QuickActions extends StatelessWidget {
           },
         ),
         _QuickActionButton(
-          icon: Icons.article_outlined,
+          icon: Icons.description_rounded,
+          accentColor: AppColors.accent,
           label: 'Hợp Đồng',
           onTap: () {
             Navigator.of(context).push(
@@ -1074,7 +1116,8 @@ class _QuickActions extends StatelessWidget {
           },
         ),
         _QuickActionButton(
-          icon: Icons.handyman_outlined,
+          icon: Icons.build_circle_rounded,
+          accentColor: AppColors.actionOrange,
           label: 'Sự cố',
           onTap: () {
             Navigator.of(context).push(
@@ -1085,7 +1128,8 @@ class _QuickActions extends StatelessWidget {
           },
         ),
         _QuickActionButton(
-          icon: Icons.add_home_outlined,
+          icon: Icons.add_home_work_rounded,
+          accentColor: AppColors.actionRose,
           label: 'Thuê thêm phòng',
           onTap: () async {
             final prefs = await SharedPreferences.getInstance();
@@ -1118,46 +1162,22 @@ class _QuickActionButton extends StatelessWidget {
   const _QuickActionButton({
     required this.icon,
     required this.label,
+    required this.accentColor,
     required this.onTap,
   });
 
   final IconData icon;
   final String label;
+  final Color accentColor;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          height: 98,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.cardBorder),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: AppColors.deepBlue, size: 30),
-              const SizedBox(height: 10),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.deepBlue,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  height: 16 / 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return AppActionTile(
+      icon: icon,
+      label: label,
+      accentColor: accentColor,
+      onTap: onTap,
     );
   }
 }

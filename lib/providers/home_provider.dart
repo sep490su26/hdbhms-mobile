@@ -6,6 +6,7 @@ import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
+import 'package:hdbhms_mobile/utils/display_formatters.dart';
 
 class HomeProvider extends ChangeNotifier {
   HomeProvider({
@@ -153,7 +154,7 @@ class HomeProvider extends ChangeNotifier {
               roomId: r.id ?? 0,
               roomCode: r.roomCode,
               roomName: r.name,
-              propertyName: _summary?.tenant?.name ?? '',
+              propertyName: formatPropertyName(_summary?.tenant?.name ?? ''),
             ),
           )
           .toList();

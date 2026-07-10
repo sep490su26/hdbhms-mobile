@@ -15,6 +15,7 @@ import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
+import 'package:hdbhms_mobile/utils/display_formatters.dart';
 
 class _FakeAuthService extends AuthService {
   const _FakeAuthService();
@@ -619,6 +620,54 @@ void main() {
     });
 
     expect(onboarding.nextStep, OnboardingState.identityVerification);
+  });
+
+  test('home tenant property phone ignores ambiguous tenant contact phone', () {
+    final tenant = HomeTenant.fromJson(const {
+      'id': 1,
+      'name': 'Nhà trọ Hải Đăng 1',
+      'phone': '0911111111',
+      'contact_phone': '0922222222',
+    });
+
+    expect(tenant.phone, '0911111111');
+    expect(tenant.propertyPhone, '');
+  });
+
+  test('home tenant property phone reads nested property contact phone', () {
+    final tenant = HomeTenant.fromJson(const {
+      'id': 1,
+      'name': 'Nhà trọ Hải Đăng 1',
+      'contact_phone': '0922222222',
+      'property': {'contact_phone': '0933333333'},
+    });
+
+    expect(tenant.phone, '0922222222');
+    expect(tenant.propertyPhone, '0933333333');
+  });
+
+  test('property name formatter fixes odd uppercase i', () {
+    const raw = 'Nh\u00E0 tr\u1ECD H\u1EA3I \u0110\u0103ng 1';
+
+    expect(
+      formatPropertyName(raw),
+      'Nh\u00E0 tr\u1ECD H\u1EA3i \u0110\u0103ng 1',
+    );
+  });
+
+  test('property name formatter keeps nha tro phrase natural', () {
+    const raw = 'NH\u00C0 TR\u1ECC H\u1EA2I \u0110\u0102NG 1';
+
+    expect(
+      formatPropertyName(raw),
+      'Nh\u00E0 tr\u1ECD H\u1EA3i \u0110\u0103ng 1',
+    );
+  });
+
+  test('top bar title keeps normal casing', () {
+    const title = 'Nh\u00E0 tr\u1ECD H\u1EA3i \u0110\u0103ng 1';
+
+    expect(formatTopBarTitle(title), title);
   });
 
   test('mobile login response parses tenant context for identity upload', () {

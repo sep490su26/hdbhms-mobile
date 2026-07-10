@@ -273,13 +273,13 @@ class _MaintenanceSectionHeader extends StatelessWidget {
           icon: const Icon(Icons.add_rounded, size: 19),
           label: const Text('Báo cáo sự cố'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.deepBlue,
+            backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
             elevation: 0,
             minimumSize: const Size(0, 42),
             padding: const EdgeInsets.symmetric(horizontal: 12),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(14),
             ),
             textStyle: const TextStyle(
               fontSize: 12,
@@ -362,11 +362,11 @@ class _FilterPanel extends StatelessWidget {
           child: ElevatedButton(
             onPressed: onFilter,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.deepBlue,
+              backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
             child: const Text(
@@ -438,19 +438,20 @@ class _TicketCard extends StatelessWidget {
       label: 'Mở chi tiết phiếu ${ticket.code}',
       child: Material(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           child: Ink(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.cardBorder),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.inputText.withValues(alpha: 0.045),
-                  blurRadius: 18,
-                  offset: const Offset(0, 7),
+                  color: AppColors.deepBlue.withValues(alpha: 0.055),
+                  blurRadius: 22,
+                  offset: const Offset(0, 11),
                 ),
               ],
             ),
@@ -466,8 +467,12 @@ class _TicketCard extends StatelessWidget {
                         width: 42,
                         height: 42,
                         decoration: BoxDecoration(
-                          color: AppColors.primaryLight,
-                          borderRadius: BorderRadius.circular(11),
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [AppColors.primaryLight, Color(0xFFE5FAF6)],
+                          ),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                         child: Icon(
                           _categoryIcon(ticket.category),
@@ -678,10 +683,11 @@ class _StateMessage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 54, 20, 54),
+      padding: const EdgeInsets.fromLTRB(18, 28, 18, 28),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(
         children: [
@@ -703,7 +709,7 @@ class _StateMessage extends StatelessWidget {
             icon: const Icon(Icons.refresh_rounded),
             label: const Text('Thử lại'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.deepBlue,
+              backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
             ),
           ),
