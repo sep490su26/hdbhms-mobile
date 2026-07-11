@@ -56,15 +56,15 @@ class IdentityService {
     return _sendMultipart(
       tenantId: tenantId,
       portraitPart: await _multipartFileFromPath(
-        'portrait_file',
+        'portraitFile',
         portraitFile.path,
       ),
       frontIdPart: await _multipartFileFromPath(
-        'id_card_front_file',
+        'idCardFrontFile',
         idCardFrontFile.path,
       ),
       backIdPart: await _multipartFileFromPath(
-        'id_card_back_file',
+        'idCardBackFile',
         idCardBackFile.path,
       ),
     );
@@ -84,9 +84,9 @@ class IdentityService {
 
     return _sendMultipart(
       tenantId: tenantId,
-      portraitPart: await _multipartFile('portrait_file', portrait),
-      frontIdPart: await _multipartFile('id_card_front_file', frontId),
-      backIdPart: await _multipartFile('id_card_back_file', backId),
+      portraitPart: await _multipartFile('portraitFile', portrait),
+      frontIdPart: await _multipartFile('idCardFrontFile', frontId),
+      backIdPart: await _multipartFile('idCardBackFile', backId),
     );
   }
 
@@ -113,7 +113,7 @@ class IdentityService {
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final body = _decodeBody(response.body);
+        final body = _responsePayload(_decodeBody(response.body));
         final onboarding = OnboardingState.fromJson(
           body['onboarding'] as Map<String, dynamic>? ?? {},
         );
@@ -123,15 +123,24 @@ class IdentityService {
           success: body['success'] == true,
           message: body['message']?.toString() ?? '',
           identityCompleted:
+              body['identityCompleted'] == true ||
+              body['profileCompleted'] == true ||
               body['identity_completed'] == true ||
               body['profile_completed'] == true,
           profileCompleted:
+              body['profileCompleted'] == true ||
+              body['identityCompleted'] == true ||
               body['profile_completed'] == true ||
               body['identity_completed'] == true,
           onboarding: onboarding,
-          portraitFileId: _asInt(body['portrait_file_id']),
-          idCardFrontFileId: _asInt(body['id_card_front_file_id']),
-          idCardBackFileId: _asInt(body['id_card_back_file_id']),
+          portraitFileId:
+              _asInt(body['portraitFileId']) ?? _asInt(body['portrait_file_id']),
+          idCardFrontFileId:
+              _asInt(body['idCardFrontFileId']) ??
+              _asInt(body['id_card_front_file_id']),
+          idCardBackFileId:
+              _asInt(body['idCardBackFileId']) ??
+              _asInt(body['id_card_back_file_id']),
         );
       }
 
@@ -246,7 +255,7 @@ class IdentityService {
 
   String _readBackendMessage(String body) {
     try {
-      final data = _decodeBody(body);
+      final data = _responsePayload(_decodeBody(body));
       final message = data['message'] ?? data['error'];
       return message?.toString() ?? '';
     } on FormatException {
@@ -260,5 +269,16 @@ class IdentityService {
       return decoded;
     }
     throw const FormatException('Invalid response body');
+  }
+
+  Map<String, dynamic> _responsePayload(Map<String, dynamic> body) {
+    final data = body['data'];
+    if (data is Map<String, dynamic>) {
+      return data;
+    }
+    if (data is Map) {
+      return Map<String, dynamic>.from(data);
+    }
+    return body;
   }
 }

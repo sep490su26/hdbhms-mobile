@@ -53,80 +53,60 @@ class LeaseContract {
   factory LeaseContract.fromJson(Map<String, dynamic> json) {
     final roomJson = _firstMap(json, const [
       'room',
-      'room_info',
       'roomInfo',
-      'rental_room',
       'rentalRoom',
     ]);
 
     return LeaseContract(
-      id: _asInt(json['id'] ?? json['contract_id']),
-      contractCode: _firstString(json, const ['contract_code', 'contractCode']),
-      status: _firstString(json, const ['status', 'contract_status']),
+      id: _asInt(json['id'] ?? json['contractId']),
+      contractCode: _firstString(json, const ['contractCode']),
+      status: _firstString(json, const ['status', 'contractStatus']),
       room: LeaseRoom.fromJson(roomJson.isEmpty ? json : roomJson),
       monthlyRent: _firstDouble(json, const [
-        'monthly_rent',
         'monthlyRent',
-        'rent_amount',
         'rentAmount',
       ]),
       paymentCycleMonths: _asInt(
-        json['payment_cycle_months'] ??
-            json['paymentCycleMonths'] ??
-            json['payment_cycle'],
+        json['paymentCycleMonths'] ?? json['paymentCycle'],
       ),
-      startDate: _firstDate(json, const ['start_date', 'startDate']),
-      endDate: _firstDate(json, const ['end_date', 'endDate']),
+      startDate: _firstDate(json, const ['startDate']),
+      endDate: _firstDate(json, const ['endDate']),
       rentStartDate: _firstDate(json, const [
-        'rent_start_date',
         'rentStartDate',
-        'billing_start_date',
+        'billingStartDate',
       ]),
       depositAmount: _firstDouble(json, const [
-        'deposit_amount',
         'depositAmount',
         'deposit',
       ]),
       terms: _parseTerms(json),
       serviceFees: _parseServiceFees(json),
       contractFileUrl: _firstString(json, const [
-        'contract_file_download_url',
         'contractFileDownloadUrl',
-        'contract_file_url',
         'contractFileUrl',
-        'signed_file_download_url',
         'signedFileDownloadUrl',
-        'file_url',
         'fileUrl',
-        'document_url',
         'documentUrl',
       ]),
       tenantIntention: _firstString(json, const [
-        'tenant_intention',
         'tenantIntention',
       ]),
       expectedVacantDate: _firstDate(json, const [
-        'expected_vacant_date',
         'expectedVacantDate',
-        'expected_move_out_date',
         'expectedMoveOutDate',
       ]),
       roleInContract: _firstString(json, const [
-        'role_in_contract',
         'roleInContract',
       ]),
-      isPrimary: _firstBool(json, const ['is_primary', 'isPrimary']),
+      isPrimary: _firstBool(json, const ['isPrimary']),
       canRecordIntention: _firstBool(json, const [
-        'can_record_intention',
         'canRecordIntention',
       ]),
-      canRenew: _firstBool(json, const ['can_renew', 'canRenew']),
+      canRenew: _firstBool(json, const ['canRenew']),
       canRenewBlockedReason: _firstString(json, const [
-        'can_renew_blocked_reason',
         'canRenewBlockedReason',
       ]),
       signedAt: _firstDate(json, const [
-        'signed_at',
         'signedAt',
         'confirmedAt',
       ]),
@@ -149,15 +129,13 @@ class LeaseRoom {
 
   factory LeaseRoom.fromJson(Map<String, dynamic> json) {
     return LeaseRoom(
-      roomCode: _firstString(json, const ['room_code', 'roomCode', 'code']),
-      roomName: _firstString(json, const ['room_name', 'roomName', 'name']),
-      area: _firstDouble(json, const ['area', 'area_m2', 'room_area']),
+      roomCode: _firstString(json, const ['roomCode', 'code']),
+      roomName: _firstString(json, const ['roomName', 'name']),
+      area: _firstDouble(json, const ['area', 'areaM2', 'roomArea']),
       imageUrl: _firstString(json, const [
-        'image_url',
         'imageUrl',
-        'room_image_url',
         'roomImageUrl',
-        'thumbnail_url',
+        'thumbnailUrl',
       ]),
     );
   }
@@ -173,7 +151,6 @@ class LeaseServiceFee {
     return LeaseServiceFee(
       name: _firstString(json, const [
         'name',
-        'service_name',
         'serviceName',
         'label',
       ], fallback: 'Phí dịch vụ'),
@@ -181,7 +158,6 @@ class LeaseServiceFee {
         'amount',
         'fee',
         'price',
-        'monthly_amount',
         'monthlyAmount',
       ]),
     );
@@ -189,12 +165,7 @@ class LeaseServiceFee {
 }
 
 List<String> _parseTerms(Map<String, dynamic> json) {
-  final value =
-      json['terms'] ??
-      json['main_terms'] ??
-      json['mainTerms'] ??
-      json['contract_terms'] ??
-      json['contractTerms'];
+  final value = json['terms'] ?? json['mainTerms'] ?? json['contractTerms'];
   if (value is String && value.trim().isNotEmpty) {
     return value
         .split(RegExp(r'\r?\n|;'))
@@ -224,17 +195,11 @@ List<String> _parseTerms(Map<String, dynamic> json) {
 
 List<LeaseServiceFee> _parseServiceFees(Map<String, dynamic> json) {
   final serviceFeeTotal = _firstDouble(json, const [
-    'service_fee',
     'serviceFee',
-    'fixed_service_fee',
     'fixedServiceFee',
-    'service_fee_amount',
+    'serviceFeeAmount',
   ]);
-  final values =
-      json['service_fees'] ??
-      json['serviceFees'] ??
-      json['fees'] ??
-      json['expected_service_fees'];
+  final values = json['serviceFees'] ?? json['fees'] ?? json['expectedServiceFees'];
 
   final fees = <LeaseServiceFee>[
     if (serviceFeeTotal != null)

@@ -6,6 +6,7 @@ import 'package:hdbhms_mobile/screens/profileRequest/tenant_request_screen.dart'
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
+import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/contract/deposit_contract_list_screen.dart';
 import 'package:hdbhms_mobile/screens/contract/lease_contract_list_screen.dart';
@@ -58,29 +59,23 @@ class _ContractHubScreenState extends State<ContractHubScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 390),
-            child: Column(
-              children: [
-                _buildHeader(),
-                _buildTabBar(),
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: const [
-                      _LeaseContractTab(),
-                      _DepositContractTab(),
-                    ],
-                  ),
+        child: AppScreenShell(
+          header: _buildHeader(),
+          child: Column(
+            children: [
+              _buildTabBar(),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: const [_LeaseContractTab(), _DepositContractTab()],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
       bottomNavigationBar: TenantBottomNavigation(
-        activeTab: TenantBottomNavTab.bills,
+        activeTab: TenantBottomNavTab.home,
         onHomeTap: () =>
             Navigator.of(context).popUntil((route) => route.isFirst),
         onBillsTap: () {
@@ -103,10 +98,8 @@ class _ContractHubScreenState extends State<ContractHubScreen>
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const TenantRequestScreen(),
-              ),
-            ),
+          MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+        ),
       ),
     );
   }
@@ -135,10 +128,7 @@ class _ContractHubScreenState extends State<ContractHubScreen>
             tooltip: 'Trở về',
           ),
           const Expanded(
-            child: Text(
-              'Hợp Đồng',
-              style: AppColors.topBarTitleStyle,
-            ),
+            child: Text('Hợp đồng', style: AppColors.topBarTitleStyle),
           ),
         ],
       ),
@@ -147,21 +137,36 @@ class _ContractHubScreenState extends State<ContractHubScreen>
 
   Widget _buildTabBar() {
     return Container(
-      color: AppColors.surface,
+      margin: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+      padding: const EdgeInsets.all(5),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.deepBlue.withValues(alpha: 0.045),
+            blurRadius: 18,
+            offset: const Offset(0, 9),
+          ),
+        ],
+      ),
       child: TabBar(
         controller: _tabController,
-        labelColor: AppColors.deepBlue,
+        labelColor: Colors.white,
         unselectedLabelColor: AppColors.bodyText,
-        labelStyle: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w900,
-        ),
+        labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
         unselectedLabelStyle: const TextStyle(
           fontSize: 13,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w800,
         ),
-        indicatorColor: AppColors.deepBlue,
-        indicatorWeight: 3,
+        dividerColor: Colors.transparent,
+        indicator: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          gradient: const LinearGradient(
+            colors: [AppColors.deepBlue, AppColors.primary],
+          ),
+        ),
         indicatorSize: TabBarIndicatorSize.tab,
         tabs: const [
           Tab(

@@ -9,6 +9,7 @@ import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
 import 'package:hdbhms_mobile/services/home/current_room_service.dart';
 import 'package:hdbhms_mobile/services/maintenance/maintenance_ticket_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
@@ -319,10 +320,7 @@ class _CreateMaintenanceTicketScreenState
             tooltip: 'Trở về',
           ),
           const Expanded(
-            child: Text(
-              'Tạo phiếu sự cố',
-              style: AppColors.topBarTitleStyle,
-            ),
+            child: Text('Tạo phiếu sự cố', style: AppColors.topBarTitleStyle),
           ),
           IconButton(
             onPressed: () => Navigator.of(context).push(
@@ -352,27 +350,16 @@ class _CreateMaintenanceTicketScreenState
       resizeToAvoidBottomInset: true,
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
-            child: Column(
-              children: [
-                _buildHeader(),
-                Expanded(
-                  child: Form(
-                    key: _formKey,
-                    child: SingleChildScrollView(
-                      padding: EdgeInsets.fromLTRB(
-                        14,
-                        18,
-                        14,
-                        26 + bottomInset,
-                      ),
-                      keyboardDismissBehavior:
-                          ScrollViewKeyboardDismissBehavior.onDrag,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+        child: AppScreenShell(
+          header: _buildHeader(),
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(14, 18, 14, 26 + bottomInset),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   const _IntroCard(),
                   const SizedBox(height: 18),
                   const _FieldLabel('Danh mục sự cố'),
@@ -489,12 +476,8 @@ class _CreateMaintenanceTicketScreenState
                       ),
                     ),
                   ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -523,10 +506,8 @@ class _CreateMaintenanceTicketScreenState
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const TenantRequestScreen(),
-              ),
-            ),
+          MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+        ),
       ),
     );
   }

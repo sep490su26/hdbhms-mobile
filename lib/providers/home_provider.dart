@@ -6,19 +6,23 @@ import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
+import 'package:hdbhms_mobile/utils/display_formatters.dart';
 
 class HomeProvider extends ChangeNotifier {
   HomeProvider({
     HomeService homeService = const HomeService(),
     LeaseContractService leaseContractService = const LeaseContractService(),
     TenantInvoiceService tenantInvoiceService = const TenantInvoiceService(),
+    ActiveRoomItem? initialRoom,
   }) : _homeService = homeService,
        _leaseContractService = leaseContractService,
-       _tenantInvoiceService = tenantInvoiceService;
+       _tenantInvoiceService = tenantInvoiceService,
+       _initialRoom = initialRoom;
 
   final HomeService _homeService;
   final LeaseContractService _leaseContractService;
   final TenantInvoiceService _tenantInvoiceService;
+  final ActiveRoomItem? _initialRoom;
 
   HomeSummary? _summary;
   String? _errorMessage;
@@ -31,12 +35,21 @@ class HomeProvider extends ChangeNotifier {
   List<ActiveRoomItem> _activeRooms = const [];
   ActiveRoomItem? _selectedRoom;
 
+  // Room-specific utility summary (loaded on demand when room is selected)
+  UtilitySummary? _roomUtilitySummary;
+  bool _loadingUtilities = false;
+
   HomeSummary? get summary => _summary;
   String? get errorMessage => _errorMessage;
   bool get isLoading => _isLoading;
   bool get sessionExpired => _sessionExpired;
   List<ActiveRoomItem> get activeRooms => _activeRooms;
   ActiveRoomItem? get selectedRoom => _selectedRoom;
+  UtilitySummary get roomUtilitySummary {
+    // Return room-specific summary if loaded, otherwise fall back to home summary
+    return _roomUtilitySummary ?? _summary?.utilitySummary ?? const UtilitySummary();
+  }
+  bool get loadingUtilities => _loadingUtilities;
   List<TenantInvoice> get invoices => List.unmodifiable(_invoices);
 
   List<TenantInvoice> get selectedRoomInvoices {
@@ -101,11 +114,14 @@ class HomeProvider extends ChangeNotifier {
     _sessionExpired = false;
     _summary = null;
     _activeRooms = const [];
-    _selectedRoom = null;
+    _selectedRoom = _initialRoom;
     notifyListeners();
 
     try {
-      _summary = await _homeService.fetchHomeSummary();
+      final contractId = _initialRoom?.contractId;
+      _summary = await _homeService.fetchHomeSummary(
+        contractId: contractId != null && contractId > 0 ? contractId : null,
+      );
     } on SessionExpiredException catch (error) {
       _sessionExpired = true;
       _errorMessage = error.message;
@@ -147,7 +163,7 @@ class HomeProvider extends ChangeNotifier {
               roomId: r.id ?? 0,
               roomCode: r.roomCode,
               roomName: r.name,
-              propertyName: _summary?.tenant?.name ?? '',
+              propertyName: formatPropertyName(_summary?.tenant?.name ?? ''),
             ),
           )
           .toList();
@@ -183,6 +199,28 @@ class HomeProvider extends ChangeNotifier {
   void selectRoom(ActiveRoomItem room) {
     if (_selectedRoom?.contractId == room.contractId) return;
     _selectedRoom = room;
+    _roomUtilitySummary = null; // Clear cached utility data
     notifyListeners();
+    _loadRoomUtilities();
+  }
+
+  Future<void> _loadRoomUtilities() async {
+    final contractId = _selectedRoom?.contractId;
+    if (contractId == null || contractId <= 0) return;
+
+    _loadingUtilities = true;
+    notifyListeners();
+
+    try {
+      final roomSummary = await _homeService.fetchHomeSummary(
+        contractId: contractId,
+      );
+      _roomUtilitySummary = roomSummary.utilitySummary;
+    } catch (_) {
+      // Keep the previous data as fallback
+    } finally {
+      _loadingUtilities = false;
+      notifyListeners();
+    }
   }
 }

@@ -22,6 +22,7 @@ class ActiveRoomItem {
     required this.roomCode,
     required this.roomName,
     required this.propertyName,
+    this.roomStatus = '',
     this.contractStatus = '',
   });
 
@@ -31,19 +32,34 @@ class ActiveRoomItem {
   final String roomCode;
   final String roomName;
   final String propertyName;
+  final String roomStatus;
   final String contractStatus;
 
   factory ActiveRoomItem.fromJson(Map<String, dynamic> json) {
     return ActiveRoomItem(
-      contractId: _asInt(json['contract_id']) ?? 0,
-      contractCode: json['contract_code']?.toString() ?? '',
-      roomId: _asInt(json['room_id']) ?? 0,
-      roomCode: json['room_code']?.toString() ?? '',
-      roomName: json['room_name']?.toString() ?? '',
-      propertyName: json['property_name']?.toString() ?? '',
+      contractId: _asInt(json['contractId'] ?? json['contract_id']) ?? 0,
+      contractCode:
+          json['contractCode']?.toString() ??
+          json['contract_code']?.toString() ??
+          '',
+      roomId: _asInt(json['roomId'] ?? json['room_id']) ?? 0,
+      roomCode:
+          json['roomCode']?.toString() ?? json['room_code']?.toString() ?? '',
+      roomName:
+          json['roomName']?.toString() ?? json['room_name']?.toString() ?? '',
+      propertyName:
+          json['propertyName']?.toString() ??
+          json['property_name']?.toString() ??
+          '',
+      roomStatus:
+          json['roomStatus']?.toString() ??
+          json['room_status']?.toString() ??
+          json['currentStatus']?.toString() ??
+          json['current_status']?.toString() ??
+          '',
       contractStatus:
-          json['contract_status']?.toString() ??
           json['contractStatus']?.toString() ??
+          json['contract_status']?.toString() ??
           '',
     );
   }

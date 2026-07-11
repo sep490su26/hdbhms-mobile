@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/models/auth/identity_image_file.dart';
 import 'package:hdbhms_mobile/models/onboarding_state.dart';
@@ -7,7 +7,8 @@ import 'package:hdbhms_mobile/services/file_upload_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/auth/identity_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
-import 'package:hdbhms_mobile/screens/home/home_screen.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
+import 'package:hdbhms_mobile/screens/tenant_overview/tenant_overview_screen.dart';
 
 enum IdentityDocumentStep {
   portrait,
@@ -367,7 +368,7 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
         }
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (context) => HomeScreen(
+            builder: (context) => TenantOverviewScreen(
               authService: widget.authService,
               homeService: widget.homeService,
             ),
@@ -445,12 +446,7 @@ class _HeaderCopy extends StatelessWidget {
         Center(
           child: Text(
             'Ho\u00E0n t\u1EA5t h\u1ED3 s\u01A1',
-            style: TextStyle(
-              color: AppColors.deepBlue,
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              height: 28 / 22,
-            ),
+            style: AppTypography.pageTitle,
           ),
         ),
         SizedBox(height: 8),
@@ -998,12 +994,7 @@ class _ReviewStepCard extends StatelessWidget {
         children: [
           const Text(
             'X\u00E1c nh\u1EADn h\u1ED3 s\u01A1',
-            style: TextStyle(
-              color: AppColors.deepBlue,
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-              height: 22 / 17,
-            ),
+            style: AppTypography.sectionTitle,
           ),
           const SizedBox(height: 12),
           _ReviewRow(

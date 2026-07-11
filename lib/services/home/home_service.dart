@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -20,12 +20,15 @@ class HomeService {
   http.Client get _effectiveClient => _client ?? AuthenticatedClient();
   static const _timeout = Duration(seconds: 15);
 
-  Future<HomeSummary> fetchHomeSummary() async {
+  Future<HomeSummary> fetchHomeSummary({int? contractId}) async {
     final client = _effectiveClient;
     try {
-      final response = await client
-          .get(Uri.parse('${ApiConfig.baseUrl}/home'))
-          .timeout(_timeout);
+      final uri = Uri.parse('${ApiConfig.baseUrl}/home').replace(
+        queryParameters: contractId != null
+            ? {'contractId': contractId.toString()}
+            : null,
+      );
+      final response = await client.get(uri).timeout(_timeout);
       if (response.statusCode == 200) {
         final decoded = _decodeBody(response.body);
         return HomeSummary.fromJson(decoded['data']);

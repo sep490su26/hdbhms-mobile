@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
 
 const Color _kLabel = Color(0xFF000666);
@@ -109,17 +110,7 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
-            child: Column(
-              children: [
-                _buildHeader(),
-                Expanded(child: _buildForm()),
-              ],
-            ),
-          ),
-        ),
+        child: AppScreenShell(header: _buildHeader(), child: _buildForm()),
       ),
     );
   }
@@ -148,16 +139,11 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
             ),
           ),
           const Expanded(
-            child: Text(
-              'Thanh lý hợp đồng',
-              style: AppColors.topBarTitleStyle,
-            ),
+            child: Text('Thanh lý hợp đồng', style: AppColors.topBarTitleStyle),
           ),
           IconButton(
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const NotificationListScreen(),
-              ),
+              MaterialPageRoute(builder: (_) => const NotificationListScreen()),
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
@@ -187,10 +173,7 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
             title: 'Thông tin hợp đồng',
             icon: Icons.description_outlined,
             children: [
-              _InfoRow(
-                label: 'Mã hợp đồng',
-                value: widget.contractCode,
-              ),
+              _InfoRow(label: 'Mã hợp đồng', value: widget.contractCode),
               const SizedBox(height: 10),
               const Divider(height: 1, color: Color(0xFFEEECEE)),
               const SizedBox(height: 10),
@@ -211,8 +194,10 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
             children: [
               // Notice banner
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFEFF8FF),
                   borderRadius: BorderRadius.circular(8),
@@ -223,8 +208,11 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.info_outline_rounded,
-                        size: 16, color: Color(0xFF0284C7)),
+                    const Icon(
+                      Icons.info_outline_rounded,
+                      size: 16,
+                      color: Color(0xFF0284C7),
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -246,8 +234,11 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
               // Label ngày trả phòng
               Row(
                 children: const [
-                  Icon(Icons.calendar_month_outlined,
-                      size: 13, color: AppColors.bodyText),
+                  Icon(
+                    Icons.calendar_month_outlined,
+                    size: 13,
+                    color: AppColors.bodyText,
+                  ),
                   SizedBox(width: 5),
                   Text(
                     'Ngày trả phòng dự kiến',
@@ -275,7 +266,9 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                 onTap: _pickDate,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 13, vertical: 13),
+                    horizontal: 13,
+                    vertical: 13,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.background,
                     borderRadius: BorderRadius.circular(8),
@@ -338,8 +331,11 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
               // Label lý do
               Row(
                 children: const [
-                  Icon(Icons.notes_rounded,
-                      size: 13, color: AppColors.bodyText),
+                  Icon(
+                    Icons.notes_rounded,
+                    size: 13,
+                    color: AppColors.bodyText,
+                  ),
                   SizedBox(width: 5),
                   Text(
                     'Lý do trả phòng',
@@ -388,26 +384,27 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                   filled: true,
                   fillColor: AppColors.background,
                   contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 13, vertical: 12),
+                    horizontal: 13,
+                    vertical: 12,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide:
-                        const BorderSide(color: AppColors.cardBorder),
+                    borderSide: const BorderSide(color: AppColors.cardBorder),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide:
-                        const BorderSide(color: AppColors.cardBorder),
+                    borderSide: const BorderSide(color: AppColors.cardBorder),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide: const BorderSide(
-                        color: AppColors.deepBlue, width: 1.5),
+                      color: AppColors.deepBlue,
+                      width: 1.5,
+                    ),
                   ),
                   errorBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide:
-                        const BorderSide(color: Color(0xFFDC2626)),
+                    borderSide: const BorderSide(color: Color(0xFFDC2626)),
                   ),
                 ),
               ),
@@ -451,13 +448,14 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
-                disabledBackgroundColor:
-                    AppColors.deepBlue.withValues(alpha: 0.5),
+                backgroundColor: AppColors.primary,
+                disabledBackgroundColor: AppColors.primary.withValues(
+                  alpha: 0.5,
+                ),
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
             ),
@@ -474,15 +472,12 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                 foregroundColor: AppColors.bodyText,
                 side: const BorderSide(color: AppColors.cardBorder),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
               child: const Text(
                 'Hủy',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -555,11 +550,7 @@ class _SectionCard extends StatelessWidget {
 // Info row (label + value)
 // ─────────────────────────────────────────────────────────────────────────────
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.label,
-    required this.value,
-    this.valueColor,
-  });
+  const _InfoRow({required this.label, required this.value, this.valueColor});
 
   final String label;
   final String value;
@@ -641,8 +632,7 @@ class _TerminateSuccessDialogState extends State<_TerminateSuccessDialog>
       opacity: _fade,
       child: Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding:
-            const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
         child: ScaleTransition(
           scale: _scale,
           child: Container(
@@ -726,13 +716,16 @@ class _TerminateSuccessDialogState extends State<_TerminateSuccessDialog>
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFFFF5F5),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color:
-                                const Color(0xFFDC2626).withValues(alpha: 0.2),
+                            color: const Color(
+                              0xFFDC2626,
+                            ).withValues(alpha: 0.2),
                           ),
                         ),
                         child: Row(

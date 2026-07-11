@@ -4,10 +4,10 @@ import 'package:hdbhms_mobile/models/onboarding_state.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/auth_text_field.dart';
-import 'package:hdbhms_mobile/screens/auth/login_page.dart';
-import 'package:hdbhms_mobile/screens/home/home_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/identity_verification_page.dart';
+import 'package:hdbhms_mobile/screens/tenant_overview/tenant_overview_screen.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({
@@ -59,7 +59,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     });
 
     try {
-      final onboarding = await widget.authService.changePassword(
+      await widget.authService.changePassword(
         newPassword: newPassword,
         confirmPassword: confirmPassword,
       );
@@ -68,6 +68,15 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         return;
       }
 
+      if (!widget.isRequired) {
+        Navigator.of(context).pop(true);
+        return;
+      }
+
+      final onboarding = await widget.authService.fetchOnboarding();
+      if (!mounted) {
+        return;
+      }
       _goToNextStep(onboarding);
     } on AuthException catch (error) {
       if (mounted) {
@@ -89,9 +98,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     if (newPassword.length < 8) {
       return 'Mật khẩu mới phải có ít nhất 8 ký tự';
     }
-    if (!RegExp(r'[a-zA-Z]').hasMatch(newPassword)) {
-      return 'Mật khẩu mới phải có ít nhất một chữ cái';
-    }
     if (!RegExp(r'\d').hasMatch(newPassword)) {
       return 'Mật khẩu mới phải có ít nhất một chữ số';
     }
@@ -111,7 +117,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         authService: widget.authService,
         homeService: widget.homeService,
       ),
-      _ => HomeScreen(
+      _ => TenantOverviewScreen(
         authService: widget.authService,
         homeService: widget.homeService,
       ),
@@ -128,24 +134,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _handleBack() async {
-    if (widget.isRequired) {
-      await AuthService.clearLocalSession();
-      if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (context) => LoginPage(
-            authService: widget.authService,
-            homeService: widget.homeService,
-          ),
-        ),
-        (route) => false,
-      );
-    } else {
-      Navigator.of(context).maybePop();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -158,8 +146,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _ChangePasswordHeader(
-                canGoBack: !_isLoading,
-                onBack: _handleBack,
+                canGoBack: !widget.isRequired && !_isLoading,
               ),
               Expanded(
                 child: SingleChildScrollView(
@@ -167,7 +154,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 448),
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
+                        padding: const EdgeInsets.fromLTRB(20, 28, 20, 32),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -196,24 +183,25 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 }
 
 class _ChangePasswordHeader extends StatelessWidget {
-  const _ChangePasswordHeader({required this.canGoBack, required this.onBack});
+  const _ChangePasswordHeader({required this.canGoBack});
 
   final bool canGoBack;
-  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.background,
-      padding: const EdgeInsets.fromLTRB(16, 16, 136, 16),
+      height: AppColors.topBarHeight,
+      color: AppColors.surface,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           SizedBox(
-            width: 40,
-            height: 40,
+            width: 48,
+            height: 48,
             child: IconButton(
-              onPressed: canGoBack ? onBack : null,
+              onPressed: canGoBack
+                  ? () => Navigator.of(context).maybePop()
+                  : null,
               padding: EdgeInsets.zero,
               icon: const Icon(
                 Icons.arrow_back,
@@ -223,7 +211,10 @@ class _ChangePasswordHeader extends StatelessWidget {
               tooltip: 'Quay lại',
             ),
           ),
-          const Text('Đổi mật khẩu', style: AppColors.topBarTitleStyle),
+          const SizedBox(width: 4),
+          const Expanded(
+            child: Text('Đổi mật khẩu', style: AppTypography.topBarTitle),
+          ),
         ],
       ),
     );
@@ -238,25 +229,11 @@ class _ChangePasswordIntro extends StatelessWidget {
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Thiết lập mật khẩu mới',
-          style: TextStyle(
-            color: AppColors.inputText,
-            fontSize: 26,
-            fontWeight: FontWeight.w700,
-            height: 32 / 26,
-            letterSpacing: -0.52,
-          ),
-        ),
+        Text('Thiết lập mật khẩu mới', style: AppTypography.pageTitle),
         SizedBox(height: 8),
         Text(
           'Bạn cần đổi mật khẩu tạm trước khi tiếp tục sử dụng ứng dụng.',
-          style: TextStyle(
-            color: AppColors.bodyText,
-            fontSize: 16,
-            fontWeight: FontWeight.w400,
-            height: 24 / 16,
-          ),
+          style: AppTypography.bodyLarge,
         ),
       ],
     );
@@ -280,16 +257,16 @@ class _ChangePasswordFormCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(25, 25, 25, 41),
+      padding: const EdgeInsets.fromLTRB(22, 24, 22, 26),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.cardBorder),
         boxShadow: [
           BoxShadow(
             color: AppColors.darkBlue.withValues(alpha: 0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 4),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -326,12 +303,12 @@ class _ChangePasswordFormCard extends StatelessWidget {
             child: ElevatedButton(
               onPressed: isLoading ? null : onSubmit,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shadowColor: Colors.black.withValues(alpha: 0.05),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
               child: isLoading
@@ -343,14 +320,7 @@ class _ChangePasswordFormCard extends StatelessWidget {
                         color: Colors.white,
                       ),
                     )
-                  : const Text(
-                      'ĐỔI MẬT KHẨU',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        height: 28 / 20,
-                      ),
-                    ),
+                  : const Text('ĐỔI MẬT KHẨU', style: AppTypography.button),
             ),
           ),
         ],
@@ -371,7 +341,6 @@ class _PasswordRequirements extends StatelessWidget {
       builder: (context, value, child) {
         final password = value.text;
         final hasMinimumLength = password.length >= 8;
-        final hasLetter = RegExp(r'[a-zA-Z]').hasMatch(password);
         final hasNumber = RegExp(r'\d').hasMatch(password);
 
         return Container(
@@ -379,7 +348,7 @@ class _PasswordRequirements extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.requirementBackground,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -398,11 +367,6 @@ class _PasswordRequirements extends StatelessWidget {
               _RequirementItem(
                 text: 'Tối thiểu 8 ký tự',
                 isMet: hasMinimumLength,
-              ),
-              const SizedBox(height: 8),
-              _RequirementItem(
-                text: 'Có ít nhất một chữ cái',
-                isMet: hasLetter,
               ),
               const SizedBox(height: 8),
               _RequirementItem(text: 'Có ít nhất một chữ số', isMet: hasNumber),
@@ -426,7 +390,7 @@ class _RequirementItem extends StatelessWidget {
       children: [
         Icon(
           isMet ? Icons.check_circle : Icons.circle_outlined,
-          color: isMet ? AppColors.deepBlue : AppColors.cardBorder,
+          color: isMet ? AppColors.success : AppColors.cardBorder,
           size: 15,
         ),
         const SizedBox(width: 8),

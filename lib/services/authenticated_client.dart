@@ -34,7 +34,7 @@ class AuthenticatedClient extends http.BaseClient {
     }
     request.headers['X-Client-Type'] = 'mobile';
 
-    debugPrint('➡️ [HTTP] ${request.method} ${request.url}');
+    debugPrint('➡️ [HTTP REQUEST] ${request.method} ${request.url}');
 
     http.StreamedResponse response;
     try {
@@ -44,51 +44,66 @@ class AuthenticatedClient extends http.BaseClient {
       rethrow;
     }
 
-    debugPrint('⬅️ [HTTP] ${response.statusCode} ${request.url}');
-
-    // Only buffer the body if we need to handle 401 (token refresh + retry).
-    // For all other status codes, stream the response directly — this avoids
-    // loading large binary files (images, PDFs) entirely into RAM just for logging.
-    if (response.statusCode != 401) {
-      return response;
-    }
-
-
-    // --- 401 path: buffer body so we can retry with a fresh token ---
-    if (request is! http.Request) {
-      // Cannot safely clone a multipart/stream request; return as-is.
-      return response;
-    }
-
-    // Drain the body before retrying (required to release the connection).
-    await response.stream.drain<void>();
-
+    // Read the response stream so we can log it, then reconstruct it
+    final responseBytes = await response.stream.toBytes();
+    String bodyString = '';
     try {
-      final newLoginData = await authService.refreshToken();
-      final newRequest = _cloneRequest(request);
-
-      newRequest.headers['Authorization'] = 'Bearer ${newLoginData.token}';
-
-      debugPrint('🔄 [HTTP RETRY] ${newRequest.method} ${newRequest.url}');
-      return await _inner.send(newRequest);
+      bodyString = String.fromCharCodes(responseBytes);
     } catch (e) {
-      debugPrint('❌ [HTTP] Token refresh failed: $e');
-      await AuthService.clearLocalSession();
-      _redirectToLogin();
-      return _empty401Response(request);
+      bodyString = '[Binary Data]';
     }
+
+    debugPrint('⬅️ [HTTP RESPONSE] ${response.statusCode} ${request.url}');
+    debugPrint('⬅️ [BODY] $bodyString');
+
+    final clonedResponse = http.StreamedResponse(
+      Stream.value(responseBytes),
+      response.statusCode,
+      contentLength: response.contentLength ?? responseBytes.length,
+      request: response.request,
+      headers: response.headers,
+      isRedirect: response.isRedirect,
+      persistentConnection: response.persistentConnection,
+      reasonPhrase: response.reasonPhrase,
+    );
+
+    if (clonedResponse.statusCode == 401) {
+      final isRetryable = request is http.Request;
+      if (!isRetryable) {
+        // Cannot retry streams safely
+        return clonedResponse;
+      }
+
+      try {
+        final newLoginData = await authService.refreshToken();
+
+        final newRequest = _cloneRequest(request);
+        newRequest.headers['Authorization'] = 'Bearer ${newLoginData.token}';
+
+        debugPrint('🔄 [HTTP RETRY] ${newRequest.method} ${newRequest.url}');
+        return await _inner.send(newRequest);
+      } catch (e) {
+        await AuthService.clearLocalSession();
+        _redirectToLogin();
+        return clonedResponse;
+      }
+    }
+
+    if (clonedResponse.statusCode == 403) {
+      return clonedResponse;
+    }
+
+    return clonedResponse;
   }
 
   void _logNetworkFailure(http.BaseRequest request, Object error) {
     final uri = request.url;
     debugPrint(
-      '❌ [HTTP NETWORK] ${request.method} scheme=${uri.scheme} host=${uri.host}'
-      ' port=${uri.hasPort ? uri.port : "(default)"} path=${uri.path} error=$error',
+      '❌ [HTTP NETWORK] ${request.method} scheme=${uri.scheme} host=${uri.host} port=${uri.hasPort ? uri.port : '(default)'} path=${uri.path} error=$error',
     );
     if (uri.scheme == 'http') {
       debugPrint(
-        '❌ [HTTP NETWORK] Nếu chạy Android thật, kiểm tra API_BASE_URL dùng IP LAN laptop'
-        ' và debug build cho phép cleartext HTTP.',
+        '❌ [HTTP NETWORK] Nếu chạy Android thật, kiểm tra API_BASE_URL dùng IP LAN laptop và debug build cho phép cleartext HTTP.',
       );
     }
   }
@@ -118,13 +133,21 @@ class AuthenticatedClient extends http.BaseClient {
     );
   }
 
-  http.Request _cloneRequest(http.Request request) {
-    return http.Request(request.method, request.url)
-      ..headers.addAll(request.headers)
-      ..maxRedirects = request.maxRedirects
-      ..followRedirects = request.followRedirects
-      ..persistentConnection = request.persistentConnection
-      ..bodyBytes = request.bodyBytes;
+  http.BaseRequest _cloneRequest(http.BaseRequest request) {
+    if (request is http.Request) {
+      final copy = http.Request(request.method, request.url)
+        ..headers.addAll(request.headers)
+        ..maxRedirects = request.maxRedirects
+        ..followRedirects = request.followRedirects
+        ..persistentConnection = request.persistentConnection
+        ..bodyBytes = request.bodyBytes;
+      return copy;
+    } else if (request is http.MultipartRequest) {
+      // Multipart requests are harder to clone because the streams might be consumed.
+      // For now, return original or implement full clone if needed.
+      return request;
+    }
+    return request;
   }
 
   @override

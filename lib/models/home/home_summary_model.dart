@@ -40,11 +40,10 @@ class HomeSummary {
       contract: json['contract'] != null
           ? HomeContract.fromJson(json['contract'] as Map<String, dynamic>)
           : null,
-      invoiceSummary: InvoiceSummary.fromJson(
-        json['invoice_summary'] as Map<String, dynamic>? ?? {},
-      ),
+      invoiceSummary:
+          InvoiceSummary.fromJson(json['invoiceSummary'] as Map<String, dynamic>? ?? {}),
       notificationSummary: NotificationSummary.fromJson(
-        json['notification_summary'] as Map<String, dynamic>? ?? {},
+        json['notificationSummary'] as Map<String, dynamic>? ?? {},
       ),
       utilitySummary: UtilitySummary.fromHomeJson(json),
       onboarding: json['onboarding'] != null
@@ -74,15 +73,15 @@ class HomeUser {
   factory HomeUser.fromJson(Map<String, dynamic> json) {
     return HomeUser(
       id: int.tryParse(json['id']?.toString() ?? ''),
-      fullName: json['full_name']?.toString() ?? '',
+      fullName: _firstString(json, ['fullName']),
       phone: json['phone']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
       role: json['role']?.toString() ?? '',
       avatarUrl: _firstString(json, [
-        'avatar_url',
+        'avatarUrl',
         'avatar',
-        'profile_photo_url',
-        'photo_url',
+        'profilePhotoUrl',
+        'photoUrl',
       ]),
     );
   }
@@ -118,9 +117,9 @@ class HomeRoom {
   factory HomeRoom.fromJson(Map<String, dynamic> json) {
     return HomeRoom(
       id: int.tryParse(json['id']?.toString() ?? ''),
-      roomCode: json['room_code']?.toString() ?? '',
+      roomCode: _firstString(json, ['roomCode']),
       name: json['name']?.toString() ?? '',
-      currentStatus: json['current_status']?.toString() ?? '',
+      currentStatus: _firstString(json, ['currentStatus']),
     );
   }
 }
@@ -143,10 +142,10 @@ class HomeContract {
   factory HomeContract.fromJson(Map<String, dynamic> json) {
     return HomeContract(
       id: int.tryParse(json['id']?.toString() ?? ''),
-      contractCode: json['contract_code']?.toString() ?? '',
+      contractCode: _firstString(json, ['contractCode']),
       status: json['status']?.toString() ?? '',
-      startDate: DateTime.tryParse(json['start_date']?.toString() ?? ''),
-      endDate: DateTime.tryParse(json['end_date']?.toString() ?? ''),
+      startDate: DateTime.tryParse(_firstString(json, ['startDate'])),
+      endDate: DateTime.tryParse(_firstString(json, ['endDate'])),
     );
   }
 }
@@ -164,12 +163,10 @@ class InvoiceSummary {
 
   factory InvoiceSummary.fromJson(Map<String, dynamic> json) {
     return InvoiceSummary(
-      unpaidCount: int.tryParse(json['unpaid_count']?.toString() ?? '') ?? 0,
+      unpaidCount: int.tryParse(json['unpaidCount']?.toString() ?? '') ?? 0,
       totalUnpaidAmount:
-          double.tryParse(json['total_unpaid_amount']?.toString() ?? '') ?? 0,
-      nearestDueDate: DateTime.tryParse(
-        json['nearest_due_date']?.toString() ?? '',
-      ),
+          double.tryParse(json['totalUnpaidAmount']?.toString() ?? '') ?? 0,
+      nearestDueDate: DateTime.tryParse(json['nearestDueDate']?.toString() ?? ''),
     );
   }
 }
@@ -181,7 +178,7 @@ class NotificationSummary {
 
   factory NotificationSummary.fromJson(Map<String, dynamic> json) {
     return NotificationSummary(
-      unreadCount: int.tryParse(json['unread_count']?.toString() ?? '') ?? 0,
+      unreadCount: int.tryParse(json['unreadCount']?.toString() ?? '') ?? 0,
     );
   }
 }
@@ -197,13 +194,13 @@ class UtilitySummary {
 
   factory UtilitySummary.fromHomeJson(Map<String, dynamic> json) {
     final utilityMap = _firstMap(json, [
-      'utility_summary',
+      'utilitySummary',
       'utilities',
       'utility',
-      'meter_summary',
-      'meter_readings',
-      'usage_summary',
-      'service_usage',
+      'meterSummary',
+      'meterReadings',
+      'usageSummary',
+      'serviceUsage',
     ]);
 
     final source = utilityMap.isEmpty ? json : utilityMap;
@@ -239,10 +236,10 @@ class UtilitySummary {
           }
           final label = [
             item['type'],
-            item['service_type'],
-            item['service_code'],
+            item['serviceType'],
+            item['serviceCode'],
             item['name'],
-            item['service_name'],
+            item['serviceName'],
           ].whereType<Object>().join(' ').toLowerCase();
 
           if (electricity == null &&
@@ -299,37 +296,37 @@ class UtilityUsage {
     return UtilityUsage(
       name: _firstString(json, [
         'name',
-        'service_name',
+        'serviceName',
         'label',
       ], fallback: defaultName),
       value: _firstDouble(json, [
-        'current_usage',
+        'currentUsage',
         'usage',
         'value',
         'reading',
         'consumption',
-        'current_reading',
-        'current_value',
+        'currentReading',
+        'currentValue',
         'total',
         'kwh',
         'm3',
       ]),
       unit: _firstString(json, [
         'unit',
-        'measurement_unit',
+        'measurementUnit',
       ], fallback: defaultUnit),
       percentChange: _firstDouble(json, [
-        'change_percent',
-        'percent_change',
-        'change_percentage',
-        'month_over_month_percent',
-        'mom_percent',
-        'previous_month_change_percent',
+        'changePercent',
+        'percentChange',
+        'changePercentage',
+        'monthOverMonthPercent',
+        'momPercent',
+        'previousMonthChangePercent',
       ]),
       status: _firstString(json, [
         'status',
-        'current_status',
-        'reading_status',
+        'currentStatus',
+        'readingStatus',
       ]),
     );
   }

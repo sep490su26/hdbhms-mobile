@@ -6,11 +6,12 @@ import 'package:hdbhms_mobile/services/auth/forgot_password_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/auth_text_field.dart';
 import 'package:hdbhms_mobile/screens/auth/change_password_page.dart';
 import 'package:hdbhms_mobile/screens/auth/forgot_password_page.dart';
-import 'package:hdbhms_mobile/screens/home/home_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/identity_verification_page.dart';
+import 'package:hdbhms_mobile/screens/tenant_overview/tenant_overview_screen.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({
@@ -104,7 +105,7 @@ class _LoginPageState extends State<LoginPage> {
     if (onboarding.onBoardingCompleted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => HomeScreen(
+          builder: (context) => TenantOverviewScreen(
             authService: widget.authService,
             homeService: widget.homeService,
             tenantInvoiceService: widget.tenantInvoiceService,
@@ -126,7 +127,7 @@ class _LoginPageState extends State<LoginPage> {
         authService: widget.authService,
         homeService: widget.homeService,
       ),
-      _ => HomeScreen(
+      _ => TenantOverviewScreen(
         authService: widget.authService,
         homeService: widget.homeService,
         tenantInvoiceService: widget.tenantInvoiceService,
@@ -148,11 +149,11 @@ class _LoginPageState extends State<LoginPage> {
           builder: (context, constraints) {
             final viewportHeight = constraints.maxHeight;
             final viewportWidth = constraints.maxWidth;
-            final horizontalPadding = viewportWidth < 360 ? 12.0 : 16.0;
+            final horizontalPadding = viewportWidth < 360 ? 12.0 : 20.0;
             final heroHeight = (viewportHeight * 0.35)
                 .clamp(284.0, 309.0)
                 .toDouble();
-            final cardTop = heroHeight - 48;
+            final cardTop = heroHeight - 56;
             final cardHeight = (viewportHeight - cardTop - 90)
                 .clamp(500.0, 513.0)
                 .toDouble();
@@ -208,7 +209,9 @@ class _HeroSection extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          const ColoredBox(color: AppColors.darkBlue),
+          const DecoratedBox(
+            decoration: BoxDecoration(gradient: AppColors.heroGradient),
+          ),
           const _BuildingPlaceholder(),
           DecoratedBox(
             decoration: BoxDecoration(
@@ -216,9 +219,9 @@ class _HeroSection extends StatelessWidget {
                 begin: Alignment.bottomLeft,
                 end: Alignment.topRight,
                 colors: [
-                  AppColors.heroGradientStart.withValues(alpha: 0.78),
-                  AppColors.darkBlue.withValues(alpha: 0.62),
-                  AppColors.darkBlue.withValues(alpha: 0),
+                  AppColors.heroGradientStart.withValues(alpha: 0.36),
+                  AppColors.primary.withValues(alpha: 0.18),
+                  AppColors.primary.withValues(alpha: 0),
                 ],
                 stops: const [0, 0.5, 1],
               ),
@@ -270,11 +273,18 @@ class _LoginCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: height,
-      padding: const EdgeInsets.all(25),
+      padding: const EdgeInsets.fromLTRB(24, 26, 24, 28),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.9)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.inputText.withValues(alpha: 0.13),
+            blurRadius: 36,
+            offset: const Offset(0, 18),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -330,15 +340,15 @@ class _LoginCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
-            height: 58,
+            height: 56,
             child: ElevatedButton(
               onPressed: isLoading ? null : onLogin,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.darkBlue,
-                disabledBackgroundColor: AppColors.darkBlue.withValues(
+                backgroundColor: AppColors.primary,
+                disabledBackgroundColor: AppColors.primary.withValues(
                   alpha: 0.72,
                 ),
                 foregroundColor: Colors.white,
@@ -346,7 +356,7 @@ class _LoginCard extends StatelessWidget {
                 elevation: 0,
                 shadowColor: Colors.black.withValues(alpha: 0.1),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
               child: isLoading
@@ -374,14 +384,7 @@ class _LoginCard extends StatelessWidget {
                         ),
                       ],
                     )
-                  : const Text(
-                      'Đăng nhập',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        height: 28 / 20,
-                      ),
-                    ),
+                  : const Text('Đăng nhập', style: AppTypography.button),
             ),
           ),
         ],
@@ -398,25 +401,11 @@ class _Greeting extends StatelessWidget {
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Đăng nhập',
-          style: TextStyle(
-            color: AppColors.deepBlue,
-            fontSize: 26,
-            fontWeight: FontWeight.w700,
-            height: 32 / 26,
-            letterSpacing: -0.52,
-          ),
-        ),
+        Text('Đăng nhập', style: AppTypography.pageTitle),
         SizedBox(height: 4),
         Text(
           'Nhập thông tin đăng nhập của bạn để truy cập\nvào tài khoản.',
-          style: TextStyle(
-            color: AppColors.bodyText,
-            fontSize: 13,
-            fontWeight: FontWeight.w400,
-            height: 24 / 13,
-          ),
+          style: AppTypography.body,
         ),
       ],
     );
@@ -432,12 +421,23 @@ class _LogoMark extends StatelessWidget {
       width: 57,
       height: 54,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(13),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, AppColors.primaryLight],
+        ),
+        borderRadius: BorderRadius.circular(17),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.3),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: const Icon(
         Icons.apartment_rounded,
-        color: AppColors.deepBlue,
+        color: AppColors.primary,
         size: 31,
       ),
     );

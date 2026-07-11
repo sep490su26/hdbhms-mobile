@@ -1,13 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
+import '../../services/notification/notification_service.dart';
 import '../../services/payment/tenant_invoice_service.dart';
 import 'payment_success_page.dart';
+import 'qr_receipt_download_page.dart';
 
 class QrPaymentPage extends StatefulWidget {
   const QrPaymentPage({
@@ -15,11 +18,13 @@ class QrPaymentPage extends StatefulWidget {
     required this.invoice,
     this.invoiceService = const TenantInvoiceService(),
     this.pollInterval = const Duration(seconds: 4),
+    this.onPaymentConfirmed,
   });
 
   final TenantInvoice invoice;
   final TenantInvoiceService invoiceService;
   final Duration pollInterval;
+  final Future<void> Function()? onPaymentConfirmed;
 
   @override
   State<QrPaymentPage> createState() => _QrPaymentPageState();
@@ -30,11 +35,14 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
   Timer? _pollTimer;
   bool _checking = false;
   bool _completed = false;
+  bool _downloadingQr = false;
+  final NotificationService _notificationService = const NotificationService();
 
   @override
   void initState() {
     super.initState();
     _invoice = widget.invoice;
+    unawaited(_markInvoiceNotificationsRead());
     _startPolling();
   }
 
@@ -51,6 +59,19 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
     });
   }
 
+  Future<void> _markInvoiceNotificationsRead() async {
+    final invoiceId = _invoice.id;
+    if (invoiceId == null || invoiceId <= 0) return;
+    try {
+      await _notificationService.markTargetAsRead(
+        targetType: 'INVOICE',
+        targetId: invoiceId,
+      );
+    } catch (_) {
+      // Best-effort read sync; payment flow should not be blocked.
+    }
+  }
+
   Future<void> _checkPaymentStatus({required bool showPendingMessage}) async {
     if (_checking || _completed) return;
     setState(() => _checking = true);
@@ -63,6 +84,12 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
         if (updated.isPaid) {
           _completed = true;
           _pollTimer?.cancel();
+          try {
+            await widget.onPaymentConfirmed?.call();
+          } catch (_) {
+            // Payment success must still be shown even if the caller refresh fails.
+          }
+          if (!mounted) return;
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
             ..showSnackBar(
@@ -70,9 +97,9 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
             );
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (context) =>
-                  PaymentSuccessPage(invoiceService: widget.invoiceService),
+              builder: (context) => PaymentSuccessPage(invoice: updated),
             ),
+            result: true,
           );
           return;
         }
@@ -121,6 +148,32 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
       }
     }
     return null;
+  }
+
+  Future<void> _downloadQr() async {
+    if (_downloadingQr) return;
+    setState(() => _downloadingQr = true);
+    try {
+      final saved = await downloadQrReceipt(context, _invoice);
+      if (!mounted || !saved) return;
+      final msg = kIsWeb
+          ? 'Đã tải ảnh QR về máy.'
+          : 'Đã lưu ảnh QR vào bộ sưu tập.';
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(msg)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Không thể tải ảnh QR. Vui lòng thử lại.'),
+          ),
+        );
+    } finally {
+      if (mounted) setState(() => _downloadingQr = false);
+    }
   }
 
   @override
@@ -172,7 +225,12 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
                         children: [
                           _PaymentHero(invoice: _invoice, theme: theme),
                           const SizedBox(height: 18),
-                          _QrCard(qrCode: _invoice.qrCode, theme: theme),
+                          _QrCard(
+                            qrCode: _invoice.qrCode,
+                            theme: theme,
+                            downloading: _downloadingQr,
+                            onDownload: _downloadQr,
+                          ),
                           if (fields.isNotEmpty) ...[
                             const SizedBox(height: 18),
                             _InformationCard(fields: fields, theme: theme),
@@ -230,7 +288,7 @@ class _Header extends StatelessWidget {
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
                 Text(
@@ -238,7 +296,7 @@ class _Header extends StatelessWidget {
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.72),
                     fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ],
@@ -333,7 +391,7 @@ class _PaymentHero extends StatelessWidget {
                     color: Colors.white,
                     fontSize: 30,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: -0.8,
+                    letterSpacing: 0,
                   ),
                 ),
                 if (invoice.invoiceCode.isNotEmpty) ...[
@@ -356,10 +414,17 @@ class _PaymentHero extends StatelessWidget {
 }
 
 class _QrCard extends StatelessWidget {
-  const _QrCard({required this.qrCode, required this.theme});
+  const _QrCard({
+    required this.qrCode,
+    required this.theme,
+    required this.downloading,
+    required this.onDownload,
+  });
 
   final String qrCode;
   final _PaymentVisualTheme theme;
+  final bool downloading;
+  final VoidCallback onDownload;
 
   @override
   Widget build(BuildContext context) {
@@ -372,7 +437,7 @@ class _QrCard extends StatelessWidget {
               Icon(Icons.qr_code_scanner_rounded, color: theme.primary),
               const SizedBox(width: 8),
               Text(
-                'Quét mã VietQR',
+                'Quét mã QR',
                 style: TextStyle(
                   color: theme.ink,
                   fontSize: 18,
@@ -420,33 +485,58 @@ class _QrCard extends StatelessWidget {
             },
           ),
           const SizedBox(height: 16),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 310),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: theme.softAccent,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.bolt_rounded, color: theme.primary, size: 16),
-                  const SizedBox(width: 5),
-                  Flexible(
-                    child: Text(
-                      'Tự động đối soát sau khi chuyển khoản',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: theme.primary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: theme.softAccent,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.bolt_rounded, color: theme.primary, size: 16),
+                const SizedBox(width: 5),
+                Text(
+                  'Tự động đối soát sau khi chuyển khoản',
+                  style: TextStyle(
+                    color: theme.primary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
                   ),
-                ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: FilledButton.icon(
+              onPressed: downloading ? null : onDownload,
+              style: FilledButton.styleFrom(
+                backgroundColor: theme.primary,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: theme.primary.withValues(alpha: 0.55),
+                disabledForegroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
+              icon: downloading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(Icons.download_rounded, size: 20),
+              label: Text(downloading ? 'Đang tải ảnh...' : 'Tải ảnh QR'),
             ),
           ),
         ],
@@ -783,7 +873,7 @@ class _GlowOrb extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: RadialGradient(
-          colors: [color.withValues(alpha: 0.28), color.withValues(alpha: 0)],
+          colors: [color.withValues(alpha: 0.16), color.withValues(alpha: 0)],
         ),
       ),
     );
@@ -844,16 +934,16 @@ class _PaymentVisualTheme {
       title: 'Thanh toán điện nước & dịch vụ',
       subtitle: 'Chi phí tiện ích trong kỳ',
       icon: Icons.bolt_rounded,
-      background: Color(0xFF073B4C),
-      backgroundEnd: Color(0xFF075E63),
-      primary: Color(0xFF087F8C),
-      secondary: Color(0xFF22D3EE),
-      accent: Color(0xFF5EEAD4),
-      iconColor: Color(0xFF073B4C),
-      ink: Color(0xFF103A43),
-      mutedInk: Color(0xFF5F747A),
-      softAccent: Color(0xFFDDFBF6),
-      softSurface: Color(0xFFF1F9F8),
+      background: Color(0xFF061827),
+      backgroundEnd: Color(0xFF12345C),
+      primary: Color(0xFF1D4ED8),
+      secondary: Color(0xFF60A5FA),
+      accent: Color(0xFF93C5FD),
+      iconColor: Color(0xFF061827),
+      ink: Color(0xFF10233F),
+      mutedInk: Color(0xFF607089),
+      softAccent: Color(0xFFE0F2FE),
+      softSurface: Color(0xFFF5F7FB),
     );
   }
 }

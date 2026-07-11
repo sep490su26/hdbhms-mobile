@@ -26,6 +26,7 @@ class TenantInvoice {
     required this.accountName,
     required this.transferDescription,
     required this.lines,
+    required this.priceDifferenceSettlementType,
   });
 
   final int? id;
@@ -54,6 +55,7 @@ class TenantInvoice {
   final String accountName;
   final String transferDescription;
   final List<TenantInvoiceLine> lines;
+  final String? priceDifferenceSettlementType;
 
   bool get isPaid => status.toUpperCase() == 'PAID' || remainingAmount <= 0;
 
@@ -108,50 +110,48 @@ class TenantInvoice {
   factory TenantInvoice.fromJson(Map<String, dynamic> json) {
     return TenantInvoice(
       id: int.tryParse(json['id']?.toString() ?? ''),
-      invoiceCode: _firstString(json, ['invoiceCode', 'invoice_code']),
-      invoiceType: _firstString(json, ['invoiceType', 'invoice_type']),
-      billingPeriod: _firstString(json, ['billingPeriod', 'billing_period']),
+      invoiceCode: _firstString(json, ['invoiceCode']),
+      invoiceType: _firstString(json, ['invoiceType']),
+      billingPeriod: _firstString(json, ['billingPeriod']),
       status: _firstString(json, ['status']),
-      roomId: int.tryParse(_firstString(json, ['roomId', 'room_id'])),
-      roomCode: _firstString(json, ['roomCode', 'room_code']),
+      roomId: int.tryParse(_firstString(json, ['roomId'])),
+      roomCode: _firstString(json, ['roomCode']),
       contractId: int.tryParse(
-        _firstString(json, ['contractId', 'contract_id']),
+        _firstString(json, ['contractId']),
       ),
-      contractCode: _firstString(json, ['contractCode', 'contract_code']),
-      dueDate: DateTime.tryParse(_firstString(json, ['dueDate', 'due_date'])),
+      contractCode: _firstString(json, ['contractCode']),
+      dueDate: DateTime.tryParse(_firstString(json, ['dueDate'])),
       issuedAt: DateTime.tryParse(
-        _firstString(json, ['issuedAt', 'issued_at']),
+        _firstString(json, ['issuedAt']),
       ),
-      paidAt: DateTime.tryParse(_firstString(json, ['paidAt', 'paid_at'])),
-      totalAmount: _intField(json, ['totalAmount', 'total_amount']),
-      paidAmount: _intField(json, ['paidAmount', 'paid_amount']),
-      remainingAmount: _intField(json, ['remainingAmount', 'remaining_amount']),
+      paidAt: DateTime.tryParse(_firstString(json, ['paidAt'])),
+      totalAmount: _intField(json, ['totalAmount']),
+      paidAmount: _intField(json, ['paidAmount']),
+      remainingAmount: _intField(json, ['remainingAmount']),
       paymentIntentId: int.tryParse(
-        _firstString(json, ['paymentIntentId', 'payment_intent_id']),
+        _firstString(json, ['paymentIntentId']),
       ),
       checkoutUrl: _firstString(json, [
         'checkoutUrl',
-        'checkout_url',
         'checkOutUrl',
       ]),
-      qrCode: _firstString(json, ['qrCode', 'qr_code']),
+      qrCode: _firstString(json, ['qrCode']),
       providerOrderCode: _firstString(json, [
         'providerOrderCode',
-        'provider_order_code',
       ]),
-      paymentLinkId: _firstString(json, ['paymentLinkId', 'payment_link_id']),
-      bankBin: _firstString(json, ['bankBin', 'bank_bin']),
-      bankShortName: _firstString(json, ['bankShortName', 'bank_short_name']),
-      accountNumber: _firstString(json, ['accountNumber', 'account_number']),
-      accountName: _firstString(json, ['accountName', 'account_name']),
+      paymentLinkId: _firstString(json, ['paymentLinkId']),
+      bankBin: _firstString(json, ['bankBin']),
+      bankShortName: _firstString(json, ['bankShortName']),
+      accountNumber: _firstString(json, ['accountNumber']),
+      accountName: _firstString(json, ['accountName']),
       transferDescription: _firstString(json, [
         'transferDescription',
-        'transfer_description',
       ]),
       lines: (json['lines'] as List<dynamic>? ?? [])
           .whereType<Map<String, dynamic>>()
           .map(TenantInvoiceLine.fromJson)
           .toList(),
+      priceDifferenceSettlementType: _firstString(json, ['priceDifferenceSettlementType']),
     );
   }
 }
@@ -176,10 +176,10 @@ class TenantInvoiceLine {
   factory TenantInvoiceLine.fromJson(Map<String, dynamic> json) {
     return TenantInvoiceLine(
       id: int.tryParse(json['id']?.toString() ?? ''),
-      lineType: _firstString(json, ['lineType', 'line_type']),
+      lineType: _firstString(json, ['lineType']),
       description: _firstString(json, ['description']),
       quantity: _intField(json, ['quantity']),
-      unitPrice: _intField(json, ['unitPrice', 'unit_price']),
+      unitPrice: _intField(json, ['unitPrice']),
       amount: _intField(json, ['amount']),
     );
   }

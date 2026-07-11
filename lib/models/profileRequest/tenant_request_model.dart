@@ -1,4 +1,3 @@
-/// Các loại yêu cầu mà tenant có thể tạo.
 enum TenantRequestType {
   renewContract,
   terminateContract,

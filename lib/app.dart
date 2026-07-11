@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:hdbhms_mobile/config/app_config.dart';
 import 'package:hdbhms_mobile/models/onboarding_state.dart';
 import 'package:hdbhms_mobile/screens/auth/change_password_page.dart';
-import 'package:hdbhms_mobile/screens/home/home_screen.dart';
+import 'package:hdbhms_mobile/screens/tenant_overview/tenant_overview_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/identity_verification_page.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
@@ -11,6 +12,7 @@ import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
 import 'package:hdbhms_mobile/services/profileRequest/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/screens/auth/reset_password_page.dart';
+import 'package:hdbhms_mobile/screens/splash/app_splash_screen.dart';
 import 'package:hdbhms_mobile/services/deep_link_service.dart';
 import 'package:hdbhms_mobile/theme/app_theme.dart';
 
@@ -95,8 +97,17 @@ class _AppRootState extends State<_AppRoot> {
   }
 
   Future<Widget> _resolveStartPage() async {
+    final minimumSplashTime = Future<void>.delayed(
+      const Duration(milliseconds: 1800),
+    );
+    final prefs = await SharedPreferences.getInstance();
     final token = await widget.authService.accessToken;
-    if (token == null || token.isEmpty) {
+    final sessionId = prefs.getString(AuthService.sessionIdKey);
+    final hasToken = token != null && token.isNotEmpty;
+    final hasSessionId = sessionId != null && sessionId.isNotEmpty;
+
+    if (!hasToken && !hasSessionId) {
+      await minimumSplashTime;
       return LoginPage(
         authService: widget.authService,
         homeService: widget.homeService,
@@ -106,8 +117,10 @@ class _AppRootState extends State<_AppRoot> {
 
     try {
       final onboarding = await widget.authService.fetchOnboarding();
+      await minimumSplashTime;
       return _pageFor(onboarding);
     } on SessionExpiredException {
+      await minimumSplashTime;
       return LoginPage(
         authService: widget.authService,
         homeService: widget.homeService,
@@ -116,8 +129,10 @@ class _AppRootState extends State<_AppRoot> {
     } on AuthException {
       final cachedOnboarding = await widget.authService.getCachedOnboarding();
       if (cachedOnboarding != null) {
+        await minimumSplashTime;
         return _pageFor(cachedOnboarding);
       }
+      await minimumSplashTime;
       return LoginPage(
         authService: widget.authService,
         homeService: widget.homeService,
@@ -128,7 +143,7 @@ class _AppRootState extends State<_AppRoot> {
 
   Widget _pageFor(OnboardingState onboarding) {
     if (onboarding.onBoardingCompleted) {
-      return HomeScreen(
+      return TenantOverviewScreen(
         authService: widget.authService,
         homeService: widget.homeService,
         profileService: widget.profileService,
@@ -148,7 +163,7 @@ class _AppRootState extends State<_AppRoot> {
         authService: widget.authService,
         homeService: widget.homeService,
       ),
-      _ => HomeScreen(
+      _ => TenantOverviewScreen(
         authService: widget.authService,
         homeService: widget.homeService,
         profileService: widget.profileService,
@@ -166,7 +181,7 @@ class _AppRootState extends State<_AppRoot> {
           return snapshot.data!;
         }
 
-        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        return const AppSplashScreen();
       },
     );
   }

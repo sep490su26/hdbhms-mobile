@@ -8,6 +8,7 @@ import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
+import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/contract/lease_contract_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
@@ -71,8 +72,6 @@ class _LeaseContractListScreenState extends State<LeaseContractListScreen> {
     });
   }
 
-
-
   void _clearFilters() {
     setState(() {
       _selectedStatus = null;
@@ -102,9 +101,7 @@ class _LeaseContractListScreenState extends State<LeaseContractListScreen> {
     await const AuthService().logout();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => const LoginPage(),
-      ),
+      MaterialPageRoute(builder: (context) => const LoginPage()),
       (route) => false,
     );
   }
@@ -112,7 +109,6 @@ class _LeaseContractListScreenState extends State<LeaseContractListScreen> {
   Widget _buildListContent() {
     return Column(
       children: [
-        if (!widget.embeddedMode) _buildHeader(),
         _FilterBar(
           selectedStatus: _selectedStatus,
           selectedDateRange: _selectedDateRange,
@@ -131,9 +127,7 @@ class _LeaseContractListScreenState extends State<LeaseContractListScreen> {
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(
-                  child: CircularProgressIndicator(
-                    color: AppColors.deepBlue,
-                  ),
+                  child: CircularProgressIndicator(color: AppColors.deepBlue),
                 );
               }
 
@@ -162,8 +156,7 @@ class _LeaseContractListScreenState extends State<LeaseContractListScreen> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(14, 12, 14, 28),
                   itemCount: filtered.length,
-                  separatorBuilder: (_, _) =>
-                      const SizedBox(height: 10),
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     return _ContractCard(
                       item: filtered[index],
@@ -189,15 +182,13 @@ class _LeaseContractListScreenState extends State<LeaseContractListScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 390),
-            child: _buildListContent(),
-          ),
+        child: AppScreenShell(
+          header: _buildHeader(),
+          child: _buildListContent(),
         ),
       ),
       bottomNavigationBar: TenantBottomNavigation(
-        activeTab: TenantBottomNavTab.bills,
+        activeTab: TenantBottomNavTab.profile,
         onBillsTap: () {},
         onHomeTap: () => Navigator.of(context).pop(),
         onSupportTap: () {
@@ -215,10 +206,8 @@ class _LeaseContractListScreenState extends State<LeaseContractListScreen> {
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const TenantRequestScreen(),
-              ),
-            ),
+          MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+        ),
       ),
     );
   }
@@ -531,7 +520,9 @@ class _ContractCard extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.cardBorder.withValues(alpha: 0.6)),
+            border: Border.all(
+              color: AppColors.cardBorder.withValues(alpha: 0.6),
+            ),
           ),
           child: Row(
             children: [
@@ -572,9 +563,7 @@ class _ContractCard extends StatelessWidget {
                         Flexible(
                           child: _InfoChip(
                             icon: Icons.meeting_room_outlined,
-                            text: item.roomCode.isEmpty
-                                ? '--'
-                                : item.roomCode,
+                            text: item.roomCode.isEmpty ? '--' : item.roomCode,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -683,8 +672,11 @@ class _EmptyState extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         children: [
           const SizedBox(height: 120),
-          const Icon(Icons.description_outlined,
-              color: AppColors.deepBlue, size: 46),
+          const Icon(
+            Icons.description_outlined,
+            color: AppColors.deepBlue,
+            size: 46,
+          ),
           const SizedBox(height: 14),
           const Text(
             'Bạn chưa có hợp đồng thuê nào',
@@ -727,8 +719,11 @@ class _EmptyFilterState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.filter_list_off_rounded,
-                color: AppColors.deepBlue, size: 42),
+            const Icon(
+              Icons.filter_list_off_rounded,
+              color: AppColors.deepBlue,
+              size: 42,
+            ),
             const SizedBox(height: 14),
             const Text(
               'Không có hợp đồng phù hợp với bộ lọc',
@@ -770,8 +765,11 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline_rounded,
-                color: AppColors.deepBlue, size: 42),
+            const Icon(
+              Icons.error_outline_rounded,
+              color: AppColors.deepBlue,
+              size: 42,
+            ),
             const SizedBox(height: 14),
             Text(
               message,
@@ -813,12 +811,32 @@ String _fmtShort(DateTime date) {
 
 (String, Color, Color) _statusStyle(String status) {
   return switch (status.trim().toUpperCase()) {
-    'ACTIVE' => ('Đang hiệu lực', const Color(0xFFD4F8DE), const Color(0xFF159447)),
-    'EXPIRING_SOON' => ('Sắp hết hạn', const Color(0xFFFFF3CD), const Color(0xFF856404)),
-    'EXPIRED' => ('Đã hết hạn', const Color(0xFFFFD8D5), const Color(0xFFB00020)),
-    'TERMINATED' => ('Đã chấm dứt', const Color(0xFFE7E9F0), AppColors.bodyText),
+    'ACTIVE' => (
+      'Đang hiệu lực',
+      const Color(0xFFD4F8DE),
+      const Color(0xFF159447),
+    ),
+    'EXPIRING_SOON' => (
+      'Sắp hết hạn',
+      const Color(0xFFFFF3CD),
+      const Color(0xFF856404),
+    ),
+    'EXPIRED' => (
+      'Đã hết hạn',
+      const Color(0xFFFFD8D5),
+      const Color(0xFFB00020),
+    ),
+    'TERMINATED' => (
+      'Đã chấm dứt',
+      const Color(0xFFE7E9F0),
+      AppColors.bodyText,
+    ),
     'DRAFT' => ('Bản nháp', const Color(0xFFE7E9F0), AppColors.bodyText),
-    'PENDING_SIGNATURE' => ('Chờ ký', const Color(0xFFFFF3CD), const Color(0xFF856404)),
+    'PENDING_SIGNATURE' => (
+      'Chờ ký',
+      const Color(0xFFFFF3CD),
+      const Color(0xFF856404),
+    ),
     _ => (_displayStatus(status), const Color(0xFFE7E9F0), AppColors.bodyText),
   };
 }
