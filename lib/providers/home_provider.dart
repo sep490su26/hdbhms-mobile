@@ -6,19 +6,23 @@ import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
+import 'package:hdbhms_mobile/utils/display_formatters.dart';
 
 class HomeProvider extends ChangeNotifier {
   HomeProvider({
     HomeService homeService = const HomeService(),
     LeaseContractService leaseContractService = const LeaseContractService(),
     TenantInvoiceService tenantInvoiceService = const TenantInvoiceService(),
+    ActiveRoomItem? initialRoom,
   }) : _homeService = homeService,
        _leaseContractService = leaseContractService,
-       _tenantInvoiceService = tenantInvoiceService;
+       _tenantInvoiceService = tenantInvoiceService,
+       _initialRoom = initialRoom;
 
   final HomeService _homeService;
   final LeaseContractService _leaseContractService;
   final TenantInvoiceService _tenantInvoiceService;
+  final ActiveRoomItem? _initialRoom;
 
   HomeSummary? _summary;
   String? _errorMessage;
@@ -110,11 +114,14 @@ class HomeProvider extends ChangeNotifier {
     _sessionExpired = false;
     _summary = null;
     _activeRooms = const [];
-    _selectedRoom = null;
+    _selectedRoom = _initialRoom;
     notifyListeners();
 
     try {
-      _summary = await _homeService.fetchHomeSummary();
+      final contractId = _initialRoom?.contractId;
+      _summary = await _homeService.fetchHomeSummary(
+        contractId: contractId != null && contractId > 0 ? contractId : null,
+      );
     } on SessionExpiredException catch (error) {
       _sessionExpired = true;
       _errorMessage = error.message;
@@ -156,7 +163,7 @@ class HomeProvider extends ChangeNotifier {
               roomId: r.id ?? 0,
               roomCode: r.roomCode,
               roomName: r.name,
-              propertyName: _summary?.tenant?.name ?? '',
+              propertyName: formatPropertyName(_summary?.tenant?.name ?? ''),
             ),
           )
           .toList();

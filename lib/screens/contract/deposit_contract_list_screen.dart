@@ -187,7 +187,7 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
         ),
       ),
       bottomNavigationBar: TenantBottomNavigation(
-        activeTab: TenantBottomNavTab.bills,
+        activeTab: TenantBottomNavTab.profile,
         onBillsTap: () {},
         onHomeTap: () => Navigator.of(context).pop(),
         onSupportTap: () {

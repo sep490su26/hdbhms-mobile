@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hdbhms_mobile/config/app_config.dart';
 import 'package:hdbhms_mobile/models/onboarding_state.dart';
 import 'package:hdbhms_mobile/screens/auth/change_password_page.dart';
-import 'package:hdbhms_mobile/screens/home/home_screen.dart';
+import 'package:hdbhms_mobile/screens/tenant_overview/tenant_overview_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/identity_verification_page.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
@@ -143,7 +143,7 @@ class _AppRootState extends State<_AppRoot> {
 
   Widget _pageFor(OnboardingState onboarding) {
     if (onboarding.onBoardingCompleted) {
-      return HomeScreen(
+      return TenantOverviewScreen(
         authService: widget.authService,
         homeService: widget.homeService,
         profileService: widget.profileService,
@@ -163,7 +163,7 @@ class _AppRootState extends State<_AppRoot> {
         authService: widget.authService,
         homeService: widget.homeService,
       ),
-      _ => HomeScreen(
+      _ => TenantOverviewScreen(
         authService: widget.authService,
         homeService: widget.homeService,
         profileService: widget.profileService,

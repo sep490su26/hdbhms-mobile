@@ -75,7 +75,7 @@ class _ContractHubScreenState extends State<ContractHubScreen>
         ),
       ),
       bottomNavigationBar: TenantBottomNavigation(
-        activeTab: TenantBottomNavTab.bills,
+        activeTab: TenantBottomNavTab.home,
         onHomeTap: () =>
             Navigator.of(context).popUntil((route) => route.isFirst),
         onBillsTap: () {
@@ -137,18 +137,36 @@ class _ContractHubScreenState extends State<ContractHubScreen>
 
   Widget _buildTabBar() {
     return Container(
-      color: AppColors.surface,
+      margin: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+      padding: const EdgeInsets.all(5),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.deepBlue.withValues(alpha: 0.045),
+            blurRadius: 18,
+            offset: const Offset(0, 9),
+          ),
+        ],
+      ),
       child: TabBar(
         controller: _tabController,
-        labelColor: AppColors.deepBlue,
+        labelColor: Colors.white,
         unselectedLabelColor: AppColors.bodyText,
         labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
         unselectedLabelStyle: const TextStyle(
           fontSize: 13,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w800,
         ),
-        indicatorColor: AppColors.deepBlue,
-        indicatorWeight: 3,
+        dividerColor: Colors.transparent,
+        indicator: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          gradient: const LinearGradient(
+            colors: [AppColors.deepBlue, AppColors.primary],
+          ),
+        ),
         indicatorSize: TabBarIndicatorSize.tab,
         tabs: const [
           Tab(

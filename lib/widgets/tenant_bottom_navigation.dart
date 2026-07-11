@@ -29,18 +29,23 @@ class TenantBottomNavigation extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 440),
         child: Container(
-          height: 78,
+          height: 76,
           margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-          padding: const EdgeInsets.fromLTRB(6, 8, 6, 7),
+          padding: const EdgeInsets.fromLTRB(7, 7, 7, 7),
           decoration: BoxDecoration(
             color: AppColors.surface.withValues(alpha: 0.98),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: AppColors.cardBorder),
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.72)),
             boxShadow: [
               BoxShadow(
-                color: AppColors.inputText.withValues(alpha: 0.10),
-                blurRadius: 24,
-                offset: const Offset(0, 10),
+                color: AppColors.deepBlue.withValues(alpha: 0.10),
+                blurRadius: 28,
+                offset: const Offset(0, 14),
+              ),
+              BoxShadow(
+                color: AppColors.accent.withValues(alpha: 0.08),
+                blurRadius: 20,
+                offset: const Offset(0, -4),
               ),
             ],
           ),
@@ -102,61 +107,65 @@ class _BottomNavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     const activeColor = AppColors.primary;
     const inactiveColor = AppColors.bodyText;
-    const activeBg = AppColors.primaryLight;
-
     final color = isSelected ? activeColor : inactiveColor;
 
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 62,
-        child: isSelected
-            ? Container(
-                height: 54,
-                decoration: BoxDecoration(
-                  color: activeBg,
-                  borderRadius: BorderRadius.circular(17),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(icon, color: activeColor, size: 21),
-                    const SizedBox(height: 2),
-                    Text(
-                      label,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: activeColor,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        height: 13 / 10,
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: 62,
+          height: 60,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            decoration: BoxDecoration(
+              gradient: isSelected
+                  ? const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [AppColors.deepBlue, AppColors.primary],
+                    )
+                  : null,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.25),
+                        blurRadius: 16,
+                        offset: const Offset(0, 8),
                       ),
-                    ),
-                  ],
+                    ]
+                  : null,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  color: isSelected ? Colors.white : color,
+                  size: isSelected ? 22 : 21,
                 ),
-              )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, color: color, size: 22),
-                  const SizedBox(height: 4),
-                  Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      height: 13 / 10,
-                    ),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : color,
+                    fontSize: 10,
+                    fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
+                    height: 13 / 10,
                   ),
-                ],
-              ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

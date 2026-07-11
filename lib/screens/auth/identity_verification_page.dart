@@ -8,7 +8,7 @@ import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/auth/identity_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
-import 'package:hdbhms_mobile/screens/home/home_screen.dart';
+import 'package:hdbhms_mobile/screens/tenant_overview/tenant_overview_screen.dart';
 
 enum IdentityDocumentStep {
   portrait,
@@ -368,7 +368,7 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
         }
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (context) => HomeScreen(
+            builder: (context) => TenantOverviewScreen(
               authService: widget.authService,
               homeService: widget.homeService,
             ),

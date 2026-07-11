@@ -30,24 +30,26 @@ class NotificationService {
 
   final http.Client? _client;
 
-  http.Client get _effectiveClient => _client ?? AuthenticatedClient(inner: http.Client());
+  http.Client get _effectiveClient =>
+      _client ?? AuthenticatedClient(inner: http.Client());
 
   static const _timeout = Duration(seconds: 15);
 
-  Future<NotificationScrollResponse> getNotifications({int limit = 20, int after = 0}) async {
+  Future<NotificationScrollResponse> getNotifications({
+    int limit = 20,
+    int after = 0,
+  }) async {
     final client = _effectiveClient;
     try {
-      final uri = Uri.parse('${ApiConfig.baseUrl}/notifications/scroll').replace(
-        queryParameters: {
-          'limit': limit.toString(),
-          'after': after.toString(),
-        },
-      );
+      final uri = Uri.parse('${ApiConfig.baseUrl}/notifications/scroll')
+          .replace(
+            queryParameters: {
+              'limit': limit.toString(),
+              'after': after.toString(),
+            },
+          );
       final response = await client
-          .get(
-            uri,
-            headers: {'X-Client-Type': 'mobile'},
-          )
+          .get(uri, headers: {'X-Client-Type': 'mobile'})
           .timeout(_timeout);
 
       if (response.statusCode == 200) {

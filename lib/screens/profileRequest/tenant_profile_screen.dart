@@ -12,6 +12,7 @@ import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/profileRequest/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/widgets/app_action_tile.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/contract/lease_contract_list_screen.dart';
@@ -26,11 +27,13 @@ class TenantProfileScreen extends StatefulWidget {
     this.profileService = const TenantProfileService(),
     this.authService = const AuthService(),
     this.homeService = const HomeService(),
+    this.showBottomNavigation = true,
   });
 
   final TenantProfileService profileService;
   final AuthService authService;
   final HomeService homeService;
+  final bool showBottomNavigation;
 
   @override
   State<TenantProfileScreen> createState() => _TenantProfileScreenState();
@@ -174,32 +177,35 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: Builder(
-        builder: (ctx) => TenantBottomNavigation(
-          activeTab: TenantBottomNavTab.profile,
-          onHomeTap: () => Navigator.of(ctx).popUntil((route) => route.isFirst),
-          onBillsTap: () {
-            Navigator.of(ctx).push(
-              MaterialPageRoute(
-                builder: (context) => const BillSelectionPage(),
+      bottomNavigationBar: widget.showBottomNavigation
+          ? Builder(
+              builder: (ctx) => TenantBottomNavigation(
+                activeTab: TenantBottomNavTab.profile,
+                onHomeTap: () =>
+                    Navigator.of(ctx).popUntil((route) => route.isFirst),
+                onBillsTap: () {
+                  Navigator.of(ctx).push(
+                    MaterialPageRoute(
+                      builder: (context) => const BillSelectionPage(),
+                    ),
+                  );
+                },
+                onSupportTap: () {
+                  Navigator.of(ctx).push(
+                    MaterialPageRoute(
+                      builder: (context) => const MaintenanceTicketListScreen(),
+                    ),
+                  );
+                },
+                onProfileTap: () {},
+                onRequestsTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const TenantRequestScreen(),
+                  ),
+                ),
               ),
-            );
-          },
-          onSupportTap: () {
-            Navigator.of(ctx).push(
-              MaterialPageRoute(
-                builder: (context) => const MaintenanceTicketListScreen(),
-              ),
-            );
-          },
-          onProfileTap: () {},
-          onRequestsTap: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const TenantRequestScreen(),
-            ),
-          ),
-        ),
-      ),
+            )
+          : null,
     );
   }
 }
@@ -339,10 +345,12 @@ class _UpdateProfileButton extends StatelessWidget {
         icon: const Icon(Icons.edit_note_rounded, size: 20),
         label: const Text('Cập nhật hồ sơ'),
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.darkBlue,
+          backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           textStyle: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w900,
@@ -371,7 +379,9 @@ class _LogoutButton extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           foregroundColor: const Color(0xFFDC2626),
           side: const BorderSide(color: Color(0xFFDC2626)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           textStyle: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w900,
@@ -425,7 +435,13 @@ class _ProfileSummaryCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 17),
-      decoration: _cardDecoration(),
+      decoration: _cardDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF061827), AppColors.deepBlue, AppColors.primary],
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -434,7 +450,7 @@ class _ProfileSummaryCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: AppColors.deepBlue,
+              color: Colors.white,
               fontSize: 17,
               fontWeight: FontWeight.w900,
               height: 22 / 17,
@@ -445,14 +461,14 @@ class _ProfileSummaryCard extends StatelessWidget {
             children: [
               const Icon(
                 Icons.apartment_outlined,
-                color: AppColors.deepBlue,
+                color: Colors.white,
                 size: 16,
               ),
               const SizedBox(width: 6),
               Text(
                 profile.status.isEmpty ? 'Chưa cập nhật' : profile.status,
                 style: const TextStyle(
-                  color: AppColors.bodyText,
+                  color: Colors.white70,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   height: 17 / 13,
@@ -475,28 +491,18 @@ class _ContractEntrySection extends StatelessWidget {
       icon: Icons.description_outlined,
       title: 'Hợp đồng thuê phòng',
       children: [
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: ElevatedButton.icon(
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const LeaseContractListScreen(),
-                ),
-              );
-            },
-            icon: const Icon(Icons.article_outlined, size: 20),
-            label: const Text('Xem danh sách hợp đồng'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.deepBlue,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+        AppActionRowButton(
+          icon: Icons.description_rounded,
+          title: 'Xem danh sách hợp đồng',
+          subtitle: 'Hợp đồng thuê, cọc và tài liệu liên quan',
+          accentColor: AppColors.accent,
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const LeaseContractListScreen(),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ],
     );
@@ -817,8 +823,16 @@ class _InfoSectionCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, color: AppColors.deepBlue, size: 20),
-              const SizedBox(width: 7),
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: AppColors.deepBlue, size: 19),
+              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   title,
@@ -833,7 +847,7 @@ class _InfoSectionCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          const Divider(color: Color(0xFFC6C5D4), height: 1),
+          const Divider(color: AppColors.cardBorder, height: 1),
           const SizedBox(height: 14),
           ...children,
         ],
@@ -1070,15 +1084,21 @@ class _EmptyText extends StatelessWidget {
   }
 }
 
-BoxDecoration _cardDecoration() {
+BoxDecoration _cardDecoration({Gradient? gradient}) {
   return BoxDecoration(
-    color: AppColors.surface,
-    borderRadius: BorderRadius.circular(8),
+    color: gradient == null ? AppColors.surface : null,
+    gradient: gradient,
+    borderRadius: BorderRadius.circular(16),
+    border: Border.all(
+      color: gradient == null
+          ? AppColors.cardBorder
+          : Colors.white.withValues(alpha: 0.18),
+    ),
     boxShadow: [
       BoxShadow(
-        color: Colors.black.withValues(alpha: 0.06),
-        blurRadius: 14,
-        offset: const Offset(0, 5),
+        color: AppColors.deepBlue.withValues(alpha: 0.06),
+        blurRadius: 22,
+        offset: const Offset(0, 11),
       ),
     ],
   );

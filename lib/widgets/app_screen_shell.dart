@@ -19,10 +19,20 @@ class AppScreenShell extends StatelessWidget {
       children: [
         SizedBox(width: double.infinity, child: header),
         Expanded(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: maxContentWidth),
-              child: SizedBox(width: double.infinity, child: child),
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFFF6FAF9), Color(0xFFFFFFFF)],
+                stops: [0, 0.78],
+              ),
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxContentWidth),
+                child: SizedBox(width: double.infinity, child: child),
+              ),
             ),
           ),
         ),

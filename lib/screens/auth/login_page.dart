@@ -10,8 +10,8 @@ import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/auth_text_field.dart';
 import 'package:hdbhms_mobile/screens/auth/change_password_page.dart';
 import 'package:hdbhms_mobile/screens/auth/forgot_password_page.dart';
-import 'package:hdbhms_mobile/screens/home/home_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/identity_verification_page.dart';
+import 'package:hdbhms_mobile/screens/tenant_overview/tenant_overview_screen.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({
@@ -105,7 +105,7 @@ class _LoginPageState extends State<LoginPage> {
     if (onboarding.onBoardingCompleted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => HomeScreen(
+          builder: (context) => TenantOverviewScreen(
             authService: widget.authService,
             homeService: widget.homeService,
             tenantInvoiceService: widget.tenantInvoiceService,
@@ -127,7 +127,7 @@ class _LoginPageState extends State<LoginPage> {
         authService: widget.authService,
         homeService: widget.homeService,
       ),
-      _ => HomeScreen(
+      _ => TenantOverviewScreen(
         authService: widget.authService,
         homeService: widget.homeService,
         tenantInvoiceService: widget.tenantInvoiceService,
