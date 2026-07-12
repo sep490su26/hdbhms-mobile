@@ -27,6 +27,7 @@ class TenantInvoice {
     required this.transferDescription,
     required this.lines,
     required this.priceDifferenceSettlementType,
+    this.hasOpenMeterReadingReview = false,
   });
 
   final int? id;
@@ -56,8 +57,17 @@ class TenantInvoice {
   final String transferDescription;
   final List<TenantInvoiceLine> lines;
   final String? priceDifferenceSettlementType;
+  final bool hasOpenMeterReadingReview;
 
   bool get isPaid => status.toUpperCase() == 'PAID' || remainingAmount <= 0;
+
+  List<TenantInvoiceLine> get utilityMeterLines => lines
+      .where((line) => line.lineType == 'ELECTRICITY' || line.lineType == 'WATER')
+      .toList(growable: false);
+
+  List<TenantInvoiceLine> get reviewableUtilityLines => utilityMeterLines
+      .where((line) => line.canComplain && line.id != null)
+      .toList(growable: false);
 
   bool get isTenantVisible {
     final normalized = status.toUpperCase();
@@ -152,6 +162,7 @@ class TenantInvoice {
           .map(TenantInvoiceLine.fromJson)
           .toList(),
       priceDifferenceSettlementType: _firstString(json, ['priceDifferenceSettlementType']),
+      hasOpenMeterReadingReview: _boolField(json, ['hasOpenMeterReadingReview']),
     );
   }
 }
@@ -164,6 +175,15 @@ class TenantInvoiceLine {
     required this.quantity,
     required this.unitPrice,
     required this.amount,
+    this.meterReadingId,
+    this.meterType = '',
+    this.readingPeriod = '',
+    this.previousValue,
+    this.currentValue,
+    this.usageAmount,
+    this.reviewStatus = 'NONE',
+    this.openReviewId,
+    this.canComplain = false,
   });
 
   final int? id;
@@ -172,6 +192,20 @@ class TenantInvoiceLine {
   final int quantity;
   final int unitPrice;
   final int amount;
+  final int? meterReadingId;
+  final String meterType;
+  final String readingPeriod;
+  final double? previousValue;
+  final double? currentValue;
+  final double? usageAmount;
+  final String reviewStatus;
+  final int? openReviewId;
+  final bool canComplain;
+
+  bool get hasOpenReview => openReviewId != null ||
+      reviewStatus == 'PENDING' ||
+      reviewStatus == 'UNDER_REVIEW' ||
+      reviewStatus == 'PROCESSING';
 
   factory TenantInvoiceLine.fromJson(Map<String, dynamic> json) {
     return TenantInvoiceLine(
@@ -181,6 +215,15 @@ class TenantInvoiceLine {
       quantity: _intField(json, ['quantity']),
       unitPrice: _intField(json, ['unitPrice']),
       amount: _intField(json, ['amount']),
+      meterReadingId: int.tryParse(_firstString(json, ['meterReadingId'])),
+      meterType: _firstString(json, ['meterType']),
+      readingPeriod: _firstString(json, ['readingPeriod']),
+      previousValue: _doubleField(json, ['previousValue']),
+      currentValue: _doubleField(json, ['currentValue']),
+      usageAmount: _doubleField(json, ['usageAmount']),
+      reviewStatus: _firstString(json, ['reviewStatus']),
+      openReviewId: int.tryParse(_firstString(json, ['openReviewId'])),
+      canComplain: _boolField(json, ['canComplain']),
     );
   }
 }
@@ -201,6 +244,28 @@ int _intField(Map<String, dynamic> json, List<String> keys) {
     if (parsed != null) return parsed;
   }
   return 0;
+}
+
+double? _doubleField(Map<String, dynamic> json, List<String> keys) {
+  for (final key in keys) {
+    final value = json[key];
+    if (value == null) continue;
+    final parsed = double.tryParse(value.toString());
+    if (parsed != null) return parsed;
+  }
+  return null;
+}
+
+bool _boolField(Map<String, dynamic> json, List<String> keys) {
+  for (final key in keys) {
+    final value = json[key];
+    if (value is bool) return value;
+    if (value == null) continue;
+    final normalized = value.toString().toLowerCase();
+    if (normalized == 'true') return true;
+    if (normalized == 'false') return false;
+  }
+  return false;
 }
 
 String _periodLabel(String value) {

@@ -23,15 +23,19 @@ class PropertyRulesResponse {
   factory PropertyRulesResponse.fromJson(Map<String, dynamic> json) {
     final source = _firstMap(json, const ['data', 'rulesData']);
     final data = source.isEmpty ? json : source;
-    final rawItems = data['items'] ?? data['rules'] ?? const [];
+    final rawItems = json['data'] is List
+        ? json['data']
+        : json['rulesData'] is List
+        ? json['rulesData']
+        : data['items'] ?? data['rules'] ?? const [];
 
     return PropertyRulesResponse(
-      updatedAt: _firstDate(data, const [
-        'updatedAt',
-      ]),
+      updatedAt: _firstDate(data, const ['updatedAt', 'updated_at']),
       bannerImageUrl: _firstString(data, const [
         'bannerImageUrl',
+        'banner_image_url',
         'imageUrl',
+        'image_url',
       ]),
       items:
           _asList(rawItems)
@@ -75,10 +79,12 @@ class PropertyRule {
   factory PropertyRule.fromJson(Map<String, dynamic> json) {
     final ruleCode = _firstString(json, const [
       'ruleCode',
+      'rule_code',
       'code',
     ]);
     final rawCategory = _firstString(json, const [
       'ruleCategory',
+      'rule_category',
       'category',
     ]);
 
@@ -90,10 +96,14 @@ class PropertyRule {
       description: _firstString(json, const ['description', 'content', 'text']),
       defaultFineAmount: _firstDouble(json, const [
         'defaultFineAmount',
+        'default_fine_amount',
         'fineAmount',
+        'fine_amount',
       ]),
-      fineUnit: _firstString(json, const ['fineUnit', 'unit']),
-      sortOrder: _asInt(json['sortOrder'] ?? json['order']) ?? 9999,
+      fineUnit: _firstString(json, const ['fineUnit', 'fine_unit', 'unit']),
+      sortOrder:
+          _asInt(json['sortOrder'] ?? json['sort_order'] ?? json['order']) ??
+          9999,
       status: _firstString(json, const ['status']),
     );
   }

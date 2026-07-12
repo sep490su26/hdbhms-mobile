@@ -7,13 +7,15 @@ import 'package:hdbhms_mobile/screens/profileRequest/tenant_request_screen.dart'
 import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/home/home_summary_model.dart';
 import 'package:hdbhms_mobile/providers/home_provider.dart';
+import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
-import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
 import 'package:hdbhms_mobile/services/profileRequest/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
+import 'package:hdbhms_mobile/utils/display_formatters.dart';
+import 'package:hdbhms_mobile/widgets/app_action_tile.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
@@ -25,6 +27,7 @@ import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
 import 'package:hdbhms_mobile/screens/rules/property_rules_screen.dart';
 import 'package:hdbhms_mobile/screens/profileRequest/tenant_profile_screen.dart';
+import 'package:hdbhms_mobile/screens/tenant_overview/tenant_overview_screen.dart';
 import 'package:hdbhms_mobile/screens/web_view_screen.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -37,6 +40,7 @@ class HomeScreen extends StatefulWidget {
     this.profileService = const TenantProfileService(),
     this.leaseContractService = const LeaseContractService(),
     this.tenantInvoiceService = const TenantInvoiceService(),
+    this.initialRoom,
   });
 
   final HomeService homeService;
@@ -44,6 +48,7 @@ class HomeScreen extends StatefulWidget {
   final TenantProfileService profileService;
   final LeaseContractService leaseContractService;
   final TenantInvoiceService tenantInvoiceService;
+  final ActiveRoomItem? initialRoom;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -59,6 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
       homeService: widget.homeService,
       leaseContractService: widget.leaseContractService,
       tenantInvoiceService: widget.tenantInvoiceService,
+      initialRoom: widget.initialRoom,
     )..addListener(_handleProviderChanged);
     _provider.load();
   }
@@ -86,6 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (context) => LoginPage(
           authService: widget.authService,
           homeService: widget.homeService,
+          tenantInvoiceService: widget.tenantInvoiceService,
         ),
       ),
       (route) => false,
@@ -136,7 +143,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return AppScreenShell(
-      header: _HomeHeader(summary: summary, provider: _provider),
+      header: _HomeHeader(
+        summary: summary,
+        provider: _provider,
+        onChangeRoom: _openRoomOverview,
+      ),
       child: RefreshIndicator(
         color: AppColors.deepBlue,
         onRefresh: _refresh,
@@ -168,7 +179,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 18),
               const _SectionHeading('Điện & Nước'),
               const SizedBox(height: 17),
-              _UtilitiesSection(provider: _provider),
+              _UtilitiesSection(summary: summary),
               const SizedBox(height: 17),
               const _SectionHeading('Thao tác nhanh'),
               const SizedBox(height: 17),
@@ -207,6 +218,20 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) {
       await _provider.load();
     }
+  }
+
+  void _openRoomOverview() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => TenantOverviewScreen(
+          authService: widget.authService,
+          homeService: widget.homeService,
+          leaseContractService: widget.leaseContractService,
+          profileService: widget.profileService,
+          tenantInvoiceService: widget.tenantInvoiceService,
+        ),
+      ),
+    );
   }
 }
 
@@ -257,10 +282,15 @@ class _HomeErrorState extends StatelessWidget {
 }
 
 class _HomeHeader extends StatelessWidget {
-  const _HomeHeader({required this.summary, required this.provider});
+  const _HomeHeader({
+    required this.summary,
+    required this.provider,
+    required this.onChangeRoom,
+  });
 
   final HomeSummary summary;
   final HomeProvider provider;
+  final VoidCallback onChangeRoom;
 
   @override
   Widget build(BuildContext context) {
@@ -279,6 +309,18 @@ class _HomeHeader extends StatelessWidget {
         children: [
           _RoomSelector(summary: summary, provider: provider),
           const Spacer(),
+          IconButton(
+            onPressed: onChangeRoom,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            icon: const Icon(
+              Icons.swap_horiz_rounded,
+              color: AppColors.topBarIconColor,
+              size: 24,
+            ),
+            tooltip: 'Chọn phòng khác',
+          ),
+          const SizedBox(width: 6),
           IconButton(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
@@ -327,7 +369,7 @@ class _RoomSelector extends StatelessWidget {
     final selected = provider.selectedRoom;
     if (selected != null && selected.roomCode.isNotEmpty) {
       return selected.propertyName.isNotEmpty
-          ? selected.propertyName
+          ? formatPropertyName(selected.propertyName)
           : 'Phòng ${selected.roomCode}';
     }
     final room = summary.room;
@@ -341,61 +383,71 @@ class _RoomSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _showRoomDropdown(context),
-      behavior: HitTestBehavior.opaque,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFF1FF),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(
-              Icons.meeting_room_outlined,
-              color: AppColors.deepBlue,
-              size: 18,
-            ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEFF1FF),
+            borderRadius: BorderRadius.circular(8),
           ),
-          const SizedBox(width: 10),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _roomLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppColors.topBarTitleStyle,
-              ),
-              if (_roomSubLabel.isNotEmpty)
-                Text(
-                  _roomSubLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.bodyText,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    height: 15 / 11,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(width: 4),
-          const Icon(
-            Icons.keyboard_arrow_down_rounded,
+          child: const Icon(
+            Icons.meeting_room_outlined,
             color: AppColors.deepBlue,
             size: 18,
           ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 10),
+        Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              formatTopBarTitle(_roomLabel),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppColors.topBarTitleStyle,
+            ),
+            if (_roomSubLabel.isNotEmpty)
+              Text(
+                formatTopBarTitle(_roomSubLabel),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.bodyText,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  height: 15 / 11,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(width: 8),
+        /*Container(
+            height: 30,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(9),
+            ),
+            alignment: Alignment.center,
+            child: const Text(
+              'Đổi phòng',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                height: 14 / 11,
+              ),
+            ),
+          ),*/
+      ],
     );
   }
 
+  // ignore: unused_element
   void _showRoomDropdown(BuildContext context) {
     final rooms = provider.activeRooms;
     final selectedRoom = provider.selectedRoom;
@@ -519,7 +571,7 @@ class _RoomSelector extends StatelessWidget {
                       ),
                       if (room.propertyName.isNotEmpty)
                         Text(
-                          room.propertyName,
+                          formatPropertyName(room.propertyName),
                           style: const TextStyle(
                             color: AppColors.bodyText,
                             fontSize: 11,
@@ -645,19 +697,53 @@ class _PaymentStatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasUnpaid =
         invoiceSummary.unpaidCount > 0 || invoiceSummary.totalUnpaidAmount > 0;
+    final unpaidCount = invoiceSummary.unpaidCount;
+    final hasMultipleBills = unpaidCount > 1;
+    final dueText = invoiceSummary.nearestDueDate == null
+        ? 'Chưa có hạn thanh toán'
+        : 'Gần nhất: ${_formatDate(invoiceSummary.nearestDueDate!)}';
+    final helperText = !hasUnpaid
+        ? 'Phòng hiện tại không có khoản cần thanh toán.'
+        : hasMultipleBills
+        ? 'Có $unpaidCount khoản đang chờ. Bấm để chọn hóa đơn cần thanh toán.'
+        : 'Thanh toán khoản đang đến hạn của phòng hiện tại.';
+    final actionLabel = hasMultipleBills
+        ? 'Chọn khoản thanh toán'
+        : 'Thanh toán ngay';
+
+    final cardGradient = hasUnpaid
+        ? const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF061827), AppColors.deepBlue, AppColors.primary],
+          )
+        : const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.white, Color(0xFFF0F7F4)],
+          );
+    final mainTextColor = hasUnpaid ? Colors.white : AppColors.inputText;
+    final mutedTextColor = hasUnpaid
+        ? Colors.white.withValues(alpha: 0.78)
+        : AppColors.bodyText;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 23, 24, 23),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFEAE8EA)),
+        gradient: cardGradient,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: hasUnpaid
+              ? Colors.white.withValues(alpha: 0.18)
+              : AppColors.cardBorder,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 18,
-            offset: const Offset(0, 7),
+            color: (hasUnpaid ? AppColors.accent : AppColors.inputText)
+                .withValues(alpha: hasUnpaid ? 0.22 : 0.06),
+            blurRadius: 30,
+            offset: const Offset(0, 16),
           ),
         ],
       ),
@@ -666,10 +752,12 @@ class _PaymentStatusCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Trạng thái thanh toán',
-                  style: TextStyle(
+                  hasMultipleBills
+                      ? 'Tổng cần thanh toán'
+                      : 'Trạng thái thanh toán',
+                  style: const TextStyle(
                     color: AppColors.inputText,
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
@@ -677,16 +765,14 @@ class _PaymentStatusCard extends StatelessWidget {
                   ),
                 ),
               ),
-              _PaymentBadge(isUnpaid: hasUnpaid),
+              _PaymentBadge(isUnpaid: hasUnpaid, unpaidCount: unpaidCount),
             ],
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 6),
           Text(
-            invoiceSummary.nearestDueDate == null
-                ? 'Chưa có hạn thanh toán'
-                : 'Hạn: ${_formatDate(invoiceSummary.nearestDueDate!)}',
-            style: const TextStyle(
-              color: AppColors.bodyText,
+            dueText,
+            style: TextStyle(
+              color: mutedTextColor,
               fontSize: 14,
               fontWeight: FontWeight.w500,
               height: 19 / 14,
@@ -698,53 +784,79 @@ class _PaymentStatusCard extends StatelessWidget {
             children: [
               Flexible(
                 child: Text(
-                  _formatAmount(invoiceSummary.totalUnpaidAmount),
+                  '${_formatAmount(invoiceSummary.totalUnpaidAmount)}đ',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.deepBlue,
-                    fontSize: 30,
-                    fontWeight: FontWeight.w900,
-                    height: 36 / 30,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Padding(
-                padding: EdgeInsets.only(bottom: 5),
-                child: Text(
-                  '/ tháng',
                   style: TextStyle(
-                    color: AppColors.bodyText,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    height: 20 / 15,
+                    color: mainTextColor,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    height: 38 / 32,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            decoration: BoxDecoration(
+              color: hasUnpaid
+                  ? Colors.white.withValues(alpha: 0.13)
+                  : AppColors.surfaceMuted,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: hasUnpaid
+                    ? Colors.white.withValues(alpha: 0.14)
+                    : AppColors.cardBorder,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  hasMultipleBills
+                      ? Icons.fact_check_outlined
+                      : Icons.receipt_long_outlined,
+                  color: hasUnpaid ? Colors.white : AppColors.bodyText,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    helperText,
+                    style: TextStyle(
+                      color: hasUnpaid ? Colors.white : AppColors.bodyText,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      height: 17 / 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
           SizedBox(
             width: double.infinity,
             height: 56,
             child: ElevatedButton(
               onPressed: hasUnpaid ? onPay : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
+                backgroundColor: hasUnpaid ? Colors.white : AppColors.primary,
                 disabledBackgroundColor: AppColors.deepBlue.withValues(
                   alpha: 0.42,
                 ),
-                foregroundColor: Colors.white,
+                foregroundColor: hasUnpaid ? AppColors.deepBlue : Colors.white,
                 disabledForegroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(7),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
-              child: const Text(
-                'Thanh toán ngay',
-                style: TextStyle(
+              child: Text(
+                actionLabel,
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w900,
                   height: 20 / 16,
@@ -759,22 +871,32 @@ class _PaymentStatusCard extends StatelessWidget {
 }
 
 class _PaymentBadge extends StatelessWidget {
-  const _PaymentBadge({required this.isUnpaid});
+  const _PaymentBadge({required this.isUnpaid, required this.unpaidCount});
 
   final bool isUnpaid;
+  final int unpaidCount;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
       decoration: BoxDecoration(
-        color: isUnpaid ? const Color(0xFFD4F8DE) : const Color(0xFFE7E9F0),
+        color: isUnpaid
+            ? AppColors.accentWarm.withValues(alpha: 0.16)
+            : AppColors.success.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: isUnpaid
+              ? AppColors.accentWarm.withValues(alpha: 0.34)
+              : AppColors.success.withValues(alpha: 0.24),
+        ),
       ),
       child: Text(
-        isUnpaid ? 'Chưa thanh toán' : 'Đã thanh toán',
+        isUnpaid
+            ? (unpaidCount > 1 ? '$unpaidCount khoản' : 'Chưa thanh toán')
+            : 'Đã thanh toán',
         style: TextStyle(
-          color: isUnpaid ? const Color(0xFF159447) : AppColors.bodyText,
+          color: isUnpaid ? const Color(0xFFB42318) : AppColors.success,
           fontSize: 12,
           fontWeight: FontWeight.w800,
           height: 16 / 12,
@@ -785,29 +907,13 @@ class _PaymentBadge extends StatelessWidget {
 }
 
 class _UtilitiesSection extends StatelessWidget {
-  const _UtilitiesSection({required this.provider});
+  const _UtilitiesSection({required this.summary});
 
-  final HomeProvider provider;
+  final HomeSummary summary;
 
   @override
   Widget build(BuildContext context) {
-    if (provider.loadingUtilities) {
-      return const SizedBox(
-        height: 83,
-        child: Center(
-          child: SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.5,
-              color: AppColors.deepBlue,
-            ),
-          ),
-        ),
-      );
-    }
-
-    final utilities = provider.roomUtilitySummary;
+    final utilities = summary.utilitySummary;
 
     return Column(
       children: [
@@ -816,8 +922,8 @@ class _UtilitiesSection extends StatelessWidget {
           title: 'Điện',
           unit: 'kWh',
           icon: Icons.bolt_rounded,
-          iconColor: const Color(0xFFE8A100),
-          iconBackground: const Color(0xFFFCF8E9),
+          iconColor: AppColors.warning,
+          iconBackground: const Color(0xFFFFF7D6),
         ),
         const SizedBox(height: 16),
         _UtilityCard(
@@ -825,8 +931,8 @@ class _UtilitiesSection extends StatelessWidget {
           title: 'Nước',
           unit: 'm³',
           icon: Icons.water_drop_outlined,
-          iconColor: const Color(0xFF1F78FF),
-          iconBackground: const Color(0xFFEFF6FF),
+          iconColor: AppColors.accent,
+          iconBackground: const Color(0xFFE5FAF6),
         ),
       ],
     );
@@ -866,8 +972,15 @@ class _UtilityCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 15),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE9E7EA)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.deepBlue.withValues(alpha: 0.045),
+            blurRadius: 18,
+            offset: const Offset(0, 9),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -876,7 +989,7 @@ class _UtilityCard extends StatelessWidget {
             height: 48,
             decoration: BoxDecoration(
               color: iconBackground,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(icon, color: iconColor, size: 27),
           ),
@@ -985,12 +1098,13 @@ class _QuickActions extends StatelessWidget {
       crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 8,
-      crossAxisSpacing: 8,
-      childAspectRatio: 1.42,
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 1.62,
       children: [
         _QuickActionButton(
-          icon: Icons.rule_folder_outlined,
+          icon: Icons.rule_rounded,
+          accentColor: AppColors.actionBlue,
           label: 'Nội quy nhà trọ',
           onTap: () {
             Navigator.of(context).push(
@@ -1001,7 +1115,8 @@ class _QuickActions extends StatelessWidget {
           },
         ),
         _QuickActionButton(
-          icon: Icons.article_outlined,
+          icon: Icons.description_rounded,
+          accentColor: AppColors.accent,
           label: 'Hợp Đồng',
           onTap: () {
             Navigator.of(context).push(
@@ -1012,7 +1127,8 @@ class _QuickActions extends StatelessWidget {
           },
         ),
         _QuickActionButton(
-          icon: Icons.handyman_outlined,
+          icon: Icons.build_circle_rounded,
+          accentColor: AppColors.actionOrange,
           label: 'Sự cố',
           onTap: () {
             Navigator.of(context).push(
@@ -1023,7 +1139,8 @@ class _QuickActions extends StatelessWidget {
           },
         ),
         _QuickActionButton(
-          icon: Icons.add_home_outlined,
+          icon: Icons.add_home_work_rounded,
+          accentColor: AppColors.actionRose,
           label: 'Thuê thêm phòng',
           onTap: () async {
             final prefs = await SharedPreferences.getInstance();
@@ -1056,46 +1173,22 @@ class _QuickActionButton extends StatelessWidget {
   const _QuickActionButton({
     required this.icon,
     required this.label,
+    required this.accentColor,
     required this.onTap,
   });
 
   final IconData icon;
   final String label;
+  final Color accentColor;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          height: 98,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.cardBorder),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: AppColors.deepBlue, size: 30),
-              const SizedBox(height: 10),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.deepBlue,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  height: 16 / 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return AppActionTile(
+      icon: icon,
+      label: label,
+      accentColor: accentColor,
+      onTap: onTap,
     );
   }
 }

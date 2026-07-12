@@ -88,15 +88,44 @@ class HomeUser {
 }
 
 class HomeTenant {
-  const HomeTenant({required this.id, required this.name});
+  const HomeTenant({
+    required this.id,
+    required this.name,
+    this.address = '',
+    this.propertyPhone = '',
+    this.imageUrls = const [],
+  });
 
   final int? id;
   final String name;
+  final String address;
+  final String propertyPhone;
+  final List<String> imageUrls;
 
   factory HomeTenant.fromJson(Map<String, dynamic> json) {
+    final rawImages =
+        json['imageUrls'] ??
+        json['images'] ??
+        json['imageUrl'] ??
+        json['thumbnailUrl'] ??
+        json['photoUrls'];
+
     return HomeTenant(
       id: int.tryParse(json['id']?.toString() ?? ''),
       name: json['name']?.toString() ?? '',
+      address: _firstString(json, [
+        'address',
+        'propertyAddress',
+        'fullAddress',
+        'location',
+      ]),
+      propertyPhone: _firstString(json, [
+        'propertyPhone',
+        'phone',
+        'phoneNumber',
+        'hotline',
+      ]),
+      imageUrls: _stringList(rawImages),
     );
   }
 }
@@ -374,6 +403,22 @@ String _firstString(
     }
   }
   return fallback;
+}
+
+List<String> _stringList(dynamic value) {
+  if (value is List) {
+    return value
+        .map((item) => item?.toString().trim() ?? '')
+        .where((item) => item.isNotEmpty && item != 'null')
+        .toList(growable: false);
+  }
+
+  final single = value?.toString().trim();
+  if (single == null || single.isEmpty || single == 'null') {
+    return const [];
+  }
+
+  return [single];
 }
 
 double? _firstDouble(Map<String, dynamic> json, List<String> keys) {
