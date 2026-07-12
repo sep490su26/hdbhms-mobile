@@ -51,6 +51,43 @@ class TenantInvoiceService {
     }
   }
 
+  Future<void> submitMeterReadingReview({
+    required int invoiceId,
+    required int lineId,
+    required double reportedCurrentValue,
+    required String description,
+  }) async {
+    final client = _effectiveClient;
+    try {
+      final response = await client
+          .post(
+            Uri.parse(
+              '${ApiConfig.baseUrl}/tenant/invoices/$invoiceId/lines/$lineId/meter-reading-reviews',
+            ),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'reportedCurrentValue': reportedCurrentValue,
+              'description': description,
+            }),
+          )
+          .timeout(_timeout);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return;
+      }
+      throw TenantInvoiceException(_messageForError(response));
+    } on TimeoutException {
+      throw const TenantInvoiceException('Không kết nối được máy chủ');
+    } on http.ClientException {
+      throw const TenantInvoiceException('Không kết nối được máy chủ');
+    } on FormatException {
+      throw const TenantInvoiceException('Dữ liệu phản hồi không hợp lệ');
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
+
   String _messageForError(http.Response response) {
     try {
       final data = _decodeBody(response.body);

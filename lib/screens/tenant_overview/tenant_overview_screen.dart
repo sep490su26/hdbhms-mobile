@@ -6,11 +6,12 @@ import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/home/home_summary_model.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/home/home_screen.dart';
-import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
+import 'package:hdbhms_mobile/screens/profileRequest/tenant_profile_screen.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
-import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
+import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
+import 'package:hdbhms_mobile/services/profileRequest/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/utils/display_formatters.dart';
 
@@ -21,12 +22,14 @@ class TenantOverviewScreen extends StatefulWidget {
     this.homeService = const HomeService(),
     this.leaseContractService = const LeaseContractService(),
     this.profileService = const TenantProfileService(),
+    this.tenantInvoiceService = const TenantInvoiceService(),
   });
 
   final AuthService authService;
   final HomeService homeService;
   final LeaseContractService leaseContractService;
   final TenantProfileService profileService;
+  final TenantInvoiceService tenantInvoiceService;
 
   @override
   State<TenantOverviewScreen> createState() => _TenantOverviewScreenState();
@@ -164,7 +167,7 @@ class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
           homeService: widget.homeService,
           profileService: widget.profileService,
           leaseContractService: widget.leaseContractService,
-          initialRoom: room,
+          tenantInvoiceService: widget.tenantInvoiceService,
         ),
       ),
     );

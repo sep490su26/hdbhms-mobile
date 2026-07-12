@@ -29,6 +29,7 @@ class AuthService {
   static const accessTokenKey = 'access_token';
   static const sessionIdKey = 'session_id';
   static const tenantIdKey = 'tenant_id';
+  static const propertyIdKey = 'property_id';
   static const roleKey = 'role';
   static const userIdKey = 'user_id';
   static const onBoardingCompletedKey = 'onboarding_completed';
@@ -232,6 +233,7 @@ class AuthService {
     await prefs.remove(accessTokenKey);
     await prefs.remove(sessionIdKey);
     await prefs.remove(tenantIdKey);
+    await prefs.remove(propertyIdKey);
     await prefs.remove(roleKey);
     await prefs.remove(userIdKey);
     await prefs.remove(onBoardingCompletedKey);
@@ -267,6 +269,12 @@ class AuthService {
       await prefs.setInt(tenantIdKey, response.tenantId!);
     } else {
       await prefs.remove(tenantIdKey);
+    }
+
+    if (response.propertyId != null) {
+      await prefs.setInt(propertyIdKey, response.propertyId!);
+    } else {
+      await prefs.remove(propertyIdKey);
     }
 
     if (response.onboarding != null) {

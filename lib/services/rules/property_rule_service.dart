@@ -21,12 +21,13 @@ class PropertyRuleService {
   final http.Client? _client;
   static const _timeout = Duration(seconds: 20);
 
-  Future<PropertyRulesResponse> getRules({int? tenantId}) async {
+  Future<PropertyRulesResponse> getRules({int? propertyId}) async {
     final prefs = await SharedPreferences.getInstance();
-    final currentTenantId = tenantId ?? prefs.getInt(AuthService.tenantIdKey);
+    final currentPropertyId =
+        propertyId ?? prefs.getInt(AuthService.propertyIdKey);
 
-    if (currentTenantId == null) {
-      throw const PropertyRuleException('Không tìm thấy tenant hiện tại');
+    if (currentPropertyId == null) {
+      throw const PropertyRuleException('Không tìm thấy nhà trọ hiện tại');
     }
 
     final client = _client == null
@@ -34,15 +35,19 @@ class PropertyRuleService {
         : AuthenticatedClient(inner: _client);
     try {
       final response = await client
-          .get(Uri.parse('${ApiConfig.baseUrl}/tenants/$currentTenantId/rules'))
+          .get(
+            Uri.parse(
+              '${ApiConfig.baseUrl}/properties/$currentPropertyId/rules',
+            ),
+          )
           .timeout(_timeout);
 
       if (response.statusCode == 200) {
-        await prefs.setString(_cacheKey(currentTenantId), response.body);
+        await prefs.setString(_cacheKey(currentPropertyId), response.body);
         return PropertyRulesResponse.fromJson(_decodeBody(response.body));
       }
 
-      final cached = _readCache(prefs, currentTenantId);
+      final cached = _readCache(prefs, currentPropertyId);
       if (cached != null) {
         return cached.copyWith(isFromCache: true);
       }
@@ -50,19 +55,19 @@ class PropertyRuleService {
     } on PropertyRuleException {
       rethrow;
     } on TimeoutException {
-      final cached = _readCache(prefs, currentTenantId);
+      final cached = _readCache(prefs, currentPropertyId);
       if (cached != null) {
         return cached.copyWith(isFromCache: true);
       }
       throw const PropertyRuleException('Không kết nối được máy chủ');
     } on http.ClientException {
-      final cached = _readCache(prefs, currentTenantId);
+      final cached = _readCache(prefs, currentPropertyId);
       if (cached != null) {
         return cached.copyWith(isFromCache: true);
       }
       throw const PropertyRuleException('Không kết nối được máy chủ');
     } on FormatException {
-      final cached = _readCache(prefs, currentTenantId);
+      final cached = _readCache(prefs, currentPropertyId);
       if (cached != null) {
         return cached.copyWith(isFromCache: true);
       }
@@ -74,8 +79,8 @@ class PropertyRuleService {
     }
   }
 
-  PropertyRulesResponse? _readCache(SharedPreferences prefs, int tenantId) {
-    final raw = prefs.getString(_cacheKey(tenantId));
+  PropertyRulesResponse? _readCache(SharedPreferences prefs, int propertyId) {
+    final raw = prefs.getString(_cacheKey(propertyId));
     if (raw == null || raw.isEmpty) {
       return null;
     }
@@ -86,7 +91,7 @@ class PropertyRuleService {
     }
   }
 
-  String _cacheKey(int tenantId) => 'property_rules_cache_$tenantId';
+  String _cacheKey(int propertyId) => 'property_rules_cache_$propertyId';
 
   String _messageForError(http.Response response) {
     try {

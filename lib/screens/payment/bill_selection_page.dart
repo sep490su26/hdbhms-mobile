@@ -113,6 +113,14 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
   }
 
   void _openPayment(BuildContext context, TenantInvoice invoice) {
+    if (invoice.hasOpenMeterReadingReview) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Hóa đơn đang có khiếu nại chỉ số chờ xử lý.'),
+        ),
+      );
+      return;
+    }
     if (invoice.canPay &&
         (invoice.qrCode.isNotEmpty || invoice.transferDescription.isNotEmpty)) {
       Navigator.of(context)
@@ -134,6 +142,39 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
     );
   }
 
+  Future<void> _openMeterReadingReview(
+    BuildContext context,
+    TenantInvoice invoice,
+  ) async {
+    final lines = invoice.reviewableUtilityLines;
+    if (invoice.hasOpenMeterReadingReview) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Hóa đơn này đã có khiếu nại đang chờ xử lý.')),
+      );
+      return;
+    }
+    if (lines.isEmpty || invoice.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Hóa đơn này chưa thể gửi khiếu nại chỉ số.')),
+      );
+      return;
+    }
+    final submitted = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _MeterReadingReviewSheet(
+        invoice: invoice,
+        lines: lines,
+        invoiceService: widget.invoiceService,
+      ),
+    );
+    if (submitted == true) {
+      _reloadInvoices();
+    }
+  }
+
   List<Widget> _buildFilteredBills(
     BuildContext context,
     List<TenantInvoice> invoices,
@@ -145,6 +186,7 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
             (invoice) => _PendingBillCard(
               invoice: invoice,
               onTap: () => _openPayment(context, invoice),
+              onComplain: () => _openMeterReadingReview(context, invoice),
             ),
           )
           .toList(),
@@ -533,10 +575,15 @@ class _BillHeader extends StatelessWidget {
 }
 
 class _PendingBillCard extends StatelessWidget {
-  const _PendingBillCard({required this.invoice, required this.onTap});
+  const _PendingBillCard({
+    required this.invoice,
+    required this.onTap,
+    required this.onComplain,
+  });
 
   final TenantInvoice invoice;
   final VoidCallback onTap;
+  final VoidCallback onComplain;
 
   @override
   Widget build(BuildContext context) {
@@ -686,6 +733,34 @@ class _PendingBillCard extends StatelessWidget {
                               ),
                             ),
                           ],
+                          if (invoice.utilityMeterLines.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            if (invoice.hasOpenMeterReadingReview)
+                              const _ReviewStatusChip()
+                            else if (invoice.reviewableUtilityLines.isNotEmpty)
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: OutlinedButton.icon(
+                                  onPressed: onComplain,
+                                  icon: const Icon(
+                                    Icons.report_problem_outlined,
+                                    size: 16,
+                                  ),
+                                  label: const Text('Khiếu nại chỉ số'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.deepBlue,
+                                    side: BorderSide(
+                                      color: AppColors.deepBlue.withValues(alpha: 0.25),
+                                    ),
+                                    visualDensity: VisualDensity.compact,
+                                    textStyle: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ],
                       ),
                     ),
@@ -696,6 +771,300 @@ class _PendingBillCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+String _formatReading(double? value) {
+  if (value == null) return '--';
+  final asInt = value.truncateToDouble() == value;
+  return asInt ? value.toInt().toString() : value.toStringAsFixed(2);
+}
+
+String _utilityLineLabel(TenantInvoiceLine line) {
+  if (line.lineType == 'ELECTRICITY') return 'Điện';
+  if (line.lineType == 'WATER') return 'Nước';
+  return line.description.isEmpty ? line.lineType : line.description;
+}
+
+class _ReviewStatusChip extends StatelessWidget {
+  const _ReviewStatusChip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFFED7AA)),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.hourglass_top_rounded, size: 14, color: Color(0xFFC2410C)),
+          SizedBox(width: 6),
+          Text(
+            'Đang khiếu nại chỉ số',
+            style: TextStyle(
+              color: Color(0xFFC2410C),
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MeterReadingReviewSheet extends StatefulWidget {
+  const _MeterReadingReviewSheet({
+    required this.invoice,
+    required this.lines,
+    required this.invoiceService,
+  });
+
+  final TenantInvoice invoice;
+  final List<TenantInvoiceLine> lines;
+  final TenantInvoiceService invoiceService;
+
+  @override
+  State<_MeterReadingReviewSheet> createState() =>
+      _MeterReadingReviewSheetState();
+}
+
+class _MeterReadingReviewSheetState extends State<_MeterReadingReviewSheet> {
+  late TenantInvoiceLine _selectedLine = widget.lines.first;
+  final TextEditingController _valueController = TextEditingController();
+  final TextEditingController _reasonController = TextEditingController();
+  bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final current = _selectedLine.currentValue;
+    if (current != null) {
+      _valueController.text = _formatReading(current);
+    }
+  }
+
+  @override
+  void dispose() {
+    _valueController.dispose();
+    _reasonController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Khiếu nại chỉ số điện nước',
+                      style: TextStyle(
+                        color: AppColors.inputText,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: _submitting ? null : () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<TenantInvoiceLine>(
+                initialValue: _selectedLine,
+                items: widget.lines
+                    .map(
+                      (line) => DropdownMenuItem(
+                        value: line,
+                        child: Text(_utilityLineLabel(line)),
+                      ),
+                    )
+                    .toList(),
+                onChanged: _submitting
+                    ? null
+                    : (line) {
+                        if (line == null) return;
+                        setState(() {
+                          _selectedLine = line;
+                          _valueController.text = line.currentValue == null
+                              ? ''
+                              : _formatReading(line.currentValue);
+                        });
+                      },
+                decoration: const InputDecoration(
+                  labelText: 'Dòng cần khiếu nại',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _ReadingSnapshot(line: _selectedLine),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _valueController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Chỉ số bạn cho là đúng',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _reasonController,
+                minLines: 3,
+                maxLines: 5,
+                decoration: const InputDecoration(
+                  labelText: 'Lý do khiếu nại',
+                  hintText: 'Ví dụ: chỉ số trên đồng hồ hiện tại thấp hơn số trong hóa đơn...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton.icon(
+                  onPressed: _submitting ? null : _submit,
+                  icon: _submitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.send_rounded),
+                  label: Text(_submitting ? 'Đang gửi...' : 'Gửi khiếu nại'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    final invoiceId = widget.invoice.id;
+    final lineId = _selectedLine.id;
+    final value = double.tryParse(_valueController.text.trim().replaceAll(',', '.'));
+    final reason = _reasonController.text.trim();
+    if (invoiceId == null || lineId == null || value == null) {
+      _snack('Vui lòng nhập chỉ số hợp lệ.');
+      return;
+    }
+    final previous = _selectedLine.previousValue;
+    if (previous != null && value < previous) {
+      _snack('Chỉ số đề xuất không được nhỏ hơn chỉ số cũ.');
+      return;
+    }
+    if (reason.length < 6) {
+      _snack('Vui lòng mô tả lý do rõ hơn.');
+      return;
+    }
+    setState(() => _submitting = true);
+    try {
+      await widget.invoiceService.submitMeterReadingReview(
+        invoiceId: invoiceId,
+        lineId: lineId,
+        reportedCurrentValue: value,
+        description: reason,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã gửi khiếu nại chỉ số.')),
+      );
+      Navigator.pop(context, true);
+    } on TenantInvoiceException catch (error) {
+      _snack(error.message);
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  void _snack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class _ReadingSnapshot extends StatelessWidget {
+  const _ReadingSnapshot({required this.line});
+
+  final TenantInvoiceLine line;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        children: [
+          _SnapshotRow(label: 'Chỉ số cũ', value: _formatReading(line.previousValue)),
+          const SizedBox(height: 6),
+          _SnapshotRow(label: 'Chỉ số trong hóa đơn', value: _formatReading(line.currentValue)),
+          const SizedBox(height: 6),
+          _SnapshotRow(label: 'Sản lượng tính tiền', value: _formatReading(line.usageAmount)),
+          const SizedBox(height: 6),
+          _SnapshotRow(label: 'Thành tiền', value: _formatAmount(line.amount)),
+        ],
+      ),
+    );
+  }
+}
+
+class _SnapshotRow extends StatelessWidget {
+  const _SnapshotRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.bodyText,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            color: AppColors.inputText,
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
     );
   }
 }
