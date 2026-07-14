@@ -1,4 +1,4 @@
-﻿import 'package:hdbhms_mobile/models/onboarding_action.dart';
+import 'package:hdbhms_mobile/models/onboarding_action.dart';
 
 class OnboardingState {
   const OnboardingState({
@@ -36,9 +36,7 @@ class OnboardingState {
     }
 
     return OnboardingState(
-      userId: int.tryParse(
-        json['userId']?.toString() ?? '',
-      ),
+      userId: int.tryParse(json['userId']?.toString() ?? ''),
       onBoardingCompleted: completed,
       actions: actions,
     );

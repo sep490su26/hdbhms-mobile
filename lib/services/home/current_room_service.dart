@@ -1,10 +1,9 @@
-﻿import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
+import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 
 class CurrentRoomService {
-  const CurrentRoomService({
-    LeaseContractService? leaseContractService,
-  }) : _leaseContractService = leaseContractService;
+  const CurrentRoomService({LeaseContractService? leaseContractService})
+    : _leaseContractService = leaseContractService;
 
   final LeaseContractService? _leaseContractService;
 
@@ -26,9 +25,6 @@ class CurrentRoomService {
       throw const LeaseContractException('Không tìm thấy phòng đang thuê');
     }
 
-    return CurrentRentedRoom(
-      id: room.roomId,
-      roomCode: room.roomCode,
-    );
+    return CurrentRentedRoom(id: room.roomId, roomCode: room.roomCode);
   }
 }

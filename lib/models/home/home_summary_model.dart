@@ -1,4 +1,4 @@
-﻿import 'package:hdbhms_mobile/models/onboarding_state.dart';
+import 'package:hdbhms_mobile/models/onboarding_state.dart';
 
 class HomeSummary {
   const HomeSummary({
@@ -40,8 +40,9 @@ class HomeSummary {
       contract: json['contract'] != null
           ? HomeContract.fromJson(json['contract'] as Map<String, dynamic>)
           : null,
-      invoiceSummary:
-          InvoiceSummary.fromJson(json['invoiceSummary'] as Map<String, dynamic>? ?? {}),
+      invoiceSummary: InvoiceSummary.fromJson(
+        json['invoiceSummary'] as Map<String, dynamic>? ?? {},
+      ),
       notificationSummary: NotificationSummary.fromJson(
         json['notificationSummary'] as Map<String, dynamic>? ?? {},
       ),
@@ -195,7 +196,9 @@ class InvoiceSummary {
       unpaidCount: int.tryParse(json['unpaidCount']?.toString() ?? '') ?? 0,
       totalUnpaidAmount:
           double.tryParse(json['totalUnpaidAmount']?.toString() ?? '') ?? 0,
-      nearestDueDate: DateTime.tryParse(json['nearestDueDate']?.toString() ?? ''),
+      nearestDueDate: DateTime.tryParse(
+        json['nearestDueDate']?.toString() ?? '',
+      ),
     );
   }
 }
@@ -243,7 +246,7 @@ class UtilitySummary {
       source,
       const ['water', 'nuoc'],
       defaultName: 'Nước',
-      defaultUnit: 'm3',
+      defaultUnit: 'm³',
     );
 
     if (electricity == null || water == null) {
@@ -289,7 +292,7 @@ class UtilitySummary {
             water = UtilityUsage.fromJson(
               item,
               defaultName: 'Nước',
-              defaultUnit: 'm3',
+              defaultUnit: 'm³',
             );
           }
         }
@@ -338,7 +341,7 @@ class UtilityUsage {
         'currentValue',
         'total',
         'kwh',
-        'm3',
+        'm³',
       ]),
       unit: _firstString(json, [
         'unit',
@@ -352,11 +355,7 @@ class UtilityUsage {
         'momPercent',
         'previousMonthChangePercent',
       ]),
-      status: _firstString(json, [
-        'status',
-        'currentStatus',
-        'readingStatus',
-      ]),
+      status: _firstString(json, ['status', 'currentStatus', 'readingStatus']),
     );
   }
 }

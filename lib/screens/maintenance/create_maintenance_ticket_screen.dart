@@ -3,17 +3,18 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profileRequest/tenant_request_screen.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
 import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
 import 'package:hdbhms_mobile/services/home/current_room_service.dart';
 import 'package:hdbhms_mobile/services/maintenance/maintenance_ticket_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
+import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profileRequest/tenant_profile_screen.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
 
 class CreateMaintenanceTicketScreen extends StatefulWidget {
   const CreateMaintenanceTicketScreen({
@@ -330,8 +331,7 @@ class _CreateMaintenanceTicketScreenState
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const Icon(
-              Icons.notifications_none_rounded,
+            icon: const AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: AppColors.topBarIconSize,
             ),
@@ -462,16 +462,16 @@ class _CreateMaintenanceTicketScreenState
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.deepBlue,
-                        disabledBackgroundColor: AppColors.deepBlue.withValues(
+                        backgroundColor: AppColors.primary,
+                        disabledBackgroundColor: AppColors.primary.withValues(
                           alpha: 0.58,
                         ),
                         foregroundColor: Colors.white,
                         disabledForegroundColor: Colors.white,
-                        elevation: 5,
-                        shadowColor: AppColors.deepBlue.withValues(alpha: 0.28),
+                        elevation: 0,
+                        shadowColor: Colors.transparent,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(7),
+                          borderRadius: BorderRadius.circular(16),
                         ),
                       ),
                     ),

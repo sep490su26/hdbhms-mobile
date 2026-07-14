@@ -45,8 +45,8 @@ class _AppSplashScreenState extends State<AppSplashScreen>
       parent: _controller,
       curve: const Interval(0.3, 0.62, curve: Curves.easeOut),
     );
-    _titleOffset =
-        Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(
+    _titleOffset = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero)
+        .animate(
           CurvedAnimation(
             parent: _controller,
             curve: const Interval(0.28, 0.65, curve: Curves.easeOutCubic),
@@ -324,9 +324,7 @@ class _BuildingLogo extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.1),
-                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
               ),
             ),
           ),
@@ -339,9 +337,7 @@ class _BuildingLogo extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.14),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.15),
-                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
               ),
             ),
           ),
@@ -535,10 +531,7 @@ class _GlowOrb extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: RadialGradient(
-          colors: [
-            color.withValues(alpha: 0.22),
-            color.withValues(alpha: 0),
-          ],
+          colors: [color.withValues(alpha: 0.22), color.withValues(alpha: 0)],
         ),
       ),
     );
@@ -582,10 +575,7 @@ class _ArcsPainter extends CustomPainter {
       paint.color = Colors.white.withValues(alpha: 0.04 - i * 0.008);
       final radius = 80.0 + i * 50;
       canvas.drawArc(
-        Rect.fromCircle(
-          center: Offset(size.width + 20, -20),
-          radius: radius,
-        ),
+        Rect.fromCircle(center: Offset(size.width + 20, -20), radius: radius),
         math.pi * 0.55,
         math.pi * 0.6,
         false,
@@ -598,10 +588,7 @@ class _ArcsPainter extends CustomPainter {
       paint.color = Colors.white.withValues(alpha: 0.035 - i * 0.008);
       final radius = 100.0 + i * 60;
       canvas.drawArc(
-        Rect.fromCircle(
-          center: Offset(-30, size.height + 30),
-          radius: radius,
-        ),
+        Rect.fromCircle(center: Offset(-30, size.height + 30), radius: radius),
         -math.pi * 0.45,
         math.pi * 0.55,
         false,

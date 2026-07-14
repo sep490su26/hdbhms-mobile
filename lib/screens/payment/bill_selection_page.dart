@@ -6,12 +6,15 @@ import '../../theme/app_typography.dart';
 import '../../widgets/app_action_tile.dart';
 import '../../widgets/tenant_bottom_navigation.dart';
 import '../../widgets/app_screen_shell.dart';
+import '../../widgets/app_notification_bell.dart';
 import '../maintenance/maintenance_ticket_list_screen.dart';
 import '../notification/notification_list_screen.dart';
-import '../profileRequest/tenant_profile_screen.dart';
-import '../profileRequest/tenant_request_screen.dart';
+import '../profile_request/tenant_profile_screen.dart';
+import '../profile_request/tenant_request_screen.dart';
 import 'payment_history_page.dart';
 import 'qr_payment_page.dart';
+import 'utility_complaint_screen.dart';
+import '../../widgets/app_filter_chip.dart';
 
 class BillSelectionPage extends StatefulWidget {
   const BillSelectionPage({
@@ -146,28 +149,28 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
     BuildContext context,
     TenantInvoice invoice,
   ) async {
-    final lines = invoice.reviewableUtilityLines;
     if (invoice.hasOpenMeterReadingReview) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Hóa đơn này đã có khiếu nại đang chờ xử lý.')),
+        const SnackBar(
+          content: Text('Hóa đơn này đã có khiếu nại đang chờ xử lý.'),
+        ),
       );
       return;
     }
-    if (lines.isEmpty || invoice.id == null) {
+    if (invoice.reviewableUtilityLines.isEmpty || invoice.id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Hóa đơn này chưa thể gửi khiếu nại chỉ số.')),
+        const SnackBar(
+          content: Text('Hóa đơn này chưa thể gửi khiếu nại chỉ số.'),
+        ),
       );
       return;
     }
-    final submitted = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _MeterReadingReviewSheet(
-        invoice: invoice,
-        lines: lines,
-        invoiceService: widget.invoiceService,
+    final submitted = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => UtilityComplaintScreen(
+          invoice: invoice,
+          invoiceService: widget.invoiceService,
+        ),
       ),
     );
     if (submitted == true) {
@@ -420,96 +423,27 @@ class _BillFilterBar extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          _BillFilterChip(
+          AppFilterChip(
             label: 'Tất cả',
             icon: Icons.list_rounded,
             isActive: active == _BillFilter.all,
             onTap: () => onChanged(_BillFilter.all),
           ),
           const SizedBox(width: 8),
-          _BillFilterChip(
+          AppFilterChip(
             label: 'Chưa thanh toán',
             icon: Icons.pending_actions_rounded,
             isActive: active == _BillFilter.unpaid,
             onTap: () => onChanged(_BillFilter.unpaid),
           ),
           const SizedBox(width: 8),
-          _BillFilterChip(
+          AppFilterChip(
             label: 'Đã thanh toán',
             icon: Icons.task_alt_rounded,
             isActive: active == _BillFilter.paid,
             onTap: () => onChanged(_BillFilter.paid),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _BillFilterChip extends StatelessWidget {
-  const _BillFilterChip({
-    required this.label,
-    required this.icon,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-        decoration: BoxDecoration(
-          gradient: isActive
-              ? const LinearGradient(
-                  colors: [AppColors.deepBlue, AppColors.primary],
-                )
-              : null,
-          color: isActive ? null : AppColors.surface,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: isActive
-                ? Colors.white.withValues(alpha: 0.2)
-                : AppColors.cardBorder.withValues(alpha: 0.8),
-          ),
-          boxShadow: isActive
-              ? [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.18),
-                    blurRadius: 14,
-                    offset: const Offset(0, 7),
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 14,
-              color: isActive ? Colors.white : AppColors.bodyText,
-            ),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                color: isActive ? Colors.white : AppColors.bodyText,
-                fontSize: 12,
-                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-                height: 16 / 12,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -561,8 +495,7 @@ class _BillHeader extends StatelessWidget {
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const Icon(
-              Icons.notifications_none_rounded,
+            icon: const AppNotificationBell(
               color: AppColors.inputText,
               size: 24,
             ),
@@ -740,25 +673,7 @@ class _PendingBillCard extends StatelessWidget {
                             else if (invoice.reviewableUtilityLines.isNotEmpty)
                               Align(
                                 alignment: Alignment.centerLeft,
-                                child: OutlinedButton.icon(
-                                  onPressed: onComplain,
-                                  icon: const Icon(
-                                    Icons.report_problem_outlined,
-                                    size: 16,
-                                  ),
-                                  label: const Text('Khiếu nại chỉ số'),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppColors.deepBlue,
-                                    side: BorderSide(
-                                      color: AppColors.deepBlue.withValues(alpha: 0.25),
-                                    ),
-                                    visualDensity: VisualDensity.compact,
-                                    textStyle: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
+                                child: _ComplaintButton(onTap: onComplain),
                               ),
                           ],
                         ],
@@ -773,18 +688,6 @@ class _PendingBillCard extends StatelessWidget {
       ),
     );
   }
-}
-
-String _formatReading(double? value) {
-  if (value == null) return '--';
-  final asInt = value.truncateToDouble() == value;
-  return asInt ? value.toInt().toString() : value.toStringAsFixed(2);
-}
-
-String _utilityLineLabel(TenantInvoiceLine line) {
-  if (line.lineType == 'ELECTRICITY') return 'Điện';
-  if (line.lineType == 'WATER') return 'Nước';
-  return line.description.isEmpty ? line.lineType : line.description;
 }
 
 class _ReviewStatusChip extends StatelessWidget {
@@ -818,253 +721,58 @@ class _ReviewStatusChip extends StatelessWidget {
   }
 }
 
-class _MeterReadingReviewSheet extends StatefulWidget {
-  const _MeterReadingReviewSheet({
-    required this.invoice,
-    required this.lines,
-    required this.invoiceService,
-  });
-
-  final TenantInvoice invoice;
-  final List<TenantInvoiceLine> lines;
-  final TenantInvoiceService invoiceService;
-
-  @override
-  State<_MeterReadingReviewSheet> createState() =>
-      _MeterReadingReviewSheetState();
-}
-
-class _MeterReadingReviewSheetState extends State<_MeterReadingReviewSheet> {
-  late TenantInvoiceLine _selectedLine = widget.lines.first;
-  final TextEditingController _valueController = TextEditingController();
-  final TextEditingController _reasonController = TextEditingController();
-  bool _submitting = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final current = _selectedLine.currentValue;
-    if (current != null) {
-      _valueController.text = _formatReading(current);
-    }
-  }
-
-  @override
-  void dispose() {
-    _valueController.dispose();
-    _reasonController.dispose();
-    super.dispose();
-  }
+class _ComplaintButton extends StatelessWidget {
+  const _ComplaintButton({required this.onTap});
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    return Padding(
-      padding: EdgeInsets.only(bottom: bottomInset),
+    return GestureDetector(
+      onTap: onTap,
       child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Khiếu nại chỉ số điện nước',
-                      style: TextStyle(
-                        color: AppColors.inputText,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: _submitting ? null : () => Navigator.pop(context),
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<TenantInvoiceLine>(
-                initialValue: _selectedLine,
-                items: widget.lines
-                    .map(
-                      (line) => DropdownMenuItem(
-                        value: line,
-                        child: Text(_utilityLineLabel(line)),
-                      ),
-                    )
-                    .toList(),
-                onChanged: _submitting
-                    ? null
-                    : (line) {
-                        if (line == null) return;
-                        setState(() {
-                          _selectedLine = line;
-                          _valueController.text = line.currentValue == null
-                              ? ''
-                              : _formatReading(line.currentValue);
-                        });
-                      },
-                decoration: const InputDecoration(
-                  labelText: 'Dòng cần khiếu nại',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              _ReadingSnapshot(line: _selectedLine),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _valueController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
-                  labelText: 'Chỉ số bạn cho là đúng',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _reasonController,
-                minLines: 3,
-                maxLines: 5,
-                decoration: const InputDecoration(
-                  labelText: 'Lý do khiếu nại',
-                  hintText: 'Ví dụ: chỉ số trên đồng hồ hiện tại thấp hơn số trong hóa đơn...',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: FilledButton.icon(
-                  onPressed: _submitting ? null : _submit,
-                  icon: _submitting
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.send_rounded),
-                  label: Text(_submitting ? 'Đang gửi...' : 'Gửi khiếu nại'),
-                ),
-              ),
-            ],
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [const Color(0xFFFFF7ED), const Color(0xFFFEF3C7)],
           ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _submit() async {
-    final invoiceId = widget.invoice.id;
-    final lineId = _selectedLine.id;
-    final value = double.tryParse(_valueController.text.trim().replaceAll(',', '.'));
-    final reason = _reasonController.text.trim();
-    if (invoiceId == null || lineId == null || value == null) {
-      _snack('Vui lòng nhập chỉ số hợp lệ.');
-      return;
-    }
-    final previous = _selectedLine.previousValue;
-    if (previous != null && value < previous) {
-      _snack('Chỉ số đề xuất không được nhỏ hơn chỉ số cũ.');
-      return;
-    }
-    if (reason.length < 6) {
-      _snack('Vui lòng mô tả lý do rõ hơn.');
-      return;
-    }
-    setState(() => _submitting = true);
-    try {
-      await widget.invoiceService.submitMeterReadingReview(
-        invoiceId: invoiceId,
-        lineId: lineId,
-        reportedCurrentValue: value,
-        description: reason,
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã gửi khiếu nại chỉ số.')),
-      );
-      Navigator.pop(context, true);
-    } on TenantInvoiceException catch (error) {
-      _snack(error.message);
-    } finally {
-      if (mounted) setState(() => _submitting = false);
-    }
-  }
-
-  void _snack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-  }
-}
-
-class _ReadingSnapshot extends StatelessWidget {
-  const _ReadingSnapshot({required this.line});
-
-  final TenantInvoiceLine line;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Column(
-        children: [
-          _SnapshotRow(label: 'Chỉ số cũ', value: _formatReading(line.previousValue)),
-          const SizedBox(height: 6),
-          _SnapshotRow(label: 'Chỉ số trong hóa đơn', value: _formatReading(line.currentValue)),
-          const SizedBox(height: 6),
-          _SnapshotRow(label: 'Sản lượng tính tiền', value: _formatReading(line.usageAmount)),
-          const SizedBox(height: 6),
-          _SnapshotRow(label: 'Thành tiền', value: _formatAmount(line.amount)),
-        ],
-      ),
-    );
-  }
-}
-
-class _SnapshotRow extends StatelessWidget {
-  const _SnapshotRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: AppColors.bodyText,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: const Color(0xFFFBBF24).withValues(alpha: 0.6),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-          ),
+          ],
         ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: AppColors.inputText,
-            fontSize: 12,
-            fontWeight: FontWeight.w900,
-          ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.report_problem_rounded,
+              size: 14,
+              color: Color(0xFFD97706),
+            ),
+            SizedBox(width: 6),
+            Text(
+              'Khiếu nại điện nước',
+              style: TextStyle(
+                color: Color(0xFF92400E),
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            SizedBox(width: 4),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 10,
+              color: Color(0xFFD97706),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

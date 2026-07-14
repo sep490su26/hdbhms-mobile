@@ -1,21 +1,22 @@
 // ignore_for_file: unused_element
 
 import 'package:flutter/material.dart';
-import 'package:hdbhms_mobile/config/app_config.dart';
-import 'package:hdbhms_mobile/screens/profileRequest/tenant_request_screen.dart';
-
 import 'package:hdbhms_mobile/config/api_config.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
+
 import 'package:hdbhms_mobile/models/home/home_summary_model.dart';
 import 'package:hdbhms_mobile/providers/home_provider.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
-import 'package:hdbhms_mobile/services/profileRequest/tenant_profile_service.dart';
+import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/utils/display_formatters.dart';
 import 'package:hdbhms_mobile/widgets/app_action_tile.dart';
+import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
+import 'package:hdbhms_mobile/widgets/app_skeleton.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
@@ -26,9 +27,10 @@ import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
 import 'package:hdbhms_mobile/screens/rules/property_rules_screen.dart';
-import 'package:hdbhms_mobile/screens/profileRequest/tenant_profile_screen.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
 import 'package:hdbhms_mobile/screens/tenant_overview/tenant_overview_screen.dart';
 import 'package:hdbhms_mobile/screens/web_view_screen.dart';
+import 'package:hdbhms_mobile/screens/contract/room_amenities_screen.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -122,9 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBody() {
     if (_provider.isLoading && _provider.summary == null) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.deepBlue),
-      );
+      return const _HomeLoadingState();
     }
 
     if (_provider.errorMessage != null && _provider.summary == null) {
@@ -183,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 17),
               const _SectionHeading('Thao tác nhanh'),
               const SizedBox(height: 17),
-              const _QuickActions(),
+              _QuickActions(contractId: summary.contract?.id),
             ],
           ),
         ),
@@ -329,17 +329,58 @@ class _HomeHeader extends StatelessWidget {
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const Icon(
-              Icons.notifications_none_rounded,
-              color: AppColors.topBarIconColor,
-              size: 24,
+            icon: AppNotificationBell(
+              initialUnreadCount: summary.notificationSummary.unreadCount,
             ),
             tooltip: 'Thông báo',
           ),
-          const SizedBox(width: 8),
-          _UserAvatar(user: summary.user),
         ],
       ),
+    );
+  }
+}
+
+class _HomeLoadingState extends StatelessWidget {
+  const _HomeLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 15, 16, 28),
+      children: const [
+        Row(
+          children: [
+            AppSkeleton(width: 132, height: 32),
+            Spacer(),
+            AppSkeleton(width: 36, height: 36, borderRadius: 18),
+            SizedBox(width: 6),
+            AppSkeleton(width: 36, height: 36, borderRadius: 18),
+          ],
+        ),
+        SizedBox(height: 24),
+        AppSkeleton(width: 80, height: 14),
+        SizedBox(height: 7),
+        AppSkeleton(width: 196, height: 28),
+        SizedBox(height: 18),
+        AppSkeleton(width: double.infinity, height: 190, borderRadius: 16),
+        SizedBox(height: 20),
+        AppSkeleton(width: 112, height: 20),
+        SizedBox(height: 17),
+        Row(
+          children: [
+            Expanded(child: AppSkeleton(width: double.infinity, height: 116)),
+            SizedBox(width: 12),
+            Expanded(child: AppSkeleton(width: double.infinity, height: 116)),
+          ],
+        ),
+        SizedBox(height: 20),
+        AppSkeleton(width: 112, height: 20),
+        SizedBox(height: 17),
+        AppSkeleton(width: double.infinity, height: 72, borderRadius: 12),
+        SizedBox(height: 10),
+        AppSkeleton(width: double.infinity, height: 72, borderRadius: 12),
+      ],
     );
   }
 }
@@ -447,7 +488,6 @@ class _RoomSelector extends StatelessWidget {
     );
   }
 
-  // ignore: unused_element
   void _showRoomDropdown(BuildContext context) {
     final rooms = provider.activeRooms;
     final selectedRoom = provider.selectedRoom;
@@ -610,41 +650,6 @@ class _RoomSelector extends StatelessWidget {
       );
       provider.selectRoom(room);
     });
-  }
-}
-
-class _UserAvatar extends StatelessWidget {
-  const _UserAvatar({required this.user});
-
-  final HomeUser user;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 39,
-      height: 39,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.deepBlue,
-        border: Border.all(color: Colors.white, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: user.avatarUrl.isEmpty
-          ? const Icon(Icons.person, color: Colors.white, size: 22)
-          : Image.network(
-              AppConfig.apiBaseUrl + user.avatarUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.person, color: Colors.white, size: 22),
-            ),
-    );
   }
 }
 
@@ -960,6 +965,9 @@ class _UtilityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final value = usage?.value;
     final percentChange = usage?.percentChange;
+    final displayUnit = _normalizeUtilityUnit(
+      usage?.unit.isNotEmpty == true ? usage!.unit : unit,
+    );
     final status = usage?.status.isNotEmpty == true
         ? usage!.status
         : value == null
@@ -1026,8 +1034,7 @@ class _UtilityCard extends StatelessWidget {
                         text: value == null ? '--' : _formatUsageValue(value),
                       ),
                       TextSpan(
-                        text:
-                            ' ${usage?.unit.isNotEmpty == true ? usage!.unit : unit}',
+                        text: ' $displayUnit',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
@@ -1090,7 +1097,9 @@ class _SectionHeading extends StatelessWidget {
 }
 
 class _QuickActions extends StatelessWidget {
-  const _QuickActions();
+  const _QuickActions({this.contractId});
+
+  final int? contractId;
 
   @override
   Widget build(BuildContext context) {
@@ -1127,13 +1136,14 @@ class _QuickActions extends StatelessWidget {
           },
         ),
         _QuickActionButton(
-          icon: Icons.build_circle_rounded,
+          icon: Icons.weekend_outlined,
           accentColor: AppColors.actionOrange,
-          label: 'Sự cố',
+          label: 'Tiện ích phòng',
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => const MaintenanceTicketListScreen(),
+                builder: (context) =>
+                    RoomAmenitiesScreen(contractId: contractId),
               ),
             );
           },
@@ -1262,6 +1272,14 @@ void _showTodo(BuildContext context, String message) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(message)));
+}
+
+String _normalizeUtilityUnit(String unit) {
+  final normalized = unit.trim().toLowerCase();
+  if (normalized == 'm3' || normalized == 'm^3' || normalized == 'm³') {
+    return 'm³';
+  }
+  return unit.trim();
 }
 
 String _formatDate(DateTime date) {

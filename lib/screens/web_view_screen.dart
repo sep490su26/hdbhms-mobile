@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -67,7 +67,10 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
     if (widget.postData != null && widget.postData!.isNotEmpty) {
       final String bodyString = widget.postData!.entries
-          .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+          .map(
+            (e) =>
+                '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}',
+          )
           .join('&');
 
       _controller.loadRequest(

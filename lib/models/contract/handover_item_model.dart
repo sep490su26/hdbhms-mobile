@@ -2,6 +2,7 @@ class HandoverItem {
   const HandoverItem({
     required this.id,
     required this.assetName,
+    this.assetCategory = '',
     required this.quantity,
     required this.conditionStatus,
     required this.note,
@@ -11,6 +12,7 @@ class HandoverItem {
 
   final int? id;
   final String assetName;
+  final String assetCategory;
   final int quantity;
   final String conditionStatus;
   final String note;
@@ -23,6 +25,11 @@ class HandoverItem {
         json['id'] ?? json['handover_item_id'] ?? json['handoverItemId'],
       ),
       assetName: _firstString(json, const ['assetName', 'asset_name', 'name']),
+      assetCategory: _firstString(json, const [
+        'assetCategory',
+        'asset_category',
+        'category',
+      ]),
       quantity: _asInt(json['quantity']) ?? 1,
       conditionStatus: _firstString(json, const [
         'conditionStatus',
@@ -42,6 +49,8 @@ class HandoverItem {
         'evidence_file_url',
         'imageUrl',
         'image_url',
+        'imageFileUrl',
+        'image_file_url',
       ]),
     );
   }
@@ -50,6 +59,7 @@ class HandoverItem {
     return {
       'id': id,
       'assetName': assetName,
+      'assetCategory': assetCategory,
       'quantity': quantity,
       'conditionStatus': conditionStatus,
       'note': note,

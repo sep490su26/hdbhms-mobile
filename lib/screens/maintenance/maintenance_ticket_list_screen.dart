@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profileRequest/tenant_request_screen.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
 import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
@@ -11,11 +11,12 @@ import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
+import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/create_maintenance_ticket_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_detail_screen.dart';
-import 'package:hdbhms_mobile/screens/profileRequest/tenant_profile_screen.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
 
 class MaintenanceTicketListScreen extends StatefulWidget {
   const MaintenanceTicketListScreen({
@@ -57,6 +58,11 @@ class _MaintenanceTicketListScreenState
       category: _selectedCategory,
     );
   }
+
+  bool get _hasActiveFilter =>
+      _keywordController.text.trim().isNotEmpty ||
+      _selectedStatus != _allOption ||
+      _selectedCategory != _allOption;
 
   void _applyFilter() {
     setState(() {
@@ -154,7 +160,10 @@ class _MaintenanceTicketListScreenState
                     else if (snapshot.hasError)
                       _ErrorState(onRetry: _applyFilter)
                     else if (tickets.isEmpty)
-                      _EmptyState(onRetry: _applyFilter)
+                      _EmptyState(
+                        hasActiveFilter: _hasActiveFilter,
+                        onRetry: _applyFilter,
+                      )
                     else
                       _TicketTableCard(
                         tickets: tickets,
@@ -225,8 +234,7 @@ class _MaintenanceTicketListScreenState
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const Icon(
-              Icons.notifications_none_rounded,
+            icon: const AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: 24,
             ),
@@ -256,16 +264,8 @@ class _MaintenanceSectionHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Danh sách sự cố', style: AppTypography.sectionTitle),
-              const SizedBox(height: 3),
-              Text(
-                ticketCount == null ? 'Đang tải...' : '$ticketCount phiếu',
-                style: const TextStyle(
-                  color: AppColors.bodyText,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  height: 16 / 12,
-                ),
-              ),
+              const SizedBox(height: 7),
+              _TicketCountBadge(ticketCount: ticketCount),
             ],
           ),
         ),
@@ -275,13 +275,13 @@ class _MaintenanceSectionHeader extends StatelessWidget {
           icon: const Icon(Icons.add_rounded, size: 19),
           label: const Text('Báo cáo sự cố'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.deepBlue,
+            backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
             elevation: 0,
             minimumSize: const Size(0, 42),
             padding: const EdgeInsets.symmetric(horizontal: 12),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(14),
             ),
             textStyle: const TextStyle(
               fontSize: 12,
@@ -290,6 +290,68 @@ class _MaintenanceSectionHeader extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _TicketCountBadge extends StatelessWidget {
+  const _TicketCountBadge({required this.ticketCount});
+
+  final int? ticketCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final isLoading = ticketCount == null;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.primaryLight.withValues(alpha: 0.82),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isLoading
+                ? Icons.hourglass_empty_rounded
+                : Icons.confirmation_number_outlined,
+            color: AppColors.darkBlue,
+            size: 14,
+          ),
+          const SizedBox(width: 5),
+          if (isLoading)
+            const Text(
+              'Đang tải...',
+              style: TextStyle(
+                color: AppColors.darkBlue,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                height: 16 / 12,
+              ),
+            )
+          else
+            Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: '${ticketCount!}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const TextSpan(
+                    text: ' phiếu',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
+              style: const TextStyle(color: AppColors.darkBlue, height: 1.2),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -332,6 +394,12 @@ class _FilterPanel extends StatelessWidget {
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
           initialValue: selectedStatus,
+          style: const TextStyle(
+            color: AppColors.darkBlue,
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            height: 20 / 14,
+          ),
           items: _statusOptions
               .map(
                 (option) =>
@@ -340,13 +408,22 @@ class _FilterPanel extends StatelessWidget {
               .toList(growable: false),
           onChanged: onStatusChanged,
           decoration: _inputDecoration(),
-          icon: const Icon(Icons.keyboard_arrow_down_rounded),
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: AppColors.darkBlue,
+          ),
         ),
         const SizedBox(height: 14),
         const _FieldLabel('Loại sự cố'),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
           initialValue: selectedCategory,
+          style: const TextStyle(
+            color: AppColors.darkBlue,
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            height: 20 / 14,
+          ),
           items: _categoryOptions
               .map(
                 (option) =>
@@ -355,7 +432,10 @@ class _FilterPanel extends StatelessWidget {
               .toList(growable: false),
           onChanged: onCategoryChanged,
           decoration: _inputDecoration(),
-          icon: const Icon(Icons.keyboard_arrow_down_rounded),
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: AppColors.darkBlue,
+          ),
         ),
         const SizedBox(height: 16),
         SizedBox(
@@ -364,11 +444,11 @@ class _FilterPanel extends StatelessWidget {
           child: ElevatedButton(
             onPressed: onFilter,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.deepBlue,
+              backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(16),
               ),
             ),
             child: const Text(
@@ -663,15 +743,20 @@ class _LoadingState extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onRetry});
+  const _EmptyState({required this.hasActiveFilter, required this.onRetry});
 
+  final bool hasActiveFilter;
   final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
     return _StateMessage(
       icon: Icons.inbox_outlined,
-      title: 'Không có phiếu sự cố phù hợp',
+      title: hasActiveFilter
+          ? 'Không có phiếu sự cố phù hợp'
+          : 'Chưa có phiếu sự cố',
+      iconColor: AppColors.darkBlue,
+      titleColor: AppColors.darkBlue,
       onRetry: onRetry,
     );
   }
@@ -697,11 +782,15 @@ class _StateMessage extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.onRetry,
+    this.iconColor = AppColors.deepBlue,
+    this.titleColor = AppColors.inputText,
   });
 
   final IconData icon;
   final String title;
   final VoidCallback onRetry;
+  final Color iconColor;
+  final Color titleColor;
 
   @override
   Widget build(BuildContext context) {
@@ -714,13 +803,13 @@ class _StateMessage extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Icon(icon, color: AppColors.deepBlue, size: 42),
+          Icon(icon, color: iconColor, size: 42),
           const SizedBox(height: 12),
           Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: AppColors.inputText,
+            style: TextStyle(
+              color: titleColor,
               fontSize: 15,
               fontWeight: FontWeight.w900,
               height: 20 / 15,
@@ -732,8 +821,12 @@ class _StateMessage extends StatelessWidget {
             icon: const Icon(Icons.refresh_rounded),
             label: const Text('Thử lại'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.deepBlue,
+              backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
           ),
         ],

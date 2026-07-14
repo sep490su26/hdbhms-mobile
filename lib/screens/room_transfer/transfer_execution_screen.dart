@@ -25,7 +25,8 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
   bool _submitting = false;
   bool _loadingMoveOutContext = false;
   bool _loadingMoveInContext = false;
-  SettlementType _positiveDifferenceSettlementType = SettlementType.tenantPayMore;
+  SettlementType _positiveDifferenceSettlementType =
+      SettlementType.tenantPayMore;
   LatestRoomMeterReadings? _latestMoveOutReadings;
   ContractHandoverDetails? _latestMoveOutHandover;
   LatestRoomMeterReadings? _latestMoveInReadings;
@@ -73,7 +74,9 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
     setState(() => _loadingMoveOutContext = true);
     try {
       final results = await Future.wait<Object?>([
-        widget.transferService.getLatestRoomMeterReadings(widget.transfer.oldRoomId),
+        widget.transferService.getLatestRoomMeterReadings(
+          widget.transfer.oldRoomId,
+        ),
         widget.transferService.getContractHandoverDetails(
           contractId: widget.transfer.oldContractId,
           type: 'MOVE_OUT',
@@ -125,10 +128,11 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
       ContractHandoverDetails? latestHandover;
       final contractId = widget.transfer.newContractId;
       if (contractId != null && contractId > 0) {
-        latestHandover = await widget.transferService.getContractHandoverDetails(
-          contractId: contractId,
-          type: 'MOVE_IN',
-        );
+        latestHandover = await widget.transferService
+            .getContractHandoverDetails(
+              contractId: contractId,
+              type: 'MOVE_IN',
+            );
       }
 
       if (!mounted) return;
@@ -176,7 +180,9 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
     if (controller.text.trim().isNotEmpty) return;
     final value = primary ?? fallback;
     if (value == null) return;
-    final rounded = value % 1 == 0 ? value.toInt().toString() : value.toString();
+    final rounded = value % 1 == 0
+        ? value.toInt().toString()
+        : value.toString();
     controller.text = rounded;
   }
 
@@ -192,9 +198,7 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
         handoverDate: _inHandoverDate ?? DateTime.now(),
         electricity: MeterReadingData(currentValue: inElectricity),
         water: MeterReadingData(currentValue: inWater),
-        note: _inNoteCtrl.text.trim().isEmpty
-            ? null
-            : _inNoteCtrl.text.trim(),
+        note: _inNoteCtrl.text.trim().isEmpty ? null : _inNoteCtrl.text.trim(),
       );
     }
     await widget.transferService.completeTransfer(
@@ -259,11 +263,13 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
       if (_requiresTransferInNow) {
         if (_inElectricityCtrl.text.trim().isEmpty) {
           throw const RoomTransferException(
-              'Vui lòng nhập chỉ số điện phòng mới.');
+            'Vui lòng nhập chỉ số điện phòng mới.',
+          );
         }
         if (_inWaterCtrl.text.trim().isEmpty) {
           throw const RoomTransferException(
-              'Vui lòng nhập chỉ số nước phòng mới.');
+            'Vui lòng nhập chỉ số nước phòng mới.',
+          );
         }
 
         final inElectricity = double.tryParse(_inElectricityCtrl.text.trim());
@@ -271,7 +277,8 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
 
         if (inElectricity == null || inWater == null) {
           throw const RoomTransferException(
-              'Chỉ số điện/nước phòng mới không hợp lệ.');
+            'Chỉ số điện/nước phòng mới không hợp lệ.',
+          );
         }
 
         transferInHandover = TransferHandoverData(
@@ -347,10 +354,7 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: AppScreenShell(
-          header: _buildHeader(),
-          child: _buildBody(),
-        ),
+        child: AppScreenShell(header: _buildHeader(), child: _buildBody()),
       ),
     );
   }
@@ -402,7 +406,8 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
               const LinearProgressIndicator(minHeight: 3),
               const SizedBox(height: 12),
             ],
-            if (_latestMoveOutReadings != null || _latestMoveOutHandover != null) ...[
+            if (_latestMoveOutReadings != null ||
+                _latestMoveOutHandover != null) ...[
               _MoveOutContextCard(
                 latestReadings: _latestMoveOutReadings,
                 latestHandover: _latestMoveOutHandover,
@@ -448,7 +453,8 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
                 const LinearProgressIndicator(minHeight: 3),
                 const SizedBox(height: 12),
               ],
-              if (_latestMoveInReadings != null || _latestMoveInHandover != null) ...[
+              if (_latestMoveInReadings != null ||
+                  _latestMoveInHandover != null) ...[
                 _MoveOutContextCard(
                   latestReadings: _latestMoveInReadings,
                   latestHandover: _latestMoveInHandover,
@@ -503,7 +509,8 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
               ),
               const SizedBox(height: 10),
               _SettlementOptionTile(
-                selected: _positiveDifferenceSettlementType ==
+                selected:
+                    _positiveDifferenceSettlementType ==
                     SettlementType.tenantPayMore,
                 enabled: !_submitting,
                 title: 'Thanh toán khoản chênh lệch luôn',
@@ -516,11 +523,13 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
               ),
               const SizedBox(height: 8),
               _SettlementOptionTile(
-                selected: _positiveDifferenceSettlementType ==
+                selected:
+                    _positiveDifferenceSettlementType ==
                     SettlementType.addToNextInvoice,
                 enabled: !_submitting,
                 title: 'Cộng vào hóa đơn kỳ kế tiếp',
-                subtitle: 'Khoản chênh lệch sẽ được cộng vào hóa đơn tháng sau.',
+                subtitle:
+                    'Khoản chênh lệch sẽ được cộng vào hóa đơn tháng sau.',
                 onTap: () => setState(
                   () => _positiveDifferenceSettlementType =
                       SettlementType.addToNextInvoice,
@@ -555,7 +564,9 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.deepBlue,
               foregroundColor: Colors.white,
-              disabledBackgroundColor: AppColors.deepBlue.withValues(alpha: 0.5),
+              disabledBackgroundColor: AppColors.deepBlue.withValues(
+                alpha: 0.5,
+              ),
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -646,7 +657,9 @@ class _SettlementOptionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeColor = selected ? AppColors.deepBlue : const Color(0xFF9CA3AF);
-    final textColor = enabled ? const Color(0xFF111827) : const Color(0xFF9CA3AF);
+    final textColor = enabled
+        ? const Color(0xFF111827)
+        : const Color(0xFF9CA3AF);
 
     return InkWell(
       onTap: enabled ? onTap : null,

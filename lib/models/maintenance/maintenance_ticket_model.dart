@@ -52,12 +52,7 @@ class MaintenanceTicketModel {
   bool get requiresTenantPayment {
     final normalized = billingStatus.toUpperCase();
     if (!chargeToTenant && payer.toUpperCase() != 'TENANT') return false;
-    return !{
-      'PAID',
-      'NO_CHARGE',
-      'VOIDED',
-      'CANCELLED',
-    }.contains(normalized);
+    return !{'PAID', 'NO_CHARGE', 'VOIDED', 'CANCELLED'}.contains(normalized);
   }
 
   String get primaryStatusLabel {
@@ -119,8 +114,7 @@ class MaintenanceTicketModel {
   factory MaintenanceTicketModel.fromJson(Map<String, dynamic> json) {
     return MaintenanceTicketModel(
       id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
-      code:
-          json['ticketCode']?.toString() ?? json['code']?.toString() ?? '',
+      code: json['ticketCode']?.toString() ?? json['code']?.toString() ?? '',
       category: TicketCategory.fromBackend(json['category']?.toString() ?? ''),
       title: json['title']?.toString() ?? '',
       description: _maintenanceDisplayText(

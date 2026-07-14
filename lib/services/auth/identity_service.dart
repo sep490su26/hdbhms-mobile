@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -134,7 +134,8 @@ class IdentityService {
               body['identity_completed'] == true,
           onboarding: onboarding,
           portraitFileId:
-              _asInt(body['portraitFileId']) ?? _asInt(body['portrait_file_id']),
+              _asInt(body['portraitFileId']) ??
+              _asInt(body['portrait_file_id']),
           idCardFrontFileId:
               _asInt(body['idCardFrontFileId']) ??
               _asInt(body['id_card_front_file_id']),

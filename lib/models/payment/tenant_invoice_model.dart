@@ -62,7 +62,9 @@ class TenantInvoice {
   bool get isPaid => status.toUpperCase() == 'PAID' || remainingAmount <= 0;
 
   List<TenantInvoiceLine> get utilityMeterLines => lines
-      .where((line) => line.lineType == 'ELECTRICITY' || line.lineType == 'WATER')
+      .where(
+        (line) => line.lineType == 'ELECTRICITY' || line.lineType == 'WATER',
+      )
       .toList(growable: false);
 
   List<TenantInvoiceLine> get reviewableUtilityLines => utilityMeterLines
@@ -126,43 +128,34 @@ class TenantInvoice {
       status: _firstString(json, ['status']),
       roomId: int.tryParse(_firstString(json, ['roomId'])),
       roomCode: _firstString(json, ['roomCode']),
-      contractId: int.tryParse(
-        _firstString(json, ['contractId']),
-      ),
+      contractId: int.tryParse(_firstString(json, ['contractId'])),
       contractCode: _firstString(json, ['contractCode']),
       dueDate: DateTime.tryParse(_firstString(json, ['dueDate'])),
-      issuedAt: DateTime.tryParse(
-        _firstString(json, ['issuedAt']),
-      ),
+      issuedAt: DateTime.tryParse(_firstString(json, ['issuedAt'])),
       paidAt: DateTime.tryParse(_firstString(json, ['paidAt'])),
       totalAmount: _intField(json, ['totalAmount']),
       paidAmount: _intField(json, ['paidAmount']),
       remainingAmount: _intField(json, ['remainingAmount']),
-      paymentIntentId: int.tryParse(
-        _firstString(json, ['paymentIntentId']),
-      ),
-      checkoutUrl: _firstString(json, [
-        'checkoutUrl',
-        'checkOutUrl',
-      ]),
+      paymentIntentId: int.tryParse(_firstString(json, ['paymentIntentId'])),
+      checkoutUrl: _firstString(json, ['checkoutUrl', 'checkOutUrl']),
       qrCode: _firstString(json, ['qrCode']),
-      providerOrderCode: _firstString(json, [
-        'providerOrderCode',
-      ]),
+      providerOrderCode: _firstString(json, ['providerOrderCode']),
       paymentLinkId: _firstString(json, ['paymentLinkId']),
       bankBin: _firstString(json, ['bankBin']),
       bankShortName: _firstString(json, ['bankShortName']),
       accountNumber: _firstString(json, ['accountNumber']),
       accountName: _firstString(json, ['accountName']),
-      transferDescription: _firstString(json, [
-        'transferDescription',
-      ]),
+      transferDescription: _firstString(json, ['transferDescription']),
       lines: (json['lines'] as List<dynamic>? ?? [])
           .whereType<Map<String, dynamic>>()
           .map(TenantInvoiceLine.fromJson)
           .toList(),
-      priceDifferenceSettlementType: _firstString(json, ['priceDifferenceSettlementType']),
-      hasOpenMeterReadingReview: _boolField(json, ['hasOpenMeterReadingReview']),
+      priceDifferenceSettlementType: _firstString(json, [
+        'priceDifferenceSettlementType',
+      ]),
+      hasOpenMeterReadingReview: _boolField(json, [
+        'hasOpenMeterReadingReview',
+      ]),
     );
   }
 }
@@ -202,7 +195,8 @@ class TenantInvoiceLine {
   final int? openReviewId;
   final bool canComplain;
 
-  bool get hasOpenReview => openReviewId != null ||
+  bool get hasOpenReview =>
+      openReviewId != null ||
       reviewStatus == 'PENDING' ||
       reviewStatus == 'UNDER_REVIEW' ||
       reviewStatus == 'PROCESSING';

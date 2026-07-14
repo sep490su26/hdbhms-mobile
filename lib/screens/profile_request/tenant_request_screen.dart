@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/models/change_request/change_request_model.dart';
-import 'package:hdbhms_mobile/models/profileRequest/tenant_request_model.dart';
+import 'package:hdbhms_mobile/models/profile_request/tenant_request_model.dart';
 import 'package:hdbhms_mobile/models/room_transfer/room_transfer_model.dart';
 import 'package:hdbhms_mobile/services/change_request/change_request_service.dart';
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
@@ -14,8 +14,10 @@ import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profileRequest/tenant_profile_screen.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
 import 'package:hdbhms_mobile/screens/room_transfer/room_transfer_detail_screen.dart';
+import 'package:hdbhms_mobile/widgets/app_filter_chip.dart';
+import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 
 /// Màn "Yêu cầu" – danh sách yêu cầu + filter theo loại
 class TenantRequestScreen extends StatefulWidget {
@@ -206,6 +208,8 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
       ChangeRequestType.roomTransfer => TenantRequestType.changeRoom,
       ChangeRequestType.moveOut => TenantRequestType.terminateContract,
       ChangeRequestType.addCoOccupant => TenantRequestType.addRoommate,
+      ChangeRequestType.meterReadingCorrection =>
+        TenantRequestType.utilityComplaint,
       _ => TenantRequestType.renewContract, // fallback for unmapped types
     };
   }
@@ -277,9 +281,13 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
         onHomeTap: () =>
             Navigator.of(context).popUntil((route) => route.isFirst),
         onBillsTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const BillSelectionPage()),
-          ).then((_) => _loadApiRequests());
+          Navigator.of(context)
+              .push(
+                MaterialPageRoute(
+                  builder: (context) => const BillSelectionPage(),
+                ),
+              )
+              .then((_) => _loadApiRequests());
         },
         onSupportTap: () {
           Navigator.of(context).push(
@@ -438,8 +446,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const Icon(
-              Icons.notifications_none_rounded,
+            icon: const AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: 24,
             ),
@@ -519,7 +526,7 @@ class _FilterBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Row(
         children: [
-          _FilterChip(
+          AppFilterChip(
             label: 'Tất cả',
             isActive: active == null,
             onTap: () => onChanged(null),
@@ -528,7 +535,7 @@ class _FilterBar extends StatelessWidget {
           ...TenantRequestType.values.map(
             (t) => Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: _FilterChip(
+              child: AppFilterChip(
                 label: t.label,
                 isActive: active == t,
                 onTap: () => onChanged(t),
@@ -536,47 +543,6 @@ class _FilterBar extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({
-    required this.label,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: isActive ? AppColors.deepBlue : AppColors.surface,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: isActive
-                ? AppColors.deepBlue
-                : AppColors.cardBorder.withValues(alpha: 0.9),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isActive ? Colors.white : AppColors.bodyText,
-            fontSize: 12,
-            fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-            height: 16 / 12,
-          ),
-        ),
       ),
     );
   }
@@ -689,6 +655,7 @@ class _TypeTag extends StatelessWidget {
     TenantRequestType.terminateContract => Icons.cancel_outlined,
     TenantRequestType.changeRoom => Icons.swap_horiz_rounded,
     TenantRequestType.addRoommate => Icons.person_add_outlined,
+    TenantRequestType.utilityComplaint => Icons.speed_outlined,
   };
 
   @override
@@ -764,6 +731,7 @@ class _RequestDetailDialog extends StatelessWidget {
     TenantRequestType.terminateContract => Icons.cancel_outlined,
     TenantRequestType.changeRoom => Icons.swap_horiz_rounded,
     TenantRequestType.addRoommate => Icons.person_add_outlined,
+    TenantRequestType.utilityComplaint => Icons.speed_outlined,
   };
 
   Color get _accentColor => switch (request.type) {
@@ -771,6 +739,7 @@ class _RequestDetailDialog extends StatelessWidget {
     TenantRequestType.terminateContract => const Color(0xFFDC2626),
     TenantRequestType.changeRoom => const Color(0xFF0284C7),
     TenantRequestType.addRoommate => const Color(0xFF16A34A),
+    TenantRequestType.utilityComplaint => const Color(0xFFEA580C),
   };
 
   Color get _accentBg => switch (request.type) {
@@ -778,6 +747,7 @@ class _RequestDetailDialog extends StatelessWidget {
     TenantRequestType.terminateContract => const Color(0xFFFFF0F0),
     TenantRequestType.changeRoom => const Color(0xFFEFF8FF),
     TenantRequestType.addRoommate => const Color(0xFFF0FFF4),
+    TenantRequestType.utilityComplaint => const Color(0xFFFFF7ED),
   };
 
   Color get _statusColor => switch (request.status) {
@@ -792,6 +762,7 @@ class _RequestDetailDialog extends StatelessWidget {
     TenantRequestType.terminateContract => 'Thông tin thanh lý',
     TenantRequestType.changeRoom => 'Thông tin chuyển phòng',
     TenantRequestType.addRoommate => 'Thông tin người ở cùng',
+    TenantRequestType.utilityComplaint => 'Thông tin khiếu nại',
   };
 
   @override
@@ -1024,6 +995,13 @@ class _RequestDetailDialog extends StatelessWidget {
           label: 'Ngày bắt đầu ở',
           value: d['Ngày bắt đầu ở'] ?? 'Chưa có thông tin',
         ),
+      ],
+      TenantRequestType.utilityComplaint => [
+        _DetailRow(
+          label: 'Loại yêu cầu',
+          value: d['Loại yêu cầu'] ?? 'Khiếu nại chỉ số điện nước',
+        ),
+        _DetailRow(label: 'Phòng', value: d['Phòng'] ?? 'Xem chi tiết yêu cầu'),
       ],
     };
   }
@@ -1451,8 +1429,8 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
           label: 'Ngày chuyển dự kiến',
           value:
               (p['expectedTransferDate'] ?? p['requestedTransferDate'])
-                      ?.toString() ??
-                  'Chưa có thông tin',
+                  ?.toString() ??
+              'Chưa có thông tin',
         ),
       ],
       ChangeRequestType.moveOut => [

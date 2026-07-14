@@ -26,8 +26,8 @@ class ImagePickerFileUploadService implements FileUploadService {
     ImagePicker? picker,
     FileService? fileService,
     this.maxSizeInBytes = 10 * 1024 * 1024,
-  })  : _picker = picker ?? ImagePicker(),
-        _fileService = fileService ?? const FileService();
+  }) : _picker = picker ?? ImagePicker(),
+       _fileService = fileService ?? const FileService();
 
   final ImagePicker _picker;
   final FileService _fileService;

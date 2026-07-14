@@ -1019,9 +1019,30 @@ String _lineTitle(TenantInvoiceLine line) {
 }
 
 String _lineSubtitle(TenantInvoiceLine line) {
+  final utilityQuantity = _lineUtilityQuantity(line);
+  if (utilityQuantity != null) return 'Số lượng: $utilityQuantity';
   if (line.description.isNotEmpty) return line.description;
   if (line.quantity > 0) return 'Số lượng: ${line.quantity}';
   return '';
+}
+
+String? _lineUtilityQuantity(TenantInvoiceLine line) {
+  final unit = switch (line.lineType.toUpperCase()) {
+    'ELECTRICITY' => 'kWh',
+    'WATER' => 'm³',
+    _ => null,
+  };
+  if (unit == null) return null;
+  final amount =
+      line.usageAmount ?? (line.quantity > 0 ? line.quantity.toDouble() : null);
+  if (amount == null) return null;
+  return '${_formatReading(amount)} $unit';
+}
+
+String _formatReading(double value) {
+  return value.truncateToDouble() == value
+      ? value.toInt().toString()
+      : value.toStringAsFixed(1);
 }
 
 String _formatAmount(int amount) {

@@ -43,9 +43,7 @@ class ChangeRequestService {
 
     final json = await _getJson(_uri('/change-requests/my', query));
     final list = _extractList(json);
-    return list
-        .map(ChangeRequest.fromJson)
-        .toList(growable: false);
+    return list.map(ChangeRequest.fromJson).toList(growable: false);
   }
 
   // ── Stats ─────────────────────────────────────────────────────────────────
@@ -99,9 +97,9 @@ class ChangeRequestService {
   }
 
   Uri _uri(String path, [Map<String, String>? query]) {
-    return Uri.parse('${ApiConfig.baseUrl}$path').replace(
-      queryParameters: query == null || query.isEmpty ? null : query,
-    );
+    return Uri.parse(
+      '${ApiConfig.baseUrl}$path',
+    ).replace(queryParameters: query == null || query.isEmpty ? null : query);
   }
 
   List<Map<String, dynamic>> _extractList(Map<String, dynamic> json) {
@@ -139,13 +137,19 @@ class ChangeRequestStats {
     final breakdown = <String, int>{};
     if (breakdownRaw is Map) {
       breakdownRaw.forEach((k, v) {
-        breakdown[k.toString()] = v is int ? v : int.tryParse(v.toString()) ?? 0;
+        breakdown[k.toString()] = v is int
+            ? v
+            : int.tryParse(v.toString()) ?? 0;
       });
     }
     return ChangeRequestStats(
       pending: json['pending'] is int ? json['pending'] as int : 0,
-      approvedToday: json['approvedToday'] is int ? json['approvedToday'] as int : 0,
-      rejectedToday: json['rejectedToday'] is int ? json['rejectedToday'] as int : 0,
+      approvedToday: json['approvedToday'] is int
+          ? json['approvedToday'] as int
+          : 0,
+      rejectedToday: json['rejectedToday'] is int
+          ? json['rejectedToday'] as int
+          : 0,
       thisMonth: json['thisMonth'] is int ? json['thisMonth'] as int : 0,
       breakdownByType: breakdown,
     );

@@ -7,10 +7,7 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeAuthService extends AuthService {
-  _FakeAuthService({
-    required this.token,
-    this.refreshResponse,
-  });
+  _FakeAuthService({required this.token, this.refreshResponse});
 
   final String? token;
   final LoginResponse? refreshResponse;

@@ -6,6 +6,7 @@ import '../../models/notification/notification_model.dart';
 import '../../services/notification/notification_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/app_screen_shell.dart';
+import '../../widgets/app_skeleton.dart';
 
 /// Màn danh sách thông báo với filter Tất cả / Chưa đọc / Đã đọc.
 class NotificationListScreen extends StatefulWidget {
@@ -148,11 +149,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
               ),
               Expanded(
                 child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.deepBlue,
-                        ),
-                      )
+                    ? const _NotificationLoadingState()
                     : _errorMessage != null && _items.isEmpty
                     ? _ErrorState(
                         message: _errorMessage!,
@@ -305,6 +302,27 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _NotificationLoadingState extends StatelessWidget {
+  const _NotificationLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
+      children: const [
+        AppSkeleton(width: double.infinity, height: 132, borderRadius: 10),
+        SizedBox(height: 8),
+        AppSkeleton(width: double.infinity, height: 132, borderRadius: 10),
+        SizedBox(height: 8),
+        AppSkeleton(width: double.infinity, height: 132, borderRadius: 10),
+        SizedBox(height: 8),
+        AppSkeleton(width: double.infinity, height: 132, borderRadius: 10),
+      ],
     );
   }
 }

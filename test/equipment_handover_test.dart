@@ -38,6 +38,7 @@ void main() {
     final item = HandoverItem.fromJson({
       'id': 7,
       'assetName': 'Air conditioner',
+      'assetCategory': 'APPLIANCE',
       'quantity': 1,
       'conditionStatus': 'GOOD',
       'note': 'Remote included',
@@ -46,6 +47,7 @@ void main() {
     });
 
     expect(item.assetName, 'Air conditioner');
+    expect(item.assetCategory, 'APPLIANCE');
     expect(item.quantity, 1);
     expect(item.conditionStatus, 'GOOD');
     expect(item.evidenceFileId, 44);
@@ -55,6 +57,7 @@ void main() {
     final item = HandoverItem.fromJson({
       'handover_item_id': 8,
       'asset_name': 'Desk',
+      'asset_category': 'FURNITURE',
       'quantity': 2,
       'condition_status': 'ATTENTION',
       'note': 'Small scratch',
@@ -64,8 +67,28 @@ void main() {
 
     expect(item.id, 8);
     expect(item.assetName, 'Desk');
+    expect(item.assetCategory, 'FURNITURE');
     expect(item.conditionStatus, 'ATTENTION');
     expect(item.evidenceFileUrl, '/api/v1/files/download/55');
+  });
+
+  test('HandoverItem.fromJson parses room asset response aliases', () {
+    final item = HandoverItem.fromJson({
+      'id': 12,
+      'assetName': 'Wardrobe',
+      'assetCategory': 'FURNITURE',
+      'quantity': 1,
+      'currentCondition': 'BROKEN',
+      'description': 'Door hinge is loose',
+      'fileImageId': 91,
+    });
+
+    expect(item.id, 12);
+    expect(item.assetName, 'Wardrobe');
+    expect(item.assetCategory, 'FURNITURE');
+    expect(item.conditionStatus, 'BROKEN');
+    expect(item.note, 'Door hinge is loose');
+    expect(item.evidenceFileId, 91);
   });
 
   test('HandoverRecord.fromJson handles empty items list', () {

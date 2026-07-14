@@ -6,6 +6,7 @@ import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/star_rating_input.dart';
 import 'package:hdbhms_mobile/widgets/ticket_attachment_grid.dart';
+import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 
 class MaintenanceTicketReviewScreen extends StatefulWidget {
   const MaintenanceTicketReviewScreen({
@@ -176,7 +177,7 @@ class _MaintenanceTicketReviewScreenState
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
               ),
               child: const Text('Vẫn xác nhận'),
@@ -199,7 +200,7 @@ class _MaintenanceTicketReviewScreenState
             FilledButton(
               onPressed: () => Navigator.of(context).pop(),
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
               ),
               child: const Text('Đóng'),
@@ -239,8 +240,7 @@ class _MaintenanceTicketReviewScreenState
         actions: [
           IconButton(
             onPressed: () {},
-            icon: const Icon(
-              Icons.notifications_none_rounded,
+            icon: const AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: AppColors.topBarIconSize,
             ),
@@ -468,16 +468,16 @@ class _ReviewFormCard extends StatelessWidget {
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
-                disabledBackgroundColor: AppColors.deepBlue.withValues(
+                backgroundColor: AppColors.primary,
+                disabledBackgroundColor: AppColors.primary.withValues(
                   alpha: 0.58,
                 ),
                 foregroundColor: Colors.white,
                 disabledForegroundColor: Colors.white,
-                elevation: 5,
-                shadowColor: AppColors.deepBlue.withValues(alpha: 0.22),
+                elevation: 0,
+                shadowColor: Colors.transparent,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
             ),
@@ -715,8 +715,12 @@ class _ErrorState extends StatelessWidget {
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('Thử lại'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
           ],

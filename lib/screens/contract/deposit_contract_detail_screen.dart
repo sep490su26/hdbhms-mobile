@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profileRequest/tenant_request_screen.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
 import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/contract/contract_list_item_model.dart';
@@ -9,10 +9,11 @@ import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
+import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/contract/contract_pdf_viewer_screen.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profileRequest/tenant_profile_screen.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
 
 class DepositContractDetailScreen extends StatefulWidget {
   const DepositContractDetailScreen({
@@ -147,8 +148,7 @@ class _DetailHeader extends StatelessWidget {
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const Icon(
-              Icons.notifications_none_rounded,
+            icon: const AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: 24,
             ),
@@ -201,44 +201,46 @@ class _RoomHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final imageUrl = _resolveResourceUrl(deposit.room.imageUrl);
     final roomName = _roomTitle(deposit.room);
+    final hasImage = imageUrl.isNotEmpty;
 
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+      borderRadius: BorderRadius.circular(20),
       child: SizedBox(
-        height: 180,
+        height: 200,
         width: double.infinity,
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (imageUrl.isEmpty)
-              const _RoomPlaceholder()
-            else
+            // Background: real photo or abstract gradient banner
+            if (hasImage)
               Image.network(
                 imageUrl,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) =>
-                    const _RoomPlaceholder(),
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return const _RoomPlaceholder();
-                },
-              ),
+                    const _ModernRoomBannerBg(),
+                loadingBuilder: (_, child, progress) =>
+                    progress == null ? child : const _ModernRoomBannerBg(),
+              )
+            else
+              const _ModernRoomBannerBg(),
+            // Gradient overlay
             DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                   colors: [
-                    Colors.black.withValues(alpha: 0.05),
-                    Colors.black.withValues(alpha: 0.72),
+                    Colors.black.withValues(alpha: hasImage ? 0.08 : 0.3),
+                    Colors.black.withValues(alpha: 0.78),
                   ],
                 ),
               ),
             ),
+            // Content
             Positioned(
-              left: 18,
-              right: 18,
-              bottom: 18,
+              left: 20,
+              right: 20,
+              bottom: 20,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -247,34 +249,75 @@ class _RoomHeroCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _StatusBadge(status: deposit.status),
-                        const SizedBox(height: 7),
+                        const SizedBox(height: 8),
                         Text(
                           roomName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 22,
+                            fontSize: 24,
                             fontWeight: FontWeight.w900,
-                            height: 27 / 22,
+                            height: 1.15,
+                            letterSpacing: -0.5,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    _formatMoney(deposit.amount),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      height: 17 / 13,
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: Text(
+                      _formatMoney(deposit.amount),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
+            // Top-right: room code chip
+            if (deposit.room.roomCode.trim().isNotEmpty)
+              Positioned(
+                top: 14,
+                right: 16,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.18),
+                    ),
+                  ),
+                  child: Text(
+                    '#${deposit.room.roomCode.trim()}',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -282,19 +325,72 @@ class _RoomHeroCard extends StatelessWidget {
   }
 }
 
-class _RoomPlaceholder extends StatelessWidget {
-  const _RoomPlaceholder();
+/// Abstract gradient background – Gen-Z / Airbnb inspired.
+class _ModernRoomBannerBg extends StatelessWidget {
+  const _ModernRoomBannerBg();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFFE7E9F2),
-      child: const Center(
-        child: Icon(
-          Icons.apartment_rounded,
-          color: AppColors.deepBlue,
-          size: 54,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF0B1F3A),
+            Color(0xFF12345C),
+            Color(0xFF1A4A8A),
+            Color(0xFF2563EB),
+          ],
+          stops: [0.0, 0.35, 0.65, 1.0],
         ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: -30,
+            right: -20,
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF2563EB).withValues(alpha: 0.22),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -40,
+            left: -30,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF0891B2).withValues(alpha: 0.18),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 20,
+            left: 100,
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.05),
+              ),
+            ),
+          ),
+          const Center(
+            child: Icon(
+              Icons.apartment_rounded,
+              color: Colors.white24,
+              size: 72,
+            ),
+          ),
+        ],
       ),
     );
   }

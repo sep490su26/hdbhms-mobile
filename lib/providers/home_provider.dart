@@ -47,8 +47,11 @@ class HomeProvider extends ChangeNotifier {
   ActiveRoomItem? get selectedRoom => _selectedRoom;
   UtilitySummary get roomUtilitySummary {
     // Return room-specific summary if loaded, otherwise fall back to home summary
-    return _roomUtilitySummary ?? _summary?.utilitySummary ?? const UtilitySummary();
+    return _roomUtilitySummary ??
+        _summary?.utilitySummary ??
+        const UtilitySummary();
   }
+
   bool get loadingUtilities => _loadingUtilities;
   List<TenantInvoice> get invoices => List.unmodifiable(_invoices);
 
