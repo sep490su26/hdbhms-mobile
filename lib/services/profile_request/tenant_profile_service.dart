@@ -7,7 +7,7 @@ import 'dart:typed_data';
 
 import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/api_response.dart';
-import 'package:hdbhms_mobile/models/profileRequest/tenant_profile_model.dart';
+import 'package:hdbhms_mobile/models/profile_request/tenant_profile_model.dart';
 import 'package:hdbhms_mobile/services/authenticated_client.dart';
 
 class TenantProfileException implements Exception {

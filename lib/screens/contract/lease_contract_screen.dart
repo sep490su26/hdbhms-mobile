@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profileRequest/tenant_request_screen.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
 import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/contract/lease_contract_model.dart';
-import 'package:hdbhms_mobile/models/profileRequest/tenant_request_model.dart';
+import 'package:hdbhms_mobile/models/profile_request/tenant_request_model.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
@@ -13,10 +13,13 @@ import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/contract/contract_pdf_viewer_screen.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profileRequest/tenant_profile_screen.dart';
-import 'package:hdbhms_mobile/screens/profileRequest/add_roommate_request_screen.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
+import 'package:hdbhms_mobile/screens/profile_request/add_roommate_request_screen.dart';
 import 'package:hdbhms_mobile/screens/contract/terminate_contract_screen.dart';
 import 'package:hdbhms_mobile/screens/room_transfer/create_room_transfer_screen.dart';
+import 'package:hdbhms_mobile/screens/contract/room_amenities_screen.dart';
+import 'package:hdbhms_mobile/widgets/app_action_tile.dart';
+import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 
 class LeaseContractScreen extends StatefulWidget {
   const LeaseContractScreen({
@@ -68,42 +71,47 @@ class _LeaseContractScreenState extends State<LeaseContractScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: AppScreenShell(
-          header: const _ContractHeader(),
-          child: FutureBuilder<LeaseContract>(
-            future: _contractFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const _ContractLoadingState();
-              }
+        child: FutureBuilder<LeaseContract>(
+          future: _contractFuture,
+          builder: (context, snapshot) {
+            final contract = snapshot.data;
+            final contractId = contract?.id ?? widget.contractId;
+            return AppScreenShell(
+              header: _ContractHeader(contractId: contractId),
+              child: Builder(
+                builder: (context) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const _ContractLoadingState();
+                  }
 
-              if (snapshot.hasError) {
-                final error = snapshot.error;
-                if (error is LeaseContractNotFoundException) {
-                  return _ContractEmptyState(onRetry: _retry);
-                }
-                return _ContractErrorState(
-                  message: _messageForError(error),
-                  onRetry: _retry,
-                );
-              }
+                  if (snapshot.hasError) {
+                    final error = snapshot.error;
+                    if (error is LeaseContractNotFoundException) {
+                      return _ContractEmptyState(onRetry: _retry);
+                    }
+                    return _ContractErrorState(
+                      message: _messageForError(error),
+                      onRetry: _retry,
+                    );
+                  }
 
-              final contract = snapshot.data;
-              if (contract == null) {
-                return _ContractEmptyState(onRetry: _retry);
-              }
+                  if (contract == null) {
+                    return _ContractEmptyState(onRetry: _retry);
+                  }
 
-              return RefreshIndicator(
-                color: AppColors.deepBlue,
-                onRefresh: _refresh,
-                child: _ContractContent(
-                  contract: contract,
-                  contractService: widget.contractService,
-                  onChanged: _refresh,
-                ),
-              );
-            },
-          ),
+                  return RefreshIndicator(
+                    color: AppColors.deepBlue,
+                    onRefresh: _refresh,
+                    child: _ContractContent(
+                      contract: contract,
+                      contractService: widget.contractService,
+                      onChanged: _refresh,
+                    ),
+                  );
+                },
+              ),
+            );
+          },
         ),
       ),
       bottomNavigationBar: const _ContractBottomNavigation(),
@@ -112,13 +120,15 @@ class _LeaseContractScreenState extends State<LeaseContractScreen> {
 }
 
 class _ContractHeader extends StatelessWidget {
-  const _ContractHeader();
+  const _ContractHeader({this.contractId});
+
+  final int? contractId;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: AppColors.topBarHeight,
-      padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
+      padding: const EdgeInsets.fromLTRB(4, 0, 6, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(
@@ -144,6 +154,50 @@ class _ContractHeader extends StatelessWidget {
               style: AppColors.topBarTitleStyle,
             ),
           ),
+          // Nút tiện ích phòng
+          if (contractId != null)
+            Tooltip(
+              message: 'Tiện ích phòng',
+              child: InkWell(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        RoomAmenitiesScreen(contractId: contractId),
+                  ),
+                ),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.deepBlue.withValues(alpha: 0.07),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.weekend_outlined,
+                        color: AppColors.deepBlue,
+                        size: 15,
+                      ),
+                      SizedBox(width: 5),
+                      Text(
+                        'Tiện ích phòng',
+                        style: TextStyle(
+                          color: AppColors.deepBlue,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          const SizedBox(width: 4),
           IconButton(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
@@ -152,8 +206,7 @@ class _ContractHeader extends StatelessWidget {
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const Icon(
-              Icons.notifications_none_rounded,
+            icon: const AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: 24,
             ),
@@ -190,7 +243,6 @@ class _ContractContent extends StatelessWidget {
             contractService: contractService,
             onChanged: onChanged,
           ),
-          _CreateRequestGrid(contract: contract),
           _RoomHeroCard(contract: contract),
           const SizedBox(height: 12),
           _ContractInfoGrid(contract: contract),
@@ -198,6 +250,8 @@ class _ContractContent extends StatelessWidget {
           _TermsSection(terms: contract.terms),
           const SizedBox(height: 12),
           _DocumentSection(contractFileUrl: contract.contractFileUrl),
+          const SizedBox(height: 12),
+          _CreateRequestGrid(contract: contract),
         ],
       ),
     );
@@ -232,9 +286,8 @@ class _CreateRequestGrid extends StatelessWidget {
     if (type == TenantRequestType.changeRoom) {
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => CreateRoomTransferScreen(
-            preloadedContractId: contractId,
-          ),
+          builder: (_) =>
+              CreateRoomTransferScreen(preloadedContractId: contractId),
         ),
       );
       return;
@@ -260,25 +313,79 @@ class _CreateRequestGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: _SectionCard(
-        title: 'Tạo yêu cầu mới',
-        icon: Icons.add_circle_outline_rounded,
-        child: GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-          childAspectRatio: 1.35,
-          children: TenantRequestType.values
-              .map(
-                (type) => _CreateTypeCard(
-                  type: type,
-                  onTap: () => _openCreateForm(context, type),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: AppColors.deepBlue.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.add_circle_outline_rounded,
+                    color: AppColors.deepBlue,
+                    size: 18,
+                  ),
                 ),
-              )
-              .toList(),
-        ),
+                const SizedBox(width: 9),
+                const Text(
+                  'Tạo yêu cầu mới',
+                  style: TextStyle(
+                    color: AppColors.inputText,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    height: 20 / 15,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: 1.55,
+            children: [
+              AppActionTile(
+                icon: Icons.autorenew_rounded,
+                label: 'Gia hạn\nhợp đồng',
+                accentColor: AppColors.actionBlue,
+                onTap: () =>
+                    _openCreateForm(context, TenantRequestType.renewContract),
+              ),
+              AppActionTile(
+                icon: Icons.cancel_outlined,
+                label: 'Thanh lý\nhợp đồng',
+                accentColor: AppColors.actionRose,
+                onTap: () => _openCreateForm(
+                  context,
+                  TenantRequestType.terminateContract,
+                ),
+              ),
+              AppActionTile(
+                icon: Icons.swap_horiz_rounded,
+                label: 'Chuyển\nphòng',
+                accentColor: AppColors.actionCyan,
+                onTap: () =>
+                    _openCreateForm(context, TenantRequestType.changeRoom),
+              ),
+              AppActionTile(
+                icon: Icons.person_add_outlined,
+                label: 'Thêm\nngười ở',
+                accentColor: AppColors.actionEmerald,
+                onTap: () =>
+                    _openCreateForm(context, TenantRequestType.addRoommate),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -358,91 +465,6 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CreateTypeCard extends StatelessWidget {
-  const _CreateTypeCard({required this.type, required this.onTap});
-
-  final TenantRequestType type;
-  final VoidCallback onTap;
-
-  IconData get _icon => switch (type) {
-    TenantRequestType.renewContract => Icons.autorenew_rounded,
-    TenantRequestType.terminateContract => Icons.cancel_outlined,
-    TenantRequestType.changeRoom => Icons.swap_horiz_rounded,
-    TenantRequestType.addRoommate => Icons.person_add_outlined,
-  };
-
-  Color get _iconBg => switch (type) {
-    TenantRequestType.renewContract => const Color(0xFFEFF1FF),
-    TenantRequestType.terminateContract => const Color(0xFFFFF0F0),
-    TenantRequestType.changeRoom => const Color(0xFFEFF8FF),
-    TenantRequestType.addRoommate => const Color(0xFFF0FFF4),
-  };
-
-  Color get _iconColor => switch (type) {
-    TenantRequestType.renewContract => AppColors.deepBlue,
-    TenantRequestType.terminateContract => const Color(0xFFDC2626),
-    TenantRequestType.changeRoom => const Color(0xFF0284C7),
-    TenantRequestType.addRoommate => const Color(0xFF16A34A),
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.cardBorder),
-          ),
-          padding: const EdgeInsets.fromLTRB(12, 14, 10, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: _iconBg,
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Icon(_icon, color: _iconColor, size: 22),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                type.fullLabel,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: _kLabelColor,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                  height: 17 / 13,
-                ),
-              ),
-              Text(
-                type.description,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.bodyText,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  height: 15 / 11,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -898,46 +920,46 @@ class _RoomHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final imageUrl = _resolveResourceUrl(contract.room.imageUrl);
     final roomName = _roomTitle(contract.room);
+    final hasImage = imageUrl.isNotEmpty;
 
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+      borderRadius: BorderRadius.circular(20),
       child: SizedBox(
-        height: 180,
+        height: 200,
         width: double.infinity,
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (imageUrl.isEmpty)
-              const _RoomPlaceholder()
-            else
+            // Background: real photo or abstract gradient banner
+            if (hasImage)
               Image.network(
                 imageUrl,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) =>
-                    const _RoomPlaceholder(),
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) {
-                    return child;
-                  }
-                  return const _RoomPlaceholder();
-                },
-              ),
+                    const _ModernRoomBannerBg(),
+                loadingBuilder: (_, child, progress) =>
+                    progress == null ? child : const _ModernRoomBannerBg(),
+              )
+            else
+              const _ModernRoomBannerBg(),
+            // Gradient overlay
             DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                   colors: [
-                    Colors.black.withValues(alpha: 0.05),
-                    Colors.black.withValues(alpha: 0.72),
+                    Colors.black.withValues(alpha: hasImage ? 0.08 : 0.3),
+                    Colors.black.withValues(alpha: 0.78),
                   ],
                 ),
               ),
             ),
+            // Content
             Positioned(
-              left: 18,
-              right: 18,
-              bottom: 18,
+              left: 20,
+              right: 20,
+              bottom: 20,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -946,34 +968,80 @@ class _RoomHeroCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _StatusBadge(status: contract.status),
-                        const SizedBox(height: 7),
+                        const SizedBox(height: 8),
                         Text(
                           roomName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 22,
+                            fontSize: 24,
                             fontWeight: FontWeight.w900,
-                            height: 27 / 22,
+                            height: 1.15,
+                            letterSpacing: -0.5,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    '${_formatMoney(contract.monthlyRent)}/tháng',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      height: 17 / 13,
-                    ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.25),
+                          ),
+                        ),
+                        child: Text(
+                          '${_formatMoney(contract.monthlyRent)}/tháng',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
+            // Top-right: room code chip
+            if (contract.room.roomCode.trim().isNotEmpty)
+              Positioned(
+                top: 14,
+                right: 16,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.18),
+                    ),
+                  ),
+                  child: Text(
+                    '#${contract.room.roomCode.trim()}',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -981,19 +1049,75 @@ class _RoomHeroCard extends StatelessWidget {
   }
 }
 
-class _RoomPlaceholder extends StatelessWidget {
-  const _RoomPlaceholder();
+/// Abstract gradient background for when there is no room photo.
+/// Inspired by Airbnb / Gen-Z card aesthetics.
+class _ModernRoomBannerBg extends StatelessWidget {
+  const _ModernRoomBannerBg();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFFE7E9F2),
-      child: const Center(
-        child: Icon(
-          Icons.apartment_rounded,
-          color: AppColors.deepBlue,
-          size: 54,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF0B1F3A), // deepBlue
+            Color(0xFF12345C), // darkBlue
+            Color(0xFF1A4A8A), // mid
+            Color(0xFF2563EB), // primary
+          ],
+          stops: [0.0, 0.35, 0.65, 1.0],
         ),
+      ),
+      child: Stack(
+        children: [
+          // Decorative circles (glassmorphism blobs)
+          Positioned(
+            top: -30,
+            right: -20,
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF2563EB).withValues(alpha: 0.22),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -40,
+            left: -30,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF0891B2).withValues(alpha: 0.18),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 20,
+            left: 100,
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.05),
+              ),
+            ),
+          ),
+          // Centre icon
+          const Center(
+            child: Icon(
+              Icons.apartment_rounded,
+              color: Colors.white24,
+              size: 72,
+            ),
+          ),
+        ],
       ),
     );
   }

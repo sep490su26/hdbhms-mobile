@@ -165,7 +165,7 @@ class _SuccessHeader extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => Navigator.of(context).maybePop(true),
+            onPressed: () => Navigator.of(context).maybePop(),
             style: IconButton.styleFrom(
               backgroundColor: Colors.white.withValues(alpha: 0.12),
               foregroundColor: Colors.white,
@@ -183,7 +183,7 @@ class _SuccessHeader extends StatelessWidget {
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 Text(
@@ -191,7 +191,7 @@ class _SuccessHeader extends StatelessWidget {
                   style: TextStyle(
                     color: Color(0xBFFFFFFF),
                     fontSize: 12,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -313,7 +313,7 @@ class _AnimatedSuccessHero extends StatelessWidget {
             color: Colors.white,
             fontSize: 28,
             fontWeight: FontWeight.w900,
-            letterSpacing: 0,
+            letterSpacing: -0.5,
           ),
         ),
         const SizedBox(height: 8),
@@ -472,7 +472,7 @@ class _TransactionCard extends StatelessWidget {
                     color: theme.ink,
                     fontSize: 32,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 0,
+                    letterSpacing: -0.7,
                   ),
                 ),
               ],
@@ -975,17 +975,17 @@ class _SuccessTheme {
     }
     return const _SuccessTheme(
       icon: Icons.bolt_rounded,
-      background: Color(0xFF061827),
-      backgroundEnd: Color(0xFF12345C),
-      primary: Color(0xFF1D4ED8),
-      secondary: Color(0xFF60A5FA),
-      accent: Color(0xFF93C5FD),
-      accentEnd: Color(0xFFDBEAFE),
-      checkColor: Color(0xFF061827),
-      ink: Color(0xFF10233F),
-      mutedInk: Color(0xFF607089),
-      softAccent: Color(0xFFE0F2FE),
-      softSurface: Color(0xFFF5F7FB),
+      background: Color(0xFF073B4C),
+      backgroundEnd: Color(0xFF075E63),
+      primary: Color(0xFF087F8C),
+      secondary: Color(0xFF22D3EE),
+      accent: Color(0xFF5EEAD4),
+      accentEnd: Color(0xFFA7F3D0),
+      checkColor: Color(0xFF073B4C),
+      ink: Color(0xFF103A43),
+      mutedInk: Color(0xFF5F747A),
+      softAccent: Color(0xFFDDFBF6),
+      softSurface: Color(0xFFF1F9F8),
     );
   }
 }
@@ -1019,9 +1019,30 @@ String _lineTitle(TenantInvoiceLine line) {
 }
 
 String _lineSubtitle(TenantInvoiceLine line) {
+  final utilityQuantity = _lineUtilityQuantity(line);
+  if (utilityQuantity != null) return 'Số lượng: $utilityQuantity';
   if (line.description.isNotEmpty) return line.description;
   if (line.quantity > 0) return 'Số lượng: ${line.quantity}';
   return '';
+}
+
+String? _lineUtilityQuantity(TenantInvoiceLine line) {
+  final unit = switch (line.lineType.toUpperCase()) {
+    'ELECTRICITY' => 'kWh',
+    'WATER' => 'm³',
+    _ => null,
+  };
+  if (unit == null) return null;
+  final amount =
+      line.usageAmount ?? (line.quantity > 0 ? line.quantity.toDouble() : null);
+  if (amount == null) return null;
+  return '${_formatReading(amount)} $unit';
+}
+
+String _formatReading(double value) {
+  return value.truncateToDouble() == value
+      ? value.toInt().toString()
+      : value.toStringAsFixed(1);
 }
 
 String _formatAmount(int amount) {

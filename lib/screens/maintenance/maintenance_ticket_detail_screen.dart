@@ -8,6 +8,7 @@ import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/ticket_attachment_grid.dart';
 import 'package:hdbhms_mobile/widgets/ticket_status_badge.dart';
 import 'package:hdbhms_mobile/widgets/ticket_timeline.dart';
+import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_review_screen.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 
@@ -230,7 +231,7 @@ class _MaintenanceTicketDetailScreenState
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
               ),
               child: Text(confirmText),
@@ -278,7 +279,7 @@ class _MaintenanceTicketDetailScreenState
                 Navigator.of(context).pop(controller.text.trim());
               },
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
               ),
               child: const Text('Từ chối'),
@@ -315,8 +316,7 @@ class _MaintenanceTicketDetailScreenState
         actions: [
           IconButton(
             onPressed: () {},
-            icon: const Icon(
-              Icons.notifications_none_rounded,
+            icon: const AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: AppColors.topBarIconSize,
             ),
@@ -502,8 +502,8 @@ class _BillingInfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPaid = detail.billingStatus.toUpperCase() == 'PAID';
-    final responsibility = detail.chargeToTenant ||
-            detail.payer.toUpperCase() == 'TENANT'
+    final responsibility =
+        detail.chargeToTenant || detail.payer.toUpperCase() == 'TENANT'
         ? 'Khách thuê chịu'
         : 'Không thu khách';
     return _SectionCard(
@@ -550,7 +550,7 @@ class _BillingInfoCard extends StatelessWidget {
                   ),
                 ),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.deepBlue,
+                  backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   minimumSize: const Size.fromHeight(46),
                 ),
@@ -913,9 +913,12 @@ class _PrimaryActionButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.deepBlue,
+          backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
         child: Text(
           label,
@@ -940,9 +943,12 @@ class _SecondaryActionButton extends StatelessWidget {
       child: OutlinedButton(
         onPressed: onTap,
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.deepBlue,
-          side: const BorderSide(color: AppColors.deepBlue),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          foregroundColor: AppColors.primary,
+          backgroundColor: AppColors.primaryLight.withValues(alpha: 0.72),
+          side: BorderSide(color: AppColors.primary.withValues(alpha: 0.24)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
         child: Text(
           label,
@@ -1040,8 +1046,12 @@ class _ErrorState extends StatelessWidget {
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('Thử lại'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
           ],
@@ -1306,9 +1316,11 @@ class _SheetSubmitButton extends StatelessWidget {
       child: FilledButton(
         onPressed: onPressed,
         style: FilledButton.styleFrom(
-          backgroundColor: AppColors.deepBlue,
+          backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
         child: Text(
           label,

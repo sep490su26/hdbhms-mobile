@@ -24,6 +24,10 @@ class ActiveRoomItem {
     required this.propertyName,
     this.roomStatus = '',
     this.contractStatus = '',
+    this.roleInContract = '',
+    this.startDate,
+    this.endDate,
+    this.occupantCount = 0,
   });
 
   final int contractId;
@@ -34,6 +38,10 @@ class ActiveRoomItem {
   final String propertyName;
   final String roomStatus;
   final String contractStatus;
+  final String roleInContract;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final int occupantCount;
 
   factory ActiveRoomItem.fromJson(Map<String, dynamic> json) {
     return ActiveRoomItem(
@@ -61,6 +69,18 @@ class ActiveRoomItem {
           json['contractStatus']?.toString() ??
           json['contract_status']?.toString() ??
           '',
+      roleInContract:
+          json['roleInContract']?.toString() ??
+          json['role_in_contract']?.toString() ??
+          '',
+      startDate: DateTime.tryParse(
+        json['startDate']?.toString() ?? json['start_date']?.toString() ?? '',
+      ),
+      endDate: DateTime.tryParse(
+        json['endDate']?.toString() ?? json['end_date']?.toString() ?? '',
+      ),
+      occupantCount:
+          _asInt(json['occupantCount'] ?? json['occupant_count']) ?? 0,
     );
   }
 

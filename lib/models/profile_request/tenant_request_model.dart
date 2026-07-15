@@ -2,7 +2,8 @@ enum TenantRequestType {
   renewContract,
   terminateContract,
   changeRoom,
-  addRoommate;
+  addRoommate,
+  utilityComplaint;
 
   String get label {
     switch (this) {
@@ -14,6 +15,8 @@ enum TenantRequestType {
         return 'Chuyển phòng';
       case TenantRequestType.addRoommate:
         return 'Thêm người ở';
+      case TenantRequestType.utilityComplaint:
+        return 'Khiếu nại điện nước';
     }
   }
 
@@ -27,6 +30,8 @@ enum TenantRequestType {
         return 'Chuyển phòng';
       case TenantRequestType.addRoommate:
         return 'Thêm người ở cùng';
+      case TenantRequestType.utilityComplaint:
+        return 'Khiếu nại điện nước';
     }
   }
 
@@ -40,6 +45,8 @@ enum TenantRequestType {
         return 'Yêu cầu đổi sang phòng khác';
       case TenantRequestType.addRoommate:
         return 'Đăng ký thêm người ở cùng';
+      case TenantRequestType.utilityComplaint:
+        return 'Yêu cầu xem xét lại chỉ số điện hoặc nước';
     }
   }
 }

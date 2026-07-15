@@ -51,21 +51,14 @@ class LeaseContract {
   double get expectedTotal => (monthlyRent ?? 0) + expectedServiceFeeTotal;
 
   factory LeaseContract.fromJson(Map<String, dynamic> json) {
-    final roomJson = _firstMap(json, const [
-      'room',
-      'roomInfo',
-      'rentalRoom',
-    ]);
+    final roomJson = _firstMap(json, const ['room', 'roomInfo', 'rentalRoom']);
 
     return LeaseContract(
       id: _asInt(json['id'] ?? json['contractId']),
       contractCode: _firstString(json, const ['contractCode']),
       status: _firstString(json, const ['status', 'contractStatus']),
       room: LeaseRoom.fromJson(roomJson.isEmpty ? json : roomJson),
-      monthlyRent: _firstDouble(json, const [
-        'monthlyRent',
-        'rentAmount',
-      ]),
+      monthlyRent: _firstDouble(json, const ['monthlyRent', 'rentAmount']),
       paymentCycleMonths: _asInt(
         json['paymentCycleMonths'] ?? json['paymentCycle'],
       ),
@@ -75,10 +68,7 @@ class LeaseContract {
         'rentStartDate',
         'billingStartDate',
       ]),
-      depositAmount: _firstDouble(json, const [
-        'depositAmount',
-        'deposit',
-      ]),
+      depositAmount: _firstDouble(json, const ['depositAmount', 'deposit']),
       terms: _parseTerms(json),
       serviceFees: _parseServiceFees(json),
       contractFileUrl: _firstString(json, const [
@@ -88,28 +78,19 @@ class LeaseContract {
         'fileUrl',
         'documentUrl',
       ]),
-      tenantIntention: _firstString(json, const [
-        'tenantIntention',
-      ]),
+      tenantIntention: _firstString(json, const ['tenantIntention']),
       expectedVacantDate: _firstDate(json, const [
         'expectedVacantDate',
         'expectedMoveOutDate',
       ]),
-      roleInContract: _firstString(json, const [
-        'roleInContract',
-      ]),
+      roleInContract: _firstString(json, const ['roleInContract']),
       isPrimary: _firstBool(json, const ['isPrimary']),
-      canRecordIntention: _firstBool(json, const [
-        'canRecordIntention',
-      ]),
+      canRecordIntention: _firstBool(json, const ['canRecordIntention']),
       canRenew: _firstBool(json, const ['canRenew']),
       canRenewBlockedReason: _firstString(json, const [
         'canRenewBlockedReason',
       ]),
-      signedAt: _firstDate(json, const [
-        'signedAt',
-        'confirmedAt',
-      ]),
+      signedAt: _firstDate(json, const ['signedAt', 'confirmedAt']),
     );
   }
 }
@@ -199,7 +180,8 @@ List<LeaseServiceFee> _parseServiceFees(Map<String, dynamic> json) {
     'fixedServiceFee',
     'serviceFeeAmount',
   ]);
-  final values = json['serviceFees'] ?? json['fees'] ?? json['expectedServiceFees'];
+  final values =
+      json['serviceFees'] ?? json['fees'] ?? json['expectedServiceFees'];
 
   final fees = <LeaseServiceFee>[
     if (serviceFeeTotal != null)

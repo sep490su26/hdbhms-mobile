@@ -369,7 +369,8 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
         ),
 
         // ── Accept nomination (if nominated) ───────────────────────────
-        if (!_loadingTransfer && _transfer.nominatedHolderProfileId != null) ...[
+        if (!_loadingTransfer &&
+            _transfer.nominatedHolderProfileId != null) ...[
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(12),

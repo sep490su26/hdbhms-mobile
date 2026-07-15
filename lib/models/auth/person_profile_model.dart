@@ -1,4 +1,4 @@
-﻿import 'package:hdbhms_mobile/models/maintenance/file_metadata_model.dart';
+import 'package:hdbhms_mobile/models/maintenance/file_metadata_model.dart';
 
 class PersonProfileResponse {
   const PersonProfileResponse({
@@ -40,7 +40,9 @@ class PersonProfileResponse {
       email: json['email']?.toString() ?? '',
       permanentAddress: json['permanentAddress']?.toString() ?? '',
       portraitFile: json['portraitFile'] != null
-          ? FileMetadataResponse.fromJson(json['portraitFile'] as Map<String, dynamic>)
+          ? FileMetadataResponse.fromJson(
+              json['portraitFile'] as Map<String, dynamic>,
+            )
           : null,
       createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? ''),
       updatedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? ''),

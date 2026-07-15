@@ -10,7 +10,7 @@ import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
-import 'package:hdbhms_mobile/services/profileRequest/tenant_profile_service.dart';
+import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/screens/auth/reset_password_page.dart';
 import 'package:hdbhms_mobile/screens/splash/app_splash_screen.dart';
 import 'package:hdbhms_mobile/services/deep_link_service.dart';

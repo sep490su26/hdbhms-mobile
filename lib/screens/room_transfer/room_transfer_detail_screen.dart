@@ -11,7 +11,7 @@ import 'package:hdbhms_mobile/screens/room_transfer/holder_nomination_screen.dar
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/notification/notification_service.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
-import 'package:hdbhms_mobile/services/profileRequest/tenant_profile_service.dart';
+import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
@@ -369,9 +369,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
       if (!mounted) return;
 
       if (selectedSettlement == SettlementType.tenantPayMore) {
-        _snack(
-          'Đã tạo hóa đơn chênh lệch. Đang chuyển sang màn thanh toán.',
-        );
+        _snack('Đã tạo hóa đơn chênh lệch. Đang chuyển sang màn thanh toán.');
         await _openTransferDifferencePayment();
         return;
       }
@@ -462,7 +460,8 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
       setState(() {
         _checkingHolderNominationAccess = false;
         _isVerifiedNominatedHolder =
-            isPendingForCurrentUser || _isCurrentTenantNominatedHolder(transfer);
+            isPendingForCurrentUser ||
+            _isCurrentTenantNominatedHolder(transfer);
       });
     } catch (_) {
       if (!mounted) return;
@@ -798,7 +797,9 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
 
     final invoiceId = _transfer!.oldRoomFinalInvoiceId;
     if (invoiceId == null || invoiceId <= 0) {
-      _snack('Ch\u01b0a t\u00ecm th\u1ea5y h\u00f3a \u0111\u01a1n \u0111i\u1ec7n/n\u01b0\u1edbc chuy\u1ec3n ph\u00f2ng.');
+      _snack(
+        'Ch\u01b0a t\u00ecm th\u1ea5y h\u00f3a \u0111\u01a1n \u0111i\u1ec7n/n\u01b0\u1edbc chuy\u1ec3n ph\u00f2ng.',
+      );
       return;
     }
 
@@ -816,13 +817,17 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
       }
 
       if (invoice == null) {
-        _snack('Kh\u00f4ng t\u00ecm th\u1ea5y h\u00f3a \u0111\u01a1n chuy\u1ec3n ph\u00f2ng trong danh s\u00e1ch h\u00f3a \u0111\u01a1n.');
+        _snack(
+          'Kh\u00f4ng t\u00ecm th\u1ea5y h\u00f3a \u0111\u01a1n chuy\u1ec3n ph\u00f2ng trong danh s\u00e1ch h\u00f3a \u0111\u01a1n.',
+        );
         return;
       }
 
       if (!invoice.canPay ||
           (invoice.qrCode.isEmpty && invoice.transferDescription.isEmpty)) {
-        _snack('H\u00f3a \u0111\u01a1n chuy\u1ec3n ph\u00f2ng ch\u01b0a s\u1eb5n s\u00e0ng \u0111\u1ec3 thanh to\u00e1n.');
+        _snack(
+          'H\u00f3a \u0111\u01a1n chuy\u1ec3n ph\u00f2ng ch\u01b0a s\u1eb5n s\u00e0ng \u0111\u1ec3 thanh to\u00e1n.',
+        );
         return;
       }
 
@@ -842,7 +847,9 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
       _snack(e.message);
     } catch (_) {
       if (!mounted) return;
-      _snack('Kh\u00f4ng th\u1ec3 m\u1edf thanh to\u00e1n h\u00f3a \u0111\u01a1n. Vui l\u00f2ng th\u1eed l\u1ea1i.');
+      _snack(
+        'Kh\u00f4ng th\u1ec3 m\u1edf thanh to\u00e1n h\u00f3a \u0111\u01a1n. Vui l\u00f2ng th\u1eed l\u1ea1i.',
+      );
     } finally {
       if (mounted) setState(() => _actionInProgress = false);
     }
@@ -1424,8 +1431,8 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
           displaySubtitle: _transfer == null
               ? null
               : _displayTransferStatusSubtitle(_transfer!),
-          neutral: _transfer != null &&
-              _shouldMaskOperationalStatus(_transfer!),
+          neutral:
+              _transfer != null && _shouldMaskOperationalStatus(_transfer!),
         ),
 
         const SizedBox(height: 14),
@@ -1898,7 +1905,8 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
             actions.add(const SizedBox(height: 10));
             actions.add(
               _ActionButton(
-                label: 'Thanh to\u00e1n h\u00f3a \u0111\u01a1n \u0111i\u1ec7n/n\u01b0\u1edbc',
+                label:
+                    'Thanh to\u00e1n h\u00f3a \u0111\u01a1n \u0111i\u1ec7n/n\u01b0\u1edbc',
                 icon: Icons.payments_outlined,
                 color: const Color(0xFFD97706),
                 busy: busy,
@@ -2186,7 +2194,8 @@ class _StatusBanner extends StatelessWidget {
     };
   }
 
-  String get _label => displayLabel ?? transferStatus?.label ?? requestStatus.label;
+  String get _label =>
+      displayLabel ?? transferStatus?.label ?? requestStatus.label;
 
   @override
   Widget build(BuildContext context) {

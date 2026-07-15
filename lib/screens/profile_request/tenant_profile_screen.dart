@@ -4,22 +4,23 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profileRequest/tenant_request_screen.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
 import 'package:hdbhms_mobile/config/api_config.dart';
-import 'package:hdbhms_mobile/models/profileRequest/tenant_profile_model.dart';
+import 'package:hdbhms_mobile/models/profile_request/tenant_profile_model.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
-import 'package:hdbhms_mobile/services/profileRequest/tenant_profile_service.dart';
+import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/app_action_tile.dart';
+import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/contract/lease_contract_list_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/change_password_page.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profileRequest/update_profile_screen.dart';
+import 'package:hdbhms_mobile/screens/profile_request/update_profile_screen.dart';
 
 class TenantProfileScreen extends StatefulWidget {
   const TenantProfileScreen({
@@ -248,8 +249,7 @@ class _ProfileHeader extends StatelessWidget {
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const Icon(
-              Icons.notifications_none_rounded,
+            icon: const AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: 24,
             ),
@@ -347,7 +347,9 @@ class _UpdateProfileButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
+          disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.72),
           elevation: 0,
+          minimumSize: const Size(0, 48),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -378,7 +380,9 @@ class _LogoutButton extends StatelessWidget {
         label: const Text('Đăng xuất'),
         style: OutlinedButton.styleFrom(
           foregroundColor: const Color(0xFFDC2626),
-          side: const BorderSide(color: Color(0xFFDC2626)),
+          backgroundColor: const Color(0xFFFFF1F2),
+          side: const BorderSide(color: Color(0xFFFCA5A5)),
+          minimumSize: const Size(0, 48),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -402,21 +406,22 @@ class _ChangePasswordButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 52,
+      height: 48,
       child: OutlinedButton.icon(
         onPressed: onChangePassword,
         icon: const Icon(Icons.lock_reset_rounded, size: 20),
         label: const Text('Đổi mật khẩu'),
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
-          backgroundColor: AppColors.surface,
-          side: const BorderSide(color: AppColors.primary),
+          backgroundColor: AppColors.primaryLight.withValues(alpha: 0.72),
+          side: BorderSide(color: AppColors.primary.withValues(alpha: 0.24)),
+          minimumSize: const Size(0, 48),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
           ),
           textStyle: const TextStyle(
             fontSize: 14,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w900,
             height: 18 / 14,
           ),
         ),
@@ -563,6 +568,7 @@ class _IdentityDocumentImages extends StatelessWidget {
           ),
         ],
         if (backUrl.isNotEmpty) ...[
+          if (frontUrl.isNotEmpty) const SizedBox(height: 22),
           const _ImageLabel('Ảnh CCCD mặt sau'),
           const SizedBox(height: 12),
           _TenantProfileImage(

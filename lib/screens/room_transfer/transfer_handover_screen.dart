@@ -18,8 +18,7 @@ class TransferHandoverScreen extends StatefulWidget {
   final RoomTransferService transferService;
 
   @override
-  State<TransferHandoverScreen> createState() =>
-      _TransferHandoverScreenState();
+  State<TransferHandoverScreen> createState() => _TransferHandoverScreenState();
 }
 
 class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
@@ -135,7 +134,8 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
       return;
     }
     if (_isCompletePhase &&
-        widget.transferRequest.targetTransferType == TargetTransferType.newContract &&
+        widget.transferRequest.targetTransferType ==
+            TargetTransferType.newContract &&
         inData == null) {
       _snack('Transfer completion requires new-room readings.');
       return;
@@ -145,8 +145,10 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        title: const Text('Xác nhận thực hiện chuyển phòng',
-            style: TextStyle(fontWeight: FontWeight.w800)),
+        title: const Text(
+          'Xác nhận thực hiện chuyển phòng',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
         content: const Text(
           'Sau khi xác nhận, quá trình chuyển phòng sẽ được thực hiện. '
           'Hành động này không thể hoàn tác.',
@@ -233,7 +235,10 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Icon(
-                    Icons.check_circle, color: Color(0xFF16A34A), size: 36),
+                  Icons.check_circle,
+                  color: Color(0xFF16A34A),
+                  size: 36,
+                ),
               ),
               const SizedBox(height: 18),
               const Text(
@@ -293,10 +298,7 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: AppScreenShell(
-          header: _buildHeader(),
-          child: _buildBody(),
-        ),
+        child: AppScreenShell(header: _buildHeader(), child: _buildBody()),
       ),
     );
   }
@@ -325,8 +327,10 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
             tooltip: 'Trở về',
           ),
           const Expanded(
-            child:
-                Text('Bàn giao chuyển phòng', style: AppColors.topBarTitleStyle),
+            child: Text(
+              'Bàn giao chuyển phòng',
+              style: AppColors.topBarTitleStyle,
+            ),
           ),
         ],
       ),
@@ -348,8 +352,11 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
           ),
           child: Row(
             children: [
-              const Icon(Icons.info_outline,
-                  color: AppColors.deepBlue, size: 20),
+              const Icon(
+                Icons.info_outline,
+                color: AppColors.deepBlue,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -405,9 +412,8 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
             amount: transfer.priceDifferenceToPay ?? 0,
             selectedType: _positiveDifferenceSettlementType,
             enabled: !_submitting,
-            onChanged: (type) => setState(
-              () => _positiveDifferenceSettlementType = type,
-            ),
+            onChanged: (type) =>
+                setState(() => _positiveDifferenceSettlementType = type),
             formatCurrency: _formatCurrency,
           ),
         ],
@@ -422,8 +428,9 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF16A34A),
               foregroundColor: Colors.white,
-              disabledBackgroundColor:
-                  const Color(0xFF16A34A).withValues(alpha: 0.5),
+              disabledBackgroundColor: const Color(
+                0xFF16A34A,
+              ).withValues(alpha: 0.5),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -440,10 +447,7 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
                   )
                 : const Text(
                     'Thực hiện chuyển phòng',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                   ),
           ),
         ),
@@ -562,8 +566,9 @@ class _SettlementOptionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeColor = selected ? AppColors.deepBlue : const Color(0xFF9CA3AF);
-    final textColor =
-        enabled ? const Color(0xFF111827) : const Color(0xFF9CA3AF);
+    final textColor = enabled
+        ? const Color(0xFF111827)
+        : const Color(0xFF9CA3AF);
 
     return InkWell(
       onTap: enabled ? onTap : null,
@@ -700,8 +705,7 @@ class _HandoverSection extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             child: Container(
               width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: AppColors.inputFill,
                 borderRadius: BorderRadius.circular(10),
@@ -709,8 +713,11 @@ class _HandoverSection extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.event_outlined,
-                      color: AppColors.hintText, size: 18),
+                  const Icon(
+                    Icons.event_outlined,
+                    color: AppColors.hintText,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     date != null ? formatDate(date!) : 'Chọn ngày',
@@ -734,8 +741,7 @@ class _HandoverSection extends StatelessWidget {
           const SizedBox(height: 6),
           TextField(
             controller: electricityCtrl,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(
               hintText: 'Nhập chỉ số điện hiện tại',
               border: OutlineInputBorder(
@@ -744,8 +750,10 @@ class _HandoverSection extends StatelessWidget {
               ),
               filled: true,
               fillColor: AppColors.inputFill,
-              contentPadding:
-                  EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
             ),
             style: const TextStyle(color: AppColors.inputText, fontSize: 14),
           ),
@@ -757,8 +765,7 @@ class _HandoverSection extends StatelessWidget {
           const SizedBox(height: 6),
           TextField(
             controller: waterCtrl,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(
               hintText: 'Nhập chỉ số nước hiện tại',
               border: OutlineInputBorder(
@@ -767,8 +774,10 @@ class _HandoverSection extends StatelessWidget {
               ),
               filled: true,
               fillColor: AppColors.inputFill,
-              contentPadding:
-                  EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
             ),
             style: const TextStyle(color: AppColors.inputText, fontSize: 14),
           ),
@@ -789,8 +798,10 @@ class _HandoverSection extends StatelessWidget {
               ),
               filled: true,
               fillColor: AppColors.inputFill,
-              contentPadding:
-                  EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
             ),
             style: const TextStyle(color: AppColors.inputText, fontSize: 14),
           ),

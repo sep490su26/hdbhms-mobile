@@ -4,8 +4,9 @@ import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/payment/tenant_invoice_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/app_screen_shell.dart';
+import '../../widgets/app_notification_bell.dart';
 import '../notification/notification_list_screen.dart';
-import '../profileRequest/tenant_profile_screen.dart';
+import '../profile_request/tenant_profile_screen.dart';
 
 class PaymentHistoryPage extends StatefulWidget {
   const PaymentHistoryPage({
@@ -201,8 +202,7 @@ class _HistoryHeader extends StatelessWidget {
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const Icon(
-              Icons.notifications_none_rounded,
+            icon: const AppNotificationBell(
               color: AppColors.inputText,
               size: 24,
             ),

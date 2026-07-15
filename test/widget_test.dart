@@ -11,15 +11,15 @@ import 'package:hdbhms_mobile/models/home/home_summary_model.dart';
 import 'package:hdbhms_mobile/models/auth/login_response.dart';
 import 'package:hdbhms_mobile/models/onboarding_state.dart';
 import 'package:hdbhms_mobile/models/payment/tenant_invoice_model.dart';
-import 'package:hdbhms_mobile/models/profileRequest/tenant_profile_model.dart';
+import 'package:hdbhms_mobile/models/profile_request/tenant_profile_model.dart';
 import 'package:hdbhms_mobile/models/onboarding_action.dart';
 import 'package:hdbhms_mobile/screens/auth/change_password_page.dart';
-import 'package:hdbhms_mobile/screens/profileRequest/tenant_profile_screen.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/auth/forgot_password_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
-import 'package:hdbhms_mobile/services/profileRequest/tenant_profile_service.dart';
+import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 
 class _FakeAuthService extends AuthService {
   const _FakeAuthService();
@@ -166,7 +166,6 @@ class _TitledTenantInvoice extends TenantInvoice {
          accountNumber: '123456789',
          accountName: 'NGUYEN VAN A',
        );
-
 
   final String _title;
 

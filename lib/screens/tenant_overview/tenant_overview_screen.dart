@@ -6,14 +6,18 @@ import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/home/home_summary_model.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/home/home_screen.dart';
-import 'package:hdbhms_mobile/screens/profileRequest/tenant_profile_screen.dart';
+import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
-import 'package:hdbhms_mobile/services/profileRequest/tenant_profile_service.dart';
+import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/utils/display_formatters.dart';
+import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
+import 'package:hdbhms_mobile/widgets/app_skeleton.dart';
+import 'package:hdbhms_mobile/widgets/app_brand_logo.dart';
 
 class TenantOverviewScreen extends StatefulWidget {
   const TenantOverviewScreen({
@@ -112,6 +116,8 @@ class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
             roomStatus: room.currentStatus,
             propertyName: formatPropertyName(summary.tenant?.name ?? ''),
             contractStatus: summary.contract?.status ?? '',
+            startDate: summary.contract?.startDate,
+            endDate: summary.contract?.endDate,
           );
         })
         .toList(growable: false);
@@ -131,6 +137,8 @@ class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
         roomStatus: summaryRoom.currentStatus,
         propertyName: formatPropertyName(summary.tenant?.name ?? ''),
         contractStatus: summary.contract?.status ?? '',
+        startDate: summary.contract?.startDate,
+        endDate: summary.contract?.endDate,
       ),
     ];
   }
@@ -217,9 +225,7 @@ class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.deepBlue),
-      );
+      return const _OverviewLoadingState();
     }
 
     if (_errorMessage != null) {
@@ -260,7 +266,8 @@ class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
             controller: _imageController,
             images: images,
             currentIndex: _imageIndex,
-            user: summary.user,
+            tenantName: tenantName,
+            roomCount: _rooms.length,
             onProfileTap: _openProfile,
             onPageChanged: (index) => setState(() => _imageIndex = index),
           ),
@@ -270,7 +277,6 @@ class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _PropertySummaryCard(
-                  tenantName: tenantName,
                   phone: phone.isEmpty
                       ? 'Chưa cập nhật SĐT nhà trọ'
                       : 'SĐT nhà trọ: $phone',
@@ -305,7 +311,8 @@ class _OverviewHero extends StatelessWidget {
     required this.controller,
     required this.images,
     required this.currentIndex,
-    required this.user,
+    required this.tenantName,
+    required this.roomCount,
     required this.onProfileTap,
     required this.onPageChanged,
   });
@@ -313,7 +320,8 @@ class _OverviewHero extends StatelessWidget {
   final PageController controller;
   final List<String> images;
   final int currentIndex;
-  final HomeUser user;
+  final String tenantName;
+  final int roomCount;
   final VoidCallback onProfileTap;
   final ValueChanged<int> onPageChanged;
 
@@ -323,7 +331,7 @@ class _OverviewHero extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final heroHeight = constraints.maxWidth < 380 ? 238.0 : 260.0;
+        final heroHeight = constraints.maxWidth < 380 ? 276.0 : 296.0;
         return SizedBox(
           height: heroHeight,
           child: Stack(
@@ -363,7 +371,16 @@ class _OverviewHero extends StatelessWidget {
                 top: 14,
                 left: 14,
                 right: 14,
-                child: _HeroTopBar(user: user, onProfileTap: onProfileTap),
+                child: _HeroTopBar(onProfileTap: onProfileTap),
+              ),
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 38,
+                child: _HeroPropertyInfo(
+                  tenantName: tenantName,
+                  roomCount: roomCount,
+                ),
               ),
               Positioned(
                 left: 16,
@@ -382,9 +399,8 @@ class _OverviewHero extends StatelessWidget {
 }
 
 class _HeroTopBar extends StatelessWidget {
-  const _HeroTopBar({required this.user, required this.onProfileTap});
+  const _HeroTopBar({required this.onProfileTap});
 
-  final HomeUser user;
   final VoidCallback onProfileTap;
 
   @override
@@ -393,99 +409,106 @@ class _HeroTopBar extends StatelessWidget {
       children: [
         const _OverviewLogoMark(),
         const Spacer(),
-        GestureDetector(
-          onTap: onProfileTap,
-          behavior: HitTestBehavior.opaque,
-          child: Container(
-            width: 46,
-            height: 46,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.20),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.40)),
-            ),
-            child: user.avatarUrl.isEmpty
-                ? const Icon(Icons.person, color: Colors.white, size: 25)
-                : Image.network(
-                    _resolveResourceUrl(user.avatarUrl),
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.person, color: Colors.white, size: 25),
-                  ),
+        IconButton(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const NotificationListScreen()),
           ),
+          constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+          padding: EdgeInsets.zero,
+          icon: const AppNotificationBell(color: Colors.white, size: 23),
+          tooltip: 'Thông báo',
+        ),
+        const SizedBox(width: 6),
+        IconButton(
+          onPressed: onProfileTap,
+          constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+          padding: EdgeInsets.zero,
+          icon: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withValues(alpha: 0.42)),
+            ),
+            child: const Icon(
+              Icons.person_outline_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
+          ),
+          tooltip: 'Hồ sơ',
         ),
       ],
     );
   }
 }
 
-class _OverviewLogoMark extends StatelessWidget {
-  const _OverviewLogoMark();
+class _HeroPropertyInfo extends StatelessWidget {
+  const _HeroPropertyInfo({required this.tenantName, required this.roomCount});
+
+  final String tenantName;
+  final int roomCount;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 52,
-      height: 56,
-      child: Stack(
-        alignment: Alignment.center,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          tenantName,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
+            height: 27 / 22,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          children: [
+            _HeroInfoPill(
+              icon: Icons.meeting_room_outlined,
+              label: '$roomCount phòng đang thuê',
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroInfoPill extends StatelessWidget {
+  const _HeroInfoPill({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.24),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.26)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Transform.rotate(
-            angle: -0.09,
-            child: Container(
-              width: 42,
-              height: 46,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
-              ),
-            ),
-          ),
-          Container(
-            width: 44,
-            height: 48,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Colors.white, Color(0xFFDBEAFE)],
-              ),
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(color: Colors.white, width: 1.2),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.28),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.apartment_rounded,
-              color: AppColors.primary,
-              size: 27,
-            ),
-          ),
-          Positioned(
-            right: 1,
-            bottom: 2,
-            child: Container(
-              width: 18,
-              height: 18,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF22D3EE), Color(0xFF06B6D4)],
-                ),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 1.6),
-              ),
-              child: const Icon(
-                Icons.check_rounded,
-                color: Colors.white,
-                size: 11,
-              ),
+          Icon(icon, color: Colors.white, size: 14),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              height: 14 / 11,
             ),
           ),
         ],
@@ -494,14 +517,17 @@ class _OverviewLogoMark extends StatelessWidget {
   }
 }
 
-class _PropertySummaryCard extends StatelessWidget {
-  const _PropertySummaryCard({
-    required this.tenantName,
-    required this.phone,
-    required this.address,
-  });
+class _OverviewLogoMark extends StatelessWidget {
+  const _OverviewLogoMark();
 
-  final String tenantName;
+  @override
+  Widget build(BuildContext context) =>
+      const AppBrandLogo(variant: AppBrandLogoVariant.overview);
+}
+
+class _PropertySummaryCard extends StatelessWidget {
+  const _PropertySummaryCard({required this.phone, required this.address});
+
   final String phone;
   final String address;
 
@@ -525,15 +551,13 @@ class _PropertySummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            tenantName,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+          const Text(
+            'Thông tin nhà trọ',
+            style: TextStyle(
               color: AppColors.inputText,
-              fontSize: 22,
+              fontSize: 18,
               fontWeight: FontWeight.w900,
-              height: 28 / 22,
+              height: 24 / 18,
             ),
           ),
           const SizedBox(height: 14),
@@ -784,6 +808,28 @@ class _RoomOverviewCard extends StatelessWidget {
                     ],
                     const SizedBox(height: 9),
                     _RoomStatusPill(label: status),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 6,
+                      children: [
+                        if (room.endDate != null)
+                          _RoomMeta(
+                            icon: Icons.event_outlined,
+                            text: 'Hết hạn: ${_formatShortDate(room.endDate!)}',
+                          ),
+                        if (room.occupantCount > 0)
+                          _RoomMeta(
+                            icon: Icons.people_outline_rounded,
+                            text: '${room.occupantCount} người đang ở',
+                          ),
+                        if (room.roleInContract.isNotEmpty)
+                          _RoomMeta(
+                            icon: Icons.person_outline_rounded,
+                            text: _roleLabel(room.roleInContract),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -806,6 +852,33 @@ class _RoomOverviewCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _RoomMeta extends StatelessWidget {
+  const _RoomMeta({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: AppColors.bodyText, size: 14),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: const TextStyle(
+            color: AppColors.bodyText,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            height: 14 / 11,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -879,6 +952,46 @@ class _EmptyRoomsCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _OverviewLoadingState extends StatelessWidget {
+  const _OverviewLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
+      children: const [
+        AppSkeleton(width: double.infinity, height: 296, borderRadius: 0),
+        Padding(
+          padding: EdgeInsets.fromLTRB(16, 14, 16, 28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppSkeleton(width: 172, height: 22),
+              SizedBox(height: 12),
+              AppSkeleton(width: double.infinity, height: 88, borderRadius: 12),
+              SizedBox(height: 26),
+              AppSkeleton(width: 142, height: 20),
+              SizedBox(height: 12),
+              AppSkeleton(
+                width: double.infinity,
+                height: 130,
+                borderRadius: 12,
+              ),
+              SizedBox(height: 10),
+              AppSkeleton(
+                width: double.infinity,
+                height: 130,
+                borderRadius: 12,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -965,4 +1078,17 @@ String _statusLabel(String rawStatus) {
     'VACANT' => 'Còn trống',
     _ => rawStatus.trim().isEmpty ? 'Đang thuê' : rawStatus.trim(),
   };
+}
+
+String _roleLabel(String rawRole) {
+  return switch (rawRole.trim().toUpperCase()) {
+    'PRIMARY' => 'Người thuê chính',
+    'CO_OCCUPANT' => 'Người ở cùng',
+    _ => rawRole.trim(),
+  };
+}
+
+String _formatShortDate(DateTime date) {
+  return '${date.day.toString().padLeft(2, '0')}/'
+      '${date.month.toString().padLeft(2, '0')}/${date.year}';
 }

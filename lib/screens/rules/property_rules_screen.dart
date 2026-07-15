@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profileRequest/tenant_request_screen.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
 import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/rules/property_rule_model.dart';
@@ -10,9 +10,10 @@ import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
+import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
-import 'package:hdbhms_mobile/screens/profileRequest/tenant_profile_screen.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
 
 class PropertyRulesScreen extends StatefulWidget {
   const PropertyRulesScreen({
@@ -157,8 +158,7 @@ class _RulesHeader extends StatelessWidget {
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const Icon(
-              Icons.notifications_none_rounded,
+            icon: const AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: 24,
             ),

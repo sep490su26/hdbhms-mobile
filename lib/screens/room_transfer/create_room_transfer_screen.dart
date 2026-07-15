@@ -103,10 +103,12 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
       if (!mounted) return;
       setState(() {
         _availableRooms = rooms
-            .where((r) =>
-                r.currentStatus == 'VACANT' ||
-                r.currentStatus == 'SOON_VACANT' ||
-                r.currentStatus == 'OCCUPIED')
+            .where(
+              (r) =>
+                  r.currentStatus == 'VACANT' ||
+                  r.currentStatus == 'SOON_VACANT' ||
+                  r.currentStatus == 'OCCUPIED',
+            )
             .toList(growable: false);
         _loadingRooms = false;
       });
@@ -209,10 +211,7 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: AppScreenShell(
-          header: _buildHeader(),
-          child: _buildBody(),
-        ),
+        child: AppScreenShell(header: _buildHeader(), child: _buildBody()),
       ),
     );
   }
@@ -256,7 +255,10 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
     }
 
     if (_errorMessage != null) {
-      return _ErrorState(message: _errorMessage!, onRetry: _loadCurrentContract);
+      return _ErrorState(
+        message: _errorMessage!,
+        onRetry: _loadCurrentContract,
+      );
     }
 
     return Form(
@@ -278,7 +280,8 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
               const SizedBox(height: 8),
               _InfoRow(
                 label: 'Phòng hiện tại',
-                value: _currentContract?.room.roomName ??
+                value:
+                    _currentContract?.room.roomName ??
                     _currentContract?.room.roomCode ??
                     '--',
               ),
@@ -350,8 +353,10 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
                   ),
                   filled: true,
                   fillColor: AppColors.inputFill,
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                 ),
                 style: const TextStyle(
                   color: AppColors.inputText,
@@ -371,7 +376,9 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.deepBlue,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: AppColors.deepBlue.withValues(alpha: 0.5),
+                disabledBackgroundColor: AppColors.deepBlue.withValues(
+                  alpha: 0.5,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -549,11 +556,17 @@ class _RoomPickerFieldState extends State<_RoomPickerField> {
             decoration: BoxDecoration(
               color: AppColors.primaryLight.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.3),
+              ),
             ),
             child: Row(
               children: [
-                const Icon(Icons.check_circle, color: AppColors.primary, size: 20),
+                const Icon(
+                  Icons.check_circle,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -586,10 +599,17 @@ class _RoomPickerFieldState extends State<_RoomPickerField> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close, color: AppColors.bodyText, size: 18),
+                  icon: const Icon(
+                    Icons.close,
+                    color: AppColors.bodyText,
+                    size: 18,
+                  ),
                   onPressed: () => widget.onChanged(null),
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints.tightFor(width: 28, height: 28),
+                  constraints: const BoxConstraints.tightFor(
+                    width: 28,
+                    height: 28,
+                  ),
                 ),
               ],
             ),
@@ -614,7 +634,8 @@ class _RoomPickerFieldState extends State<_RoomPickerField> {
             child: ListView.separated(
               shrinkWrap: true,
               itemCount: _filtered.length,
-              separatorBuilder: (_, _) => const Divider(height: 1, color: Color(0xFFEEECEE)),
+              separatorBuilder: (_, _) =>
+                  const Divider(height: 1, color: Color(0xFFEEECEE)),
               itemBuilder: (context, index) {
                 final room = _filtered[index];
                 final isCurrent = room.roomCode == widget.currentRoomCode;
@@ -625,12 +646,8 @@ class _RoomPickerFieldState extends State<_RoomPickerField> {
                   enabled: !isCurrent,
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(
-                    isCurrent
-                        ? Icons.block
-                        : Icons.meeting_room_outlined,
-                    color: isCurrent
-                        ? AppColors.bodyText
-                        : AppColors.deepBlue,
+                    isCurrent ? Icons.block : Icons.meeting_room_outlined,
+                    color: isCurrent ? AppColors.bodyText : AppColors.deepBlue,
                     size: 22,
                   ),
                   title: Text(
@@ -653,7 +670,11 @@ class _RoomPickerFieldState extends State<_RoomPickerField> {
                     ),
                   ),
                   trailing: isSelected
-                      ? const Icon(Icons.check_circle, color: AppColors.primary, size: 18)
+                      ? const Icon(
+                          Icons.check_circle,
+                          color: AppColors.primary,
+                          size: 18,
+                        )
                       : null,
                   onTap: isCurrent ? null : () => widget.onChanged(room),
                 );
@@ -691,7 +712,11 @@ class _DateField extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(Icons.event_outlined, color: AppColors.hintText, size: 20),
+            const Icon(
+              Icons.event_outlined,
+              color: AppColors.hintText,
+              size: 20,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -739,7 +764,11 @@ class _ErrorState extends StatelessWidget {
                 color: const Color(0xFFFFF0F0),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Icon(Icons.error_outline, color: AppColors.danger, size: 30),
+              child: const Icon(
+                Icons.error_outline,
+                color: AppColors.danger,
+                size: 30,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
@@ -752,10 +781,7 @@ class _ErrorState extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            OutlinedButton(
-              onPressed: onRetry,
-              child: const Text('Thử lại'),
-            ),
+            OutlinedButton(onPressed: onRetry, child: const Text('Thử lại')),
           ],
         ),
       ),
@@ -792,7 +818,11 @@ class _TransferSuccessDialog extends StatelessWidget {
                 color: const Color(0xFFF0FFF4),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(Icons.check_circle, color: AppColors.success, size: 36),
+              child: const Icon(
+                Icons.check_circle,
+                color: AppColors.success,
+                size: 36,
+              ),
             ),
             const SizedBox(height: 18),
             const Text(

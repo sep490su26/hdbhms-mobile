@@ -9,11 +9,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:hdbhms_mobile/config/api_config.dart';
-import 'package:hdbhms_mobile/models/profileRequest/tenant_profile_model.dart';
+import 'package:hdbhms_mobile/models/profile_request/tenant_profile_model.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
-import 'package:hdbhms_mobile/services/profileRequest/tenant_profile_service.dart';
+import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
+import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 
 /// Dữ liệu được pre-fill từ TenantProfileResponse truyền vào.
 class UpdateProfileScreen extends StatefulWidget {
@@ -259,8 +260,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
             onPressed: () {},
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const Icon(
-              Icons.notifications_none_rounded,
+            icon: const AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: AppColors.topBarIconSize,
             ),
@@ -433,12 +433,12 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
             ),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.darkBlue,
+            backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
-            disabledBackgroundColor: AppColors.darkBlue.withValues(alpha: 0.5),
+            disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.72),
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
             ),
           ),
         ),

@@ -5,5 +5,7 @@ Widget buildPlatformPdfViewer({
   required String pdfUrl,
   required String title,
 }) {
-  throw UnsupportedError('Cannot create a PDF viewer without dart:html or dart:io');
+  throw UnsupportedError(
+    'Cannot create a PDF viewer without dart:html or dart:io',
+  );
 }

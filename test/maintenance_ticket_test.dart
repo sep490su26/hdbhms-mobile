@@ -126,16 +126,18 @@ void main() {
     'completed tenant charge prioritizes pending payment on ticket list',
     (tester) async {
       final service = MaintenanceTicketService(
-        client: MockClient((request) async => _jsonResponse(
-          _ticketPage([
-            _ticketJson(
-              billingStatus: 'PENDING_PAYMENT',
-              billingStatusLabel: 'Chờ thanh toán',
-              chargeAmount: 2000,
-              chargeToTenant: true,
-            ),
-          ]),
-        )),
+        client: MockClient(
+          (request) async => _jsonResponse(
+            _ticketPage([
+              _ticketJson(
+                billingStatus: 'PENDING_PAYMENT',
+                billingStatusLabel: 'Chờ thanh toán',
+                chargeAmount: 2000,
+                chargeToTenant: true,
+              ),
+            ]),
+          ),
+        ),
       );
 
       await tester.pumpWidget(
@@ -197,17 +199,19 @@ void main() {
     tester,
   ) async {
     final service = MaintenanceTicketService(
-      client: MockClient((request) async => _jsonResponse({
-        'data': _ticketJson(
-          billingStatus: 'PENDING_PAYMENT',
-          billingStatusLabel: 'Chờ thanh toán',
-          chargeAmount: 2000,
-          chargeToTenant: true,
-          invoiceId: 41,
-          invoiceCode: 'INV-MNT-4-0618094846',
-          lineType: 'MAINTENANCE_COMPENSATION',
-        ),
-      })),
+      client: MockClient(
+        (request) async => _jsonResponse({
+          'data': _ticketJson(
+            billingStatus: 'PENDING_PAYMENT',
+            billingStatusLabel: 'Chờ thanh toán',
+            chargeAmount: 2000,
+            chargeToTenant: true,
+            invoiceId: 41,
+            invoiceCode: 'INV-MNT-4-0618094846',
+            lineType: 'MAINTENANCE_COMPENSATION',
+          ),
+        }),
+      ),
     );
 
     await tester.pumpWidget(
@@ -228,16 +232,18 @@ void main() {
 
   testWidgets('paid ticket detail hides payment CTA', (tester) async {
     final service = MaintenanceTicketService(
-      client: MockClient((request) async => _jsonResponse({
-        'data': _ticketJson(
-          billingStatus: 'PAID',
-          billingStatusLabel: 'Đã thanh toán',
-          chargeAmount: 2000,
-          chargeToTenant: true,
-          invoiceId: 41,
-          invoiceCode: 'INV-MNT-4-0618094846',
-        ),
-      })),
+      client: MockClient(
+        (request) async => _jsonResponse({
+          'data': _ticketJson(
+            billingStatus: 'PAID',
+            billingStatusLabel: 'Đã thanh toán',
+            chargeAmount: 2000,
+            chargeToTenant: true,
+            invoiceId: 41,
+            invoiceCode: 'INV-MNT-4-0618094846',
+          ),
+        }),
+      ),
     );
 
     await tester.pumpWidget(
@@ -337,8 +343,7 @@ Map<String, dynamic> _ticketJson({
     'scope': 'ROOM',
     'created_at': '2026-06-12T21:00:00',
     if (billingStatus != null) 'billing_status': billingStatus,
-    if (billingStatusLabel != null)
-      'billing_status_label': billingStatusLabel,
+    if (billingStatusLabel != null) 'billing_status_label': billingStatusLabel,
     if (chargeAmount != null) 'charge_amount': chargeAmount,
     'charge_to_tenant': chargeToTenant,
     if (payer != null) 'payer': payer,

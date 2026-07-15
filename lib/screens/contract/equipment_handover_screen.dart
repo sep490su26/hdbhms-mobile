@@ -162,21 +162,18 @@ class _EquipmentCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              const Icon(
-                Icons.inventory_2_outlined,
-                size: 18,
-                color: AppColors.bodyText,
-              ),
-              const SizedBox(width: 7),
-              Text(
-                'Số lượng: ${item.quantity}',
-                style: const TextStyle(
-                  color: AppColors.bodyText,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
+              if (item.assetCategory.trim().isNotEmpty)
+                _AssetMetaChip(
+                  icon: Icons.category_outlined,
+                  label: _assetCategoryLabel(item.assetCategory),
                 ),
+              _AssetMetaChip(
+                icon: Icons.inventory_2_outlined,
+                label: 'Số lượng: ${item.quantity}',
               ),
             ],
           ),
@@ -231,6 +228,44 @@ class _EvidenceThumbnail extends StatelessWidget {
             errorPlaceholder: const _NoImagePlaceholder(),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _AssetMetaChip extends StatelessWidget {
+  const _AssetMetaChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 28),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppColors.bodyText),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.bodyText,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              height: 15 / 12,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -548,6 +583,18 @@ String _conditionLabel(String status) {
     'BROKEN' => 'Hỏng',
     'MISSING' => 'Thiếu',
     _ => status.isEmpty ? 'Chưa cập nhật' : status,
+  };
+}
+
+String _assetCategoryLabel(String value) {
+  final normalized = value.trim().toUpperCase();
+  return switch (normalized) {
+    'APPLIANCE' => 'Thiết bị điện',
+    'ELECTRIC' || 'ELECTRICAL' || 'ELECTRICITY' => 'Đồ điện',
+    'FURNITURE' => 'Nội thất',
+    'SANITARY' || 'BATHROOM' || 'TOILET' => 'Vệ sinh',
+    'OTHER' => 'Khác',
+    _ => value.trim(),
   };
 }
 
