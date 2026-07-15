@@ -30,7 +30,7 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: AppColors.background,
-      fontFamily: 'PlusJakartaSans',
+      fontFamily: AppTypography.fontFamily,
       visualDensity: VisualDensity.standard,
       splashFactory: InkSparkle.splashFactory,
       textTheme: const TextTheme(
@@ -40,7 +40,7 @@ class AppTheme {
         bodyLarge: AppTypography.bodyLarge,
         bodyMedium: AppTypography.body,
         labelLarge: AppTypography.button,
-      ),
+      ).apply(fontFamily: AppTypography.fontFamily),
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.topBarIconColor,
@@ -100,12 +100,17 @@ class AppTheme {
           horizontal: 16,
           vertical: 16,
         ),
-        hintStyle: const TextStyle(color: AppColors.hintText),
+        hintStyle: const TextStyle(
+          fontFamily: AppTypography.fontFamily,
+          color: AppColors.hintText,
+        ),
         labelStyle: const TextStyle(
+          fontFamily: AppTypography.fontFamily,
           color: AppColors.bodyText,
           fontWeight: FontWeight.w600,
         ),
         errorStyle: const TextStyle(
+          fontFamily: AppTypography.fontFamily,
           color: AppColors.danger,
           fontWeight: FontWeight.w600,
         ),
@@ -148,6 +153,7 @@ class AppTheme {
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppColors.inputText,
         contentTextStyle: const TextStyle(
+          fontFamily: AppTypography.fontFamily,
           color: Colors.white,
           fontWeight: FontWeight.w600,
         ),

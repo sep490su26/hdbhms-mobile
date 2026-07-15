@@ -1024,6 +1024,7 @@ class _UtilityCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   text: TextSpan(
                     style: const TextStyle(
+                      fontFamily: AppTypography.fontFamily,
                       color: AppColors.inputText,
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
@@ -1036,6 +1037,7 @@ class _UtilityCard extends StatelessWidget {
                       TextSpan(
                         text: ' $displayUnit',
                         style: const TextStyle(
+                          fontFamily: AppTypography.fontFamily,
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
                         ),

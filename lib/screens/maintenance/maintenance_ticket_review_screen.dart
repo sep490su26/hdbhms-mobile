@@ -492,6 +492,7 @@ class _ReviewFormCard extends StatelessWidget {
                   TextSpan(
                     text: 'Hoàn tất.',
                     style: TextStyle(
+                      fontFamily: AppTypography.fontFamily,
                       color: AppColors.deepBlue,
                       fontWeight: FontWeight.w900,
                     ),
@@ -500,6 +501,7 @@ class _ReviewFormCard extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
               style: TextStyle(
+                fontFamily: AppTypography.fontFamily,
                 color: AppColors.bodyText,
                 fontSize: 13,
                 fontWeight: FontWeight.w500,

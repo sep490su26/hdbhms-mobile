@@ -40,6 +40,14 @@ class App extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       navigatorKey: App.navigatorKey,
       theme: AppTheme.lightTheme,
+      builder: (context, child) {
+        return DefaultTextHeightBehavior(
+          textHeightBehavior: const TextHeightBehavior(
+            leadingDistribution: TextLeadingDistribution.even,
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       home: _AppRoot(
         authService: authService,
         homeService: homeService,
