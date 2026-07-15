@@ -1,29 +1,29 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
-import '../config/api_config.dart';
-import '../models/api_response.dart';
-import '../models/file_metadata_model.dart';
-import 'auth_service.dart';
+import 'package:hdbhms_mobile/config/api_config.dart';
+import 'package:hdbhms_mobile/models/api_response.dart';
+import 'package:hdbhms_mobile/models/maintenance/file_metadata_model.dart';
+import 'package:hdbhms_mobile/services/authenticated_client.dart';
 
 class FileService {
   const FileService({http.Client? client}) : _client = client;
 
   final http.Client? _client;
+  http.Client get _effectiveClient => _client ?? AuthenticatedClient();
 
   Future<FileMetadataResponse> uploadSingle({
     required Uint8List bytes,
     required String fileName,
-    FileCategory category = FileCategory.OTHER,
+    FileCategory category = FileCategory.other,
     bool isSensitive = false,
   }) async {
-    final token = await const AuthService().accessToken;
+    final client = _effectiveClient;
     final uri = Uri.parse('${ApiConfig.baseUrl}/files/upload');
-    
+
     final request = http.MultipartRequest('POST', uri)
-      ..headers['Authorization'] = 'Bearer $token'
       ..fields['category'] = category.name
       ..fields['isSensitive'] = isSensitive.toString()
       ..files.add(
@@ -35,10 +35,10 @@ class FileService {
         ),
       );
 
-    final streamedResponse = await request.send();
+    final streamedResponse = await client.send(request);
     final response = await http.Response.fromStream(streamedResponse);
 
-    if (response.statusCode == 201) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       final apiResponse = ApiResponse<FileMetadataResponse>.fromJson(
         data,
@@ -55,11 +55,10 @@ class FileService {
     required FileCategory category,
     bool isSensitive = false,
   }) async {
-    final token = await const AuthService().accessToken;
+    final client = _effectiveClient;
     final uri = Uri.parse('${ApiConfig.baseUrl}/files/upload/batch');
 
     final request = http.MultipartRequest('POST', uri)
-      ..headers['Authorization'] = 'Bearer $token'
       ..fields['category'] = category.name
       ..fields['isSensitive'] = isSensitive.toString();
 
@@ -74,10 +73,10 @@ class FileService {
       );
     }
 
-    final streamedResponse = await request.send();
+    final streamedResponse = await client.send(request);
     final response = await http.Response.fromStream(streamedResponse);
 
-    if (response.statusCode == 201) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       final apiResponse = ApiResponse<BatchFileResponse>.fromJson(
         data,
@@ -90,15 +89,11 @@ class FileService {
   }
 
   Future<Uint8List> download(int fileId) async {
-    final token = await const AuthService().accessToken;
-    final client = _client ?? http.Client();
-    
+    final client = _effectiveClient;
+
     try {
       final response = await client.get(
         Uri.parse('${ApiConfig.baseUrl}/files/download/$fileId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
       );
 
       if (response.statusCode == 200) {
@@ -119,6 +114,8 @@ class FileService {
         return MediaType('image', 'jpeg');
       case 'png':
         return MediaType('image', 'png');
+      case 'webp':
+        return MediaType('image', 'webp');
       case 'pdf':
         return MediaType('application', 'pdf');
       default:

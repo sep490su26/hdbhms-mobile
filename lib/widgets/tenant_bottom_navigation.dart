@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 
-enum TenantBottomNavTab { home, bills, support, profile }
+enum TenantBottomNavTab { home, bills, support, requests, profile }
 
 class TenantBottomNavigation extends StatelessWidget {
   const TenantBottomNavigation({
@@ -11,6 +11,7 @@ class TenantBottomNavigation extends StatelessWidget {
     this.onHomeTap,
     this.onSupportTap,
     this.onBillsTap,
+    this.onRequestsTap,
     this.onProfileTap,
   });
 
@@ -18,6 +19,7 @@ class TenantBottomNavigation extends StatelessWidget {
   final VoidCallback? onHomeTap;
   final VoidCallback? onSupportTap;
   final VoidCallback? onBillsTap;
+  final VoidCallback? onRequestsTap;
   final VoidCallback? onProfileTap;
 
   @override
@@ -25,41 +27,58 @@ class TenantBottomNavigation extends StatelessWidget {
     return Center(
       heightFactor: 1,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 390),
+        constraints: const BoxConstraints(maxWidth: 440),
         child: Container(
-          height: 74,
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+          height: 76,
+          margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+          padding: const EdgeInsets.fromLTRB(7, 7, 7, 7),
           decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-            border: Border.all(
-              color: AppColors.cardBorder.withValues(alpha: 0.7),
-            ),
+            color: AppColors.surface.withValues(alpha: 0.98),
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.72)),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.deepBlue.withValues(alpha: 0.10),
+                blurRadius: 28,
+                offset: const Offset(0, 14),
+              ),
+              BoxShadow(
+                color: AppColors.accent.withValues(alpha: 0.08),
+                blurRadius: 20,
+                offset: const Offset(0, -4),
+              ),
+            ],
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _BottomNavItem(
                 icon: Icons.home_rounded,
-                label: 'Home',
+                label: 'Trang chủ',
                 isSelected: activeTab == TenantBottomNavTab.home,
                 onTap: onHomeTap,
               ),
               _BottomNavItem(
                 icon: Icons.receipt_long_outlined,
-                label: 'Bills',
+                label: 'Hóa đơn',
                 isSelected: activeTab == TenantBottomNavTab.bills,
                 onTap: onBillsTap,
               ),
               _BottomNavItem(
-                icon: Icons.support_agent_outlined,
-                label: 'Support',
+                icon: Icons.handyman_outlined,
+                label: 'Sự cố',
                 isSelected: activeTab == TenantBottomNavTab.support,
                 onTap: onSupportTap,
               ),
               _BottomNavItem(
+                icon: Icons.assignment_outlined,
+                label: 'Yêu cầu',
+                isSelected: activeTab == TenantBottomNavTab.requests,
+                onTap: onRequestsTap,
+              ),
+              _BottomNavItem(
                 icon: Icons.person_outline,
-                label: 'Profile',
+                label: 'Hồ sơ',
                 isSelected: activeTab == TenantBottomNavTab.profile,
                 onTap: onProfileTap,
               ),
@@ -86,52 +105,67 @@ class _BottomNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isSelected ? AppColors.deepBlue : AppColors.bodyText;
+    const activeColor = AppColors.primary;
+    const inactiveColor = AppColors.bodyText;
+    final color = isSelected ? activeColor : inactiveColor;
 
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 68,
-        child: isSelected
-            ? Container(
-                height: 50,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFA7B4FF),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(icon, color: color, size: 21),
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        color: AppColors.deepBlue,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                        height: 14 / 12,
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: 62,
+          height: 60,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            decoration: BoxDecoration(
+              gradient: isSelected
+                  ? const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [AppColors.deepBlue, AppColors.primary],
+                    )
+                  : null,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.25),
+                        blurRadius: 16,
+                        offset: const Offset(0, 8),
                       ),
-                    ),
-                  ],
+                    ]
+                  : null,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  color: isSelected ? Colors.white : color,
+                  size: isSelected ? 22 : 21,
                 ),
-              )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, color: color, size: 22),
-                  const SizedBox(height: 3),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      height: 14 / 12,
-                    ),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : color,
+                    fontSize: 10,
+                    fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
+                    height: 13 / 10,
                   ),
-                ],
-              ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../app.dart';
-import '../screens/login_page.dart';
+import 'package:hdbhms_mobile/app.dart';
+import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'auth_service.dart';
-import 'home_service.dart';
+import 'package:hdbhms_mobile/services/auth/auth_service.dart';
+import 'package:hdbhms_mobile/services/home/home_service.dart';
 
 class AuthenticatedClient extends http.BaseClient {
   AuthenticatedClient({
@@ -29,27 +29,83 @@ class AuthenticatedClient extends http.BaseClient {
       request.headers['Authorization'] = 'Bearer $token';
     }
     request.headers['Accept'] = 'application/json';
-    request.headers['Content-Type'] = 'application/json';
+    if (request is! http.MultipartRequest) {
+      request.headers['Content-Type'] = 'application/json';
+    }
     request.headers['X-Client-Type'] = 'mobile';
 
-    final response = await _inner.send(request);
+    debugPrint('➡️ [HTTP REQUEST] ${request.method} ${request.url}');
 
-    if (response.statusCode == 401 || response.statusCode == 403) {
+    http.StreamedResponse response;
+    try {
+      response = await _inner.send(request);
+    } on http.ClientException catch (error) {
+      _logNetworkFailure(request, error);
+      rethrow;
+    }
+
+    // Read the response stream so we can log it, then reconstruct it
+    final responseBytes = await response.stream.toBytes();
+    String bodyString = '';
+    try {
+      bodyString = String.fromCharCodes(responseBytes);
+    } catch (e) {
+      bodyString = '[Binary Data]';
+    }
+
+    debugPrint('⬅️ [HTTP RESPONSE] ${response.statusCode} ${request.url}');
+    debugPrint('⬅️ [BODY] $bodyString');
+
+    final clonedResponse = http.StreamedResponse(
+      Stream.value(responseBytes),
+      response.statusCode,
+      contentLength: response.contentLength ?? responseBytes.length,
+      request: response.request,
+      headers: response.headers,
+      isRedirect: response.isRedirect,
+      persistentConnection: response.persistentConnection,
+      reasonPhrase: response.reasonPhrase,
+    );
+
+    if (clonedResponse.statusCode == 401) {
+      final isRetryable = request is http.Request;
+      if (!isRetryable) {
+        // Cannot retry streams safely
+        return clonedResponse;
+      }
+
       try {
         final newLoginData = await authService.refreshToken();
 
         final newRequest = _cloneRequest(request);
         newRequest.headers['Authorization'] = 'Bearer ${newLoginData.token}';
 
+        debugPrint('🔄 [HTTP RETRY] ${newRequest.method} ${newRequest.url}');
         return await _inner.send(newRequest);
       } catch (e) {
         await AuthService.clearLocalSession();
         _redirectToLogin();
-        return response;
+        return clonedResponse;
       }
     }
 
-    return response;
+    if (clonedResponse.statusCode == 403) {
+      return clonedResponse;
+    }
+
+    return clonedResponse;
+  }
+
+  void _logNetworkFailure(http.BaseRequest request, Object error) {
+    final uri = request.url;
+    debugPrint(
+      '❌ [HTTP NETWORK] ${request.method} scheme=${uri.scheme} host=${uri.host} port=${uri.hasPort ? uri.port : '(default)'} path=${uri.path} error=$error',
+    );
+    if (uri.scheme == 'http') {
+      debugPrint(
+        '❌ [HTTP NETWORK] Nếu chạy Android thật, kiểm tra API_BASE_URL dùng IP LAN laptop và debug build cho phép cleartext HTTP.',
+      );
+    }
   }
 
   void _redirectToLogin() {
@@ -92,5 +148,11 @@ class AuthenticatedClient extends http.BaseClient {
       return request;
     }
     return request;
+  }
+
+  @override
+  void close() {
+    _inner.close();
+    super.close();
   }
 }

@@ -1,4 +1,4 @@
-import 'api_config.dart';
+﻿import 'package:hdbhms_mobile/config/api_config.dart';
 
 class AppConfig {
   const AppConfig._();
