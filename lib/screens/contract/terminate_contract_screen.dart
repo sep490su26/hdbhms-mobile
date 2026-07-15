@@ -7,6 +7,8 @@ import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart
 
 const Color _kLabel = Color(0xFF000666);
 
+DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Màn yêu cầu thanh lý / trả phòng hợp đồng
 // ─────────────────────────────────────────────────────────────────────────────
@@ -14,15 +16,21 @@ const Color _kLabel = Color(0xFF000666);
 class TerminateContractScreen extends StatefulWidget {
   const TerminateContractScreen({
     super.key,
+    this.contractId,
     this.contractCode = 'HN/Phòng 123/2026/HDSV/574',
     this.contractExpiry = '30/09/2026',
+    this.contractEndDate,
   });
+
+  final int? contractId;
 
   /// Mã hợp đồng hiển thị (mock)
   final String contractCode;
 
   /// Ngày hết hạn hợp đồng hiển thị (mock, định dạng dd/MM/yyyy)
   final String contractExpiry;
+
+  final DateTime? contractEndDate;
 
   @override
   State<TerminateContractScreen> createState() =>
@@ -36,15 +44,32 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
   DateTime? _expectedDate;
   bool _submitting = false;
 
-  // Giải mã ngày hết hạn từ string dd/MM/yyyy
   DateTime get _expiryDate {
+    final contractEndDate = widget.contractEndDate;
+    if (contractEndDate != null) {
+      return _dateOnly(contractEndDate);
+    }
     final parts = widget.contractExpiry.split('/');
+    if (parts.length != 3) {
+      return _dateOnly(DateTime.now().add(const Duration(days: 365)));
+    }
     return DateTime(
-      int.parse(parts[2]),
-      int.parse(parts[1]),
-      int.parse(parts[0]),
+      int.tryParse(parts[2]) ?? DateTime.now().year,
+      int.tryParse(parts[1]) ?? DateTime.now().month,
+      int.tryParse(parts[0]) ?? DateTime.now().day,
     );
   }
+
+  bool get _isUnderOneMonth {
+    final remainingDays = _expiryDate
+        .difference(_dateOnly(DateTime.now()))
+        .inDays;
+    return remainingDays >= 0 && remainingDays < 30;
+  }
+
+  String get _expiryLabel => widget.contractEndDate == null
+      ? widget.contractExpiry
+      : _formatDate(widget.contractEndDate!);
 
   @override
   void dispose() {
@@ -54,8 +79,14 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
 
   // ── Date picker ────────────────────────────────────────────────────────────
   Future<void> _pickDate() async {
-    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final tomorrow = _dateOnly(DateTime.now().add(const Duration(days: 1)));
     final lastDate = _expiryDate;
+    if (lastDate.isBefore(tomorrow)) {
+      _snack(
+        'Hợp đồng đã quá gần ngày hết hạn. Vui lòng tạo yêu cầu để quản lý hỗ trợ.',
+      );
+      return;
+    }
     final initial = _expectedDate ?? tomorrow;
     final picked = await showDatePicker(
       context: context,
@@ -179,7 +210,7 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
               const SizedBox(height: 10),
               _InfoRow(
                 label: 'Ngày hết hạn',
-                value: widget.contractExpiry,
+                value: _expiryLabel,
                 valueColor: const Color(0xFFDC2626),
               ),
             ],
@@ -192,6 +223,46 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
             title: 'Thông tin trả phòng',
             icon: Icons.exit_to_app_rounded,
             children: [
+              if (_isUnderOneMonth) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF7ED),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFFEA580C).withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        size: 17,
+                        color: Color(0xFFEA580C),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Hợp đồng còn dưới 1 tháng. '
+                          'Yêu cầu hủy/thanh lý sẽ được gửi để quản lý '
+                          'kiểm tra trước khi xử lý.',
+                          style: TextStyle(
+                            color: Color(0xFF9A3412),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               // Notice banner
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -216,7 +287,7 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Ngày trả phòng dự kiến phải nhỏ hơn hoặc bằng ngày hết hạn hợp đồng (${widget.contractExpiry}).',
+                        'Ngày trả phòng dự kiến phải nhỏ hơn hoặc bằng ngày hết hạn hợp đồng ($_expiryLabel).',
                         style: const TextStyle(
                           color: Color(0xFF0369A1),
                           fontSize: 12,

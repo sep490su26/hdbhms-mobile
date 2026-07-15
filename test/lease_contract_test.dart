@@ -138,6 +138,38 @@ void main() {
   });
 
   testWidgets(
+    'contract screen warns before terminate flow when contract has less than one month left',
+    (tester) async {
+      final contract = _contract(
+        endDate: DateTime.now().add(const Duration(days: 20)),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: LeaseContractScreen(
+            contractService: _FakeLeaseContractService(contract: contract),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Thanh lý\nhợp đồng'));
+      await tester.tap(find.text('Thanh lý\nhợp đồng'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Hợp đồng còn dưới 1 tháng'), findsOneWidget);
+      expect(find.text('Tạo yêu cầu hủy'), findsOneWidget);
+
+      await tester.tap(find.text('Tạo yêu cầu hủy'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Thanh lý hợp đồng'), findsOneWidget);
+      expect(find.text('HD-201'), findsOneWidget);
+      expect(find.text('Hợp đồng còn dưới 1 tháng'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'contract screen shows tenant intention dropdown and submits move out reason',
     (tester) async {
       String? recordedIntention;

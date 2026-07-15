@@ -277,9 +277,7 @@ class _CreateRequestGrid extends StatelessWidget {
     }
 
     if (type == TenantRequestType.terminateContract) {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const TerminateContractScreen()),
-      );
+      _openTerminateContractFlow(context);
       return;
     }
 
@@ -305,6 +303,56 @@ class _CreateRequestGrid extends StatelessWidget {
             SnackBar(content: Text('Đã gửi yêu cầu ${type.fullLabel}.')),
           );
         },
+      ),
+    );
+  }
+
+  void _openTerminateContractFlow(BuildContext context) {
+    if (!_isContractUnderOneMonth(contract)) {
+      _openTerminateContractForm(context);
+      return;
+    }
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Hợp đồng còn dưới 1 tháng'),
+        content: Text(
+          'Hợp đồng ${contract.contractCode} sắp kết thúc. '
+          'Nếu vẫn muốn hủy/thanh lý, vui lòng tạo yêu cầu '
+          'để quản lý kiểm tra và hướng dẫn thủ tục.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Để sau'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              _openTerminateContractForm(context);
+            },
+            icon: const Icon(Icons.send_rounded, size: 18),
+            label: const Text('Tạo yêu cầu hủy'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.deepBlue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openTerminateContractForm(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TerminateContractScreen(
+          contractId: contract.id,
+          contractCode: contract.contractCode,
+          contractEndDate: contract.endDate,
+          contractExpiry: _formatDate(contract.endDate),
+        ),
       ),
     );
   }
@@ -389,6 +437,15 @@ class _CreateRequestGrid extends StatelessWidget {
       ),
     );
   }
+}
+
+bool _isContractUnderOneMonth(LeaseContract contract) {
+  final endDate = contract.endDate;
+  if (endDate == null) return false;
+  final remainingDays = _dateOnly(endDate)
+      .difference(_dateOnly(DateTime.now()))
+      .inDays;
+  return remainingDays >= 0 && remainingDays < 30;
 }
 
 class _CreateRequestSheet extends StatefulWidget {
