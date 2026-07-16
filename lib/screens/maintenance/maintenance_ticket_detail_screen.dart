@@ -20,6 +20,7 @@ class MaintenanceTicketDetailScreen extends StatefulWidget {
     this.role = TicketUserRole.tenant,
     this.ticketService = const MaintenanceTicketService(),
     this.imagePicker,
+    this.notificationUnreadCount,
   });
 
   final int ticketId;
@@ -27,6 +28,7 @@ class MaintenanceTicketDetailScreen extends StatefulWidget {
   final TicketUserRole role;
   final MaintenanceTicketService ticketService;
   final ImagePicker? imagePicker;
+  final int? notificationUnreadCount;
 
   @override
   State<MaintenanceTicketDetailScreen> createState() =>
@@ -204,6 +206,7 @@ class _MaintenanceTicketDetailScreenState
           ticketId: widget.ticketId,
           initialDetail: detail,
           ticketService: widget.ticketService,
+          notificationUnreadCount: widget.notificationUnreadCount,
         ),
       ),
     );
@@ -316,9 +319,10 @@ class _MaintenanceTicketDetailScreenState
         actions: [
           IconButton(
             onPressed: () {},
-            icon: const AppNotificationBell(
+            icon: AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: AppColors.topBarIconSize,
+              initialUnreadCount: widget.notificationUnreadCount,
             ),
             tooltip: 'Thông báo',
           ),

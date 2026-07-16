@@ -14,11 +14,13 @@ class MaintenanceTicketReviewScreen extends StatefulWidget {
     required this.ticketId,
     this.initialDetail,
     this.ticketService = const MaintenanceTicketService(),
+    this.notificationUnreadCount,
   });
 
   final int ticketId;
   final MaintenanceTicketDetail? initialDetail;
   final MaintenanceTicketService ticketService;
+  final int? notificationUnreadCount;
 
   @override
   State<MaintenanceTicketReviewScreen> createState() =>
@@ -240,9 +242,10 @@ class _MaintenanceTicketReviewScreenState
         actions: [
           IconButton(
             onPressed: () {},
-            icon: const AppNotificationBell(
+            icon: AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: AppColors.topBarIconSize,
+              initialUnreadCount: widget.notificationUnreadCount,
             ),
             tooltip: 'Thông báo',
           ),

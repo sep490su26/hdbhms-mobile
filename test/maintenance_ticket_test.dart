@@ -61,7 +61,12 @@ void main() {
     final service = _ticketService();
 
     await tester.pumpWidget(
-      MaterialApp(home: MaintenanceTicketListScreen(ticketService: service)),
+      MaterialApp(
+        home: MaintenanceTicketListScreen(
+          ticketService: service,
+          notificationUnreadCount: 0,
+        ),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -85,7 +90,12 @@ void main() {
     final service = _ticketService();
 
     await tester.pumpWidget(
-      MaterialApp(home: MaintenanceTicketListScreen(ticketService: service)),
+      MaterialApp(
+        home: MaintenanceTicketListScreen(
+          ticketService: service,
+          notificationUnreadCount: 0,
+        ),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -107,7 +117,12 @@ void main() {
     final service = _ticketService();
 
     await tester.pumpWidget(
-      MaterialApp(home: MaintenanceTicketListScreen(ticketService: service)),
+      MaterialApp(
+        home: MaintenanceTicketListScreen(
+          ticketService: service,
+          notificationUnreadCount: 0,
+        ),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -141,7 +156,12 @@ void main() {
       );
 
       await tester.pumpWidget(
-        MaterialApp(home: MaintenanceTicketListScreen(ticketService: service)),
+        MaterialApp(
+          home: MaintenanceTicketListScreen(
+            ticketService: service,
+            notificationUnreadCount: 0,
+          ),
+        ),
       );
       await tester.pumpAndSettle();
 
@@ -219,6 +239,7 @@ void main() {
         home: MaintenanceTicketDetailScreen(
           ticketId: 1,
           ticketService: service,
+          notificationUnreadCount: 0,
         ),
       ),
     );
@@ -251,6 +272,7 @@ void main() {
         home: MaintenanceTicketDetailScreen(
           ticketId: 1,
           ticketService: service,
+          notificationUnreadCount: 0,
         ),
       ),
     );
