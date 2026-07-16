@@ -251,7 +251,11 @@ class _ContractContent extends StatelessWidget {
           const SizedBox(height: 12),
           _DocumentSection(contractFileUrl: contract.contractFileUrl),
           const SizedBox(height: 12),
-          _CreateRequestGrid(contract: contract),
+          _CreateRequestGrid(
+            contract: contract,
+            contractService: contractService,
+            onChanged: onChanged,
+          ),
         ],
       ),
     );
@@ -261,9 +265,15 @@ class _ContractContent extends StatelessWidget {
 const Color _kLabelColor = Color(0xFF000666);
 
 class _CreateRequestGrid extends StatelessWidget {
-  const _CreateRequestGrid({required this.contract});
+  const _CreateRequestGrid({
+    required this.contract,
+    required this.contractService,
+    required this.onChanged,
+  });
 
   final LeaseContract contract;
+  final LeaseContractService contractService;
+  final Future<void> Function() onChanged;
 
   void _openCreateForm(BuildContext context, TenantRequestType type) {
     final contractId = contract.id;
@@ -344,14 +354,16 @@ class _CreateRequestGrid extends StatelessWidget {
     );
   }
 
-  void _openTerminateContractForm(BuildContext context) {
-    Navigator.of(context).push(
+  Future<void> _openTerminateContractForm(BuildContext context) async {
+    await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => TerminateContractScreen(
           contractId: contract.id,
           contractCode: contract.contractCode,
           contractEndDate: contract.endDate,
           contractExpiry: _formatDate(contract.endDate),
+          contractService: contractService,
+          onSubmitted: (_) => onChanged(),
         ),
       ),
     );
@@ -442,9 +454,9 @@ class _CreateRequestGrid extends StatelessWidget {
 bool _isContractUnderOneMonth(LeaseContract contract) {
   final endDate = contract.endDate;
   if (endDate == null) return false;
-  final remainingDays = _dateOnly(endDate)
-      .difference(_dateOnly(DateTime.now()))
-      .inDays;
+  final remainingDays = _dateOnly(
+    endDate,
+  ).difference(_dateOnly(DateTime.now())).inDays;
   return remainingDays >= 0 && remainingDays < 30;
 }
 

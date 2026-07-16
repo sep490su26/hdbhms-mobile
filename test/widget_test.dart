@@ -17,6 +17,7 @@ import 'package:hdbhms_mobile/screens/auth/change_password_page.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/auth/forgot_password_service.dart';
+import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
 import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
@@ -91,6 +92,26 @@ class _FakeHomeService extends HomeService {
   @override
   Future<HomeSummary> fetchHomeSummary({int? contractId}) async {
     return _homeSummary;
+  }
+}
+
+class _FakeLeaseContractService extends LeaseContractService {
+  const _FakeLeaseContractService();
+
+  @override
+  Future<List<ActiveRoomItem>> fetchMyActiveRooms() async {
+    return const [
+      ActiveRoomItem(
+        contractId: 1,
+        contractCode: 'HD-TEST-001',
+        roomId: 1,
+        roomCode: '101',
+        roomName: 'Ph\u00F2ng 101',
+        propertyName: 'Test Tenant',
+        roomStatus: 'OCCUPIED',
+        contractStatus: 'ACTIVE',
+      ),
+    ];
   }
 }
 
@@ -178,6 +199,8 @@ final _testApp = App(
   authService: const _FakeAuthService(),
   homeService: const _FakeHomeService(),
   tenantInvoiceService: _fakeTenantInvoiceService,
+  leaseContractService: const _FakeLeaseContractService(),
+  notificationUnreadCount: 0,
 );
 const _homeOnboarding = OnboardingState(
   userId: 1,
@@ -424,16 +447,20 @@ const _tenantProfileWithNullVehicleImage = TenantProfileResponse(
   emergencyContacts: [],
 );
 
-Future<void> login(WidgetTester tester) async {
+Future<void> login(WidgetTester tester, {bool openRoom = false}) async {
   await tester.enterText(find.byType(TextFormField).at(0), '0912000201');
   await tester.enterText(find.byType(TextFormField).at(1), 'Changed@123');
   await tester.ensureVisible(find.byType(ElevatedButton).last);
   await tester.tap(find.byType(ElevatedButton).last);
   await tester.pumpAndSettle();
+  if (openRoom) {
+    await tester.tap(find.text('Ph\u00F2ng 101').last);
+    await tester.pumpAndSettle();
+  }
 }
 
 Future<void> openBillsFromHomeCta(WidgetTester tester) async {
-  final cta = find.text('Thanh to\u00E1n ngay');
+  final cta = find.text('Ch\u1ECDn kho\u1EA3n thanh to\u00E1n');
   await tester.ensureVisible(cta);
   await tester.pumpAndSettle();
   await tester.tap(cta);
@@ -492,10 +519,10 @@ void main() {
 
     await login(tester);
 
-    expect(find.text('XIN CH\u00C0O,'), findsOneWidget);
-    expect(find.text('Test User'), findsOneWidget);
-    expect(find.text('Ph\u00F2ng 101'), findsWidgets);
-    expect(find.text('2.800.000'), findsOneWidget);
+    expect(find.text('XIN CH\u00C0O,'), findsNothing);
+    expect(find.text('Test Tenant'), findsWidgets);
+    expect(find.text('Ph\u00F2ng 101'), findsOneWidget);
+    expect(find.text('1 ph\u00F2ng'), findsOneWidget);
   });
 
   testWidgets('opens bill selection from payment CTA', (
@@ -504,7 +531,7 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await login(tester, openRoom: true);
 
     await openBillsFromHomeCta(tester);
 
@@ -525,7 +552,7 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await login(tester, openRoom: true);
 
     await tester.tap(find.text('H\u00F3a \u0111\u01A1n'));
     await tester.pumpAndSettle();
@@ -544,7 +571,7 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await login(tester, openRoom: true);
 
     await openBillsFromHomeCta(tester);
 
@@ -571,7 +598,7 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await login(tester, openRoom: true);
 
     await openBillsFromHomeCta(tester);
 
@@ -587,7 +614,7 @@ void main() {
 
     expect(find.text('Thanh to\u00E1n th\u00E0nh c\u00F4ng!'), findsOneWidget);
     expect(find.text('#TXN-882910'), findsOneWidget);
-    expect(find.text('800.000 \u0111'), findsOneWidget);
+    expect(find.text('2.450.000 \u0111'), findsNWidgets(2));
     expect(find.text('Quay l\u1EA1i trang ch\u1EE7'), findsOneWidget);
   });
 
@@ -597,7 +624,7 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await login(tester, openRoom: true);
 
     await openBillsFromHomeCta(tester);
 
@@ -611,8 +638,11 @@ void main() {
     await tester.tap(find.text('T\u00F4i \u0111\u00E3 chuy\u1EC3n kho\u1EA3n'));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Xem l\u1ECBch s\u1EED'));
-    await tester.tap(find.text('Xem l\u1ECBch s\u1EED'));
+    await scrollUntilTextVisible(
+      tester,
+      'Xem l\u1ECBch s\u1EED thanh to\u00E1n',
+    );
+    await tester.tap(find.text('Xem l\u1ECBch s\u1EED thanh to\u00E1n'));
     await tester.pumpAndSettle();
 
     expect(find.text('L\u1ECBch s\u1EED thanh to\u00E1n'), findsOneWidget);
@@ -632,13 +662,14 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await login(tester, openRoom: true);
 
     await tester.tap(find.text('H\u00F3a \u0111\u01A1n'));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(
-      find.text('Xem to\u00E0n b\u1ED9 l\u1ECBch s\u1EED thanh to\u00E1n'),
+    await scrollUntilTextVisible(
+      tester,
+      'Xem to\u00E0n b\u1ED9 l\u1ECBch s\u1EED thanh to\u00E1n',
     );
     await tester.tap(
       find.text('Xem to\u00E0n b\u1ED9 l\u1ECBch s\u1EED thanh to\u00E1n'),
@@ -661,7 +692,7 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await login(tester, openRoom: true);
 
     await tester.tap(find.text('H\u00F3a \u0111\u01A1n'));
     await tester.pumpAndSettle();
@@ -679,13 +710,14 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await login(tester, openRoom: true);
 
     await tester.tap(find.text('H\u00F3a \u0111\u01A1n'));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(
-      find.text('Xem to\u00E0n b\u1ED9 l\u1ECBch s\u1EED thanh to\u00E1n'),
+    await scrollUntilTextVisible(
+      tester,
+      'Xem to\u00E0n b\u1ED9 l\u1ECBch s\u1EED thanh to\u00E1n',
     );
     await tester.tap(
       find.text('Xem to\u00E0n b\u1ED9 l\u1ECBch s\u1EED thanh to\u00E1n'),
@@ -923,7 +955,7 @@ void main() {
   );
 
   test(
-    'reset password sends snake case payload and clears cached session',
+    'reset password sends backend camel case payload and clears cached session',
     () async {
       SharedPreferences.setMockInitialValues({
         AuthService.accessTokenKey: 'old-token',
@@ -952,8 +984,8 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
 
       expect(requestBody['token'], '950638');
-      expect(requestBody['new_password'], 'Changed123');
-      expect(requestBody.containsKey('newPassword'), isFalse);
+      expect(requestBody['newPassword'], 'Changed123');
+      expect(requestBody.containsKey('new_password'), isFalse);
       expect(prefs.getString(AuthService.accessTokenKey), isNull);
       expect(prefs.getString(AuthService.sessionIdKey), isNull);
       expect(prefs.getString(AuthService.onboardingActionsKey), isNull);

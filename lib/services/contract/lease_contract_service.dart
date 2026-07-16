@@ -384,6 +384,19 @@ class LeaseContractService {
 
   String _messageForIntentionError(http.Response response) {
     final raw = _messageForError(response);
+    if (response.statusCode == 401) {
+      return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+    }
+    if (response.statusCode == 403) {
+      return 'Bạn không có quyền gửi yêu cầu cho hợp đồng này.';
+    }
+    if (response.statusCode == 409 ||
+        raw.contains('MOVE_OUT_INTENTION_ALREADY_RECORDED')) {
+      return 'Hợp đồng đã có yêu cầu chuyển đi đang hiệu lực.';
+    }
+    if (response.statusCode >= 500) {
+      return 'Máy chủ đang bận. Vui lòng thử lại sau.';
+    }
     if (raw.contains('CONTRACT_INTENTION_PRIMARY_ONLY')) {
       return 'Chỉ người ký chính của hợp đồng mới được ghi nhận ý định.';
     }
@@ -395,6 +408,12 @@ class LeaseContractService {
     }
     if (raw.contains('EXPECTED_MOVE_OUT_DATE_AFTER_CONTRACT_END')) {
       return 'Ngày dự kiến trả phòng không được sau ngày kết thúc hợp đồng.';
+    }
+    if (raw.contains('MOVE_OUT_REASON_REQUIRED')) {
+      return 'Vui lòng nhập lý do trả phòng.';
+    }
+    if (raw.contains('INTENTION_TOO_EARLY')) {
+      return 'Chỉ có thể báo chuyển đi khi hợp đồng còn không quá 3 tháng.';
     }
     if (raw.contains('ROOM_HOLD_IN_PROGRESS') ||
         raw.contains('ROOM_ALREADY_RESERVED_FOR_FUTURE') ||

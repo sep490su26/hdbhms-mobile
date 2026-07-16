@@ -97,7 +97,10 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
             );
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (context) => PaymentSuccessPage(invoice: updated),
+              builder: (context) => PaymentSuccessPage(
+                invoice: updated,
+                invoiceService: widget.invoiceService,
+              ),
             ),
             result: true,
           );
@@ -496,12 +499,15 @@ class _QrCard extends StatelessWidget {
               children: [
                 Icon(Icons.bolt_rounded, color: theme.primary, size: 16),
                 const SizedBox(width: 5),
-                Text(
-                  'Tự động đối soát sau khi chuyển khoản',
-                  style: TextStyle(
-                    color: theme.primary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                Flexible(
+                  child: Text(
+                    'Tự động đối soát sau khi chuyển khoản',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: theme.primary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],

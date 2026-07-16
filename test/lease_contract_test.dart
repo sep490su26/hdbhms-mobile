@@ -165,7 +165,7 @@ void main() {
 
       expect(find.text('Thanh lý hợp đồng'), findsOneWidget);
       expect(find.text('HD-201'), findsOneWidget);
-      expect(find.text('Hợp đồng còn dưới 1 tháng'), findsOneWidget);
+      expect(find.textContaining('Hợp đồng còn dưới 1 tháng'), findsOneWidget);
     },
   );
 

@@ -12,18 +12,21 @@ class OnboardingState {
   final List<OnboardingAction> actions;
 
   factory OnboardingState.fromJson(Map<String, dynamic> json) {
-    final actionsJson = json['actions'];
+    final actionsJson = json['actions'] ?? json['onboarding_actions'];
     final actions = actionsJson is List
         ? actionsJson
               .whereType<Map<String, dynamic>>()
               .map(OnboardingAction.fromJson)
               .toList()
         : <OnboardingAction>[];
-    final completed = json['onBoardingCompleted'] == true;
+    final completed = _asBool(
+      json['onBoardingCompleted'] ?? json['on_boarding_completed'],
+    );
 
     if (actions.isEmpty && !completed) {
-      final legacyStep = json['nextStep']?.toString();
-      if (legacyStep != null && legacyStep != home) {
+      final legacyStep =
+          json['nextStep']?.toString() ?? json['next_step']?.toString();
+      if (legacyStep != null && legacyStep.isNotEmpty && legacyStep != home) {
         actions.add(
           OnboardingAction(
             actionKey: legacyStep,
@@ -36,7 +39,7 @@ class OnboardingState {
     }
 
     return OnboardingState(
-      userId: int.tryParse(json['userId']?.toString() ?? ''),
+      userId: _asInt(json['userId'] ?? json['user_id']),
       onBoardingCompleted: completed,
       actions: actions,
     );
@@ -72,4 +75,16 @@ class OnboardingState {
   String toString() {
     return 'OnboardingState{userId: $userId, onBoardingCompleted: $onBoardingCompleted, actions: $actions}';
   }
+}
+
+int? _asInt(Object? value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '');
+}
+
+bool _asBool(Object? value) {
+  if (value is bool) return value;
+  final normalized = value?.toString().trim().toLowerCase();
+  return normalized == 'true' || normalized == '1';
 }

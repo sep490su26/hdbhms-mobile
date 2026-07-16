@@ -22,9 +22,11 @@ class MaintenanceTicketListScreen extends StatefulWidget {
   const MaintenanceTicketListScreen({
     super.key,
     this.ticketService = const MaintenanceTicketService(),
+    this.notificationUnreadCount,
   });
 
   final MaintenanceTicketService ticketService;
+  final int? notificationUnreadCount;
 
   @override
   State<MaintenanceTicketListScreen> createState() =>
@@ -97,6 +99,7 @@ class _MaintenanceTicketListScreenState
           ticketId: ticket.id,
           ticket: ticket,
           ticketService: widget.ticketService,
+          notificationUnreadCount: widget.notificationUnreadCount,
         ),
       ),
     );
@@ -234,9 +237,10 @@ class _MaintenanceTicketListScreenState
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const AppNotificationBell(
+            icon: AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: 24,
+              initialUnreadCount: widget.notificationUnreadCount,
             ),
             tooltip: 'Thông báo',
           ),

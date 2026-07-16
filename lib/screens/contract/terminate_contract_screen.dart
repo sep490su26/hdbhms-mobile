@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:hdbhms_mobile/models/contract/lease_contract_model.dart';
+import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
@@ -20,6 +22,10 @@ class TerminateContractScreen extends StatefulWidget {
     this.contractCode = 'HN/Phòng 123/2026/HDSV/574',
     this.contractExpiry = '30/09/2026',
     this.contractEndDate,
+    this.initialExpectedDate,
+    this.contractService = const LeaseContractService(),
+    this.onSubmitted,
+    this.notificationUnreadCount,
   });
 
   final int? contractId;
@@ -31,6 +37,10 @@ class TerminateContractScreen extends StatefulWidget {
   final String contractExpiry;
 
   final DateTime? contractEndDate;
+  final DateTime? initialExpectedDate;
+  final LeaseContractService contractService;
+  final Future<void> Function(LeaseContract contract)? onSubmitted;
+  final int? notificationUnreadCount;
 
   @override
   State<TerminateContractScreen> createState() =>
@@ -43,6 +53,14 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
 
   DateTime? _expectedDate;
   bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _expectedDate = widget.initialExpectedDate == null
+        ? null
+        : _dateOnly(widget.initialExpectedDate!);
+  }
 
   DateTime get _expiryDate {
     final contractEndDate = widget.contractEndDate;
@@ -104,16 +122,37 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   Future<void> _submit() async {
+    if (_submitting) return;
     if (!_formKey.currentState!.validate()) return;
     if (_expectedDate == null) {
       _snack('Vui lòng chọn ngày trả phòng dự kiến');
       return;
     }
+    final contractId = widget.contractId;
+    if (contractId == null) {
+      _snack('Không xác định được hợp đồng. Vui lòng tải lại.');
+      return;
+    }
     setState(() => _submitting = true);
-    await Future<void>.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
-    setState(() => _submitting = false);
-    _showSuccessDialog();
+    try {
+      final contract = await widget.contractService.recordIntention(
+        contractId: contractId,
+        intention: 'MOVE_OUT',
+        expectedMoveOutDate: _expectedDate,
+        note: _reasonCtrl.text.trim(),
+      );
+      await widget.onSubmitted?.call(contract);
+      if (!mounted) return;
+      _showSuccessDialog();
+    } on LeaseContractException catch (error) {
+      if (mounted) _snack(error.message);
+    } catch (_) {
+      if (mounted) {
+        _snack('Không thể gửi yêu cầu. Vui lòng thử lại.');
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
 
   void _snack(String msg) {
@@ -130,7 +169,7 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
       builder: (_) => _TerminateSuccessDialog(
         onHome: () {
           Navigator.of(context).pop();
-          Navigator.of(context).popUntil((r) => r.isFirst);
+          Navigator.of(context).pop(true);
         },
       ),
     );
@@ -179,9 +218,10 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const AppNotificationBell(
+            icon: AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: 24,
+              initialUnreadCount: widget.notificationUnreadCount,
             ),
             tooltip: 'Thông báo',
           ),
@@ -334,6 +374,7 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
 
               // Date picker button
               GestureDetector(
+                key: const Key('terminate-date-picker'),
                 onTap: _pickDate,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -431,6 +472,7 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
 
               // Reason text field
               TextFormField(
+                key: const Key('terminate-reason-field'),
                 controller: _reasonCtrl,
                 minLines: 4,
                 maxLines: 6,
@@ -500,6 +542,7 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
           SizedBox(
             height: 52,
             child: ElevatedButton.icon(
+              key: const Key('terminate-submit-button'),
               onPressed: _submitting ? null : _submit,
               icon: _submitting
                   ? const SizedBox(
