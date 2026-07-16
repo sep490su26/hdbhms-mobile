@@ -15,11 +15,13 @@ class OnboardingAction {
 
   factory OnboardingAction.fromJson(Map<String, dynamic> json) {
     return OnboardingAction(
-      actionKey: json['actionKey']?.toString() ?? '',
+      actionKey:
+          json['actionKey']?.toString() ?? json['action_key']?.toString() ?? '',
       label: json['label']?.toString() ?? '',
-      completed: json['completed'] == true,
-      priority: (json['priority'] as num?)?.toInt() ?? 0,
-      actionUrl: json['actionUrl']?.toString(),
+      completed: _asBool(json['completed']),
+      priority: _asInt(json['priority']) ?? 0,
+      actionUrl:
+          json['actionUrl']?.toString() ?? json['action_url']?.toString(),
     );
   }
 
@@ -37,4 +39,16 @@ class OnboardingAction {
   String toString() {
     return 'OnboardingAction{actionKey: $actionKey, label: $label, completed: $completed, priority: $priority, actionUrl: $actionUrl}';
   }
+}
+
+int? _asInt(Object? value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '');
+}
+
+bool _asBool(Object? value) {
+  if (value is bool) return value;
+  final normalized = value?.toString().trim().toLowerCase();
+  return normalized == 'true' || normalized == '1';
 }

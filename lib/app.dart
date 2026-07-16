@@ -8,6 +8,7 @@ import 'package:hdbhms_mobile/screens/tenant_overview/tenant_overview_screen.dar
 import 'package:hdbhms_mobile/screens/auth/identity_verification_page.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
+import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
 import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
@@ -23,6 +24,8 @@ class App extends StatelessWidget {
     this.homeService = const HomeService(),
     this.profileService = const TenantProfileService(),
     this.tenantInvoiceService = const TenantInvoiceService(),
+    this.leaseContractService = const LeaseContractService(),
+    this.notificationUnreadCount,
   });
 
   static final GlobalKey<NavigatorState> navigatorKey =
@@ -32,6 +35,8 @@ class App extends StatelessWidget {
   final HomeService homeService;
   final TenantProfileService profileService;
   final TenantInvoiceService tenantInvoiceService;
+  final LeaseContractService leaseContractService;
+  final int? notificationUnreadCount;
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +58,8 @@ class App extends StatelessWidget {
         homeService: homeService,
         profileService: profileService,
         tenantInvoiceService: tenantInvoiceService,
+        leaseContractService: leaseContractService,
+        notificationUnreadCount: notificationUnreadCount,
       ),
     );
   }
@@ -64,12 +71,16 @@ class _AppRoot extends StatefulWidget {
     required this.homeService,
     required this.profileService,
     required this.tenantInvoiceService,
+    required this.leaseContractService,
+    required this.notificationUnreadCount,
   });
 
   final AuthService authService;
   final HomeService homeService;
   final TenantProfileService profileService;
   final TenantInvoiceService tenantInvoiceService;
+  final LeaseContractService leaseContractService;
+  final int? notificationUnreadCount;
 
   @override
   State<_AppRoot> createState() => _AppRootState();
@@ -120,6 +131,8 @@ class _AppRootState extends State<_AppRoot> {
         authService: widget.authService,
         homeService: widget.homeService,
         tenantInvoiceService: widget.tenantInvoiceService,
+        leaseContractService: widget.leaseContractService,
+        notificationUnreadCount: widget.notificationUnreadCount,
       );
     }
 
@@ -133,6 +146,8 @@ class _AppRootState extends State<_AppRoot> {
         authService: widget.authService,
         homeService: widget.homeService,
         tenantInvoiceService: widget.tenantInvoiceService,
+        leaseContractService: widget.leaseContractService,
+        notificationUnreadCount: widget.notificationUnreadCount,
       );
     } on AuthException {
       final cachedOnboarding = await widget.authService.getCachedOnboarding();
@@ -145,6 +160,8 @@ class _AppRootState extends State<_AppRoot> {
         authService: widget.authService,
         homeService: widget.homeService,
         tenantInvoiceService: widget.tenantInvoiceService,
+        leaseContractService: widget.leaseContractService,
+        notificationUnreadCount: widget.notificationUnreadCount,
       );
     }
   }
@@ -156,6 +173,8 @@ class _AppRootState extends State<_AppRoot> {
         homeService: widget.homeService,
         profileService: widget.profileService,
         tenantInvoiceService: widget.tenantInvoiceService,
+        leaseContractService: widget.leaseContractService,
+        notificationUnreadCount: widget.notificationUnreadCount,
       );
     }
 
@@ -176,6 +195,8 @@ class _AppRootState extends State<_AppRoot> {
         homeService: widget.homeService,
         profileService: widget.profileService,
         tenantInvoiceService: widget.tenantInvoiceService,
+        leaseContractService: widget.leaseContractService,
+        notificationUnreadCount: widget.notificationUnreadCount,
       ),
     };
   }

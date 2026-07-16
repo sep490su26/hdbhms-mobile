@@ -27,6 +27,7 @@ class TenantOverviewScreen extends StatefulWidget {
     this.leaseContractService = const LeaseContractService(),
     this.profileService = const TenantProfileService(),
     this.tenantInvoiceService = const TenantInvoiceService(),
+    this.notificationUnreadCount,
   });
 
   final AuthService authService;
@@ -34,6 +35,7 @@ class TenantOverviewScreen extends StatefulWidget {
   final LeaseContractService leaseContractService;
   final TenantProfileService profileService;
   final TenantInvoiceService tenantInvoiceService;
+  final int? notificationUnreadCount;
 
   @override
   State<TenantOverviewScreen> createState() => _TenantOverviewScreenState();
@@ -268,6 +270,7 @@ class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
             currentIndex: _imageIndex,
             tenantName: tenantName,
             roomCount: _rooms.length,
+            notificationUnreadCount: widget.notificationUnreadCount,
             onProfileTap: _openProfile,
             onPageChanged: (index) => setState(() => _imageIndex = index),
           ),
@@ -313,6 +316,7 @@ class _OverviewHero extends StatelessWidget {
     required this.currentIndex,
     required this.tenantName,
     required this.roomCount,
+    required this.notificationUnreadCount,
     required this.onProfileTap,
     required this.onPageChanged,
   });
@@ -322,6 +326,7 @@ class _OverviewHero extends StatelessWidget {
   final int currentIndex;
   final String tenantName;
   final int roomCount;
+  final int? notificationUnreadCount;
   final VoidCallback onProfileTap;
   final ValueChanged<int> onPageChanged;
 
@@ -371,7 +376,10 @@ class _OverviewHero extends StatelessWidget {
                 top: 14,
                 left: 14,
                 right: 14,
-                child: _HeroTopBar(onProfileTap: onProfileTap),
+                child: _HeroTopBar(
+                  onProfileTap: onProfileTap,
+                  notificationUnreadCount: notificationUnreadCount,
+                ),
               ),
               Positioned(
                 left: 16,
@@ -399,9 +407,13 @@ class _OverviewHero extends StatelessWidget {
 }
 
 class _HeroTopBar extends StatelessWidget {
-  const _HeroTopBar({required this.onProfileTap});
+  const _HeroTopBar({
+    required this.onProfileTap,
+    required this.notificationUnreadCount,
+  });
 
   final VoidCallback onProfileTap;
+  final int? notificationUnreadCount;
 
   @override
   Widget build(BuildContext context) {
@@ -415,7 +427,11 @@ class _HeroTopBar extends StatelessWidget {
           ),
           constraints: const BoxConstraints.tightFor(width: 40, height: 40),
           padding: EdgeInsets.zero,
-          icon: const AppNotificationBell(color: Colors.white, size: 23),
+          icon: AppNotificationBell(
+            color: Colors.white,
+            size: 23,
+            initialUnreadCount: notificationUnreadCount,
+          ),
           tooltip: 'Thông báo',
         ),
         const SizedBox(width: 6),

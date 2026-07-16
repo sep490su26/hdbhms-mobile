@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/models/onboarding_state.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/auth/forgot_password_service.dart';
+import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
@@ -21,12 +22,16 @@ class LoginPage extends StatefulWidget {
     this.homeService = const HomeService(),
     this.forgotPasswordService = const ForgotPasswordService(),
     this.tenantInvoiceService = const TenantInvoiceService(),
+    this.leaseContractService = const LeaseContractService(),
+    this.notificationUnreadCount,
   });
 
   final AuthService authService;
   final HomeService homeService;
   final ForgotPasswordService forgotPasswordService;
   final TenantInvoiceService tenantInvoiceService;
+  final LeaseContractService leaseContractService;
+  final int? notificationUnreadCount;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -110,6 +115,8 @@ class _LoginPageState extends State<LoginPage> {
             authService: widget.authService,
             homeService: widget.homeService,
             tenantInvoiceService: widget.tenantInvoiceService,
+            leaseContractService: widget.leaseContractService,
+            notificationUnreadCount: widget.notificationUnreadCount,
           ),
         ),
       );
@@ -132,6 +139,8 @@ class _LoginPageState extends State<LoginPage> {
         authService: widget.authService,
         homeService: widget.homeService,
         tenantInvoiceService: widget.tenantInvoiceService,
+        leaseContractService: widget.leaseContractService,
+        notificationUnreadCount: widget.notificationUnreadCount,
       ),
     };
 
