@@ -5,6 +5,8 @@ enum ChangeRequestType {
   rentPriceAdjustment,
   depositRefundRequest,
   roomTransfer,
+  contractRenewal,
+  contractLiquidation,
   moveOut,
   addCoOccupant,
   complaint;
@@ -21,6 +23,10 @@ enum ChangeRequestType {
         return ChangeRequestType.depositRefundRequest;
       case 'ROOM_TRANSFER':
         return ChangeRequestType.roomTransfer;
+      case 'CONTRACT_RENEWAL':
+        return ChangeRequestType.contractRenewal;
+      case 'CONTRACT_LIQUIDATION':
+        return ChangeRequestType.contractLiquidation;
       case 'MOVE_OUT':
         return ChangeRequestType.moveOut;
       case 'ADD_CO_OCCUPANT':
@@ -44,6 +50,10 @@ enum ChangeRequestType {
         return 'DEPOSIT_REFUND_REQUEST';
       case ChangeRequestType.roomTransfer:
         return 'ROOM_TRANSFER';
+      case ChangeRequestType.contractRenewal:
+        return 'CONTRACT_RENEWAL';
+      case ChangeRequestType.contractLiquidation:
+        return 'CONTRACT_LIQUIDATION';
       case ChangeRequestType.moveOut:
         return 'MOVE_OUT';
       case ChangeRequestType.addCoOccupant:
@@ -65,6 +75,10 @@ enum ChangeRequestType {
         return 'Hoàn tiền cọc';
       case ChangeRequestType.roomTransfer:
         return 'Chuyển phòng';
+      case ChangeRequestType.contractRenewal:
+        return 'Tái ký hợp đồng';
+      case ChangeRequestType.contractLiquidation:
+        return 'Thanh lý hợp đồng';
       case ChangeRequestType.moveOut:
         return 'Trả phòng';
       case ChangeRequestType.addCoOccupant:

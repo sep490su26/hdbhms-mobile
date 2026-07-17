@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
@@ -14,7 +15,14 @@ const Color _kLabel = Color(0xFF000666);
 
 /// Màn tạo yêu cầu thêm người ở cùng.
 class AddRoommateRequestScreen extends StatefulWidget {
-  const AddRoommateRequestScreen({super.key});
+  const AddRoommateRequestScreen({
+    super.key,
+    required this.contractId,
+    this.contractService = const LeaseContractService(),
+  });
+
+  final int contractId;
+  final LeaseContractService contractService;
 
   @override
   State<AddRoommateRequestScreen> createState() =>
@@ -45,10 +53,27 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _submitting = true);
-    await Future<void>.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
-    setState(() => _submitting = false);
-    _showSuccessDialog();
+    try {
+      await widget.contractService.submitAddCoOccupantRequest(
+        contractId: widget.contractId,
+        fullName: _nameCtrl.text,
+        phone: _phoneCtrl.text,
+        email: _emailCtrl.text,
+        note: _noteCtrl.text,
+      );
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      _showSuccessDialog();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_messageForSubmitError(error)),
+          backgroundColor: const Color(0xFFDC2626),
+        ),
+      );
+    }
   }
 
   // ── Success dialog ─────────────────────────────────────────────────────────
@@ -673,4 +698,11 @@ class _Field extends StatelessWidget {
       ],
     );
   }
+}
+
+String _messageForSubmitError(Object? error) {
+  if (error is LeaseContractException) {
+    return error.message;
+  }
+  return 'Khong the gui yeu cau. Vui long thu lai.';
 }

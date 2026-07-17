@@ -22,6 +22,7 @@ class ActiveRoomItem {
     required this.roomCode,
     required this.roomName,
     required this.propertyName,
+    this.propertyId = 0,
     this.roomStatus = '',
     this.contractStatus = '',
     this.roleInContract = '',
@@ -35,6 +36,7 @@ class ActiveRoomItem {
   final int roomId;
   final String roomCode;
   final String roomName;
+  final int propertyId;
   final String propertyName;
   final String roomStatus;
   final String contractStatus;
@@ -55,6 +57,7 @@ class ActiveRoomItem {
           json['roomCode']?.toString() ?? json['room_code']?.toString() ?? '',
       roomName:
           json['roomName']?.toString() ?? json['room_name']?.toString() ?? '',
+      propertyId: _asInt(json['propertyId'] ?? json['property_id']) ?? 0,
       propertyName:
           json['propertyName']?.toString() ??
           json['property_name']?.toString() ??
@@ -342,6 +345,143 @@ class LeaseContractService {
     }
   }
 
+  Future<void> submitLiquidationRequest({
+    required int contractId,
+    String reason = '',
+  }) async {
+    final client = _effectiveClient;
+    try {
+      final response = await client
+          .post(
+            Uri.parse(
+              '${ApiConfig.baseUrl}/lease-contracts/$contractId/liquidation-requests',
+            ),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'reason': reason.trim().isEmpty ? null : reason.trim(),
+            }),
+          )
+          .timeout(_timeout);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return;
+      }
+      throw LeaseContractException(_messageForLifecycleRequestError(response));
+    } on LeaseContractException {
+      rethrow;
+    } on TimeoutException {
+      throw const LeaseContractException('Không kết nối được máy chủ');
+    } on http.ClientException {
+      throw const LeaseContractException('Không kết nối được máy chủ');
+    } on FormatException {
+      throw const LeaseContractException(
+        'Không thể gửi yêu cầu. Vui lòng thử lại.',
+      );
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
+
+  Future<void> submitRenewalRequest({
+    required int contractId,
+    required DateTime newStartDate,
+    required DateTime newEndDate,
+    required num monthlyRent,
+    required int paymentCycleMonths,
+    required num depositAmount,
+    String note = '',
+  }) async {
+    final client = _effectiveClient;
+    try {
+      final response = await client
+          .post(
+            Uri.parse(
+              '${ApiConfig.baseUrl}/lease-contracts/$contractId/renewal-requests',
+            ),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'newStartDate': _dateOnlyString(newStartDate),
+              'newEndDate': _dateOnlyString(newEndDate),
+              'monthlyRent': monthlyRent.round(),
+              'paymentCycleMonths': paymentCycleMonths,
+              'depositAmount': depositAmount.round(),
+              'note': note.trim().isEmpty ? null : note.trim(),
+            }),
+          )
+          .timeout(_timeout);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return;
+      }
+      throw LeaseContractException(_messageForLifecycleRequestError(response));
+    } on LeaseContractException {
+      rethrow;
+    } on TimeoutException {
+      throw const LeaseContractException('Không kết nối được máy chủ');
+    } on http.ClientException {
+      throw const LeaseContractException('Không kết nối được máy chủ');
+    } on FormatException {
+      throw const LeaseContractException(
+        'Không thể gửi yêu cầu. Vui lòng thử lại.',
+      );
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
+
+  Future<void> submitAddCoOccupantRequest({
+    required int contractId,
+    required String fullName,
+    required String phone,
+    String email = '',
+    String note = '',
+  }) async {
+    final client = _effectiveClient;
+    try {
+      final response = await client
+          .post(
+            Uri.parse(
+              '${ApiConfig.baseUrl}/lease-contracts/$contractId/co-occupant-requests',
+            ),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'fullName': fullName.trim(),
+              'phone': phone.trim(),
+              'email': email.trim().isEmpty ? null : email.trim(),
+              'note': note.trim().isEmpty ? null : note.trim(),
+            }),
+          )
+          .timeout(_timeout);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return;
+      }
+      throw LeaseContractException(_messageForLifecycleRequestError(response));
+    } on LeaseContractException {
+      rethrow;
+    } on TimeoutException {
+      throw const LeaseContractException(
+        'KhÃ´ng káº¿t ná»‘i Ä‘Æ°á»£c mÃ¡y chá»§',
+      );
+    } on http.ClientException {
+      throw const LeaseContractException(
+        'KhÃ´ng káº¿t ná»‘i Ä‘Æ°á»£c mÃ¡y chá»§',
+      );
+    } on FormatException {
+      throw const LeaseContractException(
+        'KhÃ´ng thá»ƒ gá»­i yÃªu cáº§u. Vui lÃ²ng thá»­ láº¡i.',
+      );
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
+
   Map<String, dynamic>? _contractPayload(Map<String, dynamic> body) {
     for (final key in ['data', 'contract', 'lease_contract', 'leaseContract']) {
       final value = body[key];
@@ -405,6 +545,20 @@ class LeaseContractService {
       return raw;
     }
     return 'Không thể lưu ý định. Vui lòng thử lại.';
+  }
+
+  String _messageForLifecycleRequestError(http.Response response) {
+    final raw = _messageForError(response);
+    if (response.statusCode == 409 || raw.contains('dang cho duyet')) {
+      return 'Hợp đồng đã có yêu cầu đang chờ duyệt.';
+    }
+    if (response.statusCode == 403) {
+      return 'Bạn không có quyền gửi yêu cầu cho hợp đồng này.';
+    }
+    if (raw.trim().isNotEmpty && !raw.contains('Không tải')) {
+      return raw;
+    }
+    return 'Không thể gửi yêu cầu. Vui lòng thử lại.';
   }
 
   Map<String, dynamic> _decodeBody(String body) {

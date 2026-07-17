@@ -46,6 +46,49 @@ class _FakeHomeService extends HomeService {
   }
 }
 
+class _RecordingHomeService extends HomeService {
+  _RecordingHomeService();
+
+  final List<int?> requestedContractIds = [];
+
+  @override
+  Future<HomeSummary> fetchHomeSummary({int? contractId}) async {
+    requestedContractIds.add(contractId);
+    final roomId = contractId == 24 ? 104 : 103;
+    return HomeSummary(
+      user: const HomeUser(
+        id: 1,
+        fullName: 'POAKLAK',
+        phone: '0900000000',
+        email: 'tenant@example.com',
+        role: 'TENANT',
+      ),
+      tenant: const HomeTenant(id: 1, name: 'Nha tro Hai Dang 1'),
+      room: HomeRoom(
+        id: roomId,
+        roomCode: '$roomId',
+        name: 'Phong $roomId',
+        currentStatus: 'OCCUPIED',
+      ),
+      rooms: const [],
+      contract: HomeContract(
+        id: contractId ?? 23,
+        contractCode: contractId == 24 ? 'HD-2026-H104-24' : 'HD-2026-H103-23',
+        status: 'ACTIVE',
+        startDate: DateTime(2026, 6, 1),
+        endDate: DateTime(2027, 6, 1),
+      ),
+      invoiceSummary: const InvoiceSummary(
+        unpaidCount: 0,
+        totalUnpaidAmount: 0,
+        nearestDueDate: null,
+      ),
+      notificationSummary: const NotificationSummary(unreadCount: 0),
+      utilitySummary: const UtilitySummary(),
+    );
+  }
+}
+
 class _FakeLeaseContractService extends LeaseContractService {
   const _FakeLeaseContractService();
 
@@ -186,4 +229,28 @@ void main() {
       );
     },
   );
+
+  test('home provider loads selected initial room contract', () async {
+    final homeService = _RecordingHomeService();
+    final provider = HomeProvider(
+      homeService: homeService,
+      leaseContractService: const _FakeLeaseContractService(),
+      tenantInvoiceService: const _FakeTenantInvoiceService(),
+      initialRoom: const ActiveRoomItem(
+        contractId: 24,
+        contractCode: 'HD-2026-H104-24',
+        roomId: 104,
+        roomCode: '104',
+        roomName: 'Phong 104',
+        propertyName: 'Nha tro Hai Dang 1',
+      ),
+    );
+
+    await provider.load();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(homeService.requestedContractIds.first, 24);
+    expect(provider.summary?.room?.roomCode, '104');
+    expect(provider.selectedRoom?.contractId, 24);
+  });
 }

@@ -176,6 +176,7 @@ class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
           profileService: widget.profileService,
           leaseContractService: widget.leaseContractService,
           tenantInvoiceService: widget.tenantInvoiceService,
+          initialRoom: room,
         ),
       ),
     );

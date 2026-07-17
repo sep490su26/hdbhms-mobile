@@ -15,6 +15,7 @@ class _FakeLeaseContractService extends LeaseContractService {
     this.contract,
     this.error,
     this.onRecordIntention,
+    this.onSubmitLiquidation,
   });
 
   final LeaseContract? contract;
@@ -26,6 +27,7 @@ class _FakeLeaseContractService extends LeaseContractService {
     String note,
   )?
   onRecordIntention;
+  final void Function(int contractId, String reason)? onSubmitLiquidation;
 
   @override
   Future<LeaseContract> getMyActiveContract({int? tenantId}) async {
@@ -46,6 +48,25 @@ class _FakeLeaseContractService extends LeaseContractService {
     onRecordIntention?.call(contractId, intention, expectedMoveOutDate, note);
     return contract!;
   }
+
+  @override
+  Future<void> submitLiquidationRequest({
+    required int contractId,
+    String reason = '',
+  }) async {
+    onSubmitLiquidation?.call(contractId, reason);
+  }
+
+  @override
+  Future<void> submitRenewalRequest({
+    required int contractId,
+    required DateTime newStartDate,
+    required DateTime newEndDate,
+    required num monthlyRent,
+    required int paymentCycleMonths,
+    required num depositAmount,
+    String note = '',
+  }) async {}
 }
 
 void main() {
@@ -113,6 +134,48 @@ void main() {
     },
   );
 
+  test('LeaseContractService submits add co-occupant request', () async {
+    SharedPreferences.setMockInitialValues({
+      AuthService.accessTokenKey: 'token-123',
+      AuthService.tenantIdKey: 23,
+    });
+
+    final service = LeaseContractService(
+      client: MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(
+          request.url.path,
+          '/api/v1/lease-contracts/9/co-occupant-requests',
+        );
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['fullName'], 'Nguyen Van B');
+        expect(body['phone'], '0912345678');
+        expect(body['email'], 'b@example.com');
+        expect(body['note'], 'O cung tu thang nay');
+
+        return http.Response(
+          jsonEncode({
+            'data': {
+              'id': 99,
+              'requestType': 'ADD_CO_OCCUPANT',
+              'status': 'PENDING',
+            },
+          }),
+          201,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }),
+    );
+
+    await service.submitAddCoOccupantRequest(
+      contractId: 9,
+      fullName: 'Nguyen Van B',
+      phone: '0912345678',
+      email: 'b@example.com',
+      note: 'O cung tu thang nay',
+    );
+  });
+
   testWidgets('contract screen shows expiring warning and room 201 data', (
     tester,
   ) async {
@@ -137,37 +200,46 @@ void main() {
     expect(find.text('Quản lý tài liệu'), findsOneWidget);
   });
 
-  testWidgets(
-    'contract screen warns before terminate flow when contract has less than one month left',
-    (tester) async {
-      final contract = _contract(
-        endDate: DateTime.now().add(const Duration(days: 20)),
-      );
+  testWidgets('contract screen submits liquidation approval request', (
+    tester,
+  ) async {
+    int? submittedContractId;
+    String? submittedReason;
+    final contract = _contract(
+      endDate: DateTime.now().add(const Duration(days: 20)),
+    );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: LeaseContractScreen(
-            contractService: _FakeLeaseContractService(contract: contract),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LeaseContractScreen(
+          contractService: _FakeLeaseContractService(
+            contract: contract,
+            onSubmitLiquidation: (contractId, reason) {
+              submittedContractId = contractId;
+              submittedReason = reason;
+            },
           ),
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.text('Thanh lý\nhợp đồng'));
-      await tester.tap(find.text('Thanh lý\nhợp đồng'));
-      await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Thanh lý\nhợp đồng'));
+    await tester.tap(find.text('Thanh lý\nhợp đồng'));
+    await tester.pumpAndSettle();
 
-      expect(find.text('Hợp đồng còn dưới 1 tháng'), findsOneWidget);
-      expect(find.text('Tạo yêu cầu hủy'), findsOneWidget);
+    expect(
+      find.text('Gửi yêu cầu phê duyệt: Thanh lý hợp đồng'),
+      findsOneWidget,
+    );
 
-      await tester.tap(find.text('Tạo yêu cầu hủy'));
-      await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Can thanh ly som');
+    await tester.tap(find.text('Gửi yêu cầu phê duyệt'));
+    await tester.pumpAndSettle();
 
-      expect(find.text('Thanh lý hợp đồng'), findsOneWidget);
-      expect(find.text('HD-201'), findsOneWidget);
-      expect(find.text('Hợp đồng còn dưới 1 tháng'), findsOneWidget);
-    },
-  );
+    expect(submittedContractId, 9);
+    expect(submittedReason, 'Can thanh ly som');
+  });
 
   testWidgets(
     'contract screen shows tenant intention dropdown and submits move out reason',

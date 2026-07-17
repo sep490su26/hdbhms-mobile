@@ -92,11 +92,14 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
   Future<void> _loadAvailableRooms(LeaseContract contract) async {
     setState(() => _loadingRooms = true);
     try {
-      // We need the property ID from the current room.
-      // The backend rooms endpoint needs propertyId.
-      // For now, try loading rooms without property filter and let the user pick.
+      final propertyId = await _resolvePropertyId(contract);
+      if (propertyId == null || propertyId <= 0) {
+        throw const LeaseContractException(
+          'Không xác định được nhà trọ của hợp đồng hiện tại.',
+        );
+      }
       final rooms = await widget.transferService.fetchAvailableRooms(
-        propertyId: 1, // Default property ID; will be improved with real data
+        propertyId: propertyId,
         page: 0,
         size: 100,
       );
@@ -119,6 +122,34 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
         _loadingRooms = false;
       });
     }
+  }
+
+  Future<int?> _resolvePropertyId(LeaseContract contract) async {
+    final contractPropertyId = contract.room.propertyId;
+    if (contractPropertyId != null && contractPropertyId > 0) {
+      return contractPropertyId;
+    }
+
+    final contexts = await widget.contractService.fetchMyActiveRooms();
+    final contractId = contract.id;
+    for (final context in contexts) {
+      if (contractId != null && context.contractId == contractId) {
+        return context.propertyId;
+      }
+    }
+    for (final context in contexts) {
+      final sameRoomId =
+          contract.room.id != null &&
+          contract.room.id! > 0 &&
+          context.roomId == contract.room.id;
+      final sameRoomCode =
+          contract.room.roomCode.trim().isNotEmpty &&
+          context.roomCode == contract.room.roomCode;
+      if (sameRoomId || sameRoomCode) {
+        return context.propertyId;
+      }
+    }
+    return null;
   }
 
   Future<void> _pickDate() async {
@@ -663,7 +694,7 @@ class _RoomPickerFieldState extends State<_RoomPickerField> {
                   subtitle: Text(
                     isCurrent
                         ? '(Phòng hiện tại)'
-                        : '${room.propertyName} - ${room.floorName}',
+                        : '${room.statusLabel} · ${room.propertyName} - ${room.floorName}',
                     style: const TextStyle(
                       color: AppColors.bodyText,
                       fontSize: 11,

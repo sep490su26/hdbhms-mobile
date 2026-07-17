@@ -206,6 +206,9 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
   TenantRequestType _mapRequestType(ChangeRequestType type) {
     return switch (type) {
       ChangeRequestType.roomTransfer => TenantRequestType.changeRoom,
+      ChangeRequestType.contractRenewal => TenantRequestType.renewContract,
+      ChangeRequestType.contractLiquidation =>
+        TenantRequestType.terminateContract,
       ChangeRequestType.moveOut => TenantRequestType.terminateContract,
       ChangeRequestType.addCoOccupant => TenantRequestType.addRoommate,
       ChangeRequestType.meterReadingCorrection =>
@@ -318,8 +321,8 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
                 // ── Tiêu đề danh sách ─────────────────────
                 Row(
                   children: [
-                    _sectionTitle('Danh sách yêu cầu'),
-                    const Spacer(),
+                    Expanded(child: _sectionTitle('Danh sách yêu cầu')),
+                    const SizedBox(width: 12),
                     _RequestCountBadge(count: filtered.length),
                   ],
                 ),
@@ -1139,6 +1142,8 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
 
   IconData get _icon => switch (widget.changeRequest.requestType) {
     ChangeRequestType.roomTransfer => Icons.swap_horiz_rounded,
+    ChangeRequestType.contractRenewal => Icons.autorenew_rounded,
+    ChangeRequestType.contractLiquidation => Icons.cancel_outlined,
     ChangeRequestType.moveOut => Icons.cancel_outlined,
     ChangeRequestType.depositRefundRequest =>
       Icons.account_balance_wallet_outlined,
@@ -1151,6 +1156,8 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
 
   Color get _accentColor => switch (widget.changeRequest.requestType) {
     ChangeRequestType.roomTransfer => const Color(0xFF0284C7),
+    ChangeRequestType.contractRenewal => AppColors.deepBlue,
+    ChangeRequestType.contractLiquidation => const Color(0xFFDC2626),
     ChangeRequestType.moveOut => const Color(0xFFDC2626),
     ChangeRequestType.depositRefundRequest => const Color(0xFF16A34A),
     ChangeRequestType.addCoOccupant => const Color(0xFF16A34A),
@@ -1162,6 +1169,8 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
 
   Color get _accentBg => switch (widget.changeRequest.requestType) {
     ChangeRequestType.roomTransfer => const Color(0xFFEFF8FF),
+    ChangeRequestType.contractRenewal => const Color(0xFFEFF1FF),
+    ChangeRequestType.contractLiquidation => const Color(0xFFFFF0F0),
     ChangeRequestType.moveOut => const Color(0xFFFFF0F0),
     ChangeRequestType.depositRefundRequest => const Color(0xFFF0FFF4),
     ChangeRequestType.addCoOccupant => const Color(0xFFF0FFF4),
@@ -1432,6 +1441,54 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
                   ?.toString() ??
               'Chưa có thông tin',
         ),
+      ],
+      ChangeRequestType.contractRenewal => [
+        _DetailRow(
+          label: 'Mã hợp đồng',
+          value: p['contractCode']?.toString() ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Phòng',
+          value: p['roomCode']?.toString() ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Ngày hết hạn cũ',
+          value: p['oldEndDate']?.toString() ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Ngày bắt đầu mới',
+          value: p['newStartDate']?.toString() ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Ngày kết thúc mới',
+          value: p['newEndDate']?.toString() ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Tiền thuê',
+          value: p['monthlyRent']?.toString() ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Tiền cọc',
+          value: p['depositAmount']?.toString() ?? 'Chưa có thông tin',
+        ),
+        if (p['note'] != null && p['note'].toString().isNotEmpty)
+          _DetailRow(label: 'Ghi chú', value: p['note'].toString()),
+      ],
+      ChangeRequestType.contractLiquidation => [
+        _DetailRow(
+          label: 'Mã hợp đồng',
+          value: p['contractCode']?.toString() ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Phòng',
+          value: p['roomCode']?.toString() ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Ngày thanh lý',
+          value: p['liquidationDate']?.toString() ?? 'Chưa có thông tin',
+        ),
+        if (p['reason'] != null && p['reason'].toString().isNotEmpty)
+          _DetailRow(label: 'Lý do', value: p['reason'].toString()),
       ],
       ChangeRequestType.moveOut => [
         _DetailRow(

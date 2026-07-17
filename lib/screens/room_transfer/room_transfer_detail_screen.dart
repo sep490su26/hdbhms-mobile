@@ -348,11 +348,11 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
       return;
     }
 
-    final diff = transfer.priceDifferenceToPay ?? 0;
-    SettlementType? selectedSettlement = SettlementType.addToNextInvoice;
+    final rentDifference = _rentDifference(transfer);
+    SettlementType? selectedSettlement = SettlementType.noDifference;
 
-    if (diff > 0) {
-      selectedSettlement = await _showSettlementTypeDialog(diff);
+    if (rentDifference != 0) {
+      selectedSettlement = await _showSettlementTypeDialog(rentDifference);
       if (selectedSettlement == null) return;
       if (!mounted) return;
     }
@@ -387,9 +387,33 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     }
   }
 
+  int _rentDifference(RoomTransferRequest transfer) {
+    final oldPrice = transfer.oldRoomPrice;
+    final newPrice = transfer.newRoomPrice;
+    if (oldPrice != null && newPrice != null) {
+      return newPrice - oldPrice;
+    }
+    return transfer.priceDifferenceToPay ?? 0;
+  }
+
   bool _requiresHolderSelectionForConfirmation(RoomTransferRequest transfer) {
-    return transfer.targetTransferType == TargetTransferType.newContract &&
-        transfer.transferringTenantProfileIds.isNotEmpty;
+    if (transfer.targetTransferType != TargetTransferType.newContract) {
+      return false;
+    }
+    if (transfer.canConfirmTenantTransfer) {
+      return false;
+    }
+    if (transfer.canNominateSourceHolder) {
+      return true;
+    }
+    if (transfer.sourceRoomWillBeEmptyAfterTransfer == true) {
+      return false;
+    }
+    final remainingOccupants = transfer.remainingOccupantCountAfterTransfer;
+    if (remainingOccupants != null && remainingOccupants <= 0) {
+      return false;
+    }
+    return transfer.sourceHolderCandidateProfileIds.any((id) => id > 0);
   }
 
   bool _canNominateSourceHolder(RoomTransferRequest transfer) {
@@ -482,6 +506,9 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
   }
 
   bool _isImmediateDifferencePaymentPending(RoomTransferRequest transfer) {
+    if ((transfer.priceDifferenceToPay ?? 0) <= 0) {
+      return false;
+    }
     if (transfer.canPayTransferDifference) return true;
     return transfer.priceDifferenceSettlementType.trim().toUpperCase() ==
         SettlementType.tenantPayMore.backendValue;
@@ -889,7 +916,11 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
   }
 
   Future<SettlementType?> _showSettlementTypeDialog(int difference) {
-    final formattedDiff = _formatCurrency(difference);
+    final isPositive = difference > 0;
+    final formattedDiff = _formatCurrency(difference.abs());
+    final choices = isPositive
+        ? const [SettlementType.tenantPayMore, SettlementType.addToNextInvoice]
+        : const [SettlementType.refundNow, SettlementType.creditNextContract];
     return showModalBottomSheet<SettlementType>(
       context: context,
       isScrollControlled: true,
@@ -915,33 +946,32 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Chọn phương thức thanh toán',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Text(
+                  isPositive
+                      ? 'Chọn phương thức thanh toán'
+                      : 'Chọn phương thức xử lý chênh lệch',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Phòng mới có giá cao hơn, chênh lệch cần trả: $formattedDiff.',
+                  isPositive
+                      ? 'Phòng mới có giá cao hơn, chênh lệch cần trả: $formattedDiff.'
+                      : 'Phòng mới có giá thấp hơn, chênh lệch cần xử lý: $formattedDiff.',
                   style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                 ),
                 const SizedBox(height: 20),
-                _SettlementChoiceTile(
-                  icon: Icons.payment,
-                  title: _settlementTitle(SettlementType.tenantPayMore),
-                  subtitle: _settlementSubtitle(SettlementType.tenantPayMore),
-                  onTap: () =>
-                      Navigator.of(ctx).pop(SettlementType.tenantPayMore),
-                ),
-                const SizedBox(height: 12),
-                _SettlementChoiceTile(
-                  icon: Icons.schedule,
-                  title: _settlementTitle(SettlementType.addToNextInvoice),
-                  subtitle: _settlementSubtitle(
-                    SettlementType.addToNextInvoice,
+                for (final choice in choices) ...[
+                  _SettlementChoiceTile(
+                    icon: _settlementIcon(choice),
+                    title: _settlementTitle(choice),
+                    subtitle: _settlementSubtitle(choice),
+                    onTap: () => Navigator.of(ctx).pop(choice),
                   ),
-                  onTap: () =>
-                      Navigator.of(ctx).pop(SettlementType.addToNextInvoice),
-                ),
+                  const SizedBox(height: 12),
+                ],
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
@@ -956,6 +986,21 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
         );
       },
     );
+  }
+
+  IconData _settlementIcon(SettlementType type) {
+    switch (type) {
+      case SettlementType.tenantPayMore:
+        return Icons.payment;
+      case SettlementType.addToNextInvoice:
+        return Icons.schedule;
+      case SettlementType.refundNow:
+        return Icons.account_balance_wallet_outlined;
+      case SettlementType.creditNextContract:
+        return Icons.receipt_long_outlined;
+      case SettlementType.noDifference:
+        return Icons.check_circle_outline;
+    }
   }
 
   String _settlementTitle(SettlementType type) {

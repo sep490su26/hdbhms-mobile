@@ -164,18 +164,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 onPay: _openPayment,
               ),
               const SizedBox(height: 10),
-              // TEMPORARY: Xóa nút này sau khi xem xong UI thanh toán.
-              OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const PaymentPreviewPage(),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.visibility_outlined),
-                label: const Text('XEM DEMO THANH TOÁN (TẠM)'),
-              ),
               const SizedBox(height: 18),
               const _SectionHeading('Điện & Nước'),
               const SizedBox(height: 17),
@@ -424,67 +412,80 @@ class _RoomSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: const Color(0xFFEFF1FF),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Icon(
-            Icons.meeting_room_outlined,
-            color: AppColors.deepBlue,
-            size: 18,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return InkWell(
+      onTap: () => _showRoomDropdown(context),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              formatTopBarTitle(_roomLabel),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppColors.topBarTitleStyle,
-            ),
-            if (_roomSubLabel.isNotEmpty)
-              Text(
-                formatTopBarTitle(_roomSubLabel),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.bodyText,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  height: 15 / 11,
-                ),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF1FF),
+                borderRadius: BorderRadius.circular(8),
               ),
+              child: const Icon(
+                Icons.meeting_room_outlined,
+                color: AppColors.deepBlue,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  formatTopBarTitle(_roomLabel),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppColors.topBarTitleStyle,
+                ),
+                if (_roomSubLabel.isNotEmpty)
+                  Text(
+                    formatTopBarTitle(_roomSubLabel),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.bodyText,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      height: 15 / 11,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 5),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: AppColors.bodyText,
+              size: 18,
+            ),
+            const SizedBox(width: 3),
+            /*Container(
+                height: 30,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                alignment: Alignment.center,
+                child: const Text(
+                  'Äá»•i phÃ²ng',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    height: 14 / 11,
+                  ),
+                ),
+              ),*/
           ],
         ),
-        const SizedBox(width: 8),
-        /*Container(
-            height: 30,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(9),
-            ),
-            alignment: Alignment.center,
-            child: const Text(
-              'Đổi phòng',
-              style: TextStyle(
-                color: AppColors.primary,
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                height: 14 / 11,
-              ),
-            ),
-          ),*/
-      ],
+      ),
     );
   }
 

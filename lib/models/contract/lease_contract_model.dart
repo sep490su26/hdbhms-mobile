@@ -54,21 +54,31 @@ class LeaseContract {
     final roomJson = _firstMap(json, const ['room', 'roomInfo', 'rentalRoom']);
 
     return LeaseContract(
-      id: _asInt(json['id'] ?? json['contractId']),
-      contractCode: _firstString(json, const ['contractCode']),
+      id: _asInt(json['id'] ?? json['contractId'] ?? json['contract_id']),
+      contractCode: _firstString(json, const ['contractCode', 'contract_code']),
       status: _firstString(json, const ['status', 'contractStatus']),
       room: LeaseRoom.fromJson(roomJson.isEmpty ? json : roomJson),
-      monthlyRent: _firstDouble(json, const ['monthlyRent', 'rentAmount']),
+      monthlyRent: _firstDouble(json, const [
+        'monthlyRent',
+        'monthly_rent',
+        'rentAmount',
+      ]),
       paymentCycleMonths: _asInt(
-        json['paymentCycleMonths'] ?? json['paymentCycle'],
+        json['paymentCycleMonths'] ??
+            json['payment_cycle_months'] ??
+            json['paymentCycle'],
       ),
-      startDate: _firstDate(json, const ['startDate']),
-      endDate: _firstDate(json, const ['endDate']),
+      startDate: _firstDate(json, const ['startDate', 'start_date']),
+      endDate: _firstDate(json, const ['endDate', 'end_date']),
       rentStartDate: _firstDate(json, const [
         'rentStartDate',
         'billingStartDate',
       ]),
-      depositAmount: _firstDouble(json, const ['depositAmount', 'deposit']),
+      depositAmount: _firstDouble(json, const [
+        'depositAmount',
+        'deposit_amount',
+        'deposit',
+      ]),
       terms: _parseTerms(json),
       serviceFees: _parseServiceFees(json),
       contractFileUrl: _firstString(json, const [
@@ -97,26 +107,43 @@ class LeaseContract {
 
 class LeaseRoom {
   const LeaseRoom({
+    this.id,
     required this.roomCode,
     required this.roomName,
     required this.area,
     required this.imageUrl,
+    this.propertyId,
+    this.propertyName = '',
+    this.currentStatus = '',
   });
 
+  final int? id;
   final String roomCode;
   final String roomName;
   final double? area;
   final String imageUrl;
+  final int? propertyId;
+  final String propertyName;
+  final String currentStatus;
 
   factory LeaseRoom.fromJson(Map<String, dynamic> json) {
     return LeaseRoom(
-      roomCode: _firstString(json, const ['roomCode', 'code']),
-      roomName: _firstString(json, const ['roomName', 'name']),
+      id: _asInt(json['id'] ?? json['roomId'] ?? json['room_id']),
+      roomCode: _firstString(json, const ['roomCode', 'room_code', 'code']),
+      roomName: _firstString(json, const ['roomName', 'room_name', 'name']),
       area: _firstDouble(json, const ['area', 'areaM2', 'roomArea']),
       imageUrl: _firstString(json, const [
         'imageUrl',
         'roomImageUrl',
         'thumbnailUrl',
+      ]),
+      propertyId: _asInt(json['propertyId'] ?? json['property_id']),
+      propertyName: _firstString(json, const ['propertyName', 'property_name']),
+      currentStatus: _firstString(json, const [
+        'currentStatus',
+        'current_status',
+        'roomStatus',
+        'room_status',
       ]),
     );
   }
@@ -177,6 +204,7 @@ List<String> _parseTerms(Map<String, dynamic> json) {
 List<LeaseServiceFee> _parseServiceFees(Map<String, dynamic> json) {
   final serviceFeeTotal = _firstDouble(json, const [
     'serviceFee',
+    'service_fee',
     'fixedServiceFee',
     'serviceFeeAmount',
   ]);

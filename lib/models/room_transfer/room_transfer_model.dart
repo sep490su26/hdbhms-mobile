@@ -447,11 +447,27 @@ class AvailableRoom {
     return 'Phòng $roomCode';
   }
 
+  String get statusLabel {
+    return switch (currentStatus) {
+      'VACANT' => 'Còn trống',
+      'SOON_VACANT' => 'Sắp trống',
+      'OCCUPIED' => 'Đang có người ở - cần người đứng tên duyệt',
+      'RESERVED_FOR_TRANSFER' => 'Đang giữ chỗ chuyển phòng',
+      'RESERVED' => 'Đã đặt chỗ',
+      'ON_HOLD' => 'Đang giữ chỗ',
+      'MAINTENANCE' => 'Bảo trì',
+      'DRAFT' => 'Nháp',
+      _ => currentStatus,
+    };
+  }
+
   factory AvailableRoom.fromJson(Map<String, dynamic> json) {
     return AvailableRoom(
       id: _asInt(json['id']) ?? 0,
       roomCode: _str(json, 'roomCode'),
-      roomName: _str(json, 'roomName'),
+      roomName: _str(json, 'roomName').isNotEmpty
+          ? _str(json, 'roomName')
+          : _str(json, 'name'),
       propertyName: _str(json, 'propertyName'),
       floorName: _str(json, 'floorName'),
       currentStatus: _str(json, 'currentStatus'),

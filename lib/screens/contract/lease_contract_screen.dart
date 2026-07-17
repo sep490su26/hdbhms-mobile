@@ -15,7 +15,6 @@ import 'package:hdbhms_mobile/screens/contract/contract_pdf_viewer_screen.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
 import 'package:hdbhms_mobile/screens/profile_request/add_roommate_request_screen.dart';
-import 'package:hdbhms_mobile/screens/contract/terminate_contract_screen.dart';
 import 'package:hdbhms_mobile/screens/room_transfer/create_room_transfer_screen.dart';
 import 'package:hdbhms_mobile/screens/contract/room_amenities_screen.dart';
 import 'package:hdbhms_mobile/widgets/app_action_tile.dart';
@@ -251,7 +250,11 @@ class _ContractContent extends StatelessWidget {
           const SizedBox(height: 12),
           _DocumentSection(contractFileUrl: contract.contractFileUrl),
           const SizedBox(height: 12),
-          _CreateRequestGrid(contract: contract),
+          _CreateRequestGrid(
+            contract: contract,
+            contractService: contractService,
+            onChanged: onChanged,
+          ),
         ],
       ),
     );
@@ -261,23 +264,40 @@ class _ContractContent extends StatelessWidget {
 const Color _kLabelColor = Color(0xFF000666);
 
 class _CreateRequestGrid extends StatelessWidget {
-  const _CreateRequestGrid({required this.contract});
+  const _CreateRequestGrid({
+    required this.contract,
+    required this.contractService,
+    required this.onChanged,
+  });
 
   final LeaseContract contract;
+  final LeaseContractService contractService;
+  final Future<void> Function() onChanged;
 
-  void _openCreateForm(BuildContext context, TenantRequestType type) {
+  Future<void> _openCreateForm(
+    BuildContext context,
+    TenantRequestType type,
+  ) async {
     final contractId = contract.id;
     if (contractId == null) return;
 
     if (type == TenantRequestType.addRoommate) {
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const AddRoommateRequestScreen()),
+        MaterialPageRoute(
+          builder: (_) => AddRoommateRequestScreen(
+            contractId: contractId,
+            contractService: contractService,
+          ),
+        ),
       );
       return;
     }
 
     if (type == TenantRequestType.terminateContract) {
-      _openTerminateContractFlow(context);
+      final submitted = await _openLifecycleRequestSheet(context, type);
+      if (submitted == true && context.mounted) {
+        _openRequestList(context, type);
+      }
       return;
     }
 
@@ -291,70 +311,75 @@ class _CreateRequestGrid extends StatelessWidget {
       return;
     }
 
-    // Renew contract & other types: use bottom sheet
-    showModalBottomSheet<void>(
+    final submitted = await _openLifecycleRequestSheet(context, type);
+    if (submitted == true && context.mounted) {
+      _openRequestList(context, type);
+    }
+  }
+
+  Future<bool?> _openLifecycleRequestSheet(
+    BuildContext context,
+    TenantRequestType type,
+  ) {
+    return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _CreateRequestSheet(
         type: type,
-        onSubmit: (note) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Đã gửi yêu cầu ${type.fullLabel}.')),
-          );
+        onSubmit: (note) async {
+          await _submitLifecycleRequest(type, note);
         },
       ),
     );
   }
 
-  void _openTerminateContractFlow(BuildContext context) {
-    if (!_isContractUnderOneMonth(contract)) {
-      _openTerminateContractForm(context);
-      return;
+  Future<void> _submitLifecycleRequest(
+    TenantRequestType type,
+    String note,
+  ) async {
+    final contractId = contract.id;
+    if (contractId == null) {
+      throw const LeaseContractException('Không xác định được hợp đồng.');
     }
 
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Hợp đồng còn dưới 1 tháng'),
-        content: Text(
-          'Hợp đồng ${contract.contractCode} sắp kết thúc. '
-          'Nếu vẫn muốn hủy/thanh lý, vui lòng tạo yêu cầu '
-          'để quản lý kiểm tra và hướng dẫn thủ tục.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Để sau'),
-          ),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              _openTerminateContractForm(context);
-            },
-            icon: const Icon(Icons.send_rounded, size: 18),
-            label: const Text('Tạo yêu cầu hủy'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.deepBlue,
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
+    if (type == TenantRequestType.terminateContract) {
+      await contractService.submitLiquidationRequest(
+        contractId: contractId,
+        reason: note,
+      );
+    } else if (type == TenantRequestType.renewContract) {
+      final endDate = contract.endDate ?? DateTime.now();
+      final newStartDate = DateTime(
+        endDate.year,
+        endDate.month,
+        endDate.day,
+      ).add(const Duration(days: 1));
+      final newEndDate = DateTime(
+        newStartDate.year + 1,
+        newStartDate.month,
+        newStartDate.day,
+      ).subtract(const Duration(days: 1));
+      await contractService.submitRenewalRequest(
+        contractId: contractId,
+        newStartDate: newStartDate,
+        newEndDate: newEndDate,
+        monthlyRent: contract.monthlyRent ?? 0,
+        paymentCycleMonths: contract.paymentCycleMonths ?? 1,
+        depositAmount: contract.depositAmount ?? 0,
+        note: note,
+      );
+    }
+    await onChanged();
   }
 
-  void _openTerminateContractForm(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => TerminateContractScreen(
-          contractId: contract.id,
-          contractCode: contract.contractCode,
-          contractEndDate: contract.endDate,
-          contractExpiry: _formatDate(contract.endDate),
-        ),
-      ),
-    );
+  void _openRequestList(BuildContext context, TenantRequestType type) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Đã gửi yêu cầu .')));
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const TenantRequestScreen()));
   }
 
   @override
@@ -439,20 +464,11 @@ class _CreateRequestGrid extends StatelessWidget {
   }
 }
 
-bool _isContractUnderOneMonth(LeaseContract contract) {
-  final endDate = contract.endDate;
-  if (endDate == null) return false;
-  final remainingDays = _dateOnly(endDate)
-      .difference(_dateOnly(DateTime.now()))
-      .inDays;
-  return remainingDays >= 0 && remainingDays < 30;
-}
-
 class _CreateRequestSheet extends StatefulWidget {
   const _CreateRequestSheet({required this.type, required this.onSubmit});
 
   final TenantRequestType type;
-  final void Function(String note) onSubmit;
+  final Future<void> Function(String note) onSubmit;
 
   @override
   State<_CreateRequestSheet> createState() => _CreateRequestSheetState();
@@ -460,6 +476,8 @@ class _CreateRequestSheet extends StatefulWidget {
 
 class _CreateRequestSheetState extends State<_CreateRequestSheet> {
   final _ctrl = TextEditingController();
+  bool _submitting = false;
+  String _error = '';
 
   @override
   void dispose() {
@@ -484,11 +502,21 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Gửi yêu cầu: ${widget.type.fullLabel}',
+              'Gửi yêu cầu phê duyệt: ${widget.type.fullLabel}',
               style: const TextStyle(
                 color: _kLabelColor,
                 fontSize: 16,
                 fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Yêu cầu sẽ xuất hiện trong màn Yêu cầu với trạng thái chờ duyệt.',
+              style: TextStyle(
+                color: AppColors.bodyText,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                height: 18 / 12,
               ),
             ),
             const SizedBox(height: 14),
@@ -503,13 +531,40 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
               ),
             ),
             const SizedBox(height: 14),
+            if (_error.isNotEmpty) ...[
+              Text(
+                _error,
+                style: const TextStyle(
+                  color: Color(0xFFDC2626),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  widget.onSubmit(_ctrl.text.trim());
-                  Navigator.of(context).pop();
-                },
+                onPressed: _submitting
+                    ? null
+                    : () async {
+                        setState(() {
+                          _submitting = true;
+                          _error = '';
+                        });
+                        try {
+                          await widget.onSubmit(_ctrl.text.trim());
+                          if (context.mounted) {
+                            Navigator.of(context).pop(true);
+                          }
+                        } catch (error) {
+                          if (!mounted) return;
+                          setState(() {
+                            _error = _messageForError(error);
+                            _submitting = false;
+                          });
+                        }
+                      },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.deepBlue,
                   foregroundColor: Colors.white,
@@ -518,7 +573,16 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                child: const Text('Gửi yêu cầu'),
+                child: _submitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Gửi yêu cầu phê duyệt'),
               ),
             ),
           ],
