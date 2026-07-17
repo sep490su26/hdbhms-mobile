@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/services/notification/notification_service.dart';
@@ -23,6 +25,7 @@ class AppNotificationBell extends StatefulWidget {
 class _AppNotificationBellState extends State<AppNotificationBell> {
   final NotificationService _notificationService = const NotificationService();
   int _unreadCount = 0;
+  StreamSubscription<void>? _readSubscription;
 
   @override
   void initState() {
@@ -31,6 +34,11 @@ class _AppNotificationBellState extends State<AppNotificationBell> {
     if (widget.initialUnreadCount == null) {
       _loadUnreadCount();
     }
+    _readSubscription = NotificationService.readEvents.listen((_) {
+      if (mounted && widget.initialUnreadCount == null) {
+        _loadUnreadCount();
+      }
+    });
   }
 
   @override
@@ -42,10 +50,15 @@ class _AppNotificationBellState extends State<AppNotificationBell> {
     }
   }
 
+  @override
+  void dispose() {
+    _readSubscription?.cancel();
+    super.dispose();
+  }
+
   Future<void> _loadUnreadCount() async {
     try {
-      final response = await _notificationService.getNotifications(limit: 100);
-      final unreadCount = response.items.where((item) => !item.isRead).length;
+      final unreadCount = await _notificationService.getUnreadCount();
       if (mounted) setState(() => _unreadCount = unreadCount);
     } catch (_) {
       // The bell stays usable when the count cannot be refreshed.

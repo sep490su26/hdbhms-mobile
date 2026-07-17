@@ -95,7 +95,11 @@ class NotificationItem {
       readAt: json['readAt'] == null
           ? null
           : DateTime.tryParse(json['readAt'].toString()),
-      isRead: _asBool(json['isRead']),
+      isRead:
+          _asBool(json['isRead']) ||
+          _asBool(json['read']) ||
+          _asBool(json['is_read']) ||
+          json['readAt'] != null,
       type: parsedType,
     );
   }

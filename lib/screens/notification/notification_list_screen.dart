@@ -1,5 +1,7 @@
 // ignore_for_file: curly_braces_in_flow_control_structures
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../models/notification/notification_model.dart';
@@ -24,6 +26,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
   bool _isLoading = true;
   bool _hasMore = true;
   bool _isLoadingMore = false;
+  bool _didChangeReadState = false;
   String? _errorMessage;
 
   @override
@@ -99,35 +102,70 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
   int get _unreadCount => _items.where((n) => !n.isRead).length;
 
   Future<void> _markAllRead() async {
-    try {
-      await _notificationService.markAllAsRead();
-    } catch (_) {}
+    final hadUnread = _items.any((item) => !item.isRead);
+    if (!hadUnread) return;
 
+    final previousItems = List<NotificationItem>.from(_items);
     setState(() {
       for (var i = 0; i < _items.length; i++) {
         _items[i] = _items[i].copyWith(isRead: true);
       }
     });
+
+    try {
+      await _notificationService.markAllAsRead();
+      _didChangeReadState = true;
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _items = previousItems;
+      });
+      _showReadError();
+    }
   }
 
   Future<void> _markRead(String id) async {
     final idx = _items.indexWhere((n) => n.id == id);
-    if (idx != -1 && !_items[idx].isRead) {
-      try {
-        await _notificationService.markAsRead(id);
-      } catch (_) {}
+    if (idx == -1 || _items[idx].isRead) return;
 
-      setState(() {
-        _items[idx] = _items[idx].copyWith(isRead: true);
-      });
+    final previousItem = _items[idx];
+    setState(() {
+      _items[idx] = previousItem.copyWith(isRead: true);
+    });
+
+    try {
+      await _notificationService.markAsRead(id);
+      _didChangeReadState = true;
+    } catch (_) {
+      if (!mounted) return;
+      final rollbackIdx = _items.indexWhere((n) => n.id == id);
+      if (rollbackIdx != -1) {
+        setState(() {
+          _items[rollbackIdx] = previousItem;
+        });
+      }
+      _showReadError();
     }
   }
 
+  void _showReadError() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Không thể cập nhật trạng thái đã đọc.')),
+    );
+  }
+
+  void _closeScreen() {
+    Navigator.of(context).pop(_didChangeReadState);
+  }
+
   void _openDetail(NotificationItem item) {
-    _markRead(item.id);
+    final detailItem = item.isRead ? item : item.copyWith(isRead: true);
+    if (!item.isRead) {
+      unawaited(_markRead(item.id));
+    }
     showDialog<void>(
       context: context,
-      builder: (ctx) => _NotificationDetailDialog(item: item),
+      builder: (ctx) => _NotificationDetailDialog(item: detailItem),
     );
   }
 
@@ -212,7 +250,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => Navigator.of(context).maybePop(),
+            onPressed: _closeScreen,
             icon: const Icon(
               Icons.arrow_back_rounded,
               color: AppColors.deepBlue,
