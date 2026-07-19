@@ -729,7 +729,7 @@ class _PaymentStatusCard extends StatelessWidget {
         : 'Thanh toán khoản đang đến hạn của phòng hiện tại.';
     final actionLabel = hasMultipleBills
         ? 'Chọn khoản thanh toán'
-        : 'Thanh toán ngay';
+        : 'Xem chi tiết hóa đơn';
 
     final cardGradient = hasUnpaid
         ? const LinearGradient(
