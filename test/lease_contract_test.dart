@@ -14,19 +14,13 @@ class _FakeLeaseContractService extends LeaseContractService {
   const _FakeLeaseContractService({
     this.contract,
     this.error,
-    this.onRecordIntention,
+    this.submitRenewalError,
     this.onSubmitLiquidation,
   });
 
   final LeaseContract? contract;
   final Object? error;
-  final void Function(
-    int contractId,
-    String intention,
-    DateTime? expectedMoveOutDate,
-    String note,
-  )?
-  onRecordIntention;
+  final Object? submitRenewalError;
   final void Function(int contractId, String reason)? onSubmitLiquidation;
 
   @override
@@ -45,7 +39,6 @@ class _FakeLeaseContractService extends LeaseContractService {
     DateTime? expectedMoveOutDate,
     String note = '',
   }) async {
-    onRecordIntention?.call(contractId, intention, expectedMoveOutDate, note);
     return contract!;
   }
 
@@ -66,7 +59,12 @@ class _FakeLeaseContractService extends LeaseContractService {
     required int paymentCycleMonths,
     required num depositAmount,
     String note = '',
-  }) async {}
+  }) async {
+    final error = submitRenewalError;
+    if (error != null) {
+      throw error;
+    }
+  }
 }
 
 void main() {
@@ -241,54 +239,36 @@ void main() {
     expect(submittedReason, 'Can thanh ly som');
   });
 
-  testWidgets(
-    'contract screen shows tenant intention dropdown and submits move out reason',
-    (tester) async {
-      String? recordedIntention;
-      DateTime? recordedExpectedMoveOutDate;
-      String? recordedNote;
-      final moveOutDate = DateTime.now().add(const Duration(days: 30));
-      final contract = _contract(
-        endDate: moveOutDate,
-        isPrimary: true,
-        canRecordIntention: true,
-        tenantIntention: 'MOVE_OUT',
-        expectedVacantDate: moveOutDate,
-      );
+  testWidgets('contract screen shows error when renewal request submit fails', (
+    tester,
+  ) async {
+    final contract = _contract(
+      endDate: DateTime.now().add(const Duration(days: 20)),
+    );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: LeaseContractScreen(
-            contractService: _FakeLeaseContractService(
-              contract: contract,
-              onRecordIntention:
-                  (contractId, intention, expectedMoveOutDate, note) {
-                    recordedIntention = intention;
-                    recordedExpectedMoveOutDate = expectedMoveOutDate;
-                    recordedNote = note;
-                  },
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LeaseContractScreen(
+          contractService: _FakeLeaseContractService(
+            contract: contract,
+            submitRenewalError: const LeaseContractException(
+              'Hợp đồng đã có yêu cầu đang chờ duyệt.',
             ),
           ),
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(find.text('Ý định'), findsOneWidget);
-      expect(find.text('Chuyển đi / Không tái ký'), findsOneWidget);
-      expect(find.text('Ngày dự kiến chuyển đi'), findsOneWidget);
-      expect(find.text('Lý do'), findsOneWidget);
+    await tester.ensureVisible(find.text('Gia hạn\nhợp đồng'));
+    await tester.tap(find.text('Gia hạn\nhợp đồng'));
+    await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.text('Lưu ý định'));
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), 'Gia đình chuyển đi');
-      await tester.tap(find.text('Lưu ý định'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.text('Gửi yêu cầu phê duyệt'));
+    await tester.pumpAndSettle();
 
-      expect(recordedIntention, 'MOVE_OUT');
-      expect(recordedExpectedMoveOutDate, contract.endDate);
-      expect(recordedNote, 'Gia đình chuyển đi');
-    },
-  );
+    expect(find.text('Hợp đồng đã có yêu cầu đang chờ duyệt.'), findsWidgets);
+  });
 
   testWidgets('contract screen shows empty state with retry', (tester) async {
     await tester.pumpWidget(
@@ -310,13 +290,7 @@ void main() {
   });
 }
 
-LeaseContract _contract({
-  DateTime? endDate,
-  bool isPrimary = false,
-  bool canRecordIntention = false,
-  String tenantIntention = '',
-  DateTime? expectedVacantDate,
-}) {
+LeaseContract _contract({DateTime? endDate, bool isPrimary = false}) {
   return LeaseContract(
     id: 9,
     contractCode: 'HD-201',
@@ -338,10 +312,7 @@ LeaseContract _contract({
       LeaseServiceFee(name: 'Phí dịch vụ (cố định)', amount: 50000),
     ],
     contractFileUrl: '',
-    tenantIntention: tenantIntention,
-    expectedVacantDate: expectedVacantDate,
     roleInContract: isPrimary ? 'PRIMARY' : '',
     isPrimary: isPrimary,
-    canRecordIntention: canRecordIntention,
   );
 }
