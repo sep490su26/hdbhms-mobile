@@ -95,11 +95,42 @@ class ActiveRoomItem {
     return 'Phòng';
   }
 
+  String get roomIdentityKey {
+    if (roomId > 0) return 'room:$roomId';
+    final code = roomCode.trim().toLowerCase();
+    final propertyKey = propertyId > 0
+        ? propertyId.toString()
+        : propertyName.trim().toLowerCase();
+    if (code.isNotEmpty) return 'code:$propertyKey:$code';
+    return 'contract:$contractId';
+  }
+
   static int? _asInt(Object? value) {
     if (value is int) return value;
     if (value is num) return value.toInt();
     return int.tryParse(value?.toString() ?? '');
   }
+}
+
+List<ActiveRoomItem> dedupeActiveRoomsByRoom(Iterable<ActiveRoomItem> rooms) {
+  final byRoom = <String, ActiveRoomItem>{};
+  for (final room in rooms) {
+    final key = room.roomIdentityKey;
+    final existing = byRoom[key];
+    if (existing == null ||
+        (existing.contractId <= 0 && room.contractId > 0) ||
+        _isNewerActiveRoom(room, existing)) {
+      byRoom[key] = room;
+    }
+  }
+  return byRoom.values.toList(growable: false);
+}
+
+bool _isNewerActiveRoom(ActiveRoomItem next, ActiveRoomItem current) {
+  final nextStart = next.startDate;
+  final currentStart = current.startDate;
+  if (nextStart == null || currentStart == null) return false;
+  return nextStart.isAfter(currentStart);
 }
 
 class LeaseContractNotFoundException extends LeaseContractException {
@@ -239,10 +270,9 @@ class LeaseContractService {
           listData = body['data'];
         }
         final List<dynamic> list = listData is List ? listData : [];
-        return list
-            .whereType<Map<String, dynamic>>()
-            .map(ActiveRoomItem.fromJson)
-            .toList(growable: false);
+        return dedupeActiveRoomsByRoom(
+          list.whereType<Map<String, dynamic>>().map(ActiveRoomItem.fromJson),
+        );
       }
       if (response.statusCode == 401 || response.statusCode == 403) {
         throw const LeaseContractForbiddenException();

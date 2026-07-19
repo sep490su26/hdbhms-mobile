@@ -76,7 +76,7 @@ class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
         final activeRooms = await widget.leaseContractService
             .fetchMyActiveRooms();
         if (activeRooms.isNotEmpty) {
-          rooms = activeRooms;
+          rooms = dedupeActiveRoomsByRoom(activeRooms);
         }
       } catch (_) {
         // The overview can still work with the rooms returned by /home.
@@ -124,10 +124,10 @@ class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
 
     final summaryRoom = summary.room;
     if (rooms.isNotEmpty || summaryRoom == null) {
-      return rooms;
+      return dedupeActiveRoomsByRoom(rooms);
     }
 
-    return [
+    return dedupeActiveRoomsByRoom([
       ActiveRoomItem(
         contractId: summary.contract?.id ?? 0,
         contractCode: summary.contract?.contractCode ?? '',
@@ -140,7 +140,7 @@ class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
         startDate: summary.contract?.startDate,
         endDate: summary.contract?.endDate,
       ),
-    ];
+    ]);
   }
 
   void _startImageTimer(List<String> images) {

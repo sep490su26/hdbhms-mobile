@@ -63,16 +63,19 @@ class HomeProvider extends ChangeNotifier {
 
     return _invoices
         .where((invoice) {
-          if (invoice.contractId != null && room.contractId > 0) {
-            return invoice.contractId == room.contractId;
-          }
           if (invoice.roomId != null && room.roomId > 0) {
             return invoice.roomId == room.roomId;
+          }
+          if (invoice.roomCode.isNotEmpty && room.roomCode.isNotEmpty) {
+            return invoice.roomCode == room.roomCode;
+          }
+          if (invoice.contractId != null && room.contractId > 0) {
+            return invoice.contractId == room.contractId;
           }
           if (invoice.contractCode.isNotEmpty && room.contractCode.isNotEmpty) {
             return invoice.contractCode == room.contractCode;
           }
-          return invoice.roomCode == room.roomCode;
+          return false;
         })
         .toList(growable: false);
   }
@@ -158,18 +161,18 @@ class HomeProvider extends ChangeNotifier {
     // First, seed from the home summary's rooms list (instant, no extra call)
     final summaryRooms = _summary?.rooms ?? [];
     if (summaryRooms.isNotEmpty && _activeRooms.isEmpty) {
-      _activeRooms = summaryRooms
-          .map(
-            (r) => ActiveRoomItem(
-              contractId: 0,
-              contractCode: '',
-              roomId: r.id ?? 0,
-              roomCode: r.roomCode,
-              roomName: r.name,
-              propertyName: formatPropertyName(_summary?.tenant?.name ?? ''),
-            ),
-          )
-          .toList();
+      _activeRooms = dedupeActiveRoomsByRoom(
+        summaryRooms.map(
+          (r) => ActiveRoomItem(
+            contractId: 0,
+            contractCode: '',
+            roomId: r.id ?? 0,
+            roomCode: r.roomCode,
+            roomName: r.name,
+            propertyName: formatPropertyName(_summary?.tenant?.name ?? ''),
+          ),
+        ),
+      );
       if (_selectedRoom == null && _activeRooms.isNotEmpty) {
         _selectedRoom = _activeRooms.first;
       }
@@ -180,17 +183,19 @@ class HomeProvider extends ChangeNotifier {
     try {
       final rooms = await _leaseContractService.fetchMyActiveRooms();
       if (rooms.isNotEmpty) {
-        _activeRooms = rooms;
+        _activeRooms = dedupeActiveRoomsByRoom(rooms);
         // Preserve selection or pick by matching room id
         final summaryRoomId = _summary?.room?.id;
         if (_selectedRoom == null ||
-            !rooms.any((r) => r.contractId == _selectedRoom!.contractId)) {
+            !_activeRooms.any(
+              (r) => r.roomIdentityKey == _selectedRoom!.roomIdentityKey,
+            )) {
           _selectedRoom = summaryRoomId != null
-              ? rooms.firstWhere(
+              ? _activeRooms.firstWhere(
                   (r) => r.roomId == summaryRoomId,
-                  orElse: () => rooms.first,
+                  orElse: () => _activeRooms.first,
                 )
-              : rooms.first;
+              : _activeRooms.first;
         }
         notifyListeners();
       }
@@ -200,7 +205,7 @@ class HomeProvider extends ChangeNotifier {
   }
 
   void selectRoom(ActiveRoomItem room) {
-    if (_selectedRoom?.contractId == room.contractId) return;
+    if (_selectedRoom?.roomIdentityKey == room.roomIdentityKey) return;
     _selectedRoom = room;
     _roomUtilitySummary = null; // Clear cached utility data
     notifyListeners();

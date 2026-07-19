@@ -585,13 +585,14 @@ class _RoomSelector extends StatelessWidget {
         ),
       );
     } else {
-      for (final room in rooms) {
+      for (var index = 0; index < rooms.length; index += 1) {
+        final room = rooms[index];
         final isSelected =
-            selectedRoom?.contractId == room.contractId ||
+            selectedRoom?.roomIdentityKey == room.roomIdentityKey ||
             (selectedRoom == null && room.roomId == summary.room?.id);
         items.add(
           PopupMenuItem<int>(
-            value: room.contractId,
+            value: index,
             child: Row(
               children: [
                 Container(
@@ -656,14 +657,11 @@ class _RoomSelector extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       elevation: 8,
       constraints: const BoxConstraints(minWidth: 230, maxWidth: 310),
-    ).then((selectedContractId) {
-      if (selectedContractId == null || selectedContractId == -1) return;
+    ).then((selectedRoomIndex) {
+      if (selectedRoomIndex == null || selectedRoomIndex == -1) return;
       if (rooms.isEmpty) return;
-      final room = rooms.firstWhere(
-        (r) => r.contractId == selectedContractId,
-        orElse: () => rooms.first,
-      );
-      provider.selectRoom(room);
+      if (selectedRoomIndex < 0 || selectedRoomIndex >= rooms.length) return;
+      provider.selectRoom(rooms[selectedRoomIndex]);
     });
   }
 }
