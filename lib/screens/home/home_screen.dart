@@ -675,34 +675,151 @@ class _Greeting extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = user.fullName.isEmpty ? user.email : user.fullName;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        const Text(
-          'XIN CHÀO,',
-          style: TextStyle(
-            color: AppColors.deepBlue,
-            fontSize: 12,
-            fontWeight: FontWeight.w900,
-            height: 16 / 12,
-            letterSpacing: 0.8,
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: AppColors.inputText,
-            fontSize: 24,
-            fontWeight: FontWeight.w900,
-            height: 28 / 24,
+        _UserAvatar(user: user),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'XIN CHÀO,',
+                style: TextStyle(
+                  color: AppColors.deepBlue,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  height: 16 / 12,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.inputText,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  height: 28 / 24,
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
+}
+
+class _UserAvatar extends StatelessWidget {
+  const _UserAvatar({required this.user});
+
+  final HomeUser user;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = _resolveResourceUrl(user.avatarUrl);
+    final initials = _initials(
+      user.fullName.isEmpty ? user.email : user.fullName,
+    );
+
+    return Container(
+      width: 52,
+      height: 52,
+      decoration: BoxDecoration(
+        color: AppColors.deepBlue,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.deepBlue.withValues(alpha: 0.12),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: url.isEmpty
+          ? _AvatarFallback(initials: initials)
+          : FutureBuilder<String?>(
+              future: _accessToken(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return _AvatarFallback(initials: initials);
+                }
+                final token = snapshot.data ?? '';
+                return Image.network(
+                  url,
+                  fit: BoxFit.cover,
+                  headers: {
+                    if (token.isNotEmpty) 'Authorization': 'Bearer $token',
+                    'X-Client-Type': 'mobile',
+                  },
+                  errorBuilder: (context, error, stackTrace) =>
+                      _AvatarFallback(initials: initials),
+                );
+              },
+            ),
+    );
+  }
+
+  static Future<String?> _accessToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(AuthService.accessTokenKey);
+  }
+
+  static String _initials(String value) {
+    final parts = value
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList(growable: false);
+    if (parts.isEmpty) return 'U';
+    if (parts.length == 1) return _firstChar(parts.first).toUpperCase();
+    return '${_firstChar(parts.first)}${_firstChar(parts.last)}'.toUpperCase();
+  }
+
+  static String _firstChar(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return 'U';
+    return String.fromCharCode(trimmed.runes.first);
+  }
+}
+
+class _AvatarFallback extends StatelessWidget {
+  const _AvatarFallback({required this.initials});
+
+  final String initials;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        initials,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 17,
+          fontWeight: FontWeight.w900,
+          height: 22 / 17,
+        ),
+      ),
+    );
+  }
+}
+
+String _resolveResourceUrl(String url) {
+  final value = url.trim();
+  if (value.isEmpty) return '';
+  final uri = Uri.tryParse(value);
+  if (uri != null && uri.hasScheme) return value;
+  if (value.startsWith('/api/')) {
+    return Uri.parse(ApiConfig.baseUrl).origin + value;
+  }
+  if (value.startsWith('/')) {
+    return '${ApiConfig.baseUrl}$value';
+  }
+  return '${ApiConfig.baseUrl}/$value';
 }
 
 class _PaymentStatusCard extends StatelessWidget {

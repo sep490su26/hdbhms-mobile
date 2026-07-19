@@ -74,15 +74,26 @@ class HomeUser {
   factory HomeUser.fromJson(Map<String, dynamic> json) {
     return HomeUser(
       id: int.tryParse(json['id']?.toString() ?? ''),
-      fullName: _firstString(json, ['fullName']),
+      fullName: _firstString(json, [
+        'fullName',
+        'full_name',
+        'name',
+        'displayName',
+        'display_name',
+      ]),
       phone: json['phone']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
       role: json['role']?.toString() ?? '',
       avatarUrl: _firstString(json, [
         'avatarUrl',
+        'avatar_url',
         'avatar',
         'profilePhotoUrl',
+        'profile_photo_url',
         'photoUrl',
+        'photo_url',
+        'portraitUrl',
+        'portrait_url',
       ]),
     );
   }
