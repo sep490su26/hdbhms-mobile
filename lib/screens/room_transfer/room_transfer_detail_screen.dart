@@ -920,7 +920,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     final formattedDiff = _formatCurrency(difference.abs());
     final choices = isPositive
         ? const [SettlementType.tenantPayMore, SettlementType.addToNextInvoice]
-        : const [SettlementType.refundNow, SettlementType.creditNextContract];
+        : const [SettlementType.creditNextContract];
     return showModalBottomSheet<SettlementType>(
       context: context,
       isScrollControlled: true,

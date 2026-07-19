@@ -109,8 +109,7 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
             .where(
               (r) =>
                   r.currentStatus == 'VACANT' ||
-                  r.currentStatus == 'SOON_VACANT' ||
-                  r.currentStatus == 'OCCUPIED',
+                  r.currentStatus == 'SOON_VACANT',
             )
             .toList(growable: false);
         _loadingRooms = false;
