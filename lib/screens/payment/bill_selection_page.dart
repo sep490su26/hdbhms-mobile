@@ -11,6 +11,7 @@ import '../maintenance/maintenance_ticket_list_screen.dart';
 import '../notification/notification_list_screen.dart';
 import '../profile_request/tenant_profile_screen.dart';
 import '../profile_request/tenant_request_screen.dart';
+import 'bill_detail_screen.dart';
 import 'payment_history_page.dart';
 import 'qr_payment_page.dart';
 import 'utility_complaint_screen.dart';
@@ -115,34 +116,30 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
     });
   }
 
-  void _openPayment(BuildContext context, TenantInvoice invoice) {
-    if (invoice.hasOpenMeterReadingReview) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Hóa đơn đang có khiếu nại chỉ số chờ xử lý.'),
-        ),
-      );
-      return;
-    }
-    if (invoice.canPay &&
-        (invoice.qrCode.isNotEmpty || invoice.transferDescription.isNotEmpty)) {
-      Navigator.of(context)
-          .push(
-            MaterialPageRoute(
-              builder: (context) => QrPaymentPage(
+  void _openInvoicePreviewFlow(BuildContext context, TenantInvoice invoice) {
+    final isUtility = invoice.invoiceType.toUpperCase() == 'UTILITY';
+    final canOpenQr =
+        invoice.canPay &&
+        (invoice.qrCode.isNotEmpty || invoice.transferDescription.isNotEmpty);
+
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(
+            builder: (context) {
+              if (isUtility || !canOpenQr) {
+                return BillDetailScreen(
+                  invoice: invoice,
+                  invoiceService: widget.invoiceService,
+                );
+              }
+              return QrPaymentPage(
                 invoice: invoice,
                 invoiceService: widget.invoiceService,
-              ),
-            ),
-          )
-          .then((_) => _reloadInvoices());
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Hóa đơn chưa thể thanh toán. Vui lòng liên hệ quản lý.'),
-      ),
-    );
+              );
+            },
+          ),
+        )
+        .then((_) => _reloadInvoices());
   }
 
   Future<void> _openMeterReadingReview(
@@ -188,7 +185,7 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
           .map(
             (invoice) => _PendingBillCard(
               invoice: invoice,
-              onTap: () => _openPayment(context, invoice),
+              onTap: () => _openInvoicePreviewFlow(context, invoice),
               onComplain: () => _openMeterReadingReview(context, invoice),
             ),
           )
@@ -199,7 +196,12 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
     final paidBills = _withSpacing(
       invoices
           .where((invoice) => invoice.isPaid)
-          .map((invoice) => _PaidBillCard(invoice: invoice))
+          .map(
+            (invoice) => _PaidBillCard(
+              invoice: invoice,
+              onTap: () => _openInvoicePreviewFlow(context, invoice),
+            ),
+          )
           .toList(),
       12,
     );
@@ -805,106 +807,127 @@ class _PaidDivider extends StatelessWidget {
 }
 
 class _PaidBillCard extends StatelessWidget {
-  const _PaidBillCard({required this.invoice});
+  const _PaidBillCard({required this.invoice, required this.onTap});
 
   final TenantInvoice invoice;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 86),
-      padding: const EdgeInsets.fromLTRB(22, 16, 18, 15),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FCFA),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.success.withValues(alpha: 0.18)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.deepBlue.withValues(alpha: 0.035),
-            blurRadius: 14,
-            offset: const Offset(0, 7),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.check_circle_outline, color: AppColors.success),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 86),
+          child: Ink(
+            padding: const EdgeInsets.fromLTRB(22, 16, 18, 15),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FCFA),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.success.withValues(alpha: 0.18),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.deepBlue.withValues(alpha: 0.035),
+                  blurRadius: 14,
+                  offset: const Offset(0, 7),
+                ),
+              ],
+            ),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        invoice.title,
-                        style: const TextStyle(
-                          color: AppColors.inputText,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          height: 20 / 15,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _formatAmount(invoice.totalAmount),
-                      style: const TextStyle(
-                        color: AppColors.inputText,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        height: 20 / 15,
-                      ),
-                    ),
-                  ],
+                const Icon(
+                  Icons.check_circle_outline,
+                  color: AppColors.success,
                 ),
-                const SizedBox(height: 7),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 3,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              invoice.title,
+                              style: const TextStyle(
+                                color: AppColors.inputText,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                height: 20 / 15,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _formatAmount(invoice.totalAmount),
+                            style: const TextStyle(
+                              color: AppColors.inputText,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                              height: 20 / 15,
+                            ),
+                          ),
+                        ],
                       ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF8096FF),
-                        borderRadius: BorderRadius.circular(999),
+                      const SizedBox(height: 7),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 9,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF8096FF),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: const Text(
+                              'ĐÃ THANH TOÁN',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                                height: 12 / 9,
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          Flexible(
+                            child: Text(
+                              invoice.issuedAt == null
+                                  ? 'Đã thanh toán'
+                                  : 'Ngày: ${_formatDate(invoice.issuedAt)}',
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.bodyText,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                height: 15 / 11,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      child: const Text(
-                        'ĐÃ THANH TOÁN',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
-                          height: 12 / 9,
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-                    Flexible(
-                      child: Text(
-                        invoice.issuedAt == null
-                            ? 'Đã thanh toán'
-                            : 'Ngày: ${_formatDate(invoice.issuedAt)}',
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.bodyText,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          height: 15 / 11,
-                        ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.bodyText,
+                  size: 22,
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

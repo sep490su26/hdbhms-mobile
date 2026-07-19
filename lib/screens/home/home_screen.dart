@@ -19,8 +19,8 @@ import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 import 'package:hdbhms_mobile/widgets/app_skeleton.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
+import 'package:hdbhms_mobile/screens/payment/bill_detail_screen.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
-import 'package:hdbhms_mobile/screens/payment/payment_preview_page.dart';
 import 'package:hdbhms_mobile/screens/payment/qr_payment_page.dart';
 import 'package:hdbhms_mobile/screens/contract/contract_hub_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
@@ -186,12 +186,26 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (invoices.length == 1) {
+      final invoice = invoices.first;
+      final isUtility = invoice.invoiceType.toUpperCase() == 'UTILITY';
+      final canOpenQr =
+          invoice.canPay &&
+          (invoice.qrCode.isNotEmpty || invoice.transferDescription.isNotEmpty);
+
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (context) => QrPaymentPage(
-            invoice: invoices.first,
-            invoiceService: widget.tenantInvoiceService,
-          ),
+          builder: (context) {
+            if (isUtility || !canOpenQr) {
+              return BillDetailScreen(
+                invoice: invoice,
+                invoiceService: widget.tenantInvoiceService,
+              );
+            }
+            return QrPaymentPage(
+              invoice: invoice,
+              invoiceService: widget.tenantInvoiceService,
+            );
+          },
         ),
       );
     } else {

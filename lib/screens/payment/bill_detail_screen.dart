@@ -93,7 +93,7 @@ class BillDetailScreen extends StatelessWidget {
 
   bool get _isUtility => invoice.invoiceType == 'UTILITY';
   bool get _hasComplainableLines => invoice.reviewableUtilityLines.isNotEmpty;
-  bool get _canPay => invoice.canPay;
+  bool get _canPay => invoice.canPay && !invoice.hasOpenMeterReadingReview;
 
   @override
   Widget build(BuildContext context) {

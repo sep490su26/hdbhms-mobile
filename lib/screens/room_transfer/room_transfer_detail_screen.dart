@@ -1354,46 +1354,6 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     return 'Chưa có dữ liệu';
   }
 
-  String _formatTransferActionLabel(String action) {
-    switch (action.trim().toUpperCase()) {
-      case 'NOMINATE_SOURCE_HOLDER':
-        return 'Đề cử holder phòng cũ';
-      case 'ACCEPT_SOURCE_HOLDER_NOMINATION':
-        return 'Xác nhận holder mới phòng cũ';
-      case 'CONFIRM_TENANT_TRANSFER':
-        return 'Xác nhận chuyển phòng';
-      case 'PAY_TRANSFER_DIFFERENCE':
-        return 'Thanh toán chênh lệch';
-      case 'PAY_TRANSFER_OUT_UTILITY':
-        return 'Thanh toán điện/nước phòng cũ';
-      case 'CONFIRM_TRANSFER_CONTRACT':
-        return 'Xác nhận hợp đồng';
-      case 'SIGN_TRANSFER_CONTRACT':
-        return 'Ký hợp đồng';
-      case 'EXECUTE_TRANSFER':
-        return 'Thực hiện chuyển phòng';
-      case 'COMPLETE_TRANSFER':
-        return 'Hoàn tất bàn giao';
-    }
-    return action.replaceAll('_', ' ');
-  }
-
-  String _formatSnapshotSummary(Map<String, dynamic> snapshot) {
-    if (snapshot.isEmpty) return '';
-    final parts = <String>[];
-    snapshot.forEach((key, value) {
-      if (value == null || value.toString().trim().isEmpty) return;
-      final label = key
-          .replaceAllMapped(RegExp(r'([A-Z])'), (match) => ' ${match[1]}')
-          .replaceAll('_', ' ')
-          .trim();
-      parts.add(
-        '$label: ${value is Map || value is List ? jsonEncode(value) : value}',
-      );
-    });
-    return parts.take(4).join(' · ');
-  }
-
   Widget _messagePanel({
     required String title,
     required List<String> items,
@@ -1496,136 +1456,90 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
       ]);
     }
 
-    if (transfer.eligibilityWarnings.isNotEmpty) {
-      children.addAll([
-        const SizedBox(height: 12),
-        _messagePanel(
-          title: 'Cảnh báo eligibility',
-          items: transfer.eligibilityWarnings,
-          borderColor: const Color(0xFFFDE68A),
-          backgroundColor: const Color(0xFFFFFBEB),
-          textColor: const Color(0xFF92400E),
-        ),
-      ]);
-    }
-
-    if (transfer.blockingReasons.isNotEmpty) {
-      children.addAll([
-        const SizedBox(height: 12),
-        _messagePanel(
-          title: 'Lý do đang chặn thao tác',
-          items: transfer.blockingReasons,
-          borderColor: const Color(0xFFFECACA),
-          backgroundColor: const Color(0xFFFEF2F2),
-          textColor: const Color(0xFFB91C1C),
-        ),
-      ]);
-    }
-
-    if (transfer.allowedActions.isNotEmpty) {
-      children.addAll([
-        const SizedBox(height: 12),
-        const Text(
-          'Hành động đang được phép',
-          style: TextStyle(
-            color: AppColors.bodyText,
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: transfer.allowedActions
-              .map(
-                (action) => Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFECFDF5),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: const Color(0xFFA7F3D0)),
-                  ),
-                  child: Text(
-                    _formatTransferActionLabel(action),
-                    style: const TextStyle(
-                      color: Color(0xFF047857),
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              )
-              .toList(growable: false),
-        ),
-      ]);
-    }
-
-    final snapshotSummary = _formatSnapshotSummary(
-      transfer.eligibilitySnapshot,
-    );
-    final violationSnapshotSummary = _formatSnapshotSummary(
-      transfer.violationSnapshot,
-    );
-    final historySnapshotSummary = _formatSnapshotSummary(
-      transfer.transferHistorySnapshot,
-    );
-    final snapshotItems = [
-      if (snapshotSummary.isNotEmpty) 'Snapshot: $snapshotSummary',
-      if (violationSnapshotSummary.isNotEmpty)
-        'Vi phạm lúc tạo: $violationSnapshotSummary',
-      if (historySnapshotSummary.isNotEmpty)
-        'Lịch sử chuyển: $historySnapshotSummary',
-    ];
-    if (snapshotItems.isNotEmpty) {
-      children.addAll([
-        const SizedBox(height: 12),
-        _messagePanel(
-          title: 'Snapshot hệ thống',
-          items: snapshotItems,
-          borderColor: const Color(0xFFE5E7EB),
-          backgroundColor: const Color(0xFFF9FAFB),
-          textColor: const Color(0xFF4B5563),
-        ),
-      ]);
-    }
-
     return children;
   }
 
   List<Widget> _transferInfoRows(RoomTransferRequest transfer) {
+    String roomLabel(String code, String name, int id) {
+      final codeText = code.trim();
+      final nameText = name.trim();
+      if (codeText.isNotEmpty && nameText.isNotEmpty) {
+        return '$codeText - $nameText';
+      }
+      if (codeText.isNotEmpty) return codeText;
+      if (nameText.isNotEmpty) return nameText;
+      return '#$id';
+    }
+
+    String idLabel(String prefix, int? id) {
+      if (id == null || id <= 0) return '';
+      if (prefix.isEmpty) return '#$id';
+      return '$prefix #$id';
+    }
+
+    bool hasValue(String value) {
+      final normalized = value.trim();
+      return normalized.isNotEmpty && normalized != '—';
+    }
+
+    void addRow(
+      List<Widget> target, {
+      required String label,
+      required String value,
+      Color? valueColor,
+    }) {
+      if (!hasValue(value)) return;
+      target.add(_InfoRow(label: label, value: value, valueColor: valueColor));
+    }
+
     final rows = <Widget>[
       _InfoRow(label: 'Mã yêu cầu', value: transfer.requestCode),
+    ];
+
+    addRow(rows, label: 'Hợp đồng cũ', value: transfer.oldContractCode);
+    rows.add(
       _InfoRow(
         label: 'Phòng cũ',
-        value: transfer.oldRoomName.isNotEmpty
-            ? transfer.oldRoomName
-            : (transfer.oldRoomCode.isNotEmpty
-                  ? transfer.oldRoomCode
-                  : '#${transfer.oldRoomId}'),
+        value: roomLabel(
+          transfer.oldRoomCode,
+          transfer.oldRoomName,
+          transfer.oldRoomId,
+        ),
       ),
-    ];
+    );
 
     if (_canViewDestinationInfo(transfer)) {
       rows.add(
         _InfoRow(
-          label: 'Phòng chuyển đến',
-          value: transfer.targetRoomName.isNotEmpty
-              ? transfer.targetRoomName
-              : (transfer.targetRoomCode.isNotEmpty
-                    ? transfer.targetRoomCode
-                    : '#${transfer.targetRoomId}'),
+          label: 'Phòng đến',
+          value: roomLabel(
+            transfer.targetRoomCode,
+            transfer.targetRoomName,
+            transfer.targetRoomId,
+          ),
         ),
       );
-    } else {
-      rows.add(
-        _InfoRow(
-          label: 'Người chuyển đi',
-          value: _formatProfileNames(transfer.transferringTenantNames),
-        ),
+    }
+
+    addRow(
+      rows,
+      label: 'Người chuyển',
+      value: _formatProfileNames(transfer.transferringTenantNames),
+    );
+    addRow(
+      rows,
+      label: 'Holder phòng cũ',
+      value: _formatProfileNames(transfer.sourceHolderCandidateNames),
+    );
+
+    final nominatedHolderId = transfer.nominatedHolderProfileId;
+    if (nominatedHolderId != null && nominatedHolderId > 0) {
+      addRow(
+        rows,
+        label: 'Đã đề cử',
+        value:
+            transfer.sourceHolderCandidateNames[nominatedHolderId] ??
+            '#$nominatedHolderId',
       );
     }
 
@@ -1640,42 +1554,86 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
           value: _formatMoney(transfer.newRoomPrice),
         ),
         _InfoRow(
-          label: 'Chênh lệch cần trả',
+          label: 'Chênh lệch',
           value: _formatMoney(transfer.priceDifferenceToPay),
           valueColor: AppColors.primary,
         ),
       ]);
+      addRow(rows, label: 'Cách xử lý', value: transfer.paymentBranchLabel);
+      final invoiceText = [
+        idLabel('Chênh lệch', transfer.transferDifferenceInvoiceId),
+        idLabel('Điện/nước cũ', transfer.oldRoomFinalInvoiceId),
+      ].where((item) => item.isNotEmpty).join(' · ');
+      addRow(
+        rows,
+        label: 'Hóa đơn',
+        value: invoiceText,
+        valueColor: AppColors.primary,
+      );
     }
 
     if (_canViewFullTransferFlow(transfer)) {
       rows.add(
-        _InfoRow(
-          label: 'Hình thức chuyển phòng',
-          value: transfer.targetTransferType.label,
-        ),
+        _InfoRow(label: 'Hình thức', value: transfer.targetTransferType.label),
       );
+      addRow(
+        rows,
+        label: 'Hợp đồng mới',
+        value: idLabel('', transfer.newContractId),
+      );
+      addRow(
+        rows,
+        label: 'Hợp đồng đích',
+        value: idLabel('', transfer.targetContractId),
+      );
+      addRow(
+        rows,
+        label: 'Giữ chỗ',
+        value: transfer.reservedSlots == null
+            ? ''
+            : '${transfer.reservedSlots} chỗ',
+      );
+      addRow(
+        rows,
+        label: 'Hết hạn giữ',
+        value: transfer.reservationExpiresAt == null
+            ? ''
+            : _formatDateTime(transfer.reservationExpiresAt),
+      );
+      addRow(
+        rows,
+        label: 'Còn lại phòng cũ',
+        value: transfer.remainingOccupantCountAfterTransfer == null
+            ? ''
+            : '${transfer.remainingOccupantCountAfterTransfer} người',
+      );
+      addRow(
+        rows,
+        label: 'Sau chuyển',
+        value: transfer.sourceRoomWillBeEmptyAfterTransfer == null
+            ? ''
+            : (transfer.sourceRoomWillBeEmptyAfterTransfer == true
+                  ? 'Phòng cũ trống'
+                  : 'Phòng cũ còn người ở'),
+      );
+      final handoverText = [
+        if (transfer.transferOutHandoverRequired) 'Bàn giao phòng cũ',
+        if (transfer.transferInHandoverRequired) 'Nhận phòng mới',
+        if (transfer.roomHandoverRequired) 'Bàn giao phòng',
+      ].join(' · ');
+      addRow(rows, label: 'Bàn giao', value: handoverText);
     }
 
     rows.addAll([
       _InfoRow(
-        label: 'Ngày chuyển dự kiến',
+        label: 'Ngày chuyển',
         value: _formatDate(transfer.requestedTransferDate),
       ),
       _InfoRow(
-        label: 'Trạng thái chuyển phòng',
+        label: 'Trạng thái',
         value: _displayTransferStatusLabel(transfer),
       ),
     ]);
-
-    if ((transfer.oldRoomFinalInvoiceId ?? 0) > 0) {
-      rows.add(
-        _InfoRow(
-          label: 'Hóa đơn điện/nước chuyển phòng',
-          value: '#${transfer.oldRoomFinalInvoiceId}',
-          valueColor: AppColors.primary,
-        ),
-      );
-    }
 
     return _withInfoDividers(rows);
   }
