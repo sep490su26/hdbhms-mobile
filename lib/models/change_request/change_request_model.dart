@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// Mirror of backend RequestType enum.
 enum ChangeRequestType {
   meterReadingCorrection,
@@ -208,7 +210,7 @@ class ChangeRequest {
       resolutionNote: json['resolutionNote']?.toString(),
       createdAt: _parseDateTime(json['createdAt']?.toString() ?? ''),
       resolvedAt: _parseDateTime(json['resolvedAt']?.toString() ?? ''),
-      requestPayload: json['requestPayload']?.toString(),
+      requestPayload: _payloadString(json['requestPayload']),
     );
   }
 }
@@ -224,6 +226,12 @@ int? _asInt(Object? value) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   return int.tryParse(value?.toString() ?? '');
+}
+
+String? _payloadString(Object? value) {
+  if (value == null) return null;
+  if (value is String) return value;
+  return jsonEncode(value);
 }
 
 DateTime? _parseDateTime(String value) {

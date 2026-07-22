@@ -139,9 +139,50 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
       id: 'API-${cr.id}',
       type: _mapRequestType(cr.requestType),
       status: _mapRequestStatus(cr.status),
-      note: cr.description.isNotEmpty ? cr.description : cr.title,
+      note: _requestNote(cr),
       createdAt: cr.createdAt ?? DateTime.now(),
     );
+  }
+
+  String _requestNote(ChangeRequest cr) {
+    if (cr.requestType != ChangeRequestType.contractLiquidation) {
+      return cr.description.isNotEmpty ? cr.description : cr.title;
+    }
+    final payload = _payloadOf(cr);
+    final refundStatus = payload['depositRefundStatus']?.toString();
+    if (refundStatus == 'RECORDED_BY_MANAGER') {
+      return 'Quản lý đã ghi nhận hoàn cọc, vui lòng xác nhận.';
+    }
+    final stage = payload['liquidationStage']?.toString();
+    if (stage != null && stage.isNotEmpty) {
+      return 'Thanh lý hợp đồng · ${_liquidationStageLabel(stage)}';
+    }
+    return cr.description.isNotEmpty ? cr.description : cr.title;
+  }
+
+  Map<String, dynamic> _payloadOf(ChangeRequest cr) {
+    final rawPayload = cr.requestPayload;
+    if (rawPayload == null || rawPayload.trim().isEmpty) return {};
+    try {
+      final payload = jsonDecode(rawPayload);
+      return payload is Map<String, dynamic> ? payload : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  String _liquidationStageLabel(String value) {
+    return switch (value) {
+      'WAITING_APPROVAL' => 'Chờ duyệt',
+      'WAITING_HANDOVER' => 'Chờ bàn giao phòng',
+      'WAITING_FINAL_INVOICE' => 'Chờ hóa đơn tất toán',
+      'WAITING_PAYMENT' => 'Chờ thanh toán tất toán',
+      'WAITING_DEPOSIT_REFUND' => 'Chờ hoàn cọc',
+      'WAITING_SIGNED_DOCUMENT' => 'Chờ ký biên bản',
+      'READY_TO_CONFIRM' => 'Sẵn sàng xác nhận thanh lý',
+      'CONFIRMED' => 'Đã thanh lý',
+      _ => value,
+    };
   }
 
   TenantRequest _toHolderNominationRequest(RoomTransferRequest transfer) {
@@ -260,10 +301,12 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
         return;
       }
 
-      showDialog<void>(
+      showDialog<bool>(
         context: context,
         builder: (_) => _ApiRequestDetailDialog(changeRequest: changeRequest),
-      );
+      ).then((refreshed) {
+        if (refreshed == true) _loadApiRequests();
+      });
       return;
     }
 
@@ -1106,6 +1149,7 @@ class _ApiRequestDetailDialog extends StatefulWidget {
 class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
   RoomTransferRequest? _roomTransferRequest;
   bool _loadingTransfer = false;
+  bool _submittingRefund = false;
 
   @override
   void initState() {
@@ -1198,6 +1242,12 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
     } catch (_) {
       return {};
     }
+  }
+
+  bool get _canConfirmDepositRefund {
+    return widget.changeRequest.requestType ==
+            ChangeRequestType.contractLiquidation &&
+        _payload['depositRefundStatus'] == 'RECORDED_BY_MANAGER';
   }
 
   @override
@@ -1362,24 +1412,94 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-              child: SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.deepBlue,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_canConfirmDepositRefund) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      height: 46,
+                      child: ElevatedButton(
+                        onPressed: _submittingRefund
+                            ? null
+                            : _confirmDepositRefund,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF16A34A),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: _submittingRefund
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                'Đã nhận tiền cọc',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 44,
+                      child: OutlinedButton(
+                        onPressed: _submittingRefund
+                            ? null
+                            : _disputeDepositRefund,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFFDC2626),
+                          side: const BorderSide(color: Color(0xFFFECACA)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'Chưa nhận / Sai số tiền',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: ElevatedButton(
+                      onPressed: _submittingRefund
+                          ? null
+                          : () => Navigator.of(context).pop(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.deepBlue,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'Đóng',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ),
                   ),
-                  child: const Text(
-                    'Đóng',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
-                  ),
-                ),
+                ],
               ),
             ),
           ],
@@ -1393,6 +1513,85 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
     final h = dt.hour.toString().padLeft(2, '0');
     final m = dt.minute.toString().padLeft(2, '0');
     return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} $h:$m';
+  }
+
+  Future<void> _confirmDepositRefund() async {
+    setState(() => _submittingRefund = true);
+    try {
+      await const ChangeRequestService().confirmLiquidationDepositReceipt(
+        widget.changeRequest.id,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã xác nhận nhận tiền cọc.')),
+      );
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_errorMessage(e))));
+      setState(() => _submittingRefund = false);
+    }
+  }
+
+  Future<void> _disputeDepositRefund() async {
+    final reason = await _askDisputeReason();
+    if (reason == null || reason.trim().isEmpty) return;
+    setState(() => _submittingRefund = true);
+    try {
+      await const ChangeRequestService().disputeLiquidationDepositRefund(
+        widget.changeRequest.id,
+        reason.trim(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã gửi phản hồi về khoản hoàn cọc.')),
+      );
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_errorMessage(e))));
+      setState(() => _submittingRefund = false);
+    }
+  }
+
+  Future<String?> _askDisputeReason() {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Phản hồi hoàn cọc'),
+          content: TextField(
+            controller: controller,
+            minLines: 3,
+            maxLines: 5,
+            decoration: const InputDecoration(
+              hintText: 'Nhập lý do chưa nhận hoặc sai số tiền',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(controller.text),
+              child: const Text('Gửi'),
+            ),
+          ],
+        );
+      },
+    ).whenComplete(controller.dispose);
+  }
+
+  String _errorMessage(Object error) {
+    if (error is ChangeRequestException) return error.message;
+    return 'Không xử lý được yêu cầu.';
   }
 
   List<Widget> _buildTypeDetails() {
@@ -1474,22 +1673,7 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
         if (p['note'] != null && p['note'].toString().isNotEmpty)
           _DetailRow(label: 'Ghi chú', value: p['note'].toString()),
       ],
-      ChangeRequestType.contractLiquidation => [
-        _DetailRow(
-          label: 'Mã hợp đồng',
-          value: p['contractCode']?.toString() ?? 'Chưa có thông tin',
-        ),
-        _DetailRow(
-          label: 'Phòng',
-          value: p['roomCode']?.toString() ?? 'Chưa có thông tin',
-        ),
-        _DetailRow(
-          label: 'Ngày thanh lý',
-          value: p['liquidationDate']?.toString() ?? 'Chưa có thông tin',
-        ),
-        if (p['reason'] != null && p['reason'].toString().isNotEmpty)
-          _DetailRow(label: 'Lý do', value: p['reason'].toString()),
-      ],
+      ChangeRequestType.contractLiquidation => _buildLiquidationDetails(p),
       ChangeRequestType.moveOut => [
         _DetailRow(
           label: 'Phòng',
@@ -1573,6 +1757,142 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
         ),
       ],
     };
+  }
+
+  List<Widget> _buildLiquidationDetails(Map<String, dynamic> p) {
+    final rows = <Widget>[
+      _DetailRow(
+        label: 'Mã hợp đồng',
+        value: _payloadText(p, ['contractCode']),
+      ),
+      _DetailRow(label: 'Phòng', value: _payloadText(p, ['roomCode'])),
+      _DetailRow(
+        label: 'Ngày thanh lý',
+        value: _payloadText(p, ['liquidationDate']),
+      ),
+    ];
+
+    final stage = p['liquidationStage']?.toString();
+    if (stage != null && stage.isNotEmpty) {
+      rows.add(_DetailRow(label: 'Bước hiện tại', value: _stageLabel(stage)));
+    }
+
+    final refundStatus = p['depositRefundStatus']?.toString();
+    if (refundStatus != null && refundStatus.isNotEmpty) {
+      rows.add(
+        _DetailRow(
+          label: 'Trạng thái hoàn cọc',
+          value: _refundStatusLabel(refundStatus),
+          valueColor: _refundStatusColor(refundStatus),
+        ),
+      );
+    }
+
+    _addMoneyRow(rows, p, 'Cọc ban đầu', ['depositAmount']);
+    _addMoneyRow(rows, p, 'Khấu trừ cọc', ['depositDeductionAmount']);
+    _addMoneyRow(rows, p, 'Cấn trừ công nợ', ['depositOffsetAmount']);
+    _addMoneyRow(rows, p, 'Cọc phải hoàn', ['depositRefundAmount']);
+    _addMoneyRow(rows, p, 'Đã ghi nhận hoàn', ['depositRefundedAmount']);
+    _addOptionalRow(rows, p, 'Phương thức hoàn', ['depositRefundMethod']);
+    _addOptionalRow(rows, p, 'Ngày hoàn', ['depositRefundedAt']);
+    _addOptionalRow(rows, p, 'Mã giao dịch', [
+      'depositRefundTransactionRef',
+      'depositRefundTransactionCode',
+    ]);
+    _addOptionalRow(rows, p, 'Chứng từ', ['depositRefundProofFileId']);
+    _addOptionalRow(rows, p, 'Ghi chú hoàn cọc', ['depositRefundNote']);
+
+    final reason = p['reason']?.toString();
+    if (reason != null && reason.isNotEmpty) {
+      rows.add(_DetailRow(label: 'Lý do', value: reason));
+    }
+    return rows;
+  }
+
+  void _addOptionalRow(
+    List<Widget> rows,
+    Map<String, dynamic> payload,
+    String label,
+    List<String> keys,
+  ) {
+    final value = _firstPayloadValue(payload, keys);
+    if (value == null || value.toString().trim().isEmpty) return;
+    rows.add(_DetailRow(label: label, value: value.toString()));
+  }
+
+  void _addMoneyRow(
+    List<Widget> rows,
+    Map<String, dynamic> payload,
+    String label,
+    List<String> keys,
+  ) {
+    final value = _firstPayloadValue(payload, keys);
+    if (value == null || value.toString().trim().isEmpty) return;
+    rows.add(_DetailRow(label: label, value: _formatMoney(value)));
+  }
+
+  Object? _firstPayloadValue(Map<String, dynamic> payload, List<String> keys) {
+    for (final key in keys) {
+      final value = payload[key];
+      if (value != null) return value;
+    }
+    return null;
+  }
+
+  String _payloadText(Map<String, dynamic> payload, List<String> keys) {
+    final value = _firstPayloadValue(payload, keys);
+    final text = value?.toString().trim() ?? '';
+    return text.isEmpty ? 'Chưa có thông tin' : text;
+  }
+
+  String _stageLabel(String value) {
+    return switch (value) {
+      'WAITING_APPROVAL' => 'Chờ duyệt',
+      'WAITING_HANDOVER' => 'Chờ bàn giao phòng',
+      'WAITING_FINAL_INVOICE' => 'Chờ hóa đơn tất toán',
+      'WAITING_PAYMENT' => 'Chờ thanh toán tất toán',
+      'WAITING_DEPOSIT_REFUND' => 'Chờ hoàn cọc',
+      'WAITING_SIGNED_DOCUMENT' => 'Chờ ký biên bản',
+      'READY_TO_CONFIRM' => 'Sẵn sàng xác nhận thanh lý',
+      'CONFIRMED' => 'Đã thanh lý',
+      _ => value,
+    };
+  }
+
+  String _refundStatusLabel(String value) {
+    return switch (value) {
+      'NOT_REQUIRED' => 'Không cần hoàn cọc',
+      'PENDING' => 'Chờ quản lý ghi nhận',
+      'RECORDED_BY_MANAGER' => 'Chờ bạn xác nhận',
+      'TENANT_CONFIRMED' => 'Bạn đã xác nhận nhận tiền',
+      'DISPUTED' => 'Đang phản hồi/tranh chấp',
+      'OVERRIDDEN' => 'Chủ sở hữu đã xác nhận',
+      'CANCELLED' => 'Đã hủy',
+      _ => value,
+    };
+  }
+
+  Color _refundStatusColor(String value) {
+    if (value == 'TENANT_CONFIRMED' || value == 'NOT_REQUIRED') {
+      return const Color(0xFF16A34A);
+    }
+    if (value == 'RECORDED_BY_MANAGER') return AppColors.deepBlue;
+    if (value == 'DISPUTED') return const Color(0xFFDC2626);
+    if (value == 'OVERRIDDEN') return const Color(0xFF7C3AED);
+    return AppColors.bodyText;
+  }
+
+  String _formatMoney(Object value) {
+    final raw = value.toString();
+    final amount = num.tryParse(raw.replaceAll(RegExp(r'[^0-9.-]'), ''));
+    if (amount == null) return raw;
+    final digits = amount.round().toString();
+    final buffer = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buffer.write('.');
+      buffer.write(digits[i]);
+    }
+    return '${buffer.toString()}đ';
   }
 
   String _formatDate(DateTime? dt) {

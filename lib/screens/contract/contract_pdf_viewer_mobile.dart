@@ -7,20 +7,32 @@ import 'package:path_provider/path_provider.dart';
 
 import 'package:hdbhms_mobile/services/authenticated_client.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/utils/document_filename.dart';
 
 Widget buildPlatformPdfViewer({
   required BuildContext context,
   required String pdfUrl,
   required String title,
+  String? suggestedFilename,
 }) {
-  return MobilePdfViewer(pdfUrl: pdfUrl, title: title);
+  return MobilePdfViewer(
+    pdfUrl: pdfUrl,
+    title: title,
+    suggestedFilename: suggestedFilename,
+  );
 }
 
 class MobilePdfViewer extends StatefulWidget {
   final String pdfUrl;
   final String title;
+  final String? suggestedFilename;
 
-  const MobilePdfViewer({super.key, required this.pdfUrl, required this.title});
+  const MobilePdfViewer({
+    super.key,
+    required this.pdfUrl,
+    required this.title,
+    this.suggestedFilename,
+  });
 
   @override
   State<MobilePdfViewer> createState() => _MobilePdfViewerState();
@@ -81,8 +93,12 @@ class _MobilePdfViewerState extends State<MobilePdfViewer> {
         throw Exception('Không tải được file');
       }
 
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final fileName = 'hop_dong_$timestamp.pdf';
+      final fileName = resolvePdfDownloadFilename(
+        contentDisposition:
+            response.headers['content-disposition'] ??
+            response.headers['Content-Disposition'],
+        suggestedFilename: widget.suggestedFilename,
+      );
 
       // Ưu tiên lưu vào thư mục Downloads hệ thống (Android)
       // để người dùng có thể tìm thấy file qua trình quản lý file.

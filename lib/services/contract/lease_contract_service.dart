@@ -105,6 +105,8 @@ class ActiveRoomItem {
     return 'contract:$contractId';
   }
 
+  bool get isCurrentRentalContext => _rentalContextStatusRank(this) < 90;
+
   static int? _asInt(Object? value) {
     if (value is int) return value;
     if (value is num) return value.toInt();
@@ -115,6 +117,7 @@ class ActiveRoomItem {
 List<ActiveRoomItem> dedupeActiveRoomsByRoom(Iterable<ActiveRoomItem> rooms) {
   final byRoom = <String, ActiveRoomItem>{};
   for (final room in rooms) {
+    if (!room.isCurrentRentalContext) continue;
     final key = room.roomIdentityKey;
     final existing = byRoom[key];
     if (existing == null ||
@@ -127,10 +130,23 @@ List<ActiveRoomItem> dedupeActiveRoomsByRoom(Iterable<ActiveRoomItem> rooms) {
 }
 
 bool _isNewerActiveRoom(ActiveRoomItem next, ActiveRoomItem current) {
+  final nextRank = _rentalContextStatusRank(next);
+  final currentRank = _rentalContextStatusRank(current);
+  if (nextRank != currentRank) return nextRank < currentRank;
   final nextStart = next.startDate;
   final currentStart = current.startDate;
   if (nextStart == null || currentStart == null) return false;
   return nextStart.isAfter(currentStart);
+}
+
+int _rentalContextStatusRank(ActiveRoomItem room) {
+  return switch (room.contractStatus.trim().toUpperCase()) {
+    'ACTIVE' => 0,
+    'EXPIRING_SOON' => 1,
+    'TERMINATION_PENDING' => 2,
+    '' => 10,
+    _ => 90,
+  };
 }
 
 class LeaseContractNotFoundException extends LeaseContractException {

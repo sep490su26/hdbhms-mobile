@@ -63,12 +63,53 @@ class ChangeRequestService {
     );
   }
 
+  Future<ChangeRequest> confirmLiquidationDepositReceipt(int requestId) async {
+    final json = await _postJson(
+      _uri(
+        '/change-requests/$requestId/liquidation/deposit-refund/confirm-receipt',
+      ),
+    );
+    return _extractChangeRequest(json);
+  }
+
+  Future<ChangeRequest> disputeLiquidationDepositRefund(
+    int requestId,
+    String reason,
+  ) async {
+    final json = await _postJson(
+      _uri('/change-requests/$requestId/liquidation/deposit-refund/dispute'),
+      body: {'reason': reason},
+    );
+    return _extractChangeRequest(json);
+  }
+
   // ── Internal helpers ──────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> _getJson(Uri uri) async {
     final client = _effectiveClient;
     try {
       final response = await client.get(uri).timeout(_timeout);
+      return _decodeResponse(response);
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
+
+  Future<Map<String, dynamic>> _postJson(
+    Uri uri, {
+    Map<String, Object?>? body,
+  }) async {
+    final client = _effectiveClient;
+    try {
+      final response = await client
+          .post(
+            uri,
+            headers: const {'Content-Type': 'application/json'},
+            body: body == null ? null : jsonEncode(body),
+          )
+          .timeout(_timeout);
       return _decodeResponse(response);
     } finally {
       if (_client == null) {
@@ -114,6 +155,14 @@ class ChangeRequestService {
         .whereType<Map>()
         .map((item) => Map<String, dynamic>.from(item))
         .toList(growable: false);
+  }
+
+  ChangeRequest _extractChangeRequest(Map<String, dynamic> json) {
+    final data = json['data'];
+    if (data is Map) {
+      return ChangeRequest.fromJson(Map<String, dynamic>.from(data));
+    }
+    return ChangeRequest.fromJson(json);
   }
 }
 

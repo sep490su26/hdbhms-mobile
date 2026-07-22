@@ -7,6 +7,7 @@ import 'package:hdbhms_mobile/models/contract/contract_list_item_model.dart';
 import 'package:hdbhms_mobile/services/contract/deposit_contract_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
+import 'package:hdbhms_mobile/utils/document_filename.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
@@ -179,7 +180,14 @@ class _DepositContent extends StatelessWidget {
           const SizedBox(height: 12),
           _DepositInfoGrid(deposit: deposit),
           const SizedBox(height: 12),
-          _DocumentSection(contractFileUrl: deposit.contractFileUrl),
+          _DocumentSection(
+            contractFileUrl: deposit.contractFileUrl,
+            suggestedFilename: buildDocumentFilename(
+              documentType: 'HDC',
+              roomCode: deposit.room.roomCode,
+              date: deposit.expectedMoveInDate,
+            ),
+          ),
           if (deposit.note.isNotEmpty) ...[
             const SizedBox(height: 12),
             _NoteSection(note: deposit.note),
@@ -516,9 +524,13 @@ class _InfoGridItem extends StatelessWidget {
 // ── Document Section ──
 
 class _DocumentSection extends StatelessWidget {
-  const _DocumentSection({required this.contractFileUrl});
+  const _DocumentSection({
+    required this.contractFileUrl,
+    required this.suggestedFilename,
+  });
 
   final String contractFileUrl;
+  final String suggestedFilename;
 
   @override
   Widget build(BuildContext context) {
@@ -532,7 +544,7 @@ class _DocumentSection extends StatelessWidget {
               width: double.infinity,
               height: 48,
               child: ElevatedButton.icon(
-                onPressed: () => _showFile(context, url),
+                onPressed: () => _showFile(context, url, suggestedFilename),
                 icon: const Icon(Icons.description_outlined, size: 20),
                 label: const Text('Xem HĐ cọc'),
                 style: ElevatedButton.styleFrom(
@@ -690,11 +702,14 @@ class _ErrorState extends StatelessWidget {
 
 // ── Helpers ──
 
-void _showFile(BuildContext context, String url) {
+void _showFile(BuildContext context, String url, String suggestedFilename) {
   Navigator.of(context).push(
     MaterialPageRoute(
-      builder: (context) =>
-          ContractPdfViewerScreen(pdfUrl: url, title: 'Hợp đồng cọc'),
+      builder: (context) => ContractPdfViewerScreen(
+        pdfUrl: url,
+        title: 'Hợp đồng cọc',
+        suggestedFilename: suggestedFilename,
+      ),
     ),
   );
 }

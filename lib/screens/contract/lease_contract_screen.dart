@@ -8,6 +8,7 @@ import 'package:hdbhms_mobile/models/profile_request/tenant_request_model.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
+import 'package:hdbhms_mobile/utils/document_filename.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
@@ -243,7 +244,14 @@ class _ContractContent extends StatelessWidget {
           const SizedBox(height: 12),
           _TermsSection(terms: contract.terms),
           const SizedBox(height: 12),
-          _DocumentSection(contractFileUrl: contract.contractFileUrl),
+          _DocumentSection(
+            contractFileUrl: contract.contractFileUrl,
+            suggestedFilename: buildDocumentFilename(
+              documentType: 'HDT',
+              roomCode: contract.room.roomCode,
+              date: contract.startDate,
+            ),
+          ),
           const SizedBox(height: 12),
           _CreateRequestGrid(
             contract: contract,
@@ -1097,9 +1105,13 @@ class _TermTile extends StatelessWidget {
 }
 
 class _DocumentSection extends StatelessWidget {
-  const _DocumentSection({required this.contractFileUrl});
+  const _DocumentSection({
+    required this.contractFileUrl,
+    required this.suggestedFilename,
+  });
 
   final String contractFileUrl;
+  final String suggestedFilename;
 
   @override
   Widget build(BuildContext context) {
@@ -1113,7 +1125,8 @@ class _DocumentSection extends StatelessWidget {
               width: double.infinity,
               height: 48,
               child: ElevatedButton.icon(
-                onPressed: () => _showContractFile(context, url),
+                onPressed: () =>
+                    _showContractFile(context, url, suggestedFilename),
                 icon: const Icon(Icons.description_outlined, size: 20),
                 label: const Text('Xem hợp đồng'),
                 style: ElevatedButton.styleFrom(
@@ -1325,11 +1338,18 @@ class _ContractBottomNavigation extends StatelessWidget {
   }
 }
 
-void _showContractFile(BuildContext context, String url) {
+void _showContractFile(
+  BuildContext context,
+  String url,
+  String suggestedFilename,
+) {
   Navigator.of(context).push(
     MaterialPageRoute(
-      builder: (context) =>
-          ContractPdfViewerScreen(pdfUrl: url, title: 'Hợp đồng thuê phòng'),
+      builder: (context) => ContractPdfViewerScreen(
+        pdfUrl: url,
+        title: 'Hợp đồng thuê phòng',
+        suggestedFilename: suggestedFilename,
+      ),
     ),
   );
 }

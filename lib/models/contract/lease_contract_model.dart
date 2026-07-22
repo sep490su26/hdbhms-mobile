@@ -82,9 +82,10 @@ class LeaseContract {
       terms: _parseTerms(json),
       serviceFees: _parseServiceFees(json),
       contractFileUrl: _firstString(json, const [
+        'signedFileDownloadUrl',
+        'signedFileUrl',
         'contractFileDownloadUrl',
         'contractFileUrl',
-        'signedFileDownloadUrl',
         'fileUrl',
         'documentUrl',
       ]),

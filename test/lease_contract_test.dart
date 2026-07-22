@@ -70,6 +70,44 @@ class _FakeLeaseContractService extends LeaseContractService {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  test('dedupe active rooms ignores transferred source contracts', () {
+    final rooms = dedupeActiveRoomsByRoom([
+      ActiveRoomItem(
+        contractId: 18,
+        contractCode: 'HD-101-OLD',
+        roomId: 101,
+        roomCode: '101',
+        roomName: 'Phong 101',
+        propertyName: 'CS1',
+        contractStatus: 'TRANSFERRED',
+        startDate: DateTime(2026, 1),
+      ),
+      ActiveRoomItem(
+        contractId: 24,
+        contractCode: 'HD-101-NEW',
+        roomId: 101,
+        roomCode: '101',
+        roomName: 'Phong 101',
+        propertyName: 'CS1',
+        contractStatus: 'ACTIVE',
+        startDate: DateTime(2026, 7),
+      ),
+      ActiveRoomItem(
+        contractId: 12,
+        contractCode: 'HD-102-EXPIRED',
+        roomId: 102,
+        roomCode: '102',
+        roomName: 'Phong 102',
+        propertyName: 'CS1',
+        contractStatus: 'EXPIRED',
+        startDate: DateTime(2025, 1),
+      ),
+    ]);
+
+    expect(rooms, hasLength(1));
+    expect(rooms.single.contractId, 24);
+  });
+
   test(
     'LeaseContractService loads active contract from current-user endpoint',
     () async {
