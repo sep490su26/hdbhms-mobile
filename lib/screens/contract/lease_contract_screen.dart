@@ -561,7 +561,7 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
                             Navigator.of(context).pop(true);
                           }
                         } catch (error) {
-                          if (!mounted) return;
+                          if (!context.mounted) return;
                           final message = _messageForRequestSubmitError(error);
                           setState(() {
                             _error = message;
@@ -673,27 +673,6 @@ class _ContractWarning extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FieldLabel extends StatelessWidget {
-  const _FieldLabel(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: AppColors.inputText,
-          fontSize: 13,
-          fontWeight: FontWeight.w900,
         ),
       ),
     );

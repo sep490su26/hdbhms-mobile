@@ -237,7 +237,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
 
   Widget _buildHeader() {
     return Container(
-      height: 54,
+      height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -259,15 +259,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
             tooltip: 'Trở về',
           ),
           const Expanded(
-            child: Text(
-              'Thông báo',
-              style: TextStyle(
-                color: AppColors.deepBlue,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                height: 20 / 16,
-              ),
-            ),
+            child: Text('Thông báo', style: AppColors.topBarTitleStyle),
           ),
           if (_unreadCount > 0)
             Tooltip(
@@ -277,8 +269,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.deepBlue,
                   padding: const EdgeInsets.symmetric(horizontal: 8),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  minimumSize: const Size(44, 44),
                 ),
                 icon: const Icon(Icons.done_all_rounded, size: 18),
                 label: const Text(
@@ -446,15 +437,29 @@ class _FilterChip extends StatelessWidget {
         alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
-          color: isActive
-              ? AppColors.deepBlue.withValues(alpha: 0.10)
-              : Colors.transparent,
+          gradient: isActive
+              ? const LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [AppColors.deepBlue, AppColors.primary],
+                )
+              : null,
+          color: isActive ? null : AppColors.surface,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: isActive
-                ? AppColors.deepBlue
+                ? Colors.white.withValues(alpha: 0.2)
                 : AppColors.cardBorder.withValues(alpha: 0.8),
           ),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.18),
+                    blurRadius: 14,
+                    offset: const Offset(0, 7),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -462,7 +467,7 @@ class _FilterChip extends StatelessWidget {
             Icon(
               icon,
               size: 14,
-              color: isActive ? AppColors.deepBlue : AppColors.bodyText,
+              color: isActive ? Colors.white : AppColors.bodyText,
             ),
             const SizedBox(width: 5),
             Flexible(
@@ -472,7 +477,7 @@ class _FilterChip extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: isActive ? AppColors.deepBlue : AppColors.bodyText,
+                  color: isActive ? Colors.white : AppColors.bodyText,
                   fontSize: 12,
                   fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
                   height: 16 / 12,

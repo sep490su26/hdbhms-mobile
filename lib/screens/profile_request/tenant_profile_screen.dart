@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -103,7 +104,12 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const _ProfileHeader(),
+            _ProfileHeader(
+              onBack: widget.showBottomNavigation
+                  ? () =>
+                        Navigator.of(context).popUntil((route) => route.isFirst)
+                  : () => Navigator.of(context).maybePop(),
+            ),
             Expanded(
               child: Center(
                 child: ConstrainedBox(
@@ -212,7 +218,9 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
 }
 
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader();
+  const _ProfileHeader({required this.onBack});
+
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -230,7 +238,7 @@ class _ProfileHeader extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => Navigator.of(context).maybePop(),
+            onPressed: onBack,
             icon: const Icon(
               Icons.arrow_back_rounded,
               color: AppColors.deepBlue,
@@ -656,30 +664,174 @@ class _TenantProfileImageState extends State<_TenantProfileImage> {
           return const _LoadingImage();
         }
 
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => _MemoryImagePreviewPage(
-                    imageBytes: snapshot.data!,
-                    title: widget.title,
-                  ),
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(6),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: Image.memory(snapshot.data!, fit: BoxFit.cover),
+        return GestureDetector(
+          onTap: () {
+            showDialog<void>(
+              context: context,
+              barrierColor: Colors.transparent,
+              builder: (dialogContext) => _ImageOverlayDialog(
+                imageBytes: snapshot.data!,
+                title: widget.title,
               ),
+            );
+          },
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Image.memory(snapshot.data!, fit: BoxFit.cover),
             ),
           ),
         );
       },
+    );
+  }
+}
+
+// ── Image Overlay Dialog (backdrop blur) ──────────────────────────────────────
+
+class _ImageOverlayDialog extends StatefulWidget {
+  const _ImageOverlayDialog({required this.imageBytes, required this.title});
+
+  final Uint8List imageBytes;
+  final String title;
+
+  @override
+  State<_ImageOverlayDialog> createState() => _ImageOverlayDialogState();
+}
+
+class _ImageOverlayDialogState extends State<_ImageOverlayDialog>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animCtrl;
+  late final Animation<double> _fadeAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    );
+    _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
+    _animCtrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _animCtrl.dispose();
+    super.dispose();
+  }
+
+  void _close() {
+    _animCtrl.reverse().then((_) {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fadeAnim,
+      child: Material(
+        color: Colors.transparent,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // ── Backdrop blur + dim ──────────────────────────────────────
+            GestureDetector(
+              onTap: _close,
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                child: Container(color: Colors.black.withValues(alpha: 0.72)),
+              ),
+            ),
+
+            // ── Image viewer ──────────────────────────────────────────────
+            SafeArea(
+              child: Column(
+                children: [
+                  // Top bar
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 10, 8, 0),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          onPressed: _close,
+                          icon: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.14),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.close_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints.tightFor(
+                            width: 44,
+                            height: 44,
+                          ),
+                          tooltip: 'Đóng',
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            widget.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Zoomable image
+                  Expanded(
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: InteractiveViewer(
+                          minScale: 0.5,
+                          maxScale: 5,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.memory(
+                              widget.imageBytes,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Hint
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: Text(
+                      'Chụm để phóng to · Chạm ngoài để đóng',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.55),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -702,35 +854,6 @@ class _LoadingImage extends StatelessWidget {
             color: AppColors.deepBlue,
             strokeWidth: 2,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MemoryImagePreviewPage extends StatelessWidget {
-  const _MemoryImagePreviewPage({
-    required this.imageBytes,
-    required this.title,
-  });
-
-  final Uint8List imageBytes;
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: Text(title),
-      ),
-      body: Center(
-        child: InteractiveViewer(
-          minScale: 0.8,
-          maxScale: 4,
-          child: Image.memory(imageBytes, fit: BoxFit.contain),
         ),
       ),
     );

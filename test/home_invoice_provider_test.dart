@@ -190,6 +190,83 @@ class _FakeTenantInvoiceService extends TenantInvoiceService {
   }
 }
 
+class _TrendTenantInvoiceService extends TenantInvoiceService {
+  const _TrendTenantInvoiceService();
+
+  @override
+  Future<List<TenantInvoice>> fetchMyInvoices() async {
+    return [
+      _utilityInvoice(
+        id: 11,
+        period: '2026-05',
+        previousValue: 120,
+        currentValue: 150,
+        usageAmount: 30,
+      ),
+      _utilityInvoice(
+        id: 12,
+        period: '2026-06',
+        previousValue: 150,
+        currentValue: 195,
+        usageAmount: 45,
+      ),
+    ];
+  }
+
+  TenantInvoice _utilityInvoice({
+    required int id,
+    required String period,
+    required double previousValue,
+    required double currentValue,
+    required double usageAmount,
+  }) {
+    return TenantInvoice(
+      id: id,
+      invoiceCode: 'INV-$id',
+      invoiceType: 'UTILITY',
+      billingPeriod: period,
+      status: 'ISSUED',
+      roomId: 103,
+      roomCode: '103',
+      contractId: 23,
+      contractCode: 'HD-2026-H103-23',
+      dueDate: DateTime(2026, 6, 18),
+      issuedAt: DateTime(2026, int.parse(period.substring(5)), 15),
+      paidAt: null,
+      totalAmount: 0,
+      paidAmount: 0,
+      remainingAmount: 0,
+      paymentIntentId: null,
+      checkoutUrl: '',
+      qrCode: '',
+      providerOrderCode: '',
+      paymentLinkId: '',
+      bankBin: '',
+      bankShortName: '',
+      accountNumber: '',
+      accountName: '',
+      transferDescription: '',
+      lines: [
+        TenantInvoiceLine(
+          id: id,
+          lineType: 'ELECTRICITY',
+          description: 'Tiền điện $period',
+          quantity: usageAmount.round(),
+          unitPrice: 0,
+          amount: 0,
+          meterReadingId: id,
+          meterType: 'ELECTRICITY',
+          readingPeriod: period,
+          previousValue: previousValue,
+          currentValue: currentValue,
+          usageAmount: usageAmount,
+        ),
+      ],
+      priceDifferenceSettlementType: null,
+    );
+  }
+}
+
 void main() {
   test(
     'home provider uses tenant invoice API and filters by selected room',
@@ -253,4 +330,40 @@ void main() {
     expect(provider.summary?.room?.roomCode, '104');
     expect(provider.selectedRoom?.contractId, 24);
   });
+
+  test(
+    'home provider derives a utility trend from the two newest invoices',
+    () async {
+      final provider = HomeProvider(
+        homeService: const _FakeHomeService(),
+        leaseContractService: const _FakeLeaseContractService(),
+        tenantInvoiceService: const _TrendTenantInvoiceService(),
+      );
+
+      await provider.load();
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      provider.selectRoom(
+        const ActiveRoomItem(
+          contractId: 23,
+          contractCode: 'HD-2026-H103-23',
+          roomId: 103,
+          roomCode: '103',
+          roomName: 'Phong 103',
+          propertyName: 'Nha tro Hai Dang 1',
+        ),
+      );
+
+      final trend = provider.electricityTrend;
+      expect(trend, isNotNull);
+      expect(trend!.invoice.billingPeriod, '2026-06');
+      expect(trend.currentReading, 195);
+      expect(trend.previousReading, 150);
+      expect(trend.currentUsage, 45);
+      expect(trend.previousUsage, 30);
+      expect(trend.difference, 15);
+      expect(trend.direction, UtilityTrendDirection.increase);
+    },
+  );
 }

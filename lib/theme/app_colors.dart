@@ -48,10 +48,10 @@ class AppColors {
   static const topBarIconSize = 24.0;
   static const topBarIconColor = deepBlue;
   static const topBarTitleStyle = TextStyle(
-    fontFamily: 'PlusJakartaSans',
+    fontFamily: 'BeVietnamPro',
     color: darkBlue,
     fontSize: 17,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w800,
     height: 22 / 17,
     letterSpacing: 0,
     leadingDistribution: TextLeadingDistribution.even,

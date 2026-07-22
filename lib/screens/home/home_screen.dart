@@ -167,7 +167,12 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 18),
               const _SectionHeading('Điện & Nước'),
               const SizedBox(height: 17),
-              _UtilitiesSection(summary: summary),
+              _UtilitiesSection(
+                utilities: _provider.roomUtilitySummary,
+                electricityTrend: _provider.electricityTrend,
+                waterTrend: _provider.waterTrend,
+                invoiceService: widget.tenantInvoiceService,
+              ),
               const SizedBox(height: 17),
               const _SectionHeading('Thao tác nhanh'),
               const SizedBox(height: 17),
@@ -463,10 +468,9 @@ class _RoomSelector extends StatelessWidget {
                     formatTopBarTitle(_roomSubLabel),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.bodyText,
+                    style: AppTypography.caption.copyWith(
                       fontSize: 11,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w600,
                       height: 15 / 11,
                     ),
                   ),
@@ -1042,18 +1046,26 @@ class _PaymentBadge extends StatelessWidget {
 }
 
 class _UtilitiesSection extends StatelessWidget {
-  const _UtilitiesSection({required this.summary});
+  const _UtilitiesSection({
+    required this.utilities,
+    required this.electricityTrend,
+    required this.waterTrend,
+    required this.invoiceService,
+  });
 
-  final HomeSummary summary;
+  final UtilitySummary utilities;
+  final UtilityInvoiceTrend? electricityTrend;
+  final UtilityInvoiceTrend? waterTrend;
+  final TenantInvoiceService invoiceService;
 
   @override
   Widget build(BuildContext context) {
-    final utilities = summary.utilitySummary;
-
     return Column(
       children: [
         _UtilityCard(
           usage: utilities.electricity,
+          trend: electricityTrend,
+          invoiceService: invoiceService,
           title: 'Điện',
           unit: 'kWh',
           icon: Icons.bolt_rounded,
@@ -1063,6 +1075,8 @@ class _UtilitiesSection extends StatelessWidget {
         const SizedBox(height: 16),
         _UtilityCard(
           usage: utilities.water,
+          trend: waterTrend,
+          invoiceService: invoiceService,
           title: 'Nước',
           unit: 'm³',
           icon: Icons.water_drop_outlined,
@@ -1077,6 +1091,8 @@ class _UtilitiesSection extends StatelessWidget {
 class _UtilityCard extends StatelessWidget {
   const _UtilityCard({
     required this.usage,
+    required this.trend,
+    required this.invoiceService,
     required this.title,
     required this.unit,
     required this.icon,
@@ -1085,6 +1101,8 @@ class _UtilityCard extends StatelessWidget {
   });
 
   final UtilityUsage? usage;
+  final UtilityInvoiceTrend? trend;
+  final TenantInvoiceService invoiceService;
   final String title;
   final String unit;
   final IconData icon;
@@ -1093,125 +1111,326 @@ class _UtilityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final value = usage?.value;
-    final percentChange = usage?.percentChange;
     final displayUnit = _normalizeUtilityUnit(
       usage?.unit.isNotEmpty == true ? usage!.unit : unit,
     );
-    final status = usage?.status.isNotEmpty == true
-        ? usage!.status
-        : value == null
+    final activeTrend = trend;
+    final currentReading = activeTrend?.currentReading ?? usage?.value;
+    final previousReading = activeTrend?.previousReading;
+    final period = activeTrend == null
+        ? ''
+        : _utilityPeriodLabel(activeTrend.invoice.billingPeriod);
+    final fallbackStatus = usage?.status.isNotEmpty == true
+        ? _utilityReadingStatusLabel(usage!.status)
+        : currentReading == null
         ? 'Chưa có dữ liệu'
-        : 'Đang đọc';
+        : 'Đang cập nhật';
 
-    return Container(
-      width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 83),
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 15),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.cardBorder),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.deepBlue.withValues(alpha: 0.045),
-            blurRadius: 18,
-            offset: const Offset(0, 9),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: iconBackground,
-              borderRadius: BorderRadius.circular(14),
+    return Semantics(
+      label:
+          '$title, chỉ số hiện tại '
+          '${currentReading == null ? 'chưa có dữ liệu' : '${_formatUsageValue(currentReading)} $displayUnit'}',
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.cardBorder),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.deepBlue.withValues(alpha: 0.045),
+              blurRadius: 18,
+              offset: const Offset(0, 9),
             ),
-            child: Icon(icon, color: iconColor, size: 27),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Text(
-                  usage?.name.isNotEmpty == true ? usage!.name : title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.bodyText,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    height: 16 / 12,
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: iconBackground,
+                    borderRadius: BorderRadius.circular(13),
                   ),
+                  child: Icon(icon, color: iconColor, size: 24),
                 ),
-                const SizedBox(height: 3),
-                RichText(
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  text: TextSpan(
-                    style: const TextStyle(
-                      fontFamily: AppTypography.fontFamily,
-                      color: AppColors.inputText,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      height: 24 / 20,
-                    ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TextSpan(
-                        text: value == null ? '--' : _formatUsageValue(value),
-                      ),
-                      TextSpan(
-                        text: ' $displayUnit',
+                      Text(
+                        usage?.name.isNotEmpty == true ? usage!.name : title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontFamily: AppTypography.fontFamily,
-                          fontSize: 18,
+                          color: AppColors.inputText,
+                          fontSize: 16,
                           fontWeight: FontWeight.w900,
+                          height: 20 / 16,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        period.isNotEmpty ? period : fallbackStatus,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.bodyText,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          height: 16 / 12,
                         ),
                       ),
                     ],
                   ),
                 ),
+                if (activeTrend != null) _UtilityTrendBadge(trend: activeTrend),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _UtilityReadingMetric(
+                    label: 'Chỉ số hiện tại',
+                    value: currentReading,
+                    unit: displayUnit,
+                  ),
+                ),
+                Container(width: 1, height: 42, color: AppColors.cardBorder),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _UtilityReadingMetric(
+                    label: 'Chỉ số tháng trước',
+                    value: previousReading,
+                    unit: displayUnit,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Container(height: 1, color: AppColors.cardBorder),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _UtilityTrendDescription(
+                    trend: activeTrend,
+                    unit: displayUnit,
+                    fallbackStatus: fallbackStatus,
+                  ),
+                ),
+                if (activeTrend != null)
+                  TextButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => BillDetailScreen(
+                          invoice: activeTrend.invoice,
+                          invoiceService: invoiceService,
+                        ),
+                      ),
+                    ),
+                    icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                    label: const Text('Xem chi tiết'),
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(44, 44),
+                      foregroundColor: AppColors.primary,
+                      textStyle: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UtilityReadingMetric extends StatelessWidget {
+  const _UtilityReadingMetric({
+    required this.label,
+    required this.value,
+    required this.unit,
+  });
+
+  final String label;
+  final double? value;
+  final String unit;
+
+  @override
+  Widget build(BuildContext context) {
+    final reading = value;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: AppColors.bodyText,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            height: 16 / 12,
+          ),
+        ),
+        const SizedBox(height: 3),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(
+                color: AppColors.inputText,
+                fontSize: 21,
+                fontWeight: FontWeight.w900,
+                height: 25 / 21,
+              ),
+              children: [
+                TextSpan(
+                  text: reading == null ? '--' : _formatUsageValue(reading),
+                ),
+                TextSpan(
+                  text: ' $unit',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (percentChange != null)
-                Text(
-                  '${percentChange > 0 ? '+' : ''}${_formatSignedPercent(percentChange)} với tháng trước',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: percentChange > 0
-                        ? const Color(0xFFDC2626)
-                        : const Color(0xFF16A34A),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    height: 16 / 12,
-                  ),
-                ),
-              if (percentChange != null) const SizedBox(height: 10),
-              Text(
-                status,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.bodyText,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  height: 17 / 13,
-                ),
-              ),
-            ],
+        ),
+      ],
+    );
+  }
+}
+
+class _UtilityTrendBadge extends StatelessWidget {
+  const _UtilityTrendBadge({required this.trend});
+
+  final UtilityInvoiceTrend trend;
+
+  @override
+  Widget build(BuildContext context) {
+    final (icon, color, background, label) = switch (trend.direction) {
+      UtilityTrendDirection.increase => (
+        Icons.trending_up_rounded,
+        AppColors.danger,
+        const Color(0xFFFFE9E8),
+        'Tăng',
+      ),
+      UtilityTrendDirection.decrease => (
+        Icons.trending_down_rounded,
+        AppColors.success,
+        const Color(0xFFE7F8F1),
+        'Giảm',
+      ),
+      UtilityTrendDirection.stable => (
+        Icons.trending_flat_rounded,
+        AppColors.darkBlue,
+        AppColors.primaryLight,
+        'Ổn định',
+      ),
+      UtilityTrendDirection.unavailable => (
+        Icons.remove_rounded,
+        AppColors.bodyText,
+        AppColors.surfaceMuted,
+        'Đang so sánh',
+      ),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              height: 16 / 12,
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _UtilityTrendDescription extends StatelessWidget {
+  const _UtilityTrendDescription({
+    required this.trend,
+    required this.unit,
+    required this.fallbackStatus,
+  });
+
+  final UtilityInvoiceTrend? trend;
+  final String unit;
+  final String fallbackStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    final activeTrend = trend;
+    if (activeTrend == null) {
+      return Text(
+        fallbackStatus,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: AppColors.bodyText,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          height: 16 / 12,
+        ),
+      );
+    }
+
+    final difference = activeTrend.difference;
+    final color = switch (activeTrend.direction) {
+      UtilityTrendDirection.increase => AppColors.danger,
+      UtilityTrendDirection.decrease => AppColors.success,
+      UtilityTrendDirection.stable => AppColors.darkBlue,
+      UtilityTrendDirection.unavailable => AppColors.bodyText,
+    };
+    final text = switch (activeTrend.direction) {
+      UtilityTrendDirection.increase =>
+        'Tiêu thụ tăng ${_formatUsageValue(difference!.abs())} $unit so với tháng trước',
+      UtilityTrendDirection.decrease =>
+        'Tiêu thụ giảm ${_formatUsageValue(difference!.abs())} $unit so với tháng trước',
+      UtilityTrendDirection.stable => 'Tiêu thụ không đổi so với tháng trước',
+      UtilityTrendDirection.unavailable =>
+        'Chưa đủ dữ liệu để so sánh tiêu thụ',
+    };
+
+    return Text(
+      text,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        color: color,
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        height: 16 / 12,
       ),
     );
   }
@@ -1258,7 +1477,7 @@ class _QuickActions extends StatelessWidget {
         _QuickActionButton(
           icon: Icons.description_rounded,
           accentColor: AppColors.accent,
-          label: 'Hợp Đồng',
+          label: 'Hợp đồng',
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
@@ -1412,6 +1631,25 @@ String _normalizeUtilityUnit(String unit) {
     return 'm³';
   }
   return unit.trim();
+}
+
+String _utilityReadingStatusLabel(String status) {
+  return switch (status.trim().toUpperCase()) {
+    'CONFIRMED' => 'Đã chốt chỉ số',
+    'VOIDED' => 'Chỉ số đã hủy',
+    'DRAFT' => 'Chưa chốt chỉ số',
+    'CANCELLED' => 'Đã hủy',
+    _ => status.trim(),
+  };
+}
+
+String _utilityPeriodLabel(String value) {
+  final period = value.trim();
+  if (RegExp(r'^\d{4}-\d{2}$').hasMatch(period)) {
+    final parts = period.split('-');
+    return 'Kỳ tháng ${parts[1]}/${parts[0]}';
+  }
+  return period.isEmpty ? '' : 'Kỳ $period';
 }
 
 String _formatDate(DateTime date) {

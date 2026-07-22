@@ -3,7 +3,6 @@ import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/payment/tenant_invoice_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
-import '../../widgets/app_action_tile.dart';
 import '../../widgets/tenant_bottom_navigation.dart';
 import '../../widgets/app_screen_shell.dart';
 import '../../widgets/app_notification_bell.dart';
@@ -30,7 +29,10 @@ class BillSelectionPage extends StatefulWidget {
 }
 
 class _BillSelectionPageState extends State<BillSelectionPage> {
-  _BillFilter _activeFilter = _BillFilter.all;
+  _BillStatusFilter _activeStatusFilter = _BillStatusFilter.all;
+  _BillTypeFilter _activeTypeFilter = _BillTypeFilter.all;
+  _BillDateFilter _activeDateFilter = _BillDateFilter.all;
+  DateTimeRange? _customDueDateRange;
   late Future<List<TenantInvoice>> _invoicesFuture;
 
   @override
@@ -45,17 +47,22 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: AppScreenShell(
-          header: const _BillHeader(),
+          header: _BillHeader(onOpenHistory: _openPaymentHistory),
           child: ListView(
             padding: const EdgeInsets.fromLTRB(14, 22, 14, 18),
             children: [
               const Text('Tất cả hoá đơn', style: AppTypography.pageTitle),
               const SizedBox(height: 14),
               _BillFilterBar(
-                active: _activeFilter,
-                onChanged: (filter) {
-                  setState(() => _activeFilter = filter);
-                },
+                activeStatus: _activeStatusFilter,
+                activeType: _activeTypeFilter,
+                activeDateFilter: _activeDateFilter,
+                customDateRange: _customDueDateRange,
+                onStatusChanged: (filter) =>
+                    setState(() => _activeStatusFilter = filter),
+                onTypeChanged: (filter) =>
+                    setState(() => _activeTypeFilter = filter),
+                onDateFilterTap: _selectDueDateFilter,
               ),
               const SizedBox(height: 18),
               FutureBuilder<List<TenantInvoice>>(
@@ -116,30 +123,93 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
     });
   }
 
+  void _openPaymentHistory() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) =>
+            PaymentHistoryPage(invoiceService: widget.invoiceService),
+      ),
+    );
+  }
+
+  Future<void> _selectDueDateFilter() async {
+    final selected = await showModalBottomSheet<_BillDateFilter>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: false,
+      builder: (context) =>
+          _BillDateFilterSheet(activeFilter: _activeDateFilter),
+    );
+    if (!mounted || selected == null) return;
+
+    if (selected == _BillDateFilter.custom) {
+      final now = DateTime.now();
+      final picked = await showDateRangePicker(
+        context: context,
+        firstDate: DateTime(2020),
+        lastDate: DateTime(now.year + 10),
+        initialDateRange: _customDueDateRange,
+        helpText: 'Chọn khoảng hạn thanh toán',
+      );
+      if (!mounted || picked == null) return;
+      setState(() {
+        _activeDateFilter = selected;
+        _customDueDateRange = picked;
+      });
+      return;
+    }
+
+    setState(() => _activeDateFilter = selected);
+  }
+
   void _openInvoicePreviewFlow(BuildContext context, TenantInvoice invoice) {
     final isUtility = invoice.invoiceType.toUpperCase() == 'UTILITY';
     final canOpenQr =
         invoice.canPay &&
         (invoice.qrCode.isNotEmpty || invoice.transferDescription.isNotEmpty);
 
-    Navigator.of(context)
-        .push(
-          MaterialPageRoute(
-            builder: (context) {
-              if (isUtility || !canOpenQr) {
-                return BillDetailScreen(
-                  invoice: invoice,
-                  invoiceService: widget.invoiceService,
-                );
-              }
-              return QrPaymentPage(
+    if (isUtility || !canOpenQr) {
+      Navigator.of(context)
+          .push(
+            MaterialPageRoute(
+              builder: (context) => BillDetailScreen(
                 invoice: invoice,
                 invoiceService: widget.invoiceService,
-              );
-            },
-          ),
-        )
-        .then((_) => _reloadInvoices());
+              ),
+            ),
+          )
+          .then((_) => _reloadInvoices());
+      return;
+    }
+
+    if (invoice.hasOpenMeterReadingReview) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Hóa đơn đang có khiếu nại chỉ số chờ xử lý.'),
+        ),
+      );
+      return;
+    }
+    if (invoice.canPay &&
+        (invoice.qrCode.isNotEmpty || invoice.transferDescription.isNotEmpty)) {
+      Navigator.of(context)
+          .push(
+            MaterialPageRoute(
+              builder: (context) => QrPaymentPage(
+                invoice: invoice,
+                invoiceService: widget.invoiceService,
+              ),
+            ),
+          )
+          .then((_) => _reloadInvoices());
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Hóa đơn chưa thể thanh toán. Vui lòng liên hệ quản lý.'),
+      ),
+    );
   }
 
   Future<void> _openMeterReadingReview(
@@ -179,8 +249,19 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
     BuildContext context,
     List<TenantInvoice> invoices,
   ) {
+    final typeFilteredInvoices = invoices
+        .where((invoice) => _matchesTypeFilter(invoice, _activeTypeFilter))
+        .where(
+          (invoice) => _matchesDueDateFilter(
+            invoice,
+            _activeDateFilter,
+            _customDueDateRange,
+          ),
+        )
+        .toList(growable: false);
+
     final pendingBills = _withSpacing(
-      invoices
+      typeFilteredInvoices
           .where((invoice) => !invoice.isPaid)
           .map(
             (invoice) => _PendingBillCard(
@@ -194,7 +275,7 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
     );
 
     final paidBills = _withSpacing(
-      invoices
+      typeFilteredInvoices
           .where((invoice) => invoice.isPaid)
           .map(
             (invoice) => _PaidBillCard(
@@ -206,17 +287,6 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
       12,
     );
 
-    final historyButton = _ViewHistoryButton(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) =>
-                PaymentHistoryPage(invoiceService: widget.invoiceService),
-          ),
-        );
-      },
-    );
-
     if (invoices.isEmpty) {
       return const [
         _BillEmptyState(
@@ -226,8 +296,22 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
       ];
     }
 
-    return switch (_activeFilter) {
-      _BillFilter.all => [
+    if (typeFilteredInvoices.isEmpty) {
+      final hasDateFilter = _activeDateFilter != _BillDateFilter.all;
+      return [
+        _BillEmptyState(
+          title: hasDateFilter
+              ? 'Không có hóa đơn trong khoảng đã chọn'
+              : 'Không có hóa đơn ${_typeFilterEmptyLabel(_activeTypeFilter)}',
+          message: hasDateFilter
+              ? 'Thử thay đổi hạn thanh toán hoặc loại hóa đơn để xem các khoản khác.'
+              : 'Thử chọn loại hóa đơn khác để xem các khoản đang có.',
+        ),
+      ];
+    }
+
+    return switch (_activeStatusFilter) {
+      _BillStatusFilter.all => [
         if (pendingBills.isNotEmpty) ...pendingBills,
         if (paidBills.isNotEmpty) ...[
           const SizedBox(height: 28),
@@ -235,10 +319,8 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
           const SizedBox(height: 22),
           ...paidBills,
         ],
-        const SizedBox(height: 18),
-        historyButton,
       ],
-      _BillFilter.unpaid =>
+      _BillStatusFilter.unpaid =>
         pendingBills.isEmpty
             ? const [
                 _BillEmptyState(
@@ -247,7 +329,7 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
                 ),
               ]
             : pendingBills,
-      _BillFilter.paid =>
+      _BillStatusFilter.paid =>
         paidBills.isEmpty
             ? const [
                 _BillEmptyState(
@@ -255,12 +337,85 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
                   message: 'Các hóa đơn đã thanh toán sẽ được lưu ở đây.',
                 ),
               ]
-            : [...paidBills, const SizedBox(height: 18), historyButton],
+            : paidBills,
     };
   }
 }
 
-enum _BillFilter { all, unpaid, paid }
+enum _BillStatusFilter { all, unpaid, paid }
+
+enum _BillTypeFilter { all, rent, utility, other }
+
+enum _BillDateFilter { all, overdue, next7Days, next30Days, next90Days, custom }
+
+bool _matchesTypeFilter(TenantInvoice invoice, _BillTypeFilter filter) {
+  return switch (filter) {
+    _BillTypeFilter.all => true,
+    _BillTypeFilter.rent => invoice.isRentType,
+    _BillTypeFilter.utility => invoice.isUtilityType,
+    _BillTypeFilter.other => invoice.isOtherType,
+  };
+}
+
+String _typeFilterEmptyLabel(_BillTypeFilter filter) {
+  return switch (filter) {
+    _BillTypeFilter.all => '',
+    _BillTypeFilter.rent => 'tiền phòng',
+    _BillTypeFilter.utility => 'điện nước & dịch vụ',
+    _BillTypeFilter.other => 'khác',
+  };
+}
+
+bool _matchesDueDateFilter(
+  TenantInvoice invoice,
+  _BillDateFilter filter,
+  DateTimeRange? customRange,
+) {
+  if (filter == _BillDateFilter.all) return true;
+  final dueDate = invoice.dueDate;
+  if (dueDate == null) return false;
+
+  final today = _dateOnly(DateTime.now());
+  final normalizedDueDate = _dateOnly(dueDate);
+  if (filter == _BillDateFilter.overdue) {
+    return !invoice.isPaid && normalizedDueDate.isBefore(today);
+  }
+  if (filter == _BillDateFilter.custom) {
+    if (customRange == null) return true;
+    return !normalizedDueDate.isBefore(_dateOnly(customRange.start)) &&
+        !normalizedDueDate.isAfter(_dateOnly(customRange.end));
+  }
+
+  final days = switch (filter) {
+    _BillDateFilter.next7Days => 7,
+    _BillDateFilter.next30Days => 30,
+    _BillDateFilter.next90Days => 90,
+    _ => 0,
+  };
+  final endDate = today.add(Duration(days: days - 1));
+  return !normalizedDueDate.isBefore(today) &&
+      !normalizedDueDate.isAfter(endDate);
+}
+
+DateTime _dateOnly(DateTime value) =>
+    DateTime(value.year, value.month, value.day);
+
+String _billDateFilterLabel(
+  _BillDateFilter filter,
+  DateTimeRange? customRange,
+) {
+  return switch (filter) {
+    _BillDateFilter.all => 'Tất cả thời hạn',
+    _BillDateFilter.overdue => 'Quá hạn',
+    _BillDateFilter.next7Days => '7 ngày tới',
+    _BillDateFilter.next30Days => '30 ngày tới',
+    _BillDateFilter.next90Days => '90 ngày tới',
+    _BillDateFilter.custom =>
+      customRange == null
+          ? 'Khoảng ngày'
+          : '${_formatDate(customRange.start)} - ${_formatDate(customRange.end)}',
+  };
+}
 
 List<Widget> _withSpacing(List<Widget> widgets, double spacing) {
   if (widgets.isEmpty) return const [];
@@ -297,6 +452,53 @@ String _lineLabel(TenantInvoiceLine line) {
     return 'Bồi thường bảo trì: ${_formatAmount(line.amount)}';
   }
   return '${line.description}: ${_formatAmount(line.amount)}';
+}
+
+IconData _invoiceTypeIcon(TenantInvoice invoice) {
+  if (invoice.isRentType) return Icons.apartment_rounded;
+  if (invoice.isUtilityType) return Icons.bolt_rounded;
+  return Icons.more_horiz_rounded;
+}
+
+Color _invoiceTypeColor(TenantInvoice invoice) {
+  if (invoice.isRentType) return AppColors.deepBlue;
+  if (invoice.isUtilityType) return const Color(0xFF0EA5E9);
+  return const Color(0xFF64748B);
+}
+
+class _InvoiceTypePill extends StatelessWidget {
+  const _InvoiceTypePill({required this.invoice});
+
+  final TenantInvoice invoice;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _invoiceTypeColor(invoice);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_invoiceTypeIcon(invoice), size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            invoice.invoiceTypeLabel,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              height: 14 / 10,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _BillLoadingState extends StatelessWidget {
@@ -414,50 +616,319 @@ class _BillEmptyState extends StatelessWidget {
 }
 
 class _BillFilterBar extends StatelessWidget {
-  const _BillFilterBar({required this.active, required this.onChanged});
+  const _BillFilterBar({
+    required this.activeStatus,
+    required this.activeType,
+    required this.activeDateFilter,
+    required this.customDateRange,
+    required this.onStatusChanged,
+    required this.onTypeChanged,
+    required this.onDateFilterTap,
+  });
 
-  final _BillFilter active;
-  final ValueChanged<_BillFilter> onChanged;
+  final _BillStatusFilter activeStatus;
+  final _BillTypeFilter activeType;
+  final _BillDateFilter activeDateFilter;
+  final DateTimeRange? customDateRange;
+  final ValueChanged<_BillStatusFilter> onStatusChanged;
+  final ValueChanged<_BillTypeFilter> onTypeChanged;
+  final VoidCallback onDateFilterTap;
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          AppFilterChip(
-            label: 'Tất cả',
-            icon: Icons.list_rounded,
-            isActive: active == _BillFilter.all,
-            onTap: () => onChanged(_BillFilter.all),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              AppFilterChip(
+                label: 'Tất cả',
+                icon: Icons.list_rounded,
+                isActive: activeStatus == _BillStatusFilter.all,
+                onTap: () => onStatusChanged(_BillStatusFilter.all),
+              ),
+              const SizedBox(width: 8),
+              AppFilterChip(
+                label: 'Chưa thanh toán',
+                icon: Icons.pending_actions_rounded,
+                isActive: activeStatus == _BillStatusFilter.unpaid,
+                onTap: () => onStatusChanged(_BillStatusFilter.unpaid),
+              ),
+              const SizedBox(width: 8),
+              AppFilterChip(
+                label: 'Đã thanh toán',
+                icon: Icons.task_alt_rounded,
+                isActive: activeStatus == _BillStatusFilter.paid,
+                onTap: () => onStatusChanged(_BillStatusFilter.paid),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          AppFilterChip(
-            label: 'Chưa thanh toán',
-            icon: Icons.pending_actions_rounded,
-            isActive: active == _BillFilter.unpaid,
-            onTap: () => onChanged(_BillFilter.unpaid),
+        ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              AppFilterChip(
+                label: 'Mọi loại',
+                icon: Icons.category_outlined,
+                isActive: activeType == _BillTypeFilter.all,
+                onTap: () => onTypeChanged(_BillTypeFilter.all),
+              ),
+              const SizedBox(width: 8),
+              AppFilterChip(
+                label: 'Tiền phòng',
+                icon: Icons.apartment_rounded,
+                isActive: activeType == _BillTypeFilter.rent,
+                onTap: () => onTypeChanged(_BillTypeFilter.rent),
+              ),
+              const SizedBox(width: 8),
+              AppFilterChip(
+                label: 'Điện nước & DV',
+                icon: Icons.bolt_rounded,
+                isActive: activeType == _BillTypeFilter.utility,
+                onTap: () => onTypeChanged(_BillTypeFilter.utility),
+              ),
+              const SizedBox(width: 8),
+              AppFilterChip(
+                label: 'Khác',
+                icon: Icons.more_horiz_rounded,
+                isActive: activeType == _BillTypeFilter.other,
+                onTap: () => onTypeChanged(_BillTypeFilter.other),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          AppFilterChip(
-            label: 'Đã thanh toán',
-            icon: Icons.task_alt_rounded,
-            isActive: active == _BillFilter.paid,
-            onTap: () => onChanged(_BillFilter.paid),
+        ),
+        const SizedBox(height: 10),
+        Semantics(
+          button: true,
+          label:
+              'Lọc theo hạn thanh toán: ${_billDateFilterLabel(activeDateFilter, customDateRange)}',
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              onTap: onDateFilterTap,
+              borderRadius: BorderRadius.circular(12),
+              child: Ink(
+                height: 44,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: activeDateFilter == _BillDateFilter.all
+                      ? AppColors.surface
+                      : AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: activeDateFilter == _BillDateFilter.all
+                        ? AppColors.cardBorder
+                        : AppColors.primary.withValues(alpha: 0.38),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.event_outlined,
+                      size: 19,
+                      color: activeDateFilter == _BillDateFilter.all
+                          ? AppColors.bodyText
+                          : AppColors.deepBlue,
+                    ),
+                    const SizedBox(width: 9),
+                    const Text(
+                      'Hạn thanh toán',
+                      style: TextStyle(
+                        color: AppColors.bodyText,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const Spacer(),
+                    Flexible(
+                      child: Text(
+                        _billDateFilterLabel(activeDateFilter, customDateRange),
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.end,
+                        style: const TextStyle(
+                          color: AppColors.deepBlue,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: AppColors.deepBlue,
+                      size: 20,
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-        ],
+        ),
+      ],
+    );
+  }
+}
+
+class _BillDateFilterSheet extends StatelessWidget {
+  const _BillDateFilterSheet({required this.activeFilter});
+
+  final _BillDateFilter activeFilter;
+
+  @override
+  Widget build(BuildContext context) {
+    final filters = _BillDateFilter.values;
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.7;
+    final preferredHeight = 128.0 + (filters.length * 48.0);
+
+    return SafeArea(
+      top: false,
+      child: SizedBox(
+        height: preferredHeight > maxHeight ? maxHeight : preferredHeight,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 12, 20, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(child: _BottomSheetHandle()),
+                  SizedBox(height: 18),
+                  Text(
+                    'Lọc theo hạn thanh toán',
+                    style: TextStyle(
+                      color: AppColors.inputText,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'Các hóa đơn trong khoảng được chọn sẽ hiển thị.',
+                    style: TextStyle(
+                      color: AppColors.bodyText,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: AppColors.cardBorder),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
+                itemCount: filters.length,
+                itemBuilder: (context, index) {
+                  final filter = filters[index];
+                  return _DateFilterOption(
+                    label: _billDateFilterLabel(filter, null),
+                    icon: switch (filter) {
+                      _BillDateFilter.all => Icons.date_range_outlined,
+                      _BillDateFilter.overdue => Icons.warning_amber_rounded,
+                      _BillDateFilter.next7Days => Icons.looks_one_outlined,
+                      _BillDateFilter.next30Days => Icons.date_range_rounded,
+                      _BillDateFilter.next90Days =>
+                        Icons.calendar_month_rounded,
+                      _BillDateFilter.custom => Icons.edit_calendar_outlined,
+                    },
+                    isSelected: activeFilter == filter,
+                    onTap: () => Navigator.of(context).pop(filter),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BottomSheetHandle extends StatelessWidget {
+  const _BottomSheetHandle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 36,
+      height: 4,
+      decoration: BoxDecoration(
+        color: AppColors.deepBlue,
+        borderRadius: BorderRadius.circular(99),
+      ),
+    );
+  }
+}
+
+class _DateFilterOption extends StatelessWidget {
+  const _DateFilterOption({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: SizedBox(
+          height: 48,
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: isSelected ? AppColors.primary : AppColors.bodyText,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: AppColors.inputText,
+                    fontSize: 14,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (isSelected)
+                const Icon(
+                  Icons.check_rounded,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
 class _BillHeader extends StatelessWidget {
-  const _BillHeader();
+  const _BillHeader({required this.onOpenHistory});
+
+  final VoidCallback onOpenHistory;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 54,
+      height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -470,7 +941,8 @@ class _BillHeader extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => Navigator.of(context).maybePop(),
+            onPressed: () =>
+                Navigator.of(context).popUntil((route) => route.isFirst),
             icon: const Icon(
               Icons.arrow_back_rounded,
               color: AppColors.deepBlue,
@@ -479,15 +951,18 @@ class _BillHeader extends StatelessWidget {
             tooltip: 'Trở về',
           ),
           const Expanded(
-            child: Text(
-              'Hóa đơn',
-              style: TextStyle(
-                color: AppColors.deepBlue,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                height: 20 / 16,
-              ),
+            child: Text('Hóa đơn', style: AppColors.topBarTitleStyle),
+          ),
+          IconButton(
+            onPressed: onOpenHistory,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+            icon: const Icon(
+              Icons.history_rounded,
+              color: AppColors.topBarIconColor,
+              size: AppColors.topBarIconSize,
             ),
+            tooltip: 'Lịch sử thanh toán',
           ),
           IconButton(
             onPressed: () => Navigator.of(context).push(
@@ -496,10 +971,10 @@ class _BillHeader extends StatelessWidget {
               ),
             ),
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            constraints: const BoxConstraints.tightFor(width: 44, height: 44),
             icon: const AppNotificationBell(
-              color: AppColors.inputText,
-              size: 24,
+              color: AppColors.topBarIconColor,
+              size: AppColors.topBarIconSize,
             ),
             tooltip: 'Thông báo',
           ),
@@ -617,6 +1092,8 @@ class _PendingBillCard extends StatelessWidget {
                                   ),
                                 ),
                               ),
+                              const SizedBox(width: 8),
+                              _InvoiceTypePill(invoice: invoice),
                               const Spacer(),
                               Flexible(
                                 child: Text(
@@ -814,138 +1291,106 @@ class _PaidBillCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 86),
-          child: Ink(
-            padding: const EdgeInsets.fromLTRB(22, 16, 18, 15),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FCFA),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AppColors.success.withValues(alpha: 0.18),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.deepBlue.withValues(alpha: 0.035),
-                  blurRadius: 14,
-                  offset: const Offset(0, 7),
-                ),
-              ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 86),
+        padding: const EdgeInsets.fromLTRB(22, 16, 18, 15),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FCFA),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.success.withValues(alpha: 0.18)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.deepBlue.withValues(alpha: 0.035),
+              blurRadius: 14,
+              offset: const Offset(0, 7),
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(
-                  Icons.check_circle_outline,
-                  color: AppColors.success,
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.check_circle_outline, color: AppColors.success),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              invoice.title,
-                              style: const TextStyle(
-                                color: AppColors.inputText,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
-                                height: 20 / 15,
-                              ),
-                            ),
+                      Expanded(
+                        child: Text(
+                          invoice.title,
+                          style: const TextStyle(
+                            color: AppColors.inputText,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            height: 20 / 15,
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _formatAmount(invoice.totalAmount),
-                            style: const TextStyle(
-                              color: AppColors.inputText,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
-                              height: 20 / 15,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                      const SizedBox(height: 7),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 9,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF8096FF),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: const Text(
-                              'ĐÃ THANH TOÁN',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w900,
-                                height: 12 / 9,
-                                letterSpacing: 0.4,
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
-                          Flexible(
-                            child: Text(
-                              invoice.issuedAt == null
-                                  ? 'Đã thanh toán'
-                                  : 'Ngày: ${_formatDate(invoice.issuedAt)}',
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.bodyText,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                height: 15 / 11,
-                              ),
-                            ),
-                          ),
-                        ],
+                      const SizedBox(width: 8),
+                      Text(
+                        _formatAmount(invoice.totalAmount),
+                        style: const TextStyle(
+                          color: AppColors.inputText,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          height: 20 / 15,
+                        ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: AppColors.bodyText,
-                  size: 22,
-                ),
-              ],
+                  const SizedBox(height: 7),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF8096FF),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: const Text(
+                          'ĐÃ THANH TOÁN',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            height: 12 / 9,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _InvoiceTypePill(invoice: invoice),
+                      const Spacer(),
+                      Flexible(
+                        child: Text(
+                          invoice.issuedAt == null
+                              ? 'Đã thanh toán'
+                              : 'Ngày: ${_formatDate(invoice.issuedAt)}',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.bodyText,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            height: 15 / 11,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
-    );
-  }
-}
-
-class _ViewHistoryButton extends StatelessWidget {
-  const _ViewHistoryButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppActionRowButton(
-      icon: Icons.history_rounded,
-      title: 'Xem toàn bộ lịch sử thanh toán',
-      subtitle: 'Các hóa đơn đã thanh toán và biên nhận',
-      accentColor: AppColors.actionCyan,
-      onTap: onTap,
     );
   }
 }

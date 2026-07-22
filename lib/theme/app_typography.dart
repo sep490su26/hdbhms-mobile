@@ -5,7 +5,7 @@ import 'package:hdbhms_mobile/theme/app_colors.dart';
 class AppTypography {
   const AppTypography._();
 
-  static const fontFamily = 'PlusJakartaSans';
+  static const fontFamily = 'BeVietnamPro';
 
   static const topBarTitle = TextStyle(
     fontFamily: fontFamily,
