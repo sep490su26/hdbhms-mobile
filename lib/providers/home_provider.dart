@@ -55,24 +55,34 @@ class HomeProvider extends ChangeNotifier {
   bool get loadingUtilities => _loadingUtilities;
   List<TenantInvoice> get invoices => List.unmodifiable(_invoices);
 
+  UtilityInvoiceTrend? get electricityTrend => _utilityTrendFor('ELECTRICITY');
+
+  UtilityInvoiceTrend? get waterTrend => _utilityTrendFor('WATER');
+
   List<TenantInvoice> get selectedRoomInvoices {
     final room = _selectedRoom;
-    if (room == null) {
+    final contractId = room?.contractId ?? _summary?.contract?.id ?? 0;
+    final contractCode =
+        room?.contractCode ?? _summary?.contract?.contractCode ?? '';
+    final roomId = room?.roomId ?? _summary?.room?.id ?? 0;
+    final roomCode = room?.roomCode ?? _summary?.room?.roomCode ?? '';
+
+    if (contractId <= 0 && roomId <= 0 && roomCode.isEmpty) {
       return _invoices;
     }
 
     return _invoices
         .where((invoice) {
-          if (invoice.contractId != null && room.contractId > 0) {
-            return invoice.contractId == room.contractId;
+          if (invoice.contractId != null && contractId > 0) {
+            return invoice.contractId == contractId;
           }
-          if (invoice.roomId != null && room.roomId > 0) {
-            return invoice.roomId == room.roomId;
+          if (invoice.roomId != null && roomId > 0) {
+            return invoice.roomId == roomId;
           }
-          if (invoice.contractCode.isNotEmpty && room.contractCode.isNotEmpty) {
-            return invoice.contractCode == room.contractCode;
+          if (invoice.contractCode.isNotEmpty && contractCode.isNotEmpty) {
+            return invoice.contractCode == contractCode;
           }
-          return invoice.roomCode == room.roomCode;
+          return invoice.roomCode == roomCode;
         })
         .toList(growable: false);
   }
@@ -80,6 +90,51 @@ class HomeProvider extends ChangeNotifier {
   List<TenantInvoice> get payableInvoices => selectedRoomInvoices
       .where((invoice) => invoice.canPay && invoice.remainingAmount > 0)
       .toList(growable: false);
+
+  UtilityInvoiceTrend? _utilityTrendFor(String lineType) {
+    final samples = <_UtilityInvoiceSample>[];
+
+    for (final invoice in selectedRoomInvoices) {
+      for (final line in invoice.utilityMeterLines) {
+        if (line.lineType.toUpperCase() != lineType || !_hasMeterData(line)) {
+          continue;
+        }
+        samples.add(_UtilityInvoiceSample(invoice: invoice, line: line));
+      }
+    }
+
+    if (samples.isEmpty) {
+      return null;
+    }
+
+    samples.sort(_compareUtilitySamplesNewestFirst);
+    final latest = samples.first;
+    final previous = samples
+        .skip(1)
+        .cast<_UtilityInvoiceSample?>()
+        .firstWhere(
+          (sample) => sample!.periodKey != latest.periodKey,
+          orElse: () => null,
+        );
+
+    final currentUsage = _usageOf(latest.line);
+    final previousUsage = previous == null ? null : _usageOf(previous.line);
+    final difference = currentUsage != null && previousUsage != null
+        ? currentUsage - previousUsage
+        : null;
+    final percentChange = difference != null && previousUsage != null
+        ? (previousUsage == 0 ? null : (difference / previousUsage) * 100)
+        : null;
+
+    return UtilityInvoiceTrend(
+      invoice: latest.invoice,
+      line: latest.line,
+      previousReading: latest.line.previousValue ?? previous?.line.currentValue,
+      previousUsage: previousUsage,
+      difference: difference,
+      percentChange: percentChange,
+    );
+  }
 
   InvoiceSummary get invoiceSummary {
     if (!_invoicesLoaded) {
@@ -226,4 +281,87 @@ class HomeProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+}
+
+class UtilityInvoiceTrend {
+  const UtilityInvoiceTrend({
+    required this.invoice,
+    required this.line,
+    required this.previousReading,
+    required this.previousUsage,
+    required this.difference,
+    required this.percentChange,
+  });
+
+  final TenantInvoice invoice;
+  final TenantInvoiceLine line;
+  final double? previousReading;
+  final double? previousUsage;
+  final double? difference;
+  final double? percentChange;
+
+  double? get currentReading => line.currentValue;
+  double? get currentUsage => _usageOf(line);
+
+  UtilityTrendDirection get direction {
+    final value = difference;
+    if (value == null) {
+      return UtilityTrendDirection.unavailable;
+    }
+    if (value > 0) {
+      return UtilityTrendDirection.increase;
+    }
+    if (value < 0) {
+      return UtilityTrendDirection.decrease;
+    }
+    return UtilityTrendDirection.stable;
+  }
+}
+
+enum UtilityTrendDirection { increase, decrease, stable, unavailable }
+
+class _UtilityInvoiceSample {
+  const _UtilityInvoiceSample({required this.invoice, required this.line});
+
+  final TenantInvoice invoice;
+  final TenantInvoiceLine line;
+
+  String get periodKey {
+    final readingPeriod = line.readingPeriod.trim();
+    if (RegExp(r'^\d{4}-\d{2}$').hasMatch(readingPeriod)) {
+      return readingPeriod;
+    }
+    final billingPeriod = invoice.billingPeriod.trim();
+    if (RegExp(r'^\d{4}-\d{2}$').hasMatch(billingPeriod)) {
+      return billingPeriod;
+    }
+    return invoice.issuedAt?.toIso8601String() ?? '';
+  }
+}
+
+bool _hasMeterData(TenantInvoiceLine line) {
+  return line.currentValue != null ||
+      line.previousValue != null ||
+      line.usageAmount != null;
+}
+
+double? _usageOf(TenantInvoiceLine line) {
+  return line.usageAmount ??
+      (line.currentValue != null && line.previousValue != null
+          ? line.currentValue! - line.previousValue!
+          : null);
+}
+
+int _compareUtilitySamplesNewestFirst(
+  _UtilityInvoiceSample first,
+  _UtilityInvoiceSample second,
+) {
+  final periodCompare = second.periodKey.compareTo(first.periodKey);
+  if (periodCompare != 0) {
+    return periodCompare;
+  }
+  return (second.invoice.issuedAt ?? DateTime.fromMillisecondsSinceEpoch(0))
+      .compareTo(
+        first.invoice.issuedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+      );
 }

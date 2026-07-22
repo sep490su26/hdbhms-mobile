@@ -91,7 +91,7 @@ class BillDetailScreen extends StatelessWidget {
     _ => type,
   };
 
-  bool get _isUtility => invoice.invoiceType == 'UTILITY';
+  bool get _isUtility => invoice.isUtilityType;
   bool get _hasComplainableLines => invoice.reviewableUtilityLines.isNotEmpty;
   bool get _canPay => invoice.canPay;
 
@@ -248,7 +248,9 @@ class BillDetailScreen extends StatelessWidget {
                     height: 1.3,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 6),
+                _InvoiceTypeBadge(invoice: invoice),
+                const SizedBox(height: 6),
                 Text(
                   invoice.invoiceCode.isEmpty
                       ? 'Phòng ${invoice.roomCode}'
@@ -755,6 +757,46 @@ class BillDetailScreen extends StatelessWidget {
 }
 
 // ── Review status card ────────────────────────────────────────────────────────
+
+IconData _invoiceTypeIcon(TenantInvoice invoice) {
+  if (invoice.isRentType) return Icons.apartment_rounded;
+  if (invoice.isUtilityType) return Icons.bolt_rounded;
+  return Icons.more_horiz_rounded;
+}
+
+class _InvoiceTypeBadge extends StatelessWidget {
+  const _InvoiceTypeBadge({required this.invoice});
+
+  final TenantInvoice invoice;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_invoiceTypeIcon(invoice), color: Colors.white, size: 13),
+          const SizedBox(width: 5),
+          Text(
+            invoice.invoiceTypeLabel,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              height: 14 / 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _ReviewStatusCard extends StatelessWidget {
   const _ReviewStatusCard({required this.line});

@@ -427,7 +427,8 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
       child: Row(
         children: [
           IconButton(
-            onPressed: () => Navigator.of(context).maybePop(),
+            onPressed: () =>
+                Navigator.of(context).popUntil((route) => route.isFirst),
             icon: const Icon(
               Icons.arrow_back_rounded,
               color: AppColors.deepBlue,

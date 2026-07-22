@@ -326,7 +326,6 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         child: Text(
           '${_vehicles.length}/$_maxVehicles Xe',
           style: const TextStyle(
-            fontFamily: 'Inter',
             color: Colors.white,
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -380,7 +379,6 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                   const Text(
                     'Thêm phương tiện',
                     style: TextStyle(
-                      fontFamily: 'Inter',
                       color: buttonColor,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -425,7 +423,6 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
           label: Text(
             _isLoading ? 'ĐANG LƯU...' : 'LƯU THAY ĐỔI',
             style: const TextStyle(
-              fontFamily: 'Inter',
               fontSize: 16,
               fontWeight: FontWeight.w700,
               height: 24 / 16,
@@ -495,7 +492,6 @@ class _SectionCard extends StatelessWidget {
                 child: Text(
                   title,
                   style: const TextStyle(
-                    fontFamily: 'Inter',
                     color: AppColors.inputText,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -511,7 +507,6 @@ class _SectionCard extends StatelessWidget {
             Text(
               subtitle!,
               style: const TextStyle(
-                fontFamily: 'Inter',
                 color: AppColors.bodyText,
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
@@ -547,7 +542,6 @@ class _EditableField extends StatelessWidget {
         Text(
           label,
           style: const TextStyle(
-            fontFamily: 'Inter',
             color: AppColors.bodyText,
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -560,7 +554,6 @@ class _EditableField extends StatelessWidget {
           controller: controller,
           keyboardType: keyboardType,
           style: const TextStyle(
-            fontFamily: 'Inter',
             color: AppColors.inputText,
             fontSize: 16,
             fontWeight: FontWeight.w500,
@@ -639,7 +632,6 @@ class _VehicleCard extends StatelessWidget {
                 child: Text(
                   'PHƯƠNG TIỆN ${index + 1}',
                   style: const TextStyle(
-                    fontFamily: 'Inter',
                     color: Color(0xFF000666),
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -673,7 +665,6 @@ class _VehicleCard extends StatelessWidget {
           const Text(
             'Ảnh phương tiện',
             style: TextStyle(
-              fontFamily: 'Inter',
               color: AppColors.bodyText,
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -737,7 +728,6 @@ class _VehicleImagePicker extends StatelessWidget {
                       Text(
                         'Tải ảnh lên',
                         style: TextStyle(
-                          fontFamily: 'Inter',
                           color: AppColors.bodyText,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,

@@ -79,9 +79,7 @@ void main() {
     expect(_ticketCodeFinder('SC-0003'), findsNothing);
   });
 
-  testWidgets('ticket list screen can filter by status dropdown', (
-    tester,
-  ) async {
+  testWidgets('ticket list screen can filter by status picker', (tester) async {
     final service = _ticketService();
 
     await tester.pumpWidget(
@@ -89,7 +87,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.tap(find.byKey(const ValueKey('ticket-status-filter')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Hoàn tất').last);
     await tester.pumpAndSettle();
@@ -101,7 +99,7 @@ void main() {
     expect(_ticketCodeFinder('SC-0003'), findsNothing);
   });
 
-  testWidgets('ticket list screen can filter by category dropdown', (
+  testWidgets('ticket list screen can filter by category picker', (
     tester,
   ) async {
     final service = _ticketService();
@@ -111,7 +109,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(DropdownButtonFormField<String>).at(1));
+    await tester.tap(find.byKey(const ValueKey('ticket-category-filter')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Nước').last);
     await tester.pumpAndSettle();

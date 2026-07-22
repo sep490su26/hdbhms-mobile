@@ -3,10 +3,15 @@ import 'package:flutter/material.dart';
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/payment/tenant_invoice_service.dart';
 import '../../theme/app_colors.dart';
-import '../../widgets/app_screen_shell.dart';
 import '../../widgets/app_notification_bell.dart';
+import '../../widgets/app_screen_shell.dart';
+import '../../widgets/app_skeleton.dart';
+import '../../widgets/app_filter_chip.dart';
+import '../../widgets/tenant_bottom_navigation.dart';
+import '../maintenance/maintenance_ticket_list_screen.dart';
 import '../notification/notification_list_screen.dart';
 import '../profile_request/tenant_profile_screen.dart';
+import '../profile_request/tenant_request_screen.dart';
 
 class PaymentHistoryPage extends StatefulWidget {
   const PaymentHistoryPage({
@@ -23,7 +28,9 @@ class PaymentHistoryPage extends StatefulWidget {
 class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
   final TextEditingController _searchController = TextEditingController();
   late Future<List<TenantInvoice>> _invoicesFuture;
-  String _selectedMonthKey = 'all';
+  _HistoryDateFilter _selectedDateFilter = _HistoryDateFilter.all;
+  _HistoryInvoiceTypeFilter _selectedTypeFilter = _HistoryInvoiceTypeFilter.all;
+  DateTimeRange? _customPaidDateRange;
 
   @override
   void initState() {
@@ -44,13 +51,22 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
     });
   }
 
+  void _clearFilters() {
+    _searchController.clear();
+    setState(() {
+      _selectedDateFilter = _HistoryDateFilter.all;
+      _selectedTypeFilter = _HistoryInvoiceTypeFilter.all;
+      _customPaidDateRange = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: AppScreenShell(
-          header: _HistoryHeader(onRefresh: _reload),
+          header: const _HistoryHeader(),
           child: FutureBuilder<List<TenantInvoice>>(
             future: _invoicesFuture,
             builder: (context, snapshot) {
@@ -65,47 +81,85 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                   onRetry: _reload,
                 );
               }
+
               final paidInvoices = _paidInvoices(snapshot.data ?? const []);
-              final monthOptions = _monthOptions(paidInvoices);
-              if (_selectedMonthKey != 'all' &&
-                  !monthOptions.any((item) => item.key == _selectedMonthKey)) {
-                _selectedMonthKey = 'all';
-              }
               final filteredInvoices = _filterInvoices(paidInvoices);
 
-              return SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(14, 22, 14, 22),
-                child: Column(
-                  children: [
-                    _SearchField(controller: _searchController),
-                    const SizedBox(height: 16),
-                    _FilterRow(
-                      selectedMonthKey: _selectedMonthKey,
-                      monthOptions: monthOptions,
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _selectedMonthKey = value);
-                      },
+              return ListView(
+                padding: const EdgeInsets.fromLTRB(14, 16, 14, 18),
+                children: [
+                  // Page title
+                  const Text(
+                    'Hoá đơn đã thanh toán',
+                    style: TextStyle(
+                      color: AppColors.darkBlue,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      height: 30 / 24,
+                      letterSpacing: 0,
                     ),
-                    const SizedBox(height: 24),
-                    if (filteredInvoices.isEmpty)
-                      _HistoryEmpty(
-                        hasAnyPaidInvoice: paidInvoices.isNotEmpty,
-                        onClearFilter: () {
-                          _searchController.clear();
-                          setState(() => _selectedMonthKey = 'all');
-                        },
-                      )
-                    else
-                      _HistoryListCard(invoices: filteredInvoices),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Search field
+                  _SearchField(controller: _searchController),
+                  const SizedBox(height: 12),
+
+                  _HistoryDateFilterControl(
+                    selectedFilter: _selectedDateFilter,
+                    customDateRange: _customPaidDateRange,
+                    onTap: _selectPaidDateFilter,
+                    onReload: _reload,
+                  ),
+                  const SizedBox(height: 12),
+                  _HistoryTypeFilterBar(
+                    selectedFilter: _selectedTypeFilter,
+                    onChanged: (filter) =>
+                        setState(() => _selectedTypeFilter = filter),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Content
+                  if (filteredInvoices.isEmpty)
+                    _HistoryEmpty(
+                      hasAnyPaidInvoice: paidInvoices.isNotEmpty,
+                      onClearFilter: _clearFilters,
+                    )
+                  else ...[
+                    for (var i = 0; i < filteredInvoices.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 12),
+                      _HistoryCard(invoice: filteredInvoices[i]),
+                    ],
                   ],
-                ),
+                  const SizedBox(height: 12),
+                ],
               );
             },
           ),
         ),
       ),
-      bottomNavigationBar: const _HistoryBottomNavigation(),
+      bottomNavigationBar: TenantBottomNavigation(
+        activeTab: TenantBottomNavTab.bills,
+        onHomeTap: () =>
+            Navigator.of(context).popUntil((route) => route.isFirst),
+        onSupportTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const MaintenanceTicketListScreen(),
+            ),
+          );
+        },
+        onProfileTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const TenantProfileScreen(),
+            ),
+          );
+        },
+        onRequestsTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+        ),
+      ),
     );
   }
 
@@ -119,12 +173,17 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
     final keyword = _searchController.text.trim().toLowerCase();
     return invoices
         .where((invoice) {
+          if (!_matchesHistoryTypeFilter(invoice, _selectedTypeFilter)) {
+            return false;
+          }
           final date = _historyDate(invoice);
-          final monthMatches =
-              _selectedMonthKey == 'all' ||
-              _monthKey(date) == _selectedMonthKey ||
-              invoice.billingPeriod == _selectedMonthKey;
-          if (!monthMatches) return false;
+          if (!_matchesHistoryDateFilter(
+            date,
+            _selectedDateFilter,
+            _customPaidDateRange,
+          )) {
+            return false;
+          }
           if (keyword.isEmpty) return true;
           final haystack = [
             invoice.title,
@@ -139,17 +198,48 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
         })
         .toList(growable: false);
   }
+
+  Future<void> _selectPaidDateFilter() async {
+    final selected = await showModalBottomSheet<_HistoryDateFilter>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: false,
+      builder: (context) =>
+          _HistoryDateFilterSheet(activeFilter: _selectedDateFilter),
+    );
+    if (!mounted || selected == null) return;
+
+    if (selected == _HistoryDateFilter.custom) {
+      final now = DateTime.now();
+      final picked = await showDateRangePicker(
+        context: context,
+        firstDate: DateTime(2020),
+        lastDate: now,
+        initialDateRange: _customPaidDateRange,
+        helpText: 'Chọn khoảng ngày giao dịch',
+      );
+      if (!mounted || picked == null) return;
+      setState(() {
+        _selectedDateFilter = selected;
+        _customPaidDateRange = picked;
+      });
+      return;
+    }
+
+    setState(() => _selectedDateFilter = selected);
+  }
 }
 
-class _HistoryHeader extends StatelessWidget {
-  const _HistoryHeader({required this.onRefresh});
+// ── Header ────────────────────────────────────────────────────────────────────
 
-  final VoidCallback onRefresh;
+class _HistoryHeader extends StatelessWidget {
+  const _HistoryHeader();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 54,
+      height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -164,35 +254,19 @@ class _HistoryHeader extends StatelessWidget {
           IconButton(
             onPressed: () => Navigator.of(context).maybePop(),
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            constraints: const BoxConstraints.tightFor(width: 44, height: 44),
             icon: const Icon(
               Icons.arrow_back_rounded,
-              color: AppColors.deepBlue,
-              size: 24,
+              color: AppColors.topBarIconColor,
+              size: AppColors.topBarIconSize,
             ),
             tooltip: 'Quay lại',
           ),
           const Expanded(
             child: Text(
               'Lịch sử thanh toán',
-              style: TextStyle(
-                color: AppColors.deepBlue,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                height: 20 / 16,
-              ),
+              style: AppColors.topBarTitleStyle,
             ),
-          ),
-          IconButton(
-            onPressed: onRefresh,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const Icon(
-              Icons.refresh_rounded,
-              color: AppColors.inputText,
-              size: 22,
-            ),
-            tooltip: 'Làm mới',
           ),
           IconButton(
             onPressed: () => Navigator.of(context).push(
@@ -201,10 +275,10 @@ class _HistoryHeader extends StatelessWidget {
               ),
             ),
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            constraints: const BoxConstraints.tightFor(width: 44, height: 44),
             icon: const AppNotificationBell(
-              color: AppColors.inputText,
-              size: 24,
+              color: AppColors.topBarIconColor,
+              size: AppColors.topBarIconSize,
             ),
             tooltip: 'Thông báo',
           ),
@@ -213,6 +287,8 @@ class _HistoryHeader extends StatelessWidget {
     );
   }
 }
+
+// ── Search Field ──────────────────────────────────────────────────────────────
 
 class _SearchField extends StatelessWidget {
   const _SearchField({required this.controller});
@@ -229,7 +305,7 @@ class _SearchField extends StatelessWidget {
         prefixIcon: const Icon(
           Icons.search_rounded,
           color: AppColors.bodyText,
-          size: 21,
+          size: 20,
         ),
         suffixIcon: controller.text.isEmpty
             ? null
@@ -238,148 +314,317 @@ class _SearchField extends StatelessWidget {
                 icon: const Icon(Icons.close_rounded, size: 18),
               ),
         filled: true,
-        fillColor: const Color(0xFFF1F1F1),
+        fillColor: AppColors.surface,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
+          horizontal: 14,
           vertical: 12,
         ),
         border: OutlineInputBorder(
-          borderSide: BorderSide.none,
-          borderRadius: BorderRadius.circular(7),
+          borderSide: BorderSide(color: AppColors.cardBorder),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: AppColors.cardBorder),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: const BorderSide(color: AppColors.primary),
+          borderRadius: BorderRadius.circular(12),
         ),
       ),
       style: const TextStyle(
         color: AppColors.inputText,
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: FontWeight.w600,
       ),
     );
   }
 }
 
-class _FilterRow extends StatelessWidget {
-  const _FilterRow({
-    required this.selectedMonthKey,
-    required this.monthOptions,
-    required this.onChanged,
+// ── Period Filter Card ────────────────────────────────────────────────────────
+
+class _HistoryDateFilterControl extends StatelessWidget {
+  const _HistoryDateFilterControl({
+    required this.selectedFilter,
+    required this.customDateRange,
+    required this.onTap,
+    required this.onReload,
   });
 
-  final String selectedMonthKey;
-  final List<_MonthOption> monthOptions;
-  final ValueChanged<String?> onChanged;
+  final _HistoryDateFilter selectedFilter;
+  final DateTimeRange? customDateRange;
+  final VoidCallback onTap;
+  final VoidCallback onReload;
 
   @override
   Widget build(BuildContext context) {
-    final options = [
-      const _MonthOption(key: 'all', label: 'Tất cả tháng'),
-      ...monthOptions,
-    ];
-    return Row(
-      children: [
-        Expanded(
-          child: SizedBox(
-            height: 45,
-            child: DropdownButtonFormField<String>(
-              key: ValueKey(selectedMonthKey),
-              initialValue: selectedMonthKey,
-              items: options
-                  .map(
-                    (item) => DropdownMenuItem<String>(
-                      value: item.key,
-                      child: Text(item.label),
-                    ),
-                  )
-                  .toList(),
-              onChanged: onChanged,
-              icon: const Icon(
-                Icons.keyboard_arrow_down_rounded,
-                color: AppColors.deepBlue,
-              ),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: const Color(0xFFF1F1F1),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(7),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              style: const TextStyle(
-                color: AppColors.deepBlue,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Ink(
+          height: 48,
+          padding: const EdgeInsets.only(left: 12, right: 4),
+          decoration: BoxDecoration(
+            color: selectedFilter == _HistoryDateFilter.all
+                ? AppColors.surface
+                : AppColors.primaryLight,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selectedFilter == _HistoryDateFilter.all
+                  ? AppColors.cardBorder
+                  : AppColors.primary.withValues(alpha: 0.38),
             ),
           ),
-        ),
-        const SizedBox(width: 10),
-        Container(
-          width: 80,
-          height: 45,
-          decoration: BoxDecoration(
-            color: const Color(0xFFA7B4FF),
-            borderRadius: BorderRadius.circular(7),
-          ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Row(
             children: [
               Icon(
-                Icons.filter_list_rounded,
-                size: 18,
-                color: AppColors.deepBlue,
+                Icons.event_outlined,
+                size: 19,
+                color: selectedFilter == _HistoryDateFilter.all
+                    ? AppColors.bodyText
+                    : AppColors.deepBlue,
               ),
-              SizedBox(width: 5),
-              Text(
-                'Lọc',
+              const SizedBox(width: 9),
+              const Text(
+                'Ngày giao dịch',
                 style: TextStyle(
-                  color: AppColors.deepBlue,
-                  fontSize: 15,
+                  color: AppColors.bodyText,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  height: 20 / 15,
                 ),
+              ),
+              const Spacer(),
+              Flexible(
+                child: Text(
+                  _historyDateFilterLabel(selectedFilter, customDateRange),
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: const TextStyle(
+                    color: AppColors.deepBlue,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: AppColors.deepBlue,
+                size: 20,
+              ),
+              IconButton(
+                onPressed: onReload,
+                tooltip: 'Tải lại lịch sử thanh toán',
+                icon: const Icon(Icons.refresh_rounded, size: 20),
+                color: AppColors.bodyText,
               ),
             ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
 
-class _HistoryListCard extends StatelessWidget {
-  const _HistoryListCard({required this.invoices});
+class _HistoryTypeFilterBar extends StatelessWidget {
+  const _HistoryTypeFilterBar({
+    required this.selectedFilter,
+    required this.onChanged,
+  });
 
-  final List<TenantInvoice> invoices;
+  final _HistoryInvoiceTypeFilter selectedFilter;
+  final ValueChanged<_HistoryInvoiceTypeFilter> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          AppFilterChip(
+            label: 'Mọi loại',
+            icon: Icons.category_outlined,
+            isActive: selectedFilter == _HistoryInvoiceTypeFilter.all,
+            onTap: () => onChanged(_HistoryInvoiceTypeFilter.all),
+          ),
+          const SizedBox(width: 8),
+          AppFilterChip(
+            label: 'Tiền phòng',
+            icon: Icons.apartment_rounded,
+            isActive: selectedFilter == _HistoryInvoiceTypeFilter.rent,
+            onTap: () => onChanged(_HistoryInvoiceTypeFilter.rent),
+          ),
+          const SizedBox(width: 8),
+          AppFilterChip(
+            label: 'Điện nước & DV',
+            icon: Icons.bolt_rounded,
+            isActive: selectedFilter == _HistoryInvoiceTypeFilter.utility,
+            onTap: () => onChanged(_HistoryInvoiceTypeFilter.utility),
+          ),
+          const SizedBox(width: 8),
+          AppFilterChip(
+            label: 'Khác',
+            icon: Icons.more_horiz_rounded,
+            isActive: selectedFilter == _HistoryInvoiceTypeFilter.other,
+            onTap: () => onChanged(_HistoryInvoiceTypeFilter.other),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HistoryDateFilterSheet extends StatelessWidget {
+  const _HistoryDateFilterSheet({required this.activeFilter});
+
+  final _HistoryDateFilter activeFilter;
+
+  @override
+  Widget build(BuildContext context) {
+    final filters = _HistoryDateFilter.values;
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.7;
+    final preferredHeight = 128.0 + (filters.length * 48.0);
+
+    return SafeArea(
+      top: false,
+      child: SizedBox(
+        height: preferredHeight > maxHeight ? maxHeight : preferredHeight,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 12, 20, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(child: _HistoryBottomSheetHandle()),
+                  SizedBox(height: 18),
+                  Text(
+                    'Lọc theo ngày giao dịch',
+                    style: TextStyle(
+                      color: AppColors.inputText,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'Dựa trên ngày hóa đơn được thanh toán.',
+                    style: TextStyle(
+                      color: AppColors.bodyText,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: AppColors.cardBorder),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
+                itemCount: filters.length,
+                itemBuilder: (context, index) {
+                  final filter = filters[index];
+                  return _HistoryDateFilterOption(
+                    label: _historyDateFilterLabel(filter, null),
+                    icon: switch (filter) {
+                      _HistoryDateFilter.all => Icons.date_range_outlined,
+                      _HistoryDateFilter.last7Days => Icons.looks_one_outlined,
+                      _HistoryDateFilter.last30Days => Icons.date_range_rounded,
+                      _HistoryDateFilter.last90Days =>
+                        Icons.calendar_month_rounded,
+                      _HistoryDateFilter.custom => Icons.edit_calendar_outlined,
+                    },
+                    isSelected: activeFilter == filter,
+                    onTap: () => Navigator.of(context).pop(filter),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HistoryBottomSheetHandle extends StatelessWidget {
+  const _HistoryBottomSheetHandle();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
+      width: 36,
+      height: 4,
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(11),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          for (var index = 0; index < invoices.length; index++) ...[
-            _HistoryItem(invoice: invoices[index]),
-            if (index < invoices.length - 1) const _HistoryDivider(),
-          ],
-        ],
+        color: AppColors.deepBlue,
+        borderRadius: BorderRadius.circular(99),
       ),
     );
   }
 }
 
-class _HistoryItem extends StatelessWidget {
-  const _HistoryItem({required this.invoice});
+class _HistoryDateFilterOption extends StatelessWidget {
+  const _HistoryDateFilterOption({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: SizedBox(
+          height: 48,
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: isSelected ? AppColors.primary : AppColors.bodyText,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: AppColors.inputText,
+                    fontSize: 14,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (isSelected)
+                const Icon(
+                  Icons.check_rounded,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── History Card (individual) ─────────────────────────────────────────────────
+
+class _HistoryCard extends StatelessWidget {
+  const _HistoryCard({required this.invoice});
 
   final TenantInvoice invoice;
 
@@ -387,140 +632,198 @@ class _HistoryItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final amount = _historyAmount(invoice);
     final date = _historyDate(invoice);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 20, 16, 19),
-      child: Row(
-        children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: const BoxDecoration(
-              color: Color(0xFFEDEFFF),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              _historyIcon(invoice),
-              color: AppColors.deepBlue,
-              size: 25,
-            ),
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.deepBlue.withValues(alpha: 0.05),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  invoice.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.inputText,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    height: 22 / 16,
-                  ),
+        ],
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Left accent bar (green = paid)
+            Container(
+              width: 4,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF10B981), Color(0xFF059669)],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  [
-                    if (invoice.roomCode.isNotEmpty)
-                      'Phòng ${invoice.roomCode}',
-                    _formatDate(date),
-                  ].join(' · '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.bodyText,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    height: 18 / 13,
-                  ),
-                ),
-                if (invoice.invoiceCode.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    invoice.invoiceCode,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.hintText,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                _formatAmount(amount),
-                style: const TextStyle(
-                  color: AppColors.deepBlue,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  height: 24 / 18,
+                borderRadius: BorderRadius.horizontal(
+                  left: Radius.circular(16),
                 ),
               ),
-              const SizedBox(height: 7),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD7FBE4),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.check_circle_rounded,
-                      color: Color(0xFF16A34A),
-                      size: 12,
+                    // Icon
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEDEFFF),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        _historyIcon(invoice),
+                        color: AppColors.deepBlue,
+                        size: 22,
+                      ),
                     ),
-                    SizedBox(width: 4),
+                    const SizedBox(width: 12),
+                    // Title & meta
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            invoice.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.inputText,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              height: 20 / 15,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            [
+                              if (invoice.roomCode.isNotEmpty)
+                                'Phòng ${invoice.roomCode}',
+                              _formatDate(date),
+                            ].join(' · '),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.bodyText,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              height: 17 / 12,
+                            ),
+                          ),
+                          if (invoice.invoiceCode.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              invoice.invoiceCode,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.hintText,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                height: 15 / 11,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 10),
+                          // Paid badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD7FBE4),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.check_circle_rounded,
+                                  color: Color(0xFF16A34A),
+                                  size: 12,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'ĐÃ THANH TOÁN',
+                                  style: TextStyle(
+                                    color: Color(0xFF15803D),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w900,
+                                    height: 13 / 10,
+                                    letterSpacing: 0.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Amount
                     Text(
-                      'ĐÃ THANH TOÁN',
-                      style: TextStyle(
-                        color: Color(0xFF15803D),
-                        fontSize: 10,
+                      '${_formatAmount(amount)}đ',
+                      style: const TextStyle(
+                        color: AppColors.deepBlue,
+                        fontSize: 16,
                         fontWeight: FontWeight.w900,
-                        height: 13 / 10,
-                        letterSpacing: 0.4,
+                        height: 21 / 16,
                       ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _HistoryDivider extends StatelessWidget {
-  const _HistoryDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Divider(height: 1, color: Color(0xFFE9E9EF));
-  }
-}
+// ── Loading ───────────────────────────────────────────────────────────────────
 
 class _HistoryLoading extends StatelessWidget {
   const _HistoryLoading();
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: CircularProgressIndicator(color: AppColors.deepBlue),
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(14, 22, 14, 18),
+      children: const [
+        AppSkeleton(width: double.infinity, height: 36, borderRadius: 8),
+        SizedBox(height: 14),
+        AppSkeleton(width: double.infinity, height: 44, borderRadius: 12),
+        SizedBox(height: 14),
+        Row(
+          children: [
+            AppSkeleton(width: 68, height: 34, borderRadius: 999),
+            SizedBox(width: 8),
+            AppSkeleton(width: 56, height: 34, borderRadius: 999),
+            SizedBox(width: 8),
+            AppSkeleton(width: 56, height: 34, borderRadius: 999),
+          ],
+        ),
+        SizedBox(height: 24),
+        AppSkeleton(width: double.infinity, height: 98, borderRadius: 16),
+        SizedBox(height: 12),
+        AppSkeleton(width: double.infinity, height: 98, borderRadius: 16),
+        SizedBox(height: 12),
+        AppSkeleton(width: double.infinity, height: 98, borderRadius: 16),
+      ],
     );
   }
 }
+
+// ── Error ─────────────────────────────────────────────────────────────────────
 
 class _HistoryError extends StatelessWidget {
   const _HistoryError({required this.message, required this.onRetry});
@@ -530,43 +833,41 @@ class _HistoryError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.error_outline_rounded,
-              color: Color(0xFFC8171F),
-              size: 36,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF0EF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFFB5AE)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            message,
+            style: const TextStyle(
+              color: Color(0xFFB42318),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
             ),
-            const SizedBox(height: 12),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.bodyText,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
+          ),
+          const SizedBox(height: 12),
+          TextButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded, size: 16),
+            label: const Text('Thử lại'),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFB42318),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Thử lại'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
+
+// ── Empty ─────────────────────────────────────────────────────────────────────
 
 class _HistoryEmpty extends StatelessWidget {
   const _HistoryEmpty({
@@ -581,178 +882,86 @@ class _HistoryEmpty extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 28, 18, 28),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: AppColors.cardBorder.withValues(alpha: 0.75)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.cardBorder),
       ),
-      child: Column(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.receipt_long_outlined,
-            color: AppColors.deepBlue,
-            size: 34,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            hasAnyPaidInvoice
-                ? 'Không có giao dịch phù hợp bộ lọc.'
-                : 'Chưa có lịch sử thanh toán.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: AppColors.inputText,
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.receipt_long_outlined,
+              color: AppColors.deepBlue,
+              size: 20,
             ),
           ),
-          if (hasAnyPaidInvoice) ...[
-            const SizedBox(height: 14),
-            TextButton(
-              onPressed: onClearFilter,
-              child: const Text('Xóa bộ lọc'),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hasAnyPaidInvoice
+                      ? 'Không có giao dịch phù hợp'
+                      : 'Chưa có lịch sử thanh toán',
+                  style: const TextStyle(
+                    color: AppColors.inputText,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    height: 18 / 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  hasAnyPaidInvoice
+                      ? 'Thử thay đổi bộ lọc hoặc từ khoá tìm kiếm.'
+                      : 'Các giao dịch đã thanh toán sẽ xuất hiện ở đây.',
+                  style: const TextStyle(
+                    color: AppColors.bodyText,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 18 / 13,
+                  ),
+                ),
+                if (hasAnyPaidInvoice) ...[
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: onClearFilter,
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.deepBlue,
+                      minimumSize: const Size(0, 32),
+                      padding: EdgeInsets.zero,
+                      textStyle: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    child: const Text('Xoá bộ lọc'),
+                  ),
+                ],
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );
   }
 }
 
-class _HistoryBottomNavigation extends StatelessWidget {
-  const _HistoryBottomNavigation();
+// ── Enums & helpers ───────────────────────────────────────────────────────────
 
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      heightFactor: 1,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 390),
-        child: Container(
-          height: 72,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-            border: Border.all(
-              color: AppColors.cardBorder.withValues(alpha: 0.7),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 10,
-                offset: const Offset(0, -2),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _BottomNavItem(
-                icon: Icons.home_outlined,
-                label: 'Trang chủ',
-                onTap: () =>
-                    Navigator.of(context).popUntil((route) => route.isFirst),
-              ),
-              const _BottomNavItem(
-                icon: Icons.receipt_long_rounded,
-                label: 'Hóa đơn',
-                isSelected: true,
-              ),
-              const _BottomNavItem(
-                icon: Icons.support_agent_outlined,
-                label: 'Hỗ trợ',
-              ),
-              _BottomNavItem(
-                icon: Icons.person_outline,
-                label: 'Hồ sơ',
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const TenantProfileScreen(),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
+enum _HistoryDateFilter { all, last7Days, last30Days, last90Days, custom }
 
-class _BottomNavItem extends StatelessWidget {
-  const _BottomNavItem({
-    required this.icon,
-    required this.label,
-    this.isSelected = false,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool isSelected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isSelected ? AppColors.deepBlue : AppColors.bodyText;
-
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 62,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 56,
-              height: 28,
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color(0xFFA7B4FF)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
-                height: 14 / 11,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MonthOption {
-  const _MonthOption({required this.key, required this.label});
-
-  final String key;
-  final String label;
-}
-
-List<_MonthOption> _monthOptions(List<TenantInvoice> invoices) {
-  final seen = <String>{};
-  final options = <_MonthOption>[];
-  for (final invoice in invoices) {
-    final date = _historyDate(invoice);
-    final key = _monthKey(date);
-    if (seen.add(key)) {
-      options.add(_MonthOption(key: key, label: _monthLabel(date)));
-    }
-  }
-  return options;
-}
+enum _HistoryInvoiceTypeFilter { all, rent, utility, other }
 
 DateTime _historyDate(TenantInvoice invoice) {
   return invoice.paidAt ??
@@ -761,12 +970,59 @@ DateTime _historyDate(TenantInvoice invoice) {
       DateTime.fromMillisecondsSinceEpoch(0);
 }
 
-String _monthKey(DateTime date) {
-  return '${date.year}-${date.month.toString().padLeft(2, '0')}';
+bool _matchesHistoryTypeFilter(
+  TenantInvoice invoice,
+  _HistoryInvoiceTypeFilter filter,
+) {
+  return switch (filter) {
+    _HistoryInvoiceTypeFilter.all => true,
+    _HistoryInvoiceTypeFilter.rent => invoice.isRentType,
+    _HistoryInvoiceTypeFilter.utility => invoice.isUtilityType,
+    _HistoryInvoiceTypeFilter.other => invoice.isOtherType,
+  };
 }
 
-String _monthLabel(DateTime date) {
-  return 'Tháng ${date.month}/${date.year}';
+bool _matchesHistoryDateFilter(
+  DateTime date,
+  _HistoryDateFilter filter,
+  DateTimeRange? customRange,
+) {
+  if (filter == _HistoryDateFilter.all) return true;
+  final normalizedDate = _dateOnly(date);
+  if (filter == _HistoryDateFilter.custom) {
+    if (customRange == null) return true;
+    return !normalizedDate.isBefore(_dateOnly(customRange.start)) &&
+        !normalizedDate.isAfter(_dateOnly(customRange.end));
+  }
+
+  final days = switch (filter) {
+    _HistoryDateFilter.last7Days => 7,
+    _HistoryDateFilter.last30Days => 30,
+    _HistoryDateFilter.last90Days => 90,
+    _ => 0,
+  };
+  final today = _dateOnly(DateTime.now());
+  return !normalizedDate.isBefore(today.subtract(Duration(days: days - 1))) &&
+      !normalizedDate.isAfter(today);
+}
+
+DateTime _dateOnly(DateTime value) =>
+    DateTime(value.year, value.month, value.day);
+
+String _historyDateFilterLabel(
+  _HistoryDateFilter filter,
+  DateTimeRange? customRange,
+) {
+  return switch (filter) {
+    _HistoryDateFilter.all => 'Tất cả thời gian',
+    _HistoryDateFilter.last7Days => '7 ngày qua',
+    _HistoryDateFilter.last30Days => '30 ngày qua',
+    _HistoryDateFilter.last90Days => '90 ngày qua',
+    _HistoryDateFilter.custom =>
+      customRange == null
+          ? 'Khoảng ngày'
+          : '${_formatDate(customRange.start)} - ${_formatDate(customRange.end)}',
+  };
 }
 
 String _formatDate(DateTime date) {
@@ -782,14 +1038,13 @@ int _historyAmount(TenantInvoice invoice) {
 }
 
 String _formatAmount(int amount) {
-  final value = amount.toString();
+  final value = amount.abs().toString();
   final buffer = StringBuffer();
-  for (var index = 0; index < value.length; index++) {
-    final reverseIndex = value.length - index;
-    buffer.write(value[index]);
-    if (reverseIndex > 1 && reverseIndex % 3 == 1) {
+  for (var index = 0; index < value.length; index += 1) {
+    if (index > 0 && (value.length - index) % 3 == 0) {
       buffer.write('.');
     }
+    buffer.write(value[index]);
   }
   return buffer.toString();
 }

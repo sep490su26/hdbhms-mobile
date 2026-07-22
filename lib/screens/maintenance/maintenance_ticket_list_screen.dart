@@ -12,6 +12,7 @@ import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
+import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/create_maintenance_ticket_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
@@ -203,7 +204,7 @@ class _MaintenanceTicketListScreenState
   Widget _buildHeader() {
     return Container(
       height: AppColors.topBarHeight,
-      padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
+      padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(
@@ -215,7 +216,8 @@ class _MaintenanceTicketListScreenState
       child: Row(
         children: [
           IconButton(
-            onPressed: () => Navigator.of(context).maybePop(),
+            onPressed: () =>
+                Navigator.of(context).popUntil((route) => route.isFirst),
             icon: const Icon(
               Icons.arrow_back_rounded,
               color: AppColors.deepBlue,
@@ -224,7 +226,7 @@ class _MaintenanceTicketListScreenState
             tooltip: 'Trở về',
           ),
           const Expanded(
-            child: Text('Sự cố', style: AppColors.topBarTitleStyle),
+            child: Text('Báo cáo sự cố', style: AppColors.topBarTitleStyle),
           ),
           IconButton(
             onPressed: () => Navigator.of(context).push(
@@ -233,7 +235,7 @@ class _MaintenanceTicketListScreenState
               ),
             ),
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            constraints: const BoxConstraints.tightFor(width: 44, height: 44),
             icon: const AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: 24,
@@ -270,23 +272,21 @@ class _MaintenanceSectionHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        ElevatedButton.icon(
+        AppPrimaryGradientButton(
           onPressed: onCreateTicket,
-          icon: const Icon(Icons.add_rounded, size: 19),
-          label: const Text('Báo cáo sự cố'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            minimumSize: const Size(0, 42),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            textStyle: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-            ),
+          height: 44,
+          borderRadius: 14,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add_rounded, size: 19, color: Colors.white),
+              SizedBox(width: 7),
+              Text(
+                'Tạo phiếu sự cố',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
+              ),
+            ],
           ),
         ),
       ],
@@ -310,8 +310,9 @@ class _TicketCountBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Wrap(
+        spacing: 5,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Icon(
             isLoading
@@ -320,7 +321,6 @@ class _TicketCountBadge extends StatelessWidget {
             color: AppColors.darkBlue,
             size: 14,
           ),
-          const SizedBox(width: 5),
           if (isLoading)
             const Text(
               'Đang tải...',
@@ -348,6 +348,8 @@ class _TicketCountBadge extends StatelessWidget {
                   ),
                 ],
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(color: AppColors.darkBlue, height: 1.2),
             ),
         ],
@@ -392,65 +394,30 @@ class _FilterPanel extends StatelessWidget {
         const SizedBox(height: 14),
         const _FieldLabel('Trạng thái'),
         const SizedBox(height: 6),
-        DropdownButtonFormField<String>(
-          initialValue: selectedStatus,
-          style: const TextStyle(
-            color: AppColors.darkBlue,
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            height: 20 / 14,
-          ),
-          items: _statusOptions
-              .map(
-                (option) =>
-                    DropdownMenuItem(value: option, child: Text(option)),
-              )
-              .toList(growable: false),
+        _TicketFilterPicker(
+          key: const ValueKey('ticket-status-filter'),
+          label: 'Trạng thái',
+          value: selectedStatus,
+          options: _statusOptions,
+          icon: Icons.flag_outlined,
           onChanged: onStatusChanged,
-          decoration: _inputDecoration(),
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: AppColors.darkBlue,
-          ),
         ),
         const SizedBox(height: 14),
         const _FieldLabel('Loại sự cố'),
         const SizedBox(height: 6),
-        DropdownButtonFormField<String>(
-          initialValue: selectedCategory,
-          style: const TextStyle(
-            color: AppColors.darkBlue,
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            height: 20 / 14,
-          ),
-          items: _categoryOptions
-              .map(
-                (option) =>
-                    DropdownMenuItem(value: option, child: Text(option)),
-              )
-              .toList(growable: false),
+        _TicketFilterPicker(
+          key: const ValueKey('ticket-category-filter'),
+          label: 'Loại sự cố',
+          value: selectedCategory,
+          options: _categoryOptions,
+          icon: Icons.category_outlined,
           onChanged: onCategoryChanged,
-          decoration: _inputDecoration(),
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: AppColors.darkBlue,
-          ),
         ),
         const SizedBox(height: 16),
         SizedBox(
           width: double.infinity,
-          height: 48,
-          child: ElevatedButton(
+          child: AppPrimaryGradientButton(
             onPressed: onFilter,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
             child: const Text(
               'Lọc',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
@@ -458,6 +425,242 @@ class _FilterPanel extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _TicketFilterPicker extends StatelessWidget {
+  const _TicketFilterPicker({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.options,
+    required this.icon,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String value;
+  final List<String> options;
+  final IconData icon;
+  final ValueChanged<String?> onChanged;
+
+  Future<void> _selectOption(BuildContext context) async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      isScrollControlled: true,
+      showDragHandle: false,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => _TicketFilterSheet(
+        title: label,
+        options: options,
+        activeOption: value,
+      ),
+    );
+
+    if (selected != null && selected != value) {
+      onChanged(selected);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasSelection = value != _allOption;
+    final selectedIcon = _ticketFilterOptionIcon(label, value) ?? icon;
+    return Semantics(
+      key: key,
+      button: true,
+      label: '$label: $value',
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: () => _selectOption(context),
+          borderRadius: BorderRadius.circular(12),
+          child: Ink(
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: hasSelection ? AppColors.primaryLight : AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: hasSelection
+                    ? AppColors.primary.withValues(alpha: 0.38)
+                    : AppColors.cardBorder,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  selectedIcon,
+                  size: 19,
+                  color: hasSelection ? AppColors.deepBlue : AppColors.bodyText,
+                ),
+                const SizedBox(width: 9),
+                const Spacer(),
+                Expanded(
+                  child: Text(
+                    value,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                    style: const TextStyle(
+                      color: AppColors.deepBlue,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: AppColors.deepBlue,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TicketFilterSheet extends StatelessWidget {
+  const _TicketFilterSheet({
+    required this.title,
+    required this.options,
+    required this.activeOption,
+  });
+
+  final String title;
+  final List<String> options;
+  final String activeOption;
+  @override
+  Widget build(BuildContext context) {
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.7;
+    final preferredHeight = 128.0 + (options.length * 48.0);
+
+    return SafeArea(
+      top: false,
+      child: SizedBox(
+        height: preferredHeight > maxHeight ? maxHeight : preferredHeight,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.deepBlue,
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Chọn $title',
+                    style: const TextStyle(
+                      color: AppColors.inputText,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Chạm vào một lựa chọn để áp dụng cho bộ lọc.',
+                    style: TextStyle(
+                      color: AppColors.bodyText,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: AppColors.cardBorder),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final option = options[index];
+                  return _TicketFilterOption(
+                    label: option,
+                    icon:
+                        _ticketFilterOptionIcon(title, option) ??
+                        Icons.tune_rounded,
+                    isSelected: option == activeOption,
+                    onTap: () => Navigator.of(context).pop(option),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TicketFilterOption extends StatelessWidget {
+  const _TicketFilterOption({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: SizedBox(
+          height: 48,
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: isSelected ? AppColors.primary : AppColors.bodyText,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: AppColors.inputText,
+                    fontSize: 14,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (isSelected)
+                const Icon(
+                  Icons.check_rounded,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -816,17 +1019,16 @@ class _StateMessage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          ElevatedButton.icon(
+          AppPrimaryGradientButton(
             onPressed: onRetry,
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Thử lại'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
+            height: 44,
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.refresh_rounded, size: 18, color: Colors.white),
+                SizedBox(width: 7),
+                Text('Thử lại'),
+              ],
             ),
           ),
         ],
@@ -880,6 +1082,39 @@ IconData _categoryIcon(TicketCategory category) {
     TicketCategory.cleaningDrainage => Icons.cleaning_services_outlined,
     TicketCategory.other => Icons.more_horiz_rounded,
   };
+}
+
+IconData? _ticketFilterOptionIcon(String filterLabel, String option) {
+  if (filterLabel == 'Trạng thái') {
+    return switch (option) {
+      _allOption => Icons.list_rounded,
+      'Chờ tiếp nhận' => Icons.hourglass_empty_rounded,
+      'Đã tiếp nhận' => Icons.inbox_rounded,
+      'Đang xử lý' => Icons.build_circle_outlined,
+      'Chờ xác nhận' => Icons.rate_review_outlined,
+      'Hoàn tất' => Icons.check_circle_outline_rounded,
+      'Từ chối' => Icons.cancel_outlined,
+      'Đã hủy' => Icons.block_rounded,
+      _ => null,
+    };
+  }
+
+  if (filterLabel == 'Loại sự cố') {
+    return switch (option) {
+      _allOption => Icons.category_outlined,
+      'Thiết bị trong phòng' => Icons.inventory_2_outlined,
+      'Điện' => Icons.bolt_outlined,
+      'Nước' => Icons.water_drop_outlined,
+      'Điều hòa' => Icons.ac_unit_rounded,
+      'Wifi' => Icons.wifi_rounded,
+      'Cửa / khóa' => Icons.lock_outline_rounded,
+      'Vệ sinh / thoát nước' => Icons.cleaning_services_outlined,
+      'Khác' => Icons.more_horiz_rounded,
+      _ => null,
+    };
+  }
+
+  return null;
 }
 
 _BadgeColors _statusColors(TicketStatus status) {

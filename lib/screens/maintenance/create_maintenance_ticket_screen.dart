@@ -11,6 +11,7 @@ import 'package:hdbhms_mobile/services/maintenance/maintenance_ticket_service.da
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
+import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
@@ -440,11 +441,14 @@ class _CreateMaintenanceTicketScreenState
                   const SizedBox(height: 32),
                   SizedBox(
                     width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton.icon(
+                    child: AppPrimaryGradientButton(
                       onPressed: _isSubmitting ? null : _submit,
-                      icon: _isSubmitting
-                          ? const SizedBox(
+                      height: 56,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_isSubmitting)
+                            const SizedBox(
                               width: 18,
                               height: 18,
                               child: CircularProgressIndicator(
@@ -452,27 +456,22 @@ class _CreateMaintenanceTicketScreenState
                                 color: Colors.white,
                               ),
                             )
-                          : const Icon(Icons.send_rounded, size: 18),
-                      label: Text(
-                        _isSubmitting ? 'Đang gửi...' : 'GỬI YÊU CẦU',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          height: 18 / 14,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        disabledBackgroundColor: AppColors.primary.withValues(
-                          alpha: 0.58,
-                        ),
-                        foregroundColor: Colors.white,
-                        disabledForegroundColor: Colors.white,
-                        elevation: 0,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
+                          else
+                            const Icon(
+                              Icons.send_rounded,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _isSubmitting ? 'Đang gửi...' : 'GỬI YÊU CẦU',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              height: 18 / 14,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

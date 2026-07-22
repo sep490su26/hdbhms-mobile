@@ -50,7 +50,7 @@ class AppColors {
   static const topBarTitleStyle = TextStyle(
     color: darkBlue,
     fontSize: 17,
-    fontWeight: FontWeight.w900,
+    fontWeight: FontWeight.w800,
     height: 22 / 17,
     letterSpacing: 0,
   );
