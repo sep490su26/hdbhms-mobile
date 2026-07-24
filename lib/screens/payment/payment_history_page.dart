@@ -5,6 +5,7 @@ import '../../services/payment/tenant_invoice_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/app_notification_bell.dart';
 import '../../widgets/app_screen_shell.dart';
+import '../../widgets/app_top_bar.dart';
 import '../../widgets/app_skeleton.dart';
 import '../../widgets/app_filter_chip.dart';
 import '../../widgets/tenant_bottom_navigation.dart';
@@ -235,6 +236,28 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
 
 class _HistoryHeader extends StatelessWidget {
   const _HistoryHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTopBar(
+      title: 'Lịch sử thanh toán',
+      onBack: () => Navigator.of(context).maybePop(),
+      trailing: IconButton(
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const NotificationListScreen(),
+          ),
+        ),
+        icon: const AppNotificationBell(),
+        tooltip: 'Thông báo',
+      ),
+    );
+  }
+}
+
+// ignore: unused_element
+class _LegacyHistoryHeader extends StatelessWidget {
+  const _LegacyHistoryHeader();
 
   @override
   Widget build(BuildContext context) {

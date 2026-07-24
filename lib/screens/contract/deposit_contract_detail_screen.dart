@@ -748,7 +748,7 @@ String _statusLabel(String status) {
     'REFUNDED' => 'Đã hoàn tiền',
     'FORFEITED' => 'Đã mất cọc',
     'CANCELLED' => 'Đã hủy',
-    _ => _display(status),
+    _ => 'Chưa cập nhật',
   };
 }
 

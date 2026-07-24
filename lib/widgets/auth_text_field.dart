@@ -18,6 +18,8 @@ class AuthTextField extends StatefulWidget {
     this.prefixIconSize = 22,
     this.uppercaseLabel = true,
     this.enabled = true,
+    this.required = false,
+    this.validator,
   });
 
   final String label;
@@ -32,6 +34,8 @@ class AuthTextField extends StatefulWidget {
   final double prefixIconSize;
   final bool uppercaseLabel;
   final bool enabled;
+  final bool required;
+  final String? Function(String?)? validator;
 
   @override
   State<AuthTextField> createState() => _AuthTextFieldState();
@@ -51,9 +55,27 @@ class _AuthTextFieldState extends State<AuthTextField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          widget.uppercaseLabel ? widget.label.toUpperCase() : widget.label,
-          style: AppTypography.label,
+        Semantics(
+          label: widget.required ? '${widget.label}, bắt buộc' : widget.label,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                widget.uppercaseLabel
+                    ? widget.label.toUpperCase()
+                    : widget.label,
+                style: AppTypography.label,
+              ),
+              if (widget.required)
+                const Text(
+                  ' *',
+                  style: TextStyle(
+                    color: AppColors.danger,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+            ],
+          ),
         ),
         const SizedBox(height: 8),
         TextFormField(
@@ -62,6 +84,8 @@ class _AuthTextFieldState extends State<AuthTextField> {
           keyboardType: widget.keyboardType,
           obscureText: _isObscured,
           textInputAction: widget.textInputAction,
+          validator: widget.validator,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           cursorColor: AppColors.darkBlue,
           style: AppTypography.bodyLarge.copyWith(color: AppColors.inputText),
           decoration: InputDecoration(

@@ -943,7 +943,7 @@ String _assetCategoryLabel(String value) {
     'FURNITURE' => 'Nội thất',
     'SANITARY' || 'BATHROOM' || 'TOILET' => 'Vệ sinh',
     'OTHER' => 'Khác',
-    _ => value.trim(),
+    _ => 'Khác',
   };
 }
 

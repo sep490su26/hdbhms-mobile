@@ -418,13 +418,13 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
 
   String? _validateImages() {
     if (_portraitImage == null) {
-      return 'Vui lòng upload đủ ảnh chân dung và 2 mặt CCCD';
+      return 'Vui lòng tải lên đủ ảnh chân dung và 2 mặt CCCD';
     }
     if (_frontIdImage == null) {
-      return 'Vui lòng upload đủ ảnh chân dung và 2 mặt CCCD';
+      return 'Vui lòng tải lên đủ ảnh chân dung và 2 mặt CCCD';
     }
     if (_backIdImage == null) {
-      return 'Vui lòng upload đủ ảnh chân dung và 2 mặt CCCD';
+      return 'Vui lòng tải lên đủ ảnh chân dung và 2 mặt CCCD';
     }
     return null;
   }

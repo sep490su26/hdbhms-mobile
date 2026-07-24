@@ -4,6 +4,7 @@ import 'package:hdbhms_mobile/models/room_transfer/room_transfer_model.dart';
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
+import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 
 /// Screen for executing a room transfer (final step with handover data).
 class TransferExecutionScreen extends StatefulWidget {
@@ -192,7 +193,9 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
       final inElectricity = double.tryParse(_inElectricityCtrl.text.trim());
       final inWater = double.tryParse(_inWaterCtrl.text.trim());
       if (inElectricity == null || inWater == null) {
-        throw const RoomTransferException('Transfer-in readings are invalid.');
+        throw const RoomTransferException(
+          'Chỉ số lúc nhận phòng không hợp lệ.',
+        );
       }
       transferInHandover = TransferHandoverData(
         handoverDate: _inHandoverDate ?? DateTime.now(),
@@ -359,7 +362,8 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  // ignore: unused_element
+  Widget _buildLegacyHeader() {
     return Container(
       height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
@@ -390,6 +394,13 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return AppTopBar(
+      title: 'Thực hiện chuyển phòng',
+      onBack: () => Navigator.of(context).maybePop(),
     );
   }
 

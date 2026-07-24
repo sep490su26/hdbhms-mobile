@@ -90,7 +90,7 @@ class _MobilePdfViewerState extends State<MobilePdfViewer> {
       final response = await _fetchPdf();
 
       if (response.statusCode != 200) {
-        throw Exception('Không tải được file');
+        throw Exception('Không tải được tệp');
       }
 
       final fileName = resolvePdfDownloadFilename(
@@ -119,7 +119,9 @@ class _MobilePdfViewerState extends State<MobilePdfViewer> {
       await file.writeAsBytes(response.bodyBytes);
 
       if (mounted) {
-        final location = Platform.isAndroid ? 'Downloads' : 'tài liệu ứng dụng';
+        final location = Platform.isAndroid
+            ? 'thư mục Tải xuống'
+            : 'tài liệu ứng dụng';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Đã lưu vào $location: $fileName'),

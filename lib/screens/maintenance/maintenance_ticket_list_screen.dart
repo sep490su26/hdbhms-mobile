@@ -11,6 +11,7 @@ import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
+import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
@@ -201,7 +202,7 @@ class _MaintenanceTicketListScreenState
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildLegacyHeader() {
     return Container(
       height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
@@ -243,6 +244,21 @@ class _MaintenanceTicketListScreenState
             tooltip: 'Thông báo',
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return AppTopBar(
+      title: 'Báo cáo sự cố',
+      trailing: IconButton(
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const NotificationListScreen(),
+          ),
+        ),
+        icon: const AppNotificationBell(),
+        tooltip: 'Thông báo',
       ),
     );
   }

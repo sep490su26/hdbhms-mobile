@@ -21,6 +21,7 @@ import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_detail_screen.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
+import 'package:hdbhms_mobile/screens/payment/payment_preview_page.dart';
 import 'package:hdbhms_mobile/screens/payment/qr_payment_page.dart';
 import 'package:hdbhms_mobile/screens/contract/contract_hub_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
@@ -314,8 +315,9 @@ class _HomeHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _RoomSelector(summary: summary, provider: provider),
-          const Spacer(),
+          Expanded(
+            child: _RoomSelector(summary: summary, provider: provider),
+          ),
           IconButton(
             onPressed: onChangeRoom,
             padding: EdgeInsets.zero,
@@ -326,6 +328,22 @@ class _HomeHeader extends StatelessWidget {
               size: 24,
             ),
             tooltip: 'Chọn phòng khác',
+          ),
+          const SizedBox(width: 6),
+          IconButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const PaymentPreviewPage(),
+              ),
+            ),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            icon: const Icon(
+              Icons.preview_rounded,
+              color: AppColors.topBarIconColor,
+              size: 22,
+            ),
+            tooltip: 'Xem trước các màn thanh toán',
           ),
           const SizedBox(width: 6),
           IconButton(
@@ -431,29 +449,27 @@ class _RoomSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => _showRoomDropdown(context),
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF1FF),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.meeting_room_outlined,
-                color: AppColors.deepBlue,
-                size: 18,
-              ),
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Row(
+        mainAxisSize: MainAxisSize.max,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF1FF),
+              borderRadius: BorderRadius.circular(8),
             ),
-            const SizedBox(width: 10),
-            Column(
+            child: const Icon(
+              Icons.meeting_room_outlined,
+              color: AppColors.deepBlue,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -476,14 +492,8 @@ class _RoomSelector extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(width: 5),
-            const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: AppColors.bodyText,
-              size: 18,
-            ),
-            const SizedBox(width: 3),
-            /*Container(
+          ),
+          /*Container(
                 height: 30,
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
@@ -501,8 +511,7 @@ class _RoomSelector extends StatelessWidget {
                   ),
                 ),
               ),*/
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -1125,6 +1134,8 @@ class _UtilityCard extends StatelessWidget {
         : currentReading == null
         ? 'Chưa có dữ liệu'
         : 'Đang cập nhật';
+    final showFallbackStatus =
+        activeTrend == null && !_isConfirmedUtilityReading(usage?.status);
 
     return Semantics(
       label:
@@ -1176,17 +1187,18 @@ class _UtilityCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        period.isNotEmpty ? period : fallbackStatus,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.bodyText,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          height: 16 / 12,
+                      if (period.isNotEmpty || showFallbackStatus)
+                        Text(
+                          period.isNotEmpty ? period : fallbackStatus,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.bodyText,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            height: 16 / 12,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -1214,41 +1226,43 @@ class _UtilityCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            Container(height: 1, color: AppColors.cardBorder),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: _UtilityTrendDescription(
-                    trend: activeTrend,
-                    unit: displayUnit,
-                    fallbackStatus: fallbackStatus,
+            if (activeTrend != null || showFallbackStatus) ...[
+              const SizedBox(height: 14),
+              Container(height: 1, color: AppColors.cardBorder),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: _UtilityTrendDescription(
+                      trend: activeTrend,
+                      unit: displayUnit,
+                      fallbackStatus: fallbackStatus,
+                    ),
                   ),
-                ),
-                if (activeTrend != null)
-                  TextButton.icon(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => BillDetailScreen(
-                          invoice: activeTrend.invoice,
-                          invoiceService: invoiceService,
+                  if (activeTrend != null)
+                    TextButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => BillDetailScreen(
+                            invoice: activeTrend.invoice,
+                            invoiceService: invoiceService,
+                          ),
+                        ),
+                      ),
+                      icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                      label: const Text('Xem chi tiết'),
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(44, 44),
+                        foregroundColor: AppColors.primary,
+                        textStyle: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
-                    icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                    label: const Text('Xem chi tiết'),
-                    style: TextButton.styleFrom(
-                      minimumSize: const Size(44, 44),
-                      foregroundColor: AppColors.primary,
-                      textStyle: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -1639,8 +1653,12 @@ String _utilityReadingStatusLabel(String status) {
     'VOIDED' => 'Chỉ số đã hủy',
     'DRAFT' => 'Chưa chốt chỉ số',
     'CANCELLED' => 'Đã hủy',
-    _ => status.trim(),
+    _ => 'Chưa cập nhật',
   };
+}
+
+bool _isConfirmedUtilityReading(String? status) {
+  return status?.trim().toUpperCase() == 'CONFIRMED';
 }
 
 String _utilityPeriodLabel(String value) {

@@ -164,7 +164,7 @@ class _CreateMaintenanceTicketScreenState
       final attachment = await _buildAttachment(file, fallbackType);
       if (attachment == null) {
         setState(() {
-          _attachmentError = 'File không hợp lệ';
+          _attachmentError = 'Tệp không hợp lệ';
         });
         return;
       }
@@ -218,6 +218,7 @@ class _CreateMaintenanceTicketScreenState
 
     final isValid = _formKey.currentState?.validate() ?? false;
     if (!isValid) {
+      _showSnackBar('Vui lòng hoàn thành các trường bắt buộc');
       return;
     }
     final room = _currentRoom;
@@ -355,6 +356,7 @@ class _CreateMaintenanceTicketScreenState
           header: _buildHeader(),
           child: Form(
             key: _formKey,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
             child: SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(14, 18, 14, 26 + bottomInset),
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -363,7 +365,7 @@ class _CreateMaintenanceTicketScreenState
                 children: [
                   const _IntroCard(),
                   const SizedBox(height: 18),
-                  const _FieldLabel('Danh mục sự cố'),
+                  const _FieldLabel('Danh mục sự cố', required: true),
                   const SizedBox(height: 6),
                   DropdownButtonFormField<TicketCategory>(
                     initialValue: _selectedCategory,
@@ -388,7 +390,7 @@ class _CreateMaintenanceTicketScreenState
                     icon: const Icon(Icons.keyboard_arrow_down_rounded),
                   ),
                   const SizedBox(height: 14),
-                  const _FieldLabel('Mô tả chi tiết'),
+                  const _FieldLabel('Mô tả chi tiết', required: true),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _descriptionController,
@@ -719,19 +721,32 @@ class _AttachmentPreview extends StatelessWidget {
 }
 
 class _FieldLabel extends StatelessWidget {
-  const _FieldLabel(this.text);
+  const _FieldLabel(this.text, {this.required = false});
 
   final String text;
+  final bool required;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        color: AppColors.bodyText,
-        fontSize: 12,
-        fontWeight: FontWeight.w800,
-        height: 16 / 12,
+    return Semantics(
+      label: required ? '$text, bắt buộc' : text,
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(
+            color: AppColors.bodyText,
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            height: 16 / 12,
+          ),
+          children: [
+            TextSpan(text: text),
+            if (required)
+              const TextSpan(
+                text: ' *',
+                style: TextStyle(color: AppColors.danger),
+              ),
+          ],
+        ),
       ),
     );
   }

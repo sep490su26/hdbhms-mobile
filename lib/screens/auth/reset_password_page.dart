@@ -21,6 +21,7 @@ class ResetPasswordPage extends StatefulWidget {
 }
 
 class _ResetPasswordPageState extends State<ResetPasswordPage> {
+  final _formKey = GlobalKey<FormState>();
   late final TextEditingController _tokenController;
   late final TextEditingController _passwordController;
   late final TextEditingController _confirmPasswordController;
@@ -44,6 +45,10 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   }
 
   Future<void> _handleResetPassword() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      _showMessage('Vui lòng kiểm tra các trường bắt buộc');
+      return;
+    }
     final token = _tokenController.text.trim();
     final newPassword = _passwordController.text;
     final confirmPassword = _confirmPasswordController.text;
@@ -123,87 +128,118 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 448),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 58,
-                  height: 58,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryLight,
-                    borderRadius: BorderRadius.circular(18),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryLight,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Icon(
+                      Icons.lock_reset_rounded,
+                      color: AppColors.primary,
+                      size: 30,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.lock_reset_rounded,
-                    color: AppColors.primary,
-                    size: 30,
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Thiết lập mật khẩu mới',
+                    style: AppTypography.pageTitle,
                   ),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Thiết lập mật khẩu mới',
-                  style: AppTypography.pageTitle,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Vui lòng nhập mật khẩu mới của bạn bên dưới để hoàn tất quá trình khôi phục.',
-                  style: AppTypography.bodyLarge,
-                ),
-                const SizedBox(height: 28),
-                // Hide the token field if it's already provided, else show it for manual entry
-                if (widget.token == null || widget.token!.isEmpty) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Vui lòng nhập mật khẩu mới của bạn bên dưới để hoàn tất quá trình khôi phục.',
+                    style: AppTypography.bodyLarge,
+                  ),
+                  const SizedBox(height: 28),
+                  // Hide the token field if it's already provided, else show it for manual entry
+                  if (widget.token == null || widget.token!.isEmpty) ...[
+                    AuthTextField(
+                      label: 'Mã xác minh',
+                      hintText: 'Dán mã xác minh từ email',
+                      controller: _tokenController,
+                      icon: Icons.key_outlined,
+                      required: true,
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
+                          ? 'Vui lòng nhập mã xác minh'
+                          : null,
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   AuthTextField(
-                    label: 'Mã xác minh (Token)',
-                    hintText: 'Dán mã token từ email',
-                    controller: _tokenController,
-                    icon: Icons.key_outlined,
+                    label: 'Mật khẩu mới',
+                    hintText: 'Ít nhất 8 ký tự',
+                    controller: _passwordController,
+                    obscureText: true,
+                    icon: Icons.lock_outline,
+                    required: true,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Vui lòng nhập mật khẩu mới';
+                      }
+                      if (value.length < 8) {
+                        return 'Mật khẩu phải có ít nhất 8 ký tự';
+                      }
+                      if (!RegExp(r'[a-zA-Z]').hasMatch(value) ||
+                          !RegExp(r'\d').hasMatch(value)) {
+                        return 'Mật khẩu cần có chữ cái và chữ số';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 16),
-                ],
-                AuthTextField(
-                  label: 'Mật khẩu mới',
-                  hintText: 'Ít nhất 8 ký tự',
-                  controller: _passwordController,
-                  obscureText: true,
-                  icon: Icons.lock_outline,
-                ),
-                const SizedBox(height: 16),
-                AuthTextField(
-                  label: 'Xác nhận mật khẩu',
-                  hintText: 'Nhập lại mật khẩu mới',
-                  controller: _confirmPasswordController,
-                  obscureText: true,
-                  icon: Icons.lock_reset_outlined,
-                ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleResetPassword,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text(
-                            'ĐẶT LẠI MẬT KHẨU',
-                            style: AppTypography.button,
-                          ),
+                  AuthTextField(
+                    label: 'Xác nhận mật khẩu',
+                    hintText: 'Nhập lại mật khẩu mới',
+                    controller: _confirmPasswordController,
+                    obscureText: true,
+                    icon: Icons.lock_reset_outlined,
+                    required: true,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Vui lòng xác nhận mật khẩu';
+                      }
+                      return value != _passwordController.text
+                          ? 'Mật khẩu xác nhận không khớp'
+                          : null;
+                    },
                   ),
-                ),
-              ],
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _handleResetPassword,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'ĐẶT LẠI MẬT KHẨU',
+                              style: AppTypography.button,
+                            ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

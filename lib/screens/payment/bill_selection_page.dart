@@ -6,6 +6,7 @@ import '../../theme/app_typography.dart';
 import '../../widgets/tenant_bottom_navigation.dart';
 import '../../widgets/app_screen_shell.dart';
 import '../../widgets/app_notification_bell.dart';
+import '../../widgets/app_top_bar.dart';
 import '../maintenance/maintenance_ticket_list_screen.dart';
 import '../notification/notification_list_screen.dart';
 import '../profile_request/tenant_profile_screen.dart';
@@ -442,16 +443,6 @@ String _formatAmount(int amount) {
 String _formatDate(DateTime? value) {
   if (value == null) return 'Chưa có hạn';
   return '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
-}
-
-String _lineLabel(TenantInvoiceLine line) {
-  if (line.lineType == 'VIOLATION_FINE') {
-    return 'Phạt vi phạm nội quy: ${_formatAmount(line.amount)}';
-  }
-  if (line.lineType == 'MAINTENANCE_COMPENSATION') {
-    return 'Bồi thường bảo trì: ${_formatAmount(line.amount)}';
-  }
-  return '${line.description}: ${_formatAmount(line.amount)}';
 }
 
 IconData _invoiceTypeIcon(TenantInvoice invoice) {
@@ -927,6 +918,39 @@ class _BillHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return AppTopBar(
+      title: 'Hóa đơn',
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            onPressed: onOpenHistory,
+            icon: const Icon(Icons.history_rounded),
+            tooltip: 'Lịch sử thanh toán',
+          ),
+          IconButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const NotificationListScreen(),
+              ),
+            ),
+            icon: const AppNotificationBell(),
+            tooltip: 'Thông báo',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ignore: unused_element
+class _LegacyBillHeader extends StatelessWidget {
+  const _LegacyBillHeader({required this.onOpenHistory});
+
+  final VoidCallback onOpenHistory;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
@@ -1131,20 +1155,6 @@ class _PendingBillCard extends StatelessWidget {
                               ),
                             ],
                           ),
-                          if (invoice.lines.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              invoice.lines.take(2).map(_lineLabel).join('\n'),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.bodyText,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                height: 15 / 11,
-                              ),
-                            ),
-                          ],
                           if (invoice.utilityMeterLines.isNotEmpty) ...[
                             const SizedBox(height: 12),
                             if (invoice.hasOpenMeterReadingReview)

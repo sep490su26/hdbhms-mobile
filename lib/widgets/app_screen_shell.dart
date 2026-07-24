@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:hdbhms_mobile/theme/app_colors.dart';
+
 /// Keeps the mobile top bar full-width while constraining only page content.
 class AppScreenShell extends StatelessWidget {
   const AppScreenShell({
@@ -7,11 +9,13 @@ class AppScreenShell extends StatelessWidget {
     required this.header,
     required this.child,
     this.maxContentWidth = 448,
+    this.contentDecoration,
   });
 
   final Widget header;
   final Widget child;
   final double maxContentWidth;
+  final Decoration? contentDecoration;
 
   @override
   Widget build(BuildContext context) {
@@ -20,14 +24,9 @@ class AppScreenShell extends StatelessWidget {
         SizedBox(width: double.infinity, child: header),
         Expanded(
           child: DecoratedBox(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFFF6FAF9), Color(0xFFFFFFFF)],
-                stops: [0, 0.78],
-              ),
-            ),
+            decoration:
+                contentDecoration ??
+                const BoxDecoration(color: AppColors.background),
             child: Center(
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: maxContentWidth),

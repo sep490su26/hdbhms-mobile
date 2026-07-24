@@ -10,6 +10,107 @@ import 'package:gal/gal.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_typography.dart';
+import '../../widgets/app_primary_gradient_button.dart';
+import '../../widgets/app_screen_shell.dart';
+import '../../widgets/app_top_bar.dart';
+
+class QrReceiptPreviewPage extends StatefulWidget {
+  const QrReceiptPreviewPage({super.key, required this.invoice});
+
+  final TenantInvoice invoice;
+
+  @override
+  State<QrReceiptPreviewPage> createState() => _QrReceiptPreviewPageState();
+}
+
+class _QrReceiptPreviewPageState extends State<QrReceiptPreviewPage> {
+  bool _saving = false;
+
+  Future<void> _download() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      final saved = await downloadQrReceipt(context, widget.invoice);
+      if (!mounted || !saved) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã lưu ảnh QR thanh toán.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không thể lưu ảnh QR. Vui lòng thử lại.'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: AppScreenShell(
+          contentDecoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFFE8F0FF), AppColors.background],
+              stops: [0, 0.32],
+            ),
+          ),
+          header: AppTopBar(
+            title: 'Mẫu QR thanh toán',
+            onBack: () => Navigator.of(context).maybePop(),
+          ),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(14, 18, 14, 24),
+            children: [
+              const Text('Ảnh QR để tải', style: AppTypography.pageTitle),
+              const SizedBox(height: 6),
+              const Text(
+                'Ảnh này giữ nguyên đầy đủ thông tin chuyển khoản để bạn lưu hoặc gửi đi.',
+                style: AppTypography.body,
+              ),
+              const SizedBox(height: 18),
+              Center(
+                child: FittedBox(
+                  child: QrReceiptTemplate(invoice: widget.invoice),
+                ),
+              ),
+              const SizedBox(height: 20),
+              AppPrimaryGradientButton(
+                onPressed: _saving ? null : _download,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_saving)
+                      const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    else
+                      const Icon(Icons.download_rounded, size: 20),
+                    const SizedBox(width: 8),
+                    Text(_saving ? 'Đang tạo ảnh...' : 'Tải ảnh QR'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 Future<bool> downloadQrReceipt(
   BuildContext context,
@@ -141,10 +242,10 @@ class QrReceiptTemplate extends StatelessWidget {
 
   final TenantInvoice invoice;
 
-  static const _primary = Color(0xFF1D4ED8);
-  static const _ink = Color(0xFF0F172A);
-  static const _surface = Color(0xFFF1F5FA);
-  static const _border = Color(0xFFE2E8F0);
+  static const _primary = AppColors.primary;
+  static const _ink = AppColors.inputText;
+  static const _surface = AppColors.inputFill;
+  static const _border = AppColors.cardBorder;
 
   @override
   Widget build(BuildContext context) {

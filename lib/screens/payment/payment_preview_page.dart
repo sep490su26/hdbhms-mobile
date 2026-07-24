@@ -3,22 +3,23 @@ import 'package:flutter/material.dart';
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/payment/tenant_invoice_service.dart';
 import '../../theme/app_colors.dart';
-import '../../widgets/app_action_tile.dart';
+import '../../theme/app_typography.dart';
+import '../../widgets/app_screen_shell.dart';
+import '../../widgets/app_top_bar.dart';
 import 'bill_detail_screen.dart';
 import 'payment_success_page.dart';
 import 'qr_payment_page.dart';
+import 'qr_receipt_download_page.dart';
 import 'utility_complaint_screen.dart';
 
-/// TEMPORARY: Màn hình chỉ dùng để xem trước UI thanh toán & khiếu nại.
-/// Xóa file này và nút gọi từ HomeScreen khi không còn cần preview.
+/// Internal launcher for validating production payment flows with sample data.
 class PaymentPreviewPage extends StatelessWidget {
   const PaymentPreviewPage({super.key});
 
-  static const TenantInvoiceService _previewInvoiceService =
+  static const TenantInvoiceService _invoiceService =
       _PreviewTenantInvoiceService();
 
-  // ── Mock: hóa đơn tiền phòng ──────────────────────────────
-  static final TenantInvoice _rentInvoice = _mockInvoice(
+  static final TenantInvoice _rentInvoice = _invoice(
     id: -101,
     invoiceCode: 'RENT-DEMO-001',
     invoiceType: 'RENT',
@@ -36,12 +37,11 @@ class PaymentPreviewPage extends StatelessWidget {
     ],
   );
 
-  // ── Mock: hóa đơn điện nước (KHÔNG có khiếu nại) ─────────
-  static final TenantInvoice _utilityInvoice = _mockInvoice(
+  static final TenantInvoice _utilityInvoice = _invoice(
     id: -102,
     invoiceCode: 'UTILITY-DEMO-001',
     invoiceType: 'UTILITY',
-    totalAmount: 786000,
+    totalAmount: 906000,
     transferDescription: 'THANHTOAN UTILITY DEMO 001',
     lines: const [
       TenantInvoiceLine(
@@ -51,9 +51,9 @@ class PaymentPreviewPage extends StatelessWidget {
         quantity: 180,
         unitPrice: 3500,
         amount: 630000,
-        previousValue: 1010.0,
-        currentValue: 1190.0,
-        usageAmount: 180.0,
+        previousValue: 1010,
+        currentValue: 1190,
+        usageAmount: 180,
       ),
       TenantInvoiceLine(
         id: -103,
@@ -62,19 +62,26 @@ class PaymentPreviewPage extends StatelessWidget {
         quantity: 12,
         unitPrice: 13000,
         amount: 156000,
-        previousValue: 44.0,
-        currentValue: 56.0,
-        usageAmount: 12.0,
+        previousValue: 44,
+        currentValue: 56,
+        usageAmount: 12,
+      ),
+      TenantInvoiceLine(
+        id: -106,
+        lineType: 'SERVICE',
+        description: 'Phí dịch vụ',
+        quantity: 1,
+        unitPrice: 120000,
+        amount: 120000,
       ),
     ],
   );
 
-  // ── Mock: hóa đơn điện nước CÓ thể khiếu nại ────────────
-  static final TenantInvoice _complainableInvoice = _mockInvoice(
+  static final TenantInvoice _reviewableUtilityInvoice = _invoice(
     id: -104,
     invoiceCode: 'UTILITY-DEMO-002',
     invoiceType: 'UTILITY',
-    totalAmount: 920000,
+    totalAmount: 1037000,
     transferDescription: 'THANHTOAN UTILITY DEMO 002',
     lines: const [
       TenantInvoiceLine(
@@ -84,9 +91,9 @@ class PaymentPreviewPage extends StatelessWidget {
         quantity: 210,
         unitPrice: 3500,
         amount: 735000,
-        previousValue: 1240.0,
-        currentValue: 1450.0,
-        usageAmount: 210.0,
+        previousValue: 1240,
+        currentValue: 1450,
+        usageAmount: 210,
         canComplain: true,
         reviewStatus: 'NONE',
       ),
@@ -97,11 +104,19 @@ class PaymentPreviewPage extends StatelessWidget {
         quantity: 14,
         unitPrice: 13000,
         amount: 182000,
-        previousValue: 56.0,
-        currentValue: 70.0,
-        usageAmount: 14.0,
+        previousValue: 56,
+        currentValue: 70,
+        usageAmount: 14,
         canComplain: true,
         reviewStatus: 'NONE',
+      ),
+      TenantInvoiceLine(
+        id: -107,
+        lineType: 'SERVICE',
+        description: 'Phí dịch vụ',
+        quantity: 1,
+        unitPrice: 120000,
+        amount: 120000,
       ),
     ],
   );
@@ -110,218 +125,104 @@ class PaymentPreviewPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Stack(
-        children: [
-          // Gradient background
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFF061827), Color(0xFF0D2137)],
-                  stops: [0, 0.32],
+      body: SafeArea(
+        child: AppScreenShell(
+          header: AppTopBar(
+            title: 'Xem trước thanh toán',
+            onBack: () => Navigator.of(context).maybePop(),
+          ),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(14, 20, 14, 24),
+            children: [
+              const Text('Luồng hóa đơn', style: AppTypography.pageTitle),
+              const SizedBox(height: 6),
+              const Text(
+                'Dữ liệu mẫu chỉ phục vụ kiểm tra giao diện và không tạo giao dịch.',
+                style: AppTypography.body,
+              ),
+              const SizedBox(height: 20),
+              const _PreviewSectionTitle('Hóa đơn'),
+              const SizedBox(height: 8),
+              _PreviewTile(
+                icon: Icons.receipt_long_rounded,
+                title: 'Chi tiết hóa đơn tiền phòng',
+                subtitle: 'Kiểm tra loại, trạng thái và thanh toán',
+                onTap: () => _openBillDetail(context, _rentInvoice),
+              ),
+              const SizedBox(height: 8),
+              _PreviewTile(
+                icon: Icons.receipt_long_rounded,
+                title: 'Chi tiết hóa đơn điện nước',
+                subtitle: 'Hiển thị chỉ số và quyền khiếu nại',
+                onTap: () =>
+                    _openBillDetail(context, _reviewableUtilityInvoice),
+              ),
+              const SizedBox(height: 8),
+              _PreviewTile(
+                icon: Icons.report_problem_outlined,
+                title: 'Khiếu nại điện nước',
+                subtitle: 'Kiểm tra form phản hồi chỉ số',
+                onTap: () => _openComplaint(context, _reviewableUtilityInvoice),
+              ),
+              const SizedBox(height: 20),
+              const _PreviewSectionTitle('Thanh toán'),
+              const SizedBox(height: 8),
+              _PreviewTile(
+                icon: Icons.qr_code_rounded,
+                title: 'QR tiền phòng',
+                subtitle: 'Hóa đơn tiền phòng',
+                onTap: () => _openQr(context, _rentInvoice),
+              ),
+              const SizedBox(height: 8),
+              _PreviewTile(
+                icon: Icons.qr_code_rounded,
+                title: 'QR điện nước và dịch vụ',
+                subtitle: 'Hóa đơn điện nước',
+                onTap: () => _openQr(context, _utilityInvoice),
+              ),
+              const SizedBox(height: 8),
+              _PreviewTile(
+                icon: Icons.check_circle_outline_rounded,
+                title: 'Thanh toán thành công tiền phòng',
+                subtitle: 'Trạng thái hoàn tất của hóa đơn tiền phòng',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        PaymentSuccessPage(invoice: _rentInvoice),
+                  ),
                 ),
               ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: -70,
-                    right: -50,
-                    child: _PreviewGlowOrb(color: AppColors.primary, size: 180),
+              const SizedBox(height: 8),
+              _PreviewTile(
+                icon: Icons.check_circle_outline_rounded,
+                title: 'Thanh toán thành công điện nước',
+                subtitle: 'Trạng thái hoàn tất của hóa đơn điện nước',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        PaymentSuccessPage(invoice: _utilityInvoice),
                   ),
-                  Positioned.fill(
-                    top: MediaQuery.sizeOf(context).height * 0.26,
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF6FAF9),
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(28),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(height: 20),
+              const _PreviewSectionTitle('Mẫu QR tải xuống'),
+              const SizedBox(height: 8),
+              _PreviewTile(
+                icon: Icons.download_rounded,
+                title: 'Mẫu QR tiền phòng',
+                subtitle: 'Xem trước ảnh QR có thể tải về',
+                onTap: () => _openReceiptPreview(context, _rentInvoice),
+              ),
+              const SizedBox(height: 8),
+              _PreviewTile(
+                icon: Icons.download_rounded,
+                title: 'Mẫu QR điện nước và dịch vụ',
+                subtitle: 'Xem trước ảnh QR có thể tải về',
+                onTap: () => _openReceiptPreview(context, _utilityInvoice),
+              ),
+            ],
           ),
-
-          SafeArea(
-            child: Column(
-              children: [
-                // App bar
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(6, 6, 16, 0),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: () => Navigator.of(context).maybePop(),
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.white.withValues(alpha: 0.12),
-                          foregroundColor: Colors.white,
-                        ),
-                        icon: const Icon(Icons.arrow_back_rounded),
-                        tooltip: 'Quay lại',
-                      ),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'UI Preview',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            Text(
-                              'Dữ liệu demo – không tạo giao dịch thật',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.preview_rounded,
-                              color: Colors.white,
-                              size: 14,
-                            ),
-                            SizedBox(width: 5),
-                            Text(
-                              'Preview',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Content
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-                    children: [
-                      // ── Section: Màn đã cập nhật ─────────────
-                      const _SectionHeader(
-                        icon: Icons.dashboard_customize_rounded,
-                        label: 'Màn đã cập nhật',
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(height: 10),
-                      _PreviewButton(
-                        icon: Icons.receipt_long_rounded,
-                        title: 'Bill detail điện nước',
-                        subtitle:
-                            'Mở đúng màn chi tiết bill hiện tại, có CTA khiếu nại và đơn vị kWh/m³',
-                        accentColor: AppColors.actionBlue,
-                        onTap: () =>
-                            _openBillDetail(context, _complainableInvoice),
-                      ),
-                      const SizedBox(height: 10),
-                      _PreviewButton(
-                        icon: Icons.report_problem_rounded,
-                        title: 'Khiếu nại điện nước',
-                        subtitle:
-                            'Mở form khiếu nại với topbar và panel đã đồng bộ',
-                        accentColor: const Color(0xFFD97706),
-                        onTap: () =>
-                            _openComplaint(context, _complainableInvoice),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // ── Section: Thanh toán ──────────────────
-                      const _SectionHeader(
-                        icon: Icons.payment_rounded,
-                        label: 'Thanh toán',
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(height: 10),
-                      _PreviewButton(
-                        icon: Icons.apartment_rounded,
-                        title: 'QR thanh toán tiền phòng',
-                        subtitle: 'Preview QR cho hóa đơn RENT',
-                        accentColor: AppColors.actionBlue,
-                        onTap: () => _openQr(context, _rentInvoice),
-                      ),
-                      const SizedBox(height: 10),
-                      _PreviewButton(
-                        icon: Icons.bolt_rounded,
-                        title: 'QR điện nước & dịch vụ',
-                        subtitle: 'Preview QR cho hóa đơn UTILITY',
-                        accentColor: AppColors.actionOrange,
-                        onTap: () => _openQr(context, _utilityInvoice),
-                      ),
-                      const SizedBox(height: 10),
-                      _PreviewButton(
-                        icon: Icons.receipt_long_rounded,
-                        title: 'Bill detail không khiếu nại',
-                        subtitle:
-                            'Xem hóa đơn điện nước chỉ có chỉ số và đơn vị đo',
-                        accentColor: AppColors.actionBlue,
-                        onTap: () => _openBillDetail(context, _utilityInvoice),
-                      ),
-                      const SizedBox(height: 10),
-                      _PreviewButton(
-                        icon: Icons.check_circle_rounded,
-                        title: 'Thành công – tiền phòng',
-                        subtitle: 'Màn xác nhận với khoản tiền phòng',
-                        accentColor: AppColors.actionEmerald,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  PaymentSuccessPage(invoice: _rentInvoice),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                      _PreviewButton(
-                        icon: Icons.verified_rounded,
-                        title: 'Thành công – điện nước',
-                        subtitle: 'Màn xác nhận có breakdown điện và nước',
-                        accentColor: AppColors.actionViolet,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  PaymentSuccessPage(invoice: _utilityInvoice),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -331,7 +232,6 @@ class PaymentPreviewPage extends StatelessWidget {
       MaterialPageRoute(
         builder: (context) => QrPaymentPage(
           invoice: invoice,
-          // Không gọi kiểm tra trạng thái trong lúc xem preview.
           pollInterval: const Duration(days: 1),
         ),
       ),
@@ -341,10 +241,8 @@ class PaymentPreviewPage extends StatelessWidget {
   void _openBillDetail(BuildContext context, TenantInvoice invoice) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => BillDetailScreen(
-          invoice: invoice,
-          invoiceService: _previewInvoiceService,
-        ),
+        builder: (context) =>
+            BillDetailScreen(invoice: invoice, invoiceService: _invoiceService),
       ),
     );
   }
@@ -354,13 +252,21 @@ class PaymentPreviewPage extends StatelessWidget {
       MaterialPageRoute(
         builder: (context) => UtilityComplaintScreen(
           invoice: invoice,
-          invoiceService: _previewInvoiceService,
+          invoiceService: _invoiceService,
         ),
       ),
     );
   }
 
-  static TenantInvoice _mockInvoice({
+  void _openReceiptPreview(BuildContext context, TenantInvoice invoice) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => QrReceiptPreviewPage(invoice: invoice),
+      ),
+    );
+  }
+
+  static TenantInvoice _invoice({
     required int id,
     required String invoiceCode,
     required String invoiceType,
@@ -386,8 +292,7 @@ class PaymentPreviewPage extends StatelessWidget {
       remainingAmount: totalAmount,
       paymentIntentId: null,
       checkoutUrl: '',
-      qrCode:
-          '00020101021238570010A00000072701270006970436011300123456789010208QRIBFTTA530370454${totalAmount.toString()}5802VN62${transferDescription.length.toString().padLeft(2, '0')}${transferDescription}6304ABCD',
+      qrCode: 'HDBHMS:$invoiceCode:$totalAmount:$transferDescription',
       providerOrderCode: '',
       paymentLinkId: '',
       bankBin: '970436',
@@ -401,10 +306,6 @@ class PaymentPreviewPage extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────
-
 class _PreviewTenantInvoiceService extends TenantInvoiceService {
   const _PreviewTenantInvoiceService();
 
@@ -417,92 +318,68 @@ class _PreviewTenantInvoiceService extends TenantInvoiceService {
   }) async {}
 }
 
-class _PreviewGlowOrb extends StatelessWidget {
-  const _PreviewGlowOrb({required this.color, required this.size});
-  final Color color;
-  final double size;
+class _PreviewSectionTitle extends StatelessWidget {
+  const _PreviewSectionTitle(this.text);
+
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [color.withValues(alpha: 0.2), color.withValues(alpha: 0)],
-        ),
-      ),
-    );
+    return Text(text, style: AppTypography.sectionTitle);
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: color, size: 16),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 13,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.3,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Divider(color: color.withValues(alpha: 0.2), height: 1),
-        ),
-      ],
-    );
-  }
-}
-
-class _PreviewButton extends StatelessWidget {
-  const _PreviewButton({
+class _PreviewTile extends StatelessWidget {
+  const _PreviewTile({
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.accentColor,
     required this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
-  final Color accentColor;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return AppActionRowButton(
-      icon: icon,
-      title: title,
-      subtitle: subtitle,
-      accentColor: accentColor,
-      onTap: onTap,
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: AppColors.primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: AppTypography.cardTitle),
+                    const SizedBox(height: 3),
+                    Text(subtitle, style: AppTypography.caption),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.bodyText,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

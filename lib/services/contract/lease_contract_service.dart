@@ -612,7 +612,7 @@ class LeaseContractService {
     if (decoded is Map<String, dynamic>) {
       return decoded;
     }
-    throw const FormatException('Invalid response body');
+    throw const FormatException('Dữ liệu phản hồi không hợp lệ');
   }
 
   List<dynamic> _extractListPayload(dynamic body) {

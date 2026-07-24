@@ -6,6 +6,7 @@ import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart'
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
+import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 
 class CreateRoomTransferScreen extends StatefulWidget {
   const CreateRoomTransferScreen({
@@ -172,7 +173,10 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      _snack('Vui lòng hoàn thành các trường bắt buộc.');
+      return;
+    }
     if (_currentContract == null) {
       _snack('Không tìm thấy hợp đồng hiện tại.');
       return;
@@ -246,7 +250,8 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  // ignore: unused_element
+  Widget _buildLegacyHeader() {
     return Container(
       height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
@@ -274,6 +279,13 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return AppTopBar(
+      title: 'Chuyển phòng',
+      onBack: () => Navigator.of(context).maybePop(),
     );
   }
 
@@ -324,6 +336,7 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
           _SectionCard(
             title: 'Phòng đích',
             icon: Icons.swap_horiz_rounded,
+            required: true,
             children: [
               if (_loadingRooms)
                 const Padding(
@@ -352,6 +365,7 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
           _SectionCard(
             title: 'Ngày chuyển dự kiến',
             icon: Icons.calendar_month_outlined,
+            required: true,
             children: [
               _DateField(
                 selectedDate: _selectedDate,
@@ -445,11 +459,13 @@ class _SectionCard extends StatelessWidget {
     required this.title,
     required this.icon,
     required this.children,
+    this.required = false,
   });
 
   final String title;
   final IconData icon;
   final List<Widget> children;
+  final bool required;
 
   @override
   Widget build(BuildContext context) {
@@ -467,12 +483,26 @@ class _SectionCard extends StatelessWidget {
             children: [
               Icon(icon, color: AppColors.deepBlue, size: 20),
               const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Color(0xFF000666),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
+              Expanded(
+                child: Semantics(
+                  label: required ? '$title, bắt buộc' : title,
+                  child: RichText(
+                    text: TextSpan(
+                      style: const TextStyle(
+                        color: Color(0xFF000666),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      children: [
+                        TextSpan(text: title),
+                        if (required)
+                          const TextSpan(
+                            text: ' *',
+                            style: TextStyle(color: AppColors.danger),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ],

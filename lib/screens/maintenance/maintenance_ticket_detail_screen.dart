@@ -364,9 +364,9 @@ class _MaintenanceTicketDetailScreenState
                             icon: Icons.photo_library_outlined,
                             child: TicketAttachmentGrid(
                               attachments: detail.beforeAttachments,
-                              emptyText: 'Không có file đính kèm',
+                              emptyText: 'Không có tệp đính kèm',
                               onAttachmentError: () =>
-                                  _showSnackBar('Không tải được file đính kèm'),
+                                  _showSnackBar('Không tải được tệp đính kèm'),
                             ),
                           ),
                           if (_shouldShowAfterAttachments(detail)) ...[
@@ -378,7 +378,7 @@ class _MaintenanceTicketDetailScreenState
                                 attachments: detail.afterAttachments,
                                 emptyText: 'Chưa có ảnh sau sửa chữa',
                                 onAttachmentError: () => _showSnackBar(
-                                  'Không tải được file đính kèm',
+                                  'Không tải được tệp đính kèm',
                                 ),
                               ),
                             ),
