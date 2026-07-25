@@ -76,7 +76,7 @@ class HandoverService {
   HandoverRecord _recordFromBody(String body) {
     final decoded = jsonDecode(body);
     if (decoded is! Map<String, dynamic>) {
-      throw const FormatException('Invalid response body');
+      throw const FormatException('Dữ liệu phản hồi không hợp lệ');
     }
     final payload = decoded['data'];
     if (payload is Map<String, dynamic>) {

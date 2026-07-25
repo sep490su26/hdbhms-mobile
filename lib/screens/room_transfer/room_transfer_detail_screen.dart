@@ -15,6 +15,7 @@ import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.da
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
+import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 
 /// Detail screen for a room-transfer change request.
 /// Shows the change-request info, and if the linked transfer request is
@@ -533,13 +534,13 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
       if (!mounted) return;
       await _tryLoadTransfer();
       if (!mounted) return;
-      _snack('Đã lưu holder mới cho phòng cũ.');
+      _snack('Đã lưu người đứng tên hợp đồng mới cho phòng cũ.');
     } on RoomTransferException catch (e) {
       if (!mounted) return;
       _snack(e.message);
     } catch (_) {
       if (!mounted) return;
-      _snack('Không thể lưu holder mới. Vui lòng thử lại.');
+      _snack('Không thể lưu người đứng tên hợp đồng mới. Vui lòng thử lại.');
     } finally {
       if (mounted) setState(() => _actionInProgress = false);
     }
@@ -680,8 +681,8 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     if (options.isEmpty) {
       _snack(
         _currentTenantProfileId != null
-            ? 'Không còn người ở cùng nào khác để chọn làm holder hợp đồng mới.'
-            : 'Không tìm thấy tenant phù hợp để chọn làm holder hợp đồng mới.',
+            ? 'Không còn người ở cùng nào khác để chọn làm người đứng tên hợp đồng mới.'
+            : 'Không tìm thấy người thuê phù hợp để chọn làm người đứng tên hợp đồng mới.',
       );
       return null;
     }
@@ -698,7 +699,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                 borderRadius: BorderRadius.circular(16),
               ),
               title: const Text(
-                'Chọn holder hợp đồng mới',
+                'Chọn người đứng tên hợp đồng mới',
                 style: TextStyle(fontWeight: FontWeight.w800),
               ),
               content: Column(
@@ -706,7 +707,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Vui lòng chọn người ở lại phòng cũ sẽ trở thành holder mới sau khi bạn chuyển phòng.',
+                    'Vui lòng chọn người ở lại phòng cũ sẽ trở thành người đứng tên hợp đồng mới sau khi bạn chuyển phòng.',
                     style: TextStyle(
                       fontSize: 13.5,
                       height: 1.45,
@@ -1133,9 +1134,9 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
   Future<void> _acceptHolderNomination() async {
     if (_transfer == null) return;
     final confirmed = await _confirmDialog(
-      title: 'Xác nhận holder mới',
+      title: 'Xác nhận người đứng tên hợp đồng mới',
       content:
-          'Bạn có chắc muốn trở thành holder mới của phòng cũ cho yêu cầu chuyển phòng này?',
+          'Bạn có chắc muốn trở thành người đứng tên hợp đồng mới của phòng cũ cho yêu cầu chuyển phòng này?',
       confirmLabel: 'Xác nhận',
       isDestructive: false,
     );
@@ -1145,7 +1146,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     try {
       await widget.transferService.acceptHolderNomination(_transfer!.id);
       if (!mounted) return;
-      _snack('Đã xác nhận trở thành holder mới.');
+      _snack('Đã xác nhận trở thành người đứng tên hợp đồng mới.');
       Navigator.of(context).pop(true);
     } on RoomTransferException catch (e) {
       if (!mounted) return;
@@ -1161,8 +1162,9 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
   Future<void> _rejectHolderNomination() async {
     if (_transfer == null) return;
     final confirmed = await _confirmDialog(
-      title: 'Từ chối holder mới',
-      content: 'Bạn có chắc muốn từ chối đề cử holder mới này?',
+      title: 'Từ chối người đứng tên hợp đồng mới',
+      content:
+          'Bạn có chắc muốn từ chối đề cử người đứng tên hợp đồng mới này?',
       confirmLabel: 'Từ chối',
       isDestructive: true,
     );
@@ -1172,7 +1174,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     try {
       await widget.transferService.rejectHolderNomination(_transfer!.id);
       if (!mounted) return;
-      _snack('Đã từ chối đề cử holder mới.');
+      _snack('Đã từ chối đề cử người đứng tên hợp đồng mới.');
       Navigator.of(context).pop(true);
     } on RoomTransferException catch (e) {
       if (!mounted) return;
@@ -1524,7 +1526,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     );
     addRow(
       rows,
-      label: 'Holder phòng cũ',
+      label: 'Người đứng tên hợp đồng của phòng cũ',
       value: _formatProfileNames(transfer.sourceHolderCandidateNames),
     );
 
@@ -1636,7 +1638,8 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     return _withInfoDividers(rows);
   }
 
-  Widget _buildHeader() {
+  // ignore: unused_element
+  Widget _buildLegacyHeader() {
     return Container(
       height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
@@ -1667,6 +1670,13 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return AppTopBar(
+      title: 'Chi tiết chuyển phòng',
+      onBack: () => Navigator.of(context).maybePop(),
     );
   }
 
@@ -1816,14 +1826,14 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
         if (_transfer != null && _canEditConfirmationHolder(_transfer!)) ...[
           const SizedBox(height: 14),
           _SectionCard(
-            title: 'Holder hợp đồng mới',
+            title: 'Người đứng tên hợp đồng mới',
             icon: Icons.person_outline_rounded,
             children: [
               Text(
                 _transfer!.nominatedHolderProfileId != null &&
                         _transfer!.nominatedHolderProfileId! > 0
-                    ? 'Holder đã chọn hiện tại: ${_selectedHolderDisplayName(_transfer!) ?? 'Tenant #${_transfer!.nominatedHolderProfileId}'}. Sau bước này bạn mới xác nhận yêu cầu và chọn phương thức thanh toán.'
-                    : 'Bạn cần chọn holder trước. Sau khi chọn xong, mới được xác nhận yêu cầu và chọn phương thức thanh toán.',
+                    ? 'Người đứng tên hợp đồng đã chọn: ${_selectedHolderDisplayName(_transfer!) ?? 'Người thuê #${_transfer!.nominatedHolderProfileId}'}. Sau bước này bạn mới xác nhận yêu cầu và chọn phương thức thanh toán.'
+                    : 'Bạn cần chọn người đứng tên hợp đồng trước. Sau khi chọn xong, mới được xác nhận yêu cầu và chọn phương thức thanh toán.',
                 style: const TextStyle(
                   color: AppColors.bodyText,
                   fontSize: 13,
@@ -1836,8 +1846,8 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                 label:
                     _transfer!.nominatedHolderProfileId != null &&
                         _transfer!.nominatedHolderProfileId! > 0
-                    ? 'Đổi holder hợp đồng mới'
-                    : 'Chọn holder hợp đồng mới',
+                    ? 'Đổi người đứng tên hợp đồng mới'
+                    : 'Chọn người đứng tên hợp đồng mới',
                 icon: Icons.person_search_outlined,
                 color: AppColors.deepBlue,
                 busy: _actionInProgress,
@@ -1989,7 +1999,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Sau khi quản lý duyệt, nếu requester đang là holder thì cần đề cử holder mới của phòng cũ trước khi hệ thống đi tiếp sang các bước hợp đồng.',
+                      'Sau khi quản lý duyệt, nếu người gửi yêu cầu đang là người đứng tên hợp đồng thì cần đề cử người đứng tên hợp đồng mới của phòng cũ trước khi hệ thống đi tiếp sang các bước hợp đồng.',
                       style: TextStyle(
                         color: AppColors.deepBlue,
                         fontSize: 13.5,
@@ -2005,7 +2015,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
           actions.add(const SizedBox(height: 10));
           actions.add(
             _ActionButton(
-              label: 'Đề cử holder mới',
+              label: 'Đề cử người đứng tên hợp đồng mới',
               icon: Icons.person_outline_rounded,
               color: AppColors.deepBlue,
               busy: busy,
@@ -2038,7 +2048,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Bạn được đề cử làm holder mới của phòng cũ. Vui lòng xác nhận để yêu cầu chuyển phòng tiếp tục.',
+                        'Bạn được đề cử làm người đứng tên hợp đồng mới của phòng cũ. Vui lòng xác nhận để yêu cầu chuyển phòng tiếp tục.',
                         style: TextStyle(
                           color: Color(0xFF92400E),
                           fontSize: 13.5,
@@ -2054,7 +2064,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
             actions.add(const SizedBox(height: 10));
             actions.add(
               _ActionButton(
-                label: 'Xác nhận làm holder mới',
+                label: 'Xác nhận làm người đứng tên hợp đồng mới',
                 icon: Icons.how_to_reg_outlined,
                 color: const Color(0xFF16A34A),
                 busy: busy,
@@ -2095,7 +2105,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Đã đề cử holder mới cho phòng cũ. Hệ thống đang chờ người được đề cử phản hồi trước khi đi tiếp.',
+                        'Đã đề cử người đứng tên hợp đồng mới cho phòng cũ. Hệ thống đang chờ người được đề cử phản hồi trước khi đi tiếp.',
                         style: TextStyle(
                           color: Color(0xFF92400E),
                           fontSize: 13.5,
@@ -2516,13 +2526,13 @@ class _StatusBanner extends StatelessWidget {
         TransferRequestStatus.waitingManagerApproval =>
           'Yêu cầu đang chờ quản lý phê duyệt.',
         TransferRequestStatus.managerApproved =>
-          'Quản lý đã duyệt. Nếu requester đang là holder thì cần đề cử holder mới trước khi đi tiếp.',
+          'Quản lý đã duyệt. Nếu người gửi yêu cầu đang là người đứng tên hợp đồng thì cần đề cử người đứng tên hợp đồng mới trước khi đi tiếp.',
         TransferRequestStatus.waitingHolderResponse =>
-          'Đang chờ holder mới của phòng cũ phản hồi đề cử.',
+          'Đang chờ người đứng tên hợp đồng mới của phòng cũ phản hồi đề cử.',
         TransferRequestStatus.waitingApproval =>
           'Yêu cầu đang chờ quản lý phê duyệt.',
         TransferRequestStatus.waitingNewContract =>
-          'Đang chờ đề cử holder mới hoặc tạo hợp đồng mới cho yêu cầu chuyển phòng.',
+          'Đang chờ đề cử người đứng tên hợp đồng mới hoặc tạo hợp đồng mới cho yêu cầu chuyển phòng.',
         TransferRequestStatus.waitingTargetHolderApproval =>
           'Đang chờ chủ phòng đích phê duyệt yêu cầu chuyển vào.',
         TransferRequestStatus.waitingTenantConfirmation =>
@@ -3044,7 +3054,7 @@ class _StatusTimeline extends StatelessWidget {
             TransferRequestStatus.managerApproved,
             TransferRequestStatus.waitingNewContract,
           ],
-          label: 'Chọn holder phòng cũ',
+          label: 'Chọn người đứng tên hợp đồng của phòng cũ',
           icon: Icons.person_outline_rounded,
         ),
       );
@@ -3052,7 +3062,7 @@ class _StatusTimeline extends StatelessWidget {
         _TimelineStep(
           status: TransferRequestStatus.waitingHolderResponse,
           aliases: const [TransferRequestStatus.waitingHolderResponse],
-          label: 'Chờ holder phòng cũ phản hồi',
+          label: 'Chờ người đứng tên hợp đồng của phòng cũ phản hồi',
           icon: Icons.schedule_outlined,
         ),
       );

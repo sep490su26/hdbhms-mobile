@@ -19,6 +19,7 @@ class ForgotPasswordPage extends StatefulWidget {
 }
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
+  final _formKey = GlobalKey<FormState>();
   late final TextEditingController _identityController;
   bool _isSending = false;
   bool _emailSent = false;
@@ -36,6 +37,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 
   Future<void> _sendOtp() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      _showMessage('Vui lòng hoàn thành trường bắt buộc');
+      return;
+    }
     final identity = _identityController.text.trim();
     if (identity.isEmpty) {
       _showMessage('Vui lòng nhập email hoặc số điện thoại');
@@ -98,22 +103,30 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         children: [
                           const _ForgotPasswordIntro(),
                           const SizedBox(height: 32),
-                          AuthTextField(
-                            label: 'Email hoặc số điện thoại',
-                            hintText: 'Nhập thông tin của bạn',
-                            icon: Icons.contact_mail_outlined,
-                            controller: _identityController,
-                            keyboardType: TextInputType.text,
-                            textInputAction: TextInputAction.done,
-                            hintColor: AppColors.hintText,
-                            contentPadding: const EdgeInsets.fromLTRB(
-                              49,
-                              19,
-                              17,
-                              19,
+                          Form(
+                            key: _formKey,
+                            child: AuthTextField(
+                              label: 'Email hoặc số điện thoại',
+                              hintText: 'Nhập thông tin của bạn',
+                              icon: Icons.contact_mail_outlined,
+                              controller: _identityController,
+                              keyboardType: TextInputType.text,
+                              textInputAction: TextInputAction.done,
+                              hintColor: AppColors.hintText,
+                              contentPadding: const EdgeInsets.fromLTRB(
+                                49,
+                                19,
+                                17,
+                                19,
+                              ),
+                              prefixIconSize: 24,
+                              enabled: !_emailSent,
+                              required: true,
+                              validator: (value) =>
+                                  value == null || value.trim().isEmpty
+                                  ? 'Vui lòng nhập email hoặc số điện thoại'
+                                  : null,
                             ),
-                            prefixIconSize: 24,
-                            enabled: !_emailSent,
                           ),
                           const SizedBox(height: 24),
                           SizedBox(

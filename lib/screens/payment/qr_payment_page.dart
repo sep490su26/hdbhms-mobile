@@ -9,6 +9,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/notification/notification_service.dart';
 import '../../services/payment/tenant_invoice_service.dart';
+import '../../theme/app_colors.dart';
+import '../../widgets/app_top_bar.dart';
 import 'payment_success_page.dart';
 import 'qr_receipt_download_page.dart';
 
@@ -221,7 +223,12 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
                 constraints: const BoxConstraints(maxWidth: 430),
                 child: CustomScrollView(
                   slivers: [
-                    SliverToBoxAdapter(child: _Header(theme: theme)),
+                    SliverToBoxAdapter(
+                      child: AppTopBar(
+                        title: theme.title,
+                        onBack: () => Navigator.of(context).maybePop(),
+                      ),
+                    ),
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
                       sliver: SliverList.list(
@@ -261,6 +268,7 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
   }
 }
 
+// ignore: unused_element
 class _Header extends StatelessWidget {
   const _Header({required this.theme});
 
@@ -345,16 +353,13 @@ class _PaymentHero extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withValues(alpha: 0.18),
-            Colors.white.withValues(alpha: 0.08),
-          ],
+          colors: [AppColors.deepBlue, AppColors.primary],
         ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.deepBlue),
       ),
       child: Row(
         children: [
@@ -363,12 +368,12 @@ class _PaymentHero extends StatelessWidget {
             height: 54,
             decoration: BoxDecoration(
               color: theme.accent,
-              borderRadius: BorderRadius.circular(17),
+              borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
                   color: theme.accent.withValues(alpha: 0.35),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+                  blurRadius: 12,
+                  offset: const Offset(0, 5),
                 ),
               ],
             ),
@@ -466,7 +471,7 @@ class _QrCard extends StatelessWidget {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: theme.primary.withValues(alpha: 0.2),
                       width: 2,
@@ -480,7 +485,7 @@ class _QrCard extends StatelessWidget {
                     ],
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(8),
                     child: _QrImage(qrCode: qrCode, theme: theme),
                   ),
                 ),
@@ -525,7 +530,7 @@ class _QrCard extends StatelessWidget {
                 disabledBackgroundColor: theme.primary.withValues(alpha: 0.55),
                 disabledForegroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 textStyle: const TextStyle(
                   fontSize: 13,
@@ -667,10 +672,10 @@ class _CopyableField extends StatelessWidget {
       button: true,
       child: Material(
         color: theme.softSurface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: () => _copyValue(context, field.value),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(8),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(13, 12, 8, 12),
             child: Row(
@@ -680,7 +685,7 @@ class _CopyableField extends StatelessWidget {
                   height: 38,
                   decoration: BoxDecoration(
                     color: theme.softAccent,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(field.icon, color: theme.primary, size: 20),
                 ),
@@ -737,9 +742,9 @@ class _SecurityNote extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.cardBorder),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -750,7 +755,7 @@ class _SecurityNote extends StatelessWidget {
             child: Text(
               'Vui lòng chuyển đúng số tiền và nội dung. Không chia sẻ mã OTP hoặc mật khẩu ngân hàng.',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.82),
+                color: AppColors.bodyText,
                 fontSize: 12,
                 height: 1.5,
               ),
@@ -777,29 +782,42 @@ class _ConfirmButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       height: 56,
-      child: FilledButton.icon(
-        onPressed: checking ? null : onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: theme.accent,
-          foregroundColor: theme.iconColor,
-          disabledBackgroundColor: theme.accent.withValues(alpha: 0.55),
-          disabledForegroundColor: theme.iconColor.withValues(alpha: 0.75),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [AppColors.deepBlue, AppColors.primary],
           ),
-          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+          borderRadius: BorderRadius.circular(8),
         ),
-        icon: checking
-            ? SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: theme.iconColor,
-                ),
-              )
-            : const Icon(Icons.refresh_rounded),
-        label: Text(checking ? 'Đang kiểm tra...' : 'Tôi đã chuyển khoản'),
+        child: FilledButton.icon(
+          onPressed: checking ? null : onPressed,
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            foregroundColor: theme.iconColor,
+            disabledBackgroundColor: Colors.transparent,
+            disabledForegroundColor: theme.iconColor.withValues(alpha: 0.75),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            textStyle: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          icon: checking
+              ? SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: theme.iconColor,
+                  ),
+                )
+              : const Icon(Icons.refresh_rounded),
+          label: Text(checking ? 'Đang kiểm tra...' : 'Tôi đã chuyển khoản'),
+        ),
       ),
     );
   }
@@ -816,9 +834,9 @@ class _LightCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFFDFEFF).withValues(alpha: 0.96),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.cardBorder),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF071426).withValues(alpha: 0.18),
@@ -839,32 +857,20 @@ class _DecoratedBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
+    return const DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [theme.background, theme.backgroundEnd],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFE8F0FF), AppColors.background],
+          stops: [0, 0.3],
         ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            top: -90,
-            right: -70,
-            child: _GlowOrb(color: theme.accent, size: 220),
-          ),
-          Positioned(
-            top: 330,
-            left: -100,
-            child: _GlowOrb(color: theme.secondary, size: 240),
-          ),
-        ],
       ),
     );
   }
 }
 
+// ignore: unused_element
 class _GlowOrb extends StatelessWidget {
   const _GlowOrb({required this.color, required this.size});
 
@@ -924,32 +930,32 @@ class _PaymentVisualTheme {
         title: 'Thanh toán tiền phòng',
         subtitle: 'Khoản thuê phòng định kỳ',
         icon: Icons.apartment_rounded,
-        background: Color(0xFF081426),
-        backgroundEnd: Color(0xFF172A4B),
-        primary: Color(0xFF173B6C),
-        secondary: Color(0xFF8B5CF6),
-        accent: Color(0xFFFBBF24),
-        iconColor: Color(0xFF352100),
-        ink: Color(0xFF10233F),
-        mutedInk: Color(0xFF607089),
-        softAccent: Color(0xFFFFF6D8),
-        softSurface: Color(0xFFF5F7FB),
+        background: AppColors.background,
+        backgroundEnd: AppColors.background,
+        primary: AppColors.primary,
+        secondary: AppColors.accent,
+        accent: AppColors.primary,
+        iconColor: Colors.white,
+        ink: AppColors.inputText,
+        mutedInk: AppColors.bodyText,
+        softAccent: AppColors.primaryLight,
+        softSurface: AppColors.inputFill,
       );
     }
     return const _PaymentVisualTheme(
       title: 'Thanh toán điện nước & dịch vụ',
       subtitle: 'Chi phí tiện ích trong kỳ',
       icon: Icons.bolt_rounded,
-      background: Color(0xFF061827),
-      backgroundEnd: Color(0xFF12345C),
-      primary: Color(0xFF1D4ED8),
-      secondary: Color(0xFF60A5FA),
-      accent: Color(0xFF93C5FD),
-      iconColor: Color(0xFF061827),
-      ink: Color(0xFF10233F),
-      mutedInk: Color(0xFF607089),
-      softAccent: Color(0xFFE0F2FE),
-      softSurface: Color(0xFFF5F7FB),
+      background: AppColors.background,
+      backgroundEnd: AppColors.background,
+      primary: AppColors.primary,
+      secondary: AppColors.accent,
+      accent: AppColors.primary,
+      iconColor: Colors.white,
+      ink: AppColors.inputText,
+      mutedInk: AppColors.bodyText,
+      softAccent: AppColors.primaryLight,
+      softSurface: AppColors.inputFill,
     );
   }
 }

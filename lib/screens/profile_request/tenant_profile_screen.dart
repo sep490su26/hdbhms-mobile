@@ -15,6 +15,7 @@ import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.da
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/app_action_tile.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
+import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/contract/lease_contract_list_screen.dart';
@@ -106,8 +107,7 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
           children: [
             _ProfileHeader(
               onBack: widget.showBottomNavigation
-                  ? () =>
-                        Navigator.of(context).popUntil((route) => route.isFirst)
+                  ? null
                   : () => Navigator.of(context).maybePop(),
             ),
             Expanded(
@@ -218,7 +218,31 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
 }
 
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.onBack});
+  const _ProfileHeader({this.onBack});
+
+  final VoidCallback? onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTopBar(
+      title: 'Hồ sơ cá nhân',
+      onBack: onBack,
+      trailing: IconButton(
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const NotificationListScreen(),
+          ),
+        ),
+        icon: const AppNotificationBell(),
+        tooltip: 'Thông báo',
+      ),
+    );
+  }
+}
+
+// ignore: unused_element
+class _LegacyProfileHeader extends StatelessWidget {
+  const _LegacyProfileHeader({required this.onBack});
 
   final VoidCallback onBack;
 
@@ -479,7 +503,7 @@ class _ProfileSummaryCard extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                profile.status.isEmpty ? 'Chưa cập nhật' : profile.status,
+                _profileStatusLabel(profile.status),
                 style: const TextStyle(
                   color: Colors.white70,
                   fontSize: 13,
@@ -1238,6 +1262,16 @@ String _display(String? value) {
   return trimmed.isEmpty ? 'Chưa cập nhật' : trimmed;
 }
 
+String _profileStatusLabel(String value) {
+  return switch (value.trim().toUpperCase()) {
+    'ACTIVE' || 'APPROVED' || 'VERIFIED' => 'Đã xác thực',
+    'PENDING' || 'UNDER_REVIEW' => 'Chờ xác thực',
+    'REJECTED' => 'Bị từ chối',
+    'INACTIVE' => 'Chưa kích hoạt',
+    _ => 'Chưa cập nhật',
+  };
+}
+
 String _formatDate(DateTime date) {
   return '${date.day.toString().padLeft(2, '0')}/'
       '${date.month.toString().padLeft(2, '0')}/'
@@ -1249,7 +1283,7 @@ String _vehicleTypeLabel(String value) {
     'MOTORBIKE' => 'Xe máy',
     'CAR' => 'Ô tô',
     'BICYCLE' => 'Xe đạp',
-    _ => _display(value),
+    _ => 'Khác',
   };
 }
 

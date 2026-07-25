@@ -9,6 +9,7 @@ import '../../services/notification/notification_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/app_screen_shell.dart';
 import '../../widgets/app_skeleton.dart';
+import '../../widgets/app_top_bar.dart';
 
 /// Màn danh sách thông báo với filter Tất cả / Chưa đọc / Đã đọc.
 class NotificationListScreen extends StatefulWidget {
@@ -235,7 +236,8 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  // ignore: unused_element
+  Widget _buildLegacyHeader() {
     return Container(
       height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
@@ -280,6 +282,20 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return AppTopBar(
+      title: 'Thông báo',
+      onBack: _closeScreen,
+      trailing: _unreadCount == 0
+          ? null
+          : IconButton(
+              onPressed: _markAllRead,
+              icon: const Icon(Icons.done_all_rounded),
+              tooltip: 'Đánh dấu tất cả là đã đọc',
+            ),
     );
   }
 

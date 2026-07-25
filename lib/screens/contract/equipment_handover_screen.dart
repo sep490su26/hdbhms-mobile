@@ -582,7 +582,7 @@ String _conditionLabel(String status) {
     'ATTENTION' => 'Cần lưu ý',
     'BROKEN' => 'Hỏng',
     'MISSING' => 'Thiếu',
-    _ => status.isEmpty ? 'Chưa cập nhật' : status,
+    _ => 'Chưa cập nhật',
   };
 }
 
@@ -594,7 +594,7 @@ String _assetCategoryLabel(String value) {
     'FURNITURE' => 'Nội thất',
     'SANITARY' || 'BATHROOM' || 'TOILET' => 'Vệ sinh',
     'OTHER' => 'Khác',
-    _ => value.trim(),
+    _ => 'Khác',
   };
 }
 

@@ -4,6 +4,7 @@ import 'package:hdbhms_mobile/models/room_transfer/room_transfer_model.dart';
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
+import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 
 /// Collects handover data (meter readings + assets) for both old and new rooms,
 /// then calls the execute-transfer endpoint.
@@ -303,7 +304,8 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  // ignore: unused_element
+  Widget _buildLegacyHeader() {
     return Container(
       height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
@@ -334,6 +336,13 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return AppTopBar(
+      title: 'Bàn giao chuyển phòng',
+      onBack: () => Navigator.of(context).maybePop(),
     );
   }
 

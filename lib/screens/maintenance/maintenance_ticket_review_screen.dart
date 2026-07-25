@@ -168,7 +168,7 @@ class _MaintenanceTicketReviewScreenState
         return AlertDialog(
           title: const Text('Chưa có ảnh sau sửa'),
           content: const Text(
-            'Quản lý chưa upload ảnh sau sửa, bạn có chắc muốn xác nhận?',
+            'Quản lý chưa tải lên ảnh sau sửa, bạn có chắc muốn xác nhận?',
           ),
           actions: [
             TextButton(
@@ -354,7 +354,7 @@ class _WorkDetailCard extends StatelessWidget {
           else
             TicketAttachmentGrid(
               attachments: detail.afterAttachments,
-              emptyText: 'Quản lý chưa upload ảnh sau sửa',
+              emptyText: 'Quản lý chưa tải lên ảnh sau sửa',
             ),
         ],
       ),
@@ -651,7 +651,7 @@ class _MissingAfterPhotoWarning extends StatelessWidget {
           SizedBox(width: 9),
           Expanded(
             child: Text(
-              'Quản lý chưa upload ảnh sau sửa',
+              'Quản lý chưa tải lên ảnh sau sửa',
               style: TextStyle(
                 color: Color(0xFF92400E),
                 fontSize: 13,

@@ -194,7 +194,7 @@ class MaintenanceTicketService {
 
     final path = attachment.path.trim();
     if (path.isEmpty) {
-      throw const MaintenanceTicketException('Không đọc được file đính kèm.');
+      throw const MaintenanceTicketException('Không đọc được tệp đính kèm.');
     }
     return File(path).readAsBytes();
   }

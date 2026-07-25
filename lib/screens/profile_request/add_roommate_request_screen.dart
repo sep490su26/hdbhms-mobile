@@ -51,7 +51,16 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Vui lòng hoàn thành các trường bắt buộc'),
+          ),
+        );
+      return;
+    }
     setState(() => _submitting = true);
     try {
       await widget.contractService.submitAddCoOccupantRequest(
@@ -149,6 +158,7 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
   Widget _buildForm() {
     return Form(
       key: _formKey,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(14, 16, 14, 28),
         children: [

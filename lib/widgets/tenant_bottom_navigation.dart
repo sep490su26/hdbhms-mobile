@@ -31,7 +31,7 @@ class TenantBottomNavigation extends StatelessWidget {
         child: Container(
           height: 76,
           margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-          padding: const EdgeInsets.fromLTRB(7, 7, 7, 7),
+          padding: const EdgeInsets.all(7),
           decoration: BoxDecoration(
             color: AppColors.surface.withValues(alpha: 0.98),
             borderRadius: BorderRadius.circular(26),

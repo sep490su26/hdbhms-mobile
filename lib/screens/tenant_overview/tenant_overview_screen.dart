@@ -292,9 +292,7 @@ class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_rooms.isNotEmpty) _RentalPortfolioCard(rooms: _rooms),
-                const SizedBox(height: 24),
-                const _RoomSectionHeader(),
+                _RoomSectionHeader(roomCount: _rooms.length),
                 const SizedBox(height: 12),
                 if (_rooms.isEmpty)
                   const _EmptyRoomsCard()
@@ -574,6 +572,7 @@ class _OverviewLogoMark extends StatelessWidget {
       const AppBrandLogo(variant: AppBrandLogoVariant.overview);
 }
 
+// ignore: unused_element
 class _RentalPortfolioCard extends StatelessWidget {
   const _RentalPortfolioCard({required this.rooms});
 
@@ -696,6 +695,7 @@ class _RentalPortfolioCard extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _PortfolioMetric extends StatelessWidget {
   const _PortfolioMetric({
     required this.icon,
@@ -924,7 +924,9 @@ class _FallbackPropertyImage extends StatelessWidget {
 }
 
 class _RoomSectionHeader extends StatelessWidget {
-  const _RoomSectionHeader();
+  const _RoomSectionHeader({required this.roomCount});
+
+  final int roomCount;
 
   @override
   Widget build(BuildContext context) {
@@ -937,6 +939,22 @@ class _RoomSectionHeader extends StatelessWidget {
             fontSize: 19,
             fontWeight: FontWeight.w900,
             height: 24 / 19,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.primaryLight,
+            borderRadius: BorderRadius.circular(99),
+          ),
+          child: Text(
+            '$roomCount phòng',
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
       ],
@@ -1026,8 +1044,6 @@ class _RoomOverviewCard extends StatelessWidget {
                         ),
                       ),
                     ],
-                    const SizedBox(height: 9),
-                    _RoomStatusPill(label: status),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 12,
@@ -1054,19 +1070,27 @@ class _RoomOverviewCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceMuted,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.cardBorder),
-                ),
-                child: const Icon(
-                  Icons.arrow_forward_rounded,
-                  color: AppColors.deepBlue,
-                  size: 18,
-                ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  _RoomStatusPill(label: status),
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceMuted,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.cardBorder),
+                    ),
+                    child: const Icon(
+                      Icons.arrow_forward_rounded,
+                      color: AppColors.deepBlue,
+                      size: 18,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -1296,7 +1320,7 @@ String _statusLabel(String rawStatus) {
     'DEPOSITED' || 'HELD' => 'Đã cọc',
     'MAINTENANCE' => 'Bảo trì',
     'VACANT' => 'Còn trống',
-    _ => rawStatus.trim().isEmpty ? 'Đang thuê' : rawStatus.trim(),
+    _ => 'Chưa cập nhật',
   };
 }
 
@@ -1304,7 +1328,7 @@ String _roleLabel(String rawRole) {
   return switch (rawRole.trim().toUpperCase()) {
     'PRIMARY' => 'Người thuê chính',
     'CO_OCCUPANT' => 'Người ở cùng',
-    _ => rawRole.trim(),
+    _ => 'Chưa xác định',
   };
 }
 

@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
@@ -46,7 +46,7 @@ class FileService {
       );
       return apiResponse.data!;
     } else {
-      throw Exception('Failed to upload file: ${response.body}');
+      throw Exception('Không thể tải tệp lên.');
     }
   }
 
@@ -84,7 +84,7 @@ class FileService {
       );
       return apiResponse.data!;
     } else {
-      throw Exception('Failed to upload batch files: ${response.body}');
+      throw Exception('Không thể tải các tệp lên.');
     }
   }
 
@@ -99,7 +99,7 @@ class FileService {
       if (response.statusCode == 200) {
         return response.bodyBytes;
       } else {
-        throw Exception('Failed to download file: ${response.body}');
+        throw Exception('Không thể tải tệp về.');
       }
     } finally {
       if (_client == null) client.close();

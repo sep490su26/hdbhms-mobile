@@ -7,6 +7,7 @@ import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
+import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/contract/deposit_contract_list_screen.dart';
 import 'package:hdbhms_mobile/screens/contract/lease_contract_list_screen.dart';
@@ -104,7 +105,7 @@ class _ContractHubScreenState extends State<ContractHubScreen>
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildLegacyHeader() {
     return Container(
       height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
@@ -135,19 +136,26 @@ class _ContractHubScreenState extends State<ContractHubScreen>
     );
   }
 
+  Widget _buildHeader() {
+    return AppTopBar(
+      title: 'Hợp đồng',
+      onBack: () => Navigator.of(context).maybePop(),
+    );
+  }
+
   Widget _buildTabBar() {
     return Container(
       margin: const EdgeInsets.fromLTRB(14, 14, 14, 8),
       padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.cardBorder),
         boxShadow: [
           BoxShadow(
             color: AppColors.deepBlue.withValues(alpha: 0.045),
-            blurRadius: 18,
-            offset: const Offset(0, 9),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -162,7 +170,7 @@ class _ContractHubScreenState extends State<ContractHubScreen>
         ),
         dividerColor: Colors.transparent,
         indicator: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(8),
           gradient: const LinearGradient(
             colors: [AppColors.deepBlue, AppColors.primary],
           ),

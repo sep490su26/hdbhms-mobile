@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
+import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
 
@@ -104,7 +105,10 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      _snack('Vui lòng hoàn thành các trường bắt buộc');
+      return;
+    }
     if (_expectedDate == null) {
       _snack('Vui lòng chọn ngày trả phòng dự kiến');
       return;
@@ -148,7 +152,8 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
   }
 
   // ── Header ─────────────────────────────────────────────────────────────────
-  Widget _buildHeader() {
+  // ignore: unused_element
+  Widget _buildLegacyHeader() {
     return Container(
       height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
@@ -191,11 +196,26 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
   }
 
   // ── Form ───────────────────────────────────────────────────────────────────
+  Widget _buildHeader() {
+    return AppTopBar(
+      title: 'Thanh lý hợp đồng',
+      onBack: () => Navigator.of(context).maybePop(),
+      trailing: IconButton(
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const NotificationListScreen()),
+        ),
+        icon: const AppNotificationBell(),
+        tooltip: 'Thông báo',
+      ),
+    );
+  }
+
   Widget _buildForm() {
     final reasonLength = _reasonCtrl.text.length;
 
     return Form(
       key: _formKey,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(14, 16, 14, 28),
         children: [

@@ -147,11 +147,11 @@ class IdentityService {
 
       throw IdentityException(_messageForError(response));
     } on TimeoutException {
-      throw const IdentityException('Upload thất bại, vui lòng thử lại');
+      throw const IdentityException('Tải lên thất bại, vui lòng thử lại');
     } on http.ClientException {
-      throw const IdentityException('Upload thất bại, vui lòng thử lại');
+      throw const IdentityException('Tải lên thất bại, vui lòng thử lại');
     } on FormatException {
-      throw const IdentityException('Upload thất bại, vui lòng thử lại');
+      throw const IdentityException('Tải lên thất bại, vui lòng thử lại');
     } finally {
       if (_client == null) {
         client.close();
@@ -249,9 +249,9 @@ class IdentityService {
       final backendMessage = _readBackendMessage(response.body);
       return backendMessage.isNotEmpty
           ? backendMessage
-          : 'Vui lòng upload đủ ảnh chân dung và 2 mặt CCCD';
+          : 'Vui lòng tải lên đủ ảnh chân dung và 2 mặt CCCD';
     }
-    return 'Upload thất bại, vui lòng thử lại';
+    return 'Tải lên thất bại, vui lòng thử lại';
   }
 
   String _readBackendMessage(String body) {
@@ -269,7 +269,7 @@ class IdentityService {
     if (decoded is Map<String, dynamic>) {
       return decoded;
     }
-    throw const FormatException('Invalid response body');
+    throw const FormatException('Dữ liệu phản hồi không hợp lệ');
   }
 
   Map<String, dynamic> _responsePayload(Map<String, dynamic> body) {

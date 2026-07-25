@@ -1495,7 +1495,7 @@ String _statusLabel(String status) {
     'TERMINATED' => 'Đã chấm dứt',
     'DRAFT' => 'Bản nháp',
     'PENDING_SIGNATURE' => 'Chờ ký',
-    _ => _display(status),
+    _ => 'Chưa cập nhật',
   };
 }
 

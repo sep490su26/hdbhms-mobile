@@ -13,6 +13,7 @@ import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/utils/room_scope.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
+import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
@@ -234,7 +235,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
       'WAITING_SIGNED_DOCUMENT' => 'Chờ ký biên bản',
       'READY_TO_CONFIRM' => 'Sẵn sàng xác nhận thanh lý',
       'CONFIRMED' => 'Đã thanh lý',
-      _ => value,
+      _ => 'Chưa cập nhật',
     };
   }
 
@@ -249,7 +250,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
       type: TenantRequestType.changeRoom,
       status: TenantRequestStatus.pending,
       note:
-          'Bạn được đề cử làm holder mới cho phòng $roomName. Vui lòng xác nhận để yêu cầu chuyển phòng tiếp tục.',
+          'Bạn được đề cử làm người đứng tên hợp đồng mới cho phòng $roomName. Vui lòng xác nhận để yêu cầu chuyển phòng tiếp tục.',
       createdAt: transfer.updatedAt ?? transfer.createdAt ?? DateTime.now(),
       details: {
         'Mã yêu cầu': transfer.requestCode,
@@ -269,8 +270,9 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
       id: transfer.id,
       requestCode: transfer.requestCode,
       requestType: ChangeRequestType.roomTransfer,
-      title: 'Xác nhận holder mới',
-      description: 'Bạn được đề cử làm holder mới cho phòng cũ.',
+      title: 'Xác nhận người đứng tên hợp đồng mới',
+      description:
+          'Bạn được đề cử làm người đứng tên hợp đồng mới cho phòng cũ.',
       status: ChangeRequestStatus.processing,
       requesterId: transfer.requesterId,
       targetId: transfer.id,
@@ -517,7 +519,8 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
   }
 
   // ── Header ────────────────────────────────────────────────────────────────
-  Widget _buildHeader() {
+  // ignore: unused_element
+  Widget _buildLegacyHeader() {
     return Container(
       height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
@@ -559,6 +562,21 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
             tooltip: 'Thông báo',
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return AppTopBar(
+      title: 'Yêu cầu',
+      trailing: IconButton(
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const NotificationListScreen(),
+          ),
+        ),
+        icon: const AppNotificationBell(),
+        tooltip: 'Thông báo',
       ),
     );
   }
@@ -1958,7 +1976,7 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
       'WAITING_SIGNED_DOCUMENT' => 'Chờ ký biên bản',
       'READY_TO_CONFIRM' => 'Sẵn sàng xác nhận thanh lý',
       'CONFIRMED' => 'Đã thanh lý',
-      _ => value,
+      _ => 'Chưa cập nhật',
     };
   }
 
@@ -1974,7 +1992,7 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
       'OWNER_REJECTED' => 'Chủ trọ từ chối',
       'OVERRIDDEN' => 'Chủ sở hữu đã xác nhận',
       'CANCELLED' => 'Đã hủy',
-      _ => value,
+      _ => 'Chưa cập nhật',
     };
   }
 

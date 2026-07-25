@@ -143,7 +143,7 @@ class AuthService {
     } on http.ClientException {
       throw const AuthException('Không kết nối được máy chủ (refresh)');
     } on FormatException {
-      throw const AuthException('Refresh token thất bại');
+      throw const AuthException('Làm mới phiên đăng nhập thất bại');
     } finally {
       if (_client == null) {
         client.close();

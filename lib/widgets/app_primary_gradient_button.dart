@@ -10,7 +10,7 @@ class AppPrimaryGradientButton extends StatelessWidget {
     required this.onPressed,
     this.height = 48,
     this.padding = const EdgeInsets.symmetric(horizontal: 16),
-    this.borderRadius = 16,
+    this.borderRadius = 8,
   });
 
   final Widget child;

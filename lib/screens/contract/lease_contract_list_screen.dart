@@ -9,6 +9,7 @@ import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
+import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 import 'package:hdbhms_mobile/screens/contract/lease_contract_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
@@ -212,7 +213,7 @@ class _LeaseContractListScreenState extends State<LeaseContractListScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildLegacyHeader() {
     return Container(
       height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
@@ -243,6 +244,13 @@ class _LeaseContractListScreenState extends State<LeaseContractListScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return AppTopBar(
+      title: 'Hợp đồng thuê',
+      onBack: () => Navigator.of(context).maybePop(),
     );
   }
 

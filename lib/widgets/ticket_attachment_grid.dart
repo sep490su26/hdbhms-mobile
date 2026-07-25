@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
@@ -117,7 +117,7 @@ class _AttachmentPreviewScreen extends StatelessWidget {
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         title: Text(
-          attachment.name.isEmpty ? 'File đính kèm' : attachment.name,
+          attachment.name.isEmpty ? 'Tệp đính kèm' : attachment.name,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -188,7 +188,7 @@ class _AttachmentPlaceholder extends StatelessWidget {
             Icon(Icons.broken_image_outlined, color: AppColors.bodyText),
             SizedBox(height: 8),
             Text(
-              'Không tải được file đính kèm',
+              'Không tải được tệp đính kèm',
               style: TextStyle(
                 color: AppColors.bodyText,
                 fontSize: 12,
@@ -227,7 +227,7 @@ class _PreviewPlaceholder extends StatelessWidget {
     return const Padding(
       padding: EdgeInsets.all(24),
       child: Text(
-        'Không tải được file đính kèm',
+        'Không tải được tệp đính kèm',
         textAlign: TextAlign.center,
         style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
       ),
@@ -252,7 +252,7 @@ class _PreviewVideoPlaceholder extends StatelessWidget {
           ),
           SizedBox(height: 12),
           Text(
-            'Video đính kèm',
+            'Tệp video đính kèm',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
           ),
         ],
