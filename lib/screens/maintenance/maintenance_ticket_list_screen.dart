@@ -1,11 +1,8 @@
-// ignore_for_file: unused_element
-
 import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
 import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
-import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/home/current_room_service.dart';
 import 'package:hdbhms_mobile/services/maintenance/maintenance_ticket_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
@@ -18,7 +15,6 @@ import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/create_maintenance_ticket_screen.dart';
-import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_detail_screen.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
 
@@ -126,15 +122,6 @@ class _MaintenanceTicketListScreenState
     }
   }
 
-  Future<void> _handleLogout() async {
-    await const AuthService().logout();
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const LoginPage()),
-      (route) => false,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -235,53 +222,6 @@ class _MaintenanceTicketListScreenState
 
   String get _activeRoomCode =>
       _roomScope.roomCode.isNotEmpty ? _roomScope.roomCode : widget.roomCode;
-
-  Widget _buildLegacyHeader() {
-    return Container(
-      height: AppColors.topBarHeight,
-      padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: AppColors.cardBorder.withValues(alpha: 0.65),
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () =>
-                Navigator.of(context).popUntil((route) => route.isFirst),
-            icon: const Icon(
-              Icons.arrow_back_rounded,
-              color: AppColors.deepBlue,
-              size: 24,
-            ),
-            tooltip: 'Trở về',
-          ),
-          const Expanded(
-            child: Text('Báo cáo sự cố', style: AppColors.topBarTitleStyle),
-          ),
-          IconButton(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const NotificationListScreen(),
-              ),
-            ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 44, height: 44),
-            icon: AppNotificationBell(
-              color: AppColors.topBarIconColor,
-              size: 24,
-              initialUnreadCount: widget.notificationInitialUnreadCount,
-            ),
-            tooltip: 'Thông báo',
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildHeader() {
     return AppTopBar(
