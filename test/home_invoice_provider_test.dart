@@ -119,7 +119,10 @@ class _FakeTenantInvoiceService extends TenantInvoiceService {
   const _FakeTenantInvoiceService();
 
   @override
-  Future<List<TenantInvoice>> fetchMyInvoices() async {
+  Future<List<TenantInvoice>> fetchMyInvoices({
+    int? roomId,
+    String? roomCode,
+  }) async {
     return [
       _invoice(
         id: 1,
@@ -194,7 +197,10 @@ class _TrendTenantInvoiceService extends TenantInvoiceService {
   const _TrendTenantInvoiceService();
 
   @override
-  Future<List<TenantInvoice>> fetchMyInvoices() async {
+  Future<List<TenantInvoice>> fetchMyInvoices({
+    int? roomId,
+    String? roomCode,
+  }) async {
     return [
       _utilityInvoice(
         id: 11,

@@ -19,10 +19,13 @@ class OnboardingState {
               .map(OnboardingAction.fromJson)
               .toList()
         : <OnboardingAction>[];
-    final completed = json['onBoardingCompleted'] == true;
+    final completed =
+        json['onBoardingCompleted'] == true ||
+        json['on_boarding_completed'] == true;
 
     if (actions.isEmpty && !completed) {
-      final legacyStep = json['nextStep']?.toString();
+      final legacyStep =
+          json['nextStep']?.toString() ?? json['next_step']?.toString();
       if (legacyStep != null && legacyStep != home) {
         actions.add(
           OnboardingAction(
@@ -36,7 +39,9 @@ class OnboardingState {
     }
 
     return OnboardingState(
-      userId: int.tryParse(json['userId']?.toString() ?? ''),
+      userId: int.tryParse(
+        json['userId']?.toString() ?? json['user_id']?.toString() ?? '',
+      ),
       onBoardingCompleted: completed,
       actions: actions,
     );

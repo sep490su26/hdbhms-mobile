@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
+import '../../services/home/current_room_service.dart';
 import '../../services/payment/tenant_invoice_service.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/room_scope.dart';
 import '../../widgets/app_notification_bell.dart';
 import '../../widgets/app_screen_shell.dart';
 import '../../widgets/app_skeleton.dart';
@@ -17,9 +19,15 @@ class PaymentHistoryPage extends StatefulWidget {
   const PaymentHistoryPage({
     super.key,
     this.invoiceService = const TenantInvoiceService(),
+    this.currentRoomService = const CurrentRoomService(),
+    this.roomId,
+    this.roomCode = '',
   });
 
   final TenantInvoiceService invoiceService;
+  final CurrentRoomService currentRoomService;
+  final int? roomId;
+  final String roomCode;
 
   @override
   State<PaymentHistoryPage> createState() => _PaymentHistoryPageState();
@@ -35,7 +43,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
   @override
   void initState() {
     super.initState();
-    _invoicesFuture = widget.invoiceService.fetchMyInvoices();
+    _invoicesFuture = _loadInvoices();
     _searchController.addListener(() => setState(() {}));
   }
 
@@ -47,8 +55,21 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
 
   void _reload() {
     setState(() {
-      _invoicesFuture = widget.invoiceService.fetchMyInvoices();
+      _invoicesFuture = _loadInvoices();
     });
+  }
+
+  Future<List<TenantInvoice>> _loadInvoices() async {
+    final scope = await resolveRoomScope(
+      roomId: widget.roomId,
+      roomCode: widget.roomCode,
+      currentRoomService: widget.currentRoomService,
+    );
+    if (!scope.hasRoom) return const [];
+    return widget.invoiceService.fetchMyInvoices(
+      roomId: scope.roomId,
+      roomCode: scope.roomCode,
+    );
   }
 
   void _clearFilters() {
@@ -145,7 +166,10 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
         onSupportTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => const MaintenanceTicketListScreen(),
+              builder: (context) => MaintenanceTicketListScreen(
+                roomId: widget.roomId,
+                roomCode: widget.roomCode,
+              ),
             ),
           );
         },
@@ -157,7 +181,12 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+          MaterialPageRoute(
+            builder: (context) => TenantRequestScreen(
+              roomId: widget.roomId,
+              roomCode: widget.roomCode,
+            ),
+          ),
         ),
       ),
     );
@@ -742,26 +771,29 @@ class _HistoryCard extends StatelessWidget {
                               color: const Color(0xFFD7FBE4),
                               borderRadius: BorderRadius.circular(999),
                             ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.check_circle_rounded,
-                                  color: Color(0xFF16A34A),
-                                  size: 12,
-                                ),
-                                SizedBox(width: 4),
-                                Text(
-                                  'ĐÃ THANH TOÁN',
-                                  style: TextStyle(
-                                    color: Color(0xFF15803D),
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w900,
-                                    height: 13 / 10,
-                                    letterSpacing: 0.4,
+                            child: const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.check_circle_rounded,
+                                    color: Color(0xFF16A34A),
+                                    size: 12,
                                   ),
-                                ),
-                              ],
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'ĐÃ THANH TOÁN',
+                                    style: TextStyle(
+                                      color: Color(0xFF15803D),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900,
+                                      height: 13 / 10,
+                                      letterSpacing: 0.4,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],

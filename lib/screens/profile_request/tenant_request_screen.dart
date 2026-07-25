@@ -6,9 +6,11 @@ import 'package:hdbhms_mobile/models/change_request/change_request_model.dart';
 import 'package:hdbhms_mobile/models/profile_request/tenant_request_model.dart';
 import 'package:hdbhms_mobile/models/room_transfer/room_transfer_model.dart';
 import 'package:hdbhms_mobile/services/change_request/change_request_service.dart';
+import 'package:hdbhms_mobile/services/home/current_room_service.dart';
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
+import 'package:hdbhms_mobile/utils/room_scope.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
@@ -25,10 +27,16 @@ class TenantRequestScreen extends StatefulWidget {
     super.key,
     this.changeRequestService = const ChangeRequestService(),
     this.roomTransferService = const RoomTransferService(),
+    this.currentRoomService = const CurrentRoomService(),
+    this.roomId,
+    this.roomCode = '',
   });
 
   final ChangeRequestService changeRequestService;
   final RoomTransferService roomTransferService;
+  final CurrentRoomService currentRoomService;
+  final int? roomId;
+  final String roomCode;
 
   @override
   State<TenantRequestScreen> createState() => _TenantRequestScreenState();
@@ -44,6 +52,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
   // ChangeRequest objects keyed by their id, for navigating to detail screens
   final Map<int, ChangeRequest> _changeRequestMap = {};
   final Map<int, ChangeRequest> _holderNominationMap = {};
+  RoomScope _roomScope = const RoomScope();
 
   bool _loadingApi = false;
 
@@ -73,9 +82,44 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
     setState(() => _loadingApi = true);
     var apiRequests = const <ChangeRequest>[];
     var holderNominations = const <RoomTransferRequest>[];
+    final roomScope = await resolveRoomScope(
+      roomId: widget.roomId,
+      roomCode: widget.roomCode,
+      currentRoomService: widget.currentRoomService,
+    );
+
+    if (!mounted) return;
+    _roomScope = roomScope;
+    if (!roomScope.hasRoom) {
+      setState(() {
+        _changeRequestMap.clear();
+        _holderNominationMap.clear();
+        _requests.clear();
+        _loadingApi = false;
+      });
+      return;
+    }
 
     try {
-      apiRequests = await widget.changeRequestService.getMyRequests();
+      final scopedRequests = await widget.changeRequestService.getMyRequests(
+        roomId: roomScope.roomId,
+        roomCode: roomScope.roomCode,
+      );
+      apiRequests = [
+        ...scopedRequests.where(
+          (request) => request.requestType != ChangeRequestType.roomTransfer,
+        ),
+      ];
+      try {
+        final transferRequests = await widget.changeRequestService
+            .getMyRequests(type: ChangeRequestType.roomTransfer);
+        apiRequests = [
+          ...apiRequests,
+          ...await _filterTransferRequestsByRoom(transferRequests, roomScope),
+        ];
+      } catch (_) {
+        // Room-transfer details are optional for rendering other request types.
+      }
     } catch (_) {
       // Keep the screen usable when one request source is temporarily down.
     }
@@ -83,6 +127,9 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
     try {
       holderNominations = await widget.roomTransferService
           .fetchPendingHolderNominations();
+      holderNominations = holderNominations
+          .where((transfer) => _transferMatchesRoom(transfer, roomScope))
+          .toList(growable: false);
     } catch (_) {
       // Older backends may not expose nomination inbox yet.
     }
@@ -152,6 +199,12 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
     final refundStatus = payload['depositRefundStatus']?.toString();
     if (refundStatus == 'RECORDED_BY_MANAGER') {
       return 'Quản lý đã ghi nhận hoàn cọc, vui lòng xác nhận.';
+    }
+    if (refundStatus == 'WAITING_OWNER_APPROVAL') {
+      return 'Khoản hoàn cọc đang chờ chủ trọ duyệt.';
+    }
+    if (refundStatus == 'APPROVED_WAITING_REFUND') {
+      return 'Khoản hoàn cọc đã được duyệt, đang chờ hoàn tiền.';
     }
     final stage = payload['liquidationStage']?.toString();
     if (stage != null && stage.isNotEmpty) {
@@ -330,7 +383,10 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
           Navigator.of(context)
               .push(
                 MaterialPageRoute(
-                  builder: (context) => const BillSelectionPage(),
+                  builder: (context) => BillSelectionPage(
+                    roomId: _activeRoomId,
+                    roomCode: _activeRoomCode,
+                  ),
                 ),
               )
               .then((_) => _loadApiRequests());
@@ -338,7 +394,10 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
         onSupportTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => const MaintenanceTicketListScreen(),
+              builder: (context) => MaintenanceTicketListScreen(
+                roomId: _activeRoomId,
+                roomCode: _activeRoomCode,
+              ),
             ),
           );
         },
@@ -506,6 +565,47 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
 
   Widget _sectionTitle(String text) {
     return Text(text, style: AppTypography.sectionTitle);
+  }
+
+  int? get _activeRoomId => _roomScope.roomId ?? widget.roomId;
+
+  String get _activeRoomCode =>
+      _roomScope.roomCode.isNotEmpty ? _roomScope.roomCode : widget.roomCode;
+
+  bool _transferMatchesRoom(RoomTransferRequest transfer, RoomScope scope) {
+    final roomId = scope.roomId;
+    if ((roomId ?? 0) > 0 &&
+        (transfer.oldRoomId == roomId || transfer.targetRoomId == roomId)) {
+      return true;
+    }
+    final roomCode = scope.roomCode.trim().toLowerCase();
+    if (roomCode.isEmpty) return false;
+    return [
+      transfer.oldRoomCode,
+      transfer.targetRoomCode,
+    ].any((code) => code.trim().toLowerCase() == roomCode);
+  }
+
+  Future<List<ChangeRequest>> _filterTransferRequestsByRoom(
+    List<ChangeRequest> requests,
+    RoomScope scope,
+  ) async {
+    final filtered = <ChangeRequest>[];
+    for (final request in requests) {
+      final transferId = _extractTransferId(request);
+      if (transferId == null || transferId <= 0) continue;
+      try {
+        final transfer = await widget.roomTransferService.getTransferRequest(
+          transferId,
+        );
+        if (_transferMatchesRoom(transfer, scope)) {
+          filtered.add(request);
+        }
+      } catch (_) {
+        // Skip transfers that cannot be resolved for this room scope.
+      }
+    }
+    return filtered;
   }
 }
 
@@ -1656,12 +1756,14 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
           value: p['oldEndDate']?.toString() ?? 'Chưa có thông tin',
         ),
         _DetailRow(
-          label: 'Ngày bắt đầu mới',
-          value: p['newStartDate']?.toString() ?? 'Chưa có thông tin',
+          label: 'Ngày kết thúc sau gia hạn',
+          value: p['newEndDate']?.toString() ?? 'Chưa có thông tin',
         ),
         _DetailRow(
-          label: 'Ngày kết thúc mới',
-          value: p['newEndDate']?.toString() ?? 'Chưa có thông tin',
+          label: 'Thời hạn gia hạn',
+          value: p['renewalTermMonths'] == null
+              ? 'Chưa có thông tin'
+              : '${p['renewalTermMonths']} tháng',
         ),
         _DetailRow(
           label: 'Tiền thuê',
@@ -1864,9 +1966,12 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
     return switch (value) {
       'NOT_REQUIRED' => 'Không cần hoàn cọc',
       'PENDING' => 'Chờ quản lý ghi nhận',
+      'WAITING_OWNER_APPROVAL' => 'Chờ chủ trọ duyệt',
+      'APPROVED_WAITING_REFUND' => 'Đã duyệt, chờ hoàn tiền',
       'RECORDED_BY_MANAGER' => 'Chờ bạn xác nhận',
       'TENANT_CONFIRMED' => 'Bạn đã xác nhận nhận tiền',
       'DISPUTED' => 'Đang phản hồi/tranh chấp',
+      'OWNER_REJECTED' => 'Chủ trọ từ chối',
       'OVERRIDDEN' => 'Chủ sở hữu đã xác nhận',
       'CANCELLED' => 'Đã hủy',
       _ => value,
@@ -1877,7 +1982,10 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
     if (value == 'TENANT_CONFIRMED' || value == 'NOT_REQUIRED') {
       return const Color(0xFF16A34A);
     }
-    if (value == 'RECORDED_BY_MANAGER') return AppColors.deepBlue;
+    if (value == 'RECORDED_BY_MANAGER' || value == 'APPROVED_WAITING_REFUND') {
+      return AppColors.deepBlue;
+    }
+    if (value == 'WAITING_OWNER_APPROVAL') return const Color(0xFFD97706);
     if (value == 'DISPUTED') return const Color(0xFFDC2626);
     if (value == 'OVERRIDDEN') return const Color(0xFF7C3AED);
     return AppColors.bodyText;

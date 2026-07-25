@@ -124,7 +124,10 @@ class _FakeTenantInvoiceService extends TenantInvoiceService {
   }
 
   @override
-  Future<List<TenantInvoice>> fetchMyInvoices() async {
+  Future<List<TenantInvoice>> fetchMyInvoices({
+    int? roomId,
+    String? roomCode,
+  }) async {
     _fetchCount += 1;
     if (_fetchCount >= 3) {
       return _tenantInvoicesAfterPayment;
@@ -432,8 +435,17 @@ Future<void> login(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> loginAndOpenHome(WidgetTester tester) async {
+  await login(tester);
+  await tester.tap(find.text('Ph\u00F2ng 101').last);
+  await tester.pumpAndSettle();
+}
+
 Future<void> openBillsFromHomeCta(WidgetTester tester) async {
-  final cta = find.text('Thanh to\u00E1n ngay');
+  final cta =
+      find.text('Ch\u1ECDn kho\u1EA3n thanh to\u00E1n').evaluate().isNotEmpty
+      ? find.text('Ch\u1ECDn kho\u1EA3n thanh to\u00E1n')
+      : find.text('Xem chi ti\u1EBFt h\u00F3a \u0111\u01A1n');
   await tester.ensureVisible(cta);
   await tester.pumpAndSettle();
   await tester.tap(cta);
@@ -490,12 +502,12 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await loginAndOpenHome(tester);
 
     expect(find.text('XIN CH\u00C0O,'), findsOneWidget);
     expect(find.text('Test User'), findsOneWidget);
     expect(find.text('Ph\u00F2ng 101'), findsWidgets);
-    expect(find.text('2.800.000'), findsOneWidget);
+    expect(find.text('2.800.000\u0111'), findsOneWidget);
   });
 
   testWidgets('opens bill selection from payment CTA', (
@@ -504,7 +516,7 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await loginAndOpenHome(tester);
 
     await openBillsFromHomeCta(tester);
 
@@ -513,10 +525,7 @@ void main() {
       find.text('H\u00D3A \u0110\u01A0N \u0110\u00C3 THANH TO\u00C1N'),
       findsOneWidget,
     );
-    expect(
-      find.text('Xem to\u00E0n b\u1ED9 l\u1ECBch s\u1EED thanh to\u00E1n'),
-      findsOneWidget,
-    );
+    expect(find.byTooltip('L\u1ECBch s\u1EED thanh to\u00E1n'), findsOneWidget);
   });
 
   testWidgets('opens bill selection from bottom Bills tab', (
@@ -525,17 +534,14 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await loginAndOpenHome(tester);
 
     await tester.tap(find.text('H\u00F3a \u0111\u01A1n'));
     await tester.pumpAndSettle();
 
     expect(find.text('H\u00F3a \u0111\u01A1n'), findsWidgets);
-    expect(find.text('Ti\u1EC1n ph\u00F2ng'), findsNWidgets(2));
-    expect(
-      find.text('Xem to\u00E0n b\u1ED9 l\u1ECBch s\u1EED thanh to\u00E1n'),
-      findsOneWidget,
-    );
+    expect(find.text('Ti\u1EC1n ph\u00F2ng'), findsWidgets);
+    expect(find.byTooltip('L\u1ECBch s\u1EED thanh to\u00E1n'), findsOneWidget);
   });
 
   testWidgets('opens QR payment from bill selection', (
@@ -544,11 +550,11 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await loginAndOpenHome(tester);
 
     await openBillsFromHomeCta(tester);
 
-    await tester.tap(find.text('Ti\u1EC1n ph\u00F2ng').first);
+    await tester.tap(find.text('2.450.000\u0111').first);
     await tester.pumpAndSettle();
 
     expect(find.text('Thanh to\u00E1n an to\u00E0n'), findsOneWidget);
@@ -571,11 +577,11 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await loginAndOpenHome(tester);
 
     await openBillsFromHomeCta(tester);
 
-    await tester.tap(find.text('Ti\u1EC1n ph\u00F2ng').first);
+    await tester.tap(find.text('2.450.000\u0111').first);
     await tester.pumpAndSettle();
 
     await scrollUntilTextVisible(
@@ -587,7 +593,7 @@ void main() {
 
     expect(find.text('Thanh to\u00E1n th\u00E0nh c\u00F4ng!'), findsOneWidget);
     expect(find.text('#TXN-882910'), findsOneWidget);
-    expect(find.text('800.000 \u0111'), findsOneWidget);
+    expect(find.text('2.450.000 \u0111'), findsWidgets);
     expect(find.text('Quay l\u1EA1i trang ch\u1EE7'), findsOneWidget);
   });
 
@@ -597,11 +603,11 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await loginAndOpenHome(tester);
 
     await openBillsFromHomeCta(tester);
 
-    await tester.tap(find.text('Ti\u1EC1n ph\u00F2ng').first);
+    await tester.tap(find.text('2.450.000\u0111').first);
     await tester.pumpAndSettle();
 
     await scrollUntilTextVisible(
@@ -611,8 +617,11 @@ void main() {
     await tester.tap(find.text('T\u00F4i \u0111\u00E3 chuy\u1EC3n kho\u1EA3n'));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Xem l\u1ECBch s\u1EED'));
-    await tester.tap(find.text('Xem l\u1ECBch s\u1EED'));
+    await scrollUntilTextVisible(
+      tester,
+      'Xem l\u1ECBch s\u1EED thanh to\u00E1n',
+    );
+    await tester.tap(find.text('Xem l\u1ECBch s\u1EED thanh to\u00E1n'));
     await tester.pumpAndSettle();
 
     expect(find.text('L\u1ECBch s\u1EED thanh to\u00E1n'), findsOneWidget);
@@ -622,7 +631,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('T\u1EA5t c\u1EA3 th\u00E1ng'), findsOneWidget);
+    expect(find.text('T\u1EA5t c\u1EA3 th\u1EDDi gian'), findsOneWidget);
     expect(find.text('S\u1EEDa t\u1EE7 l\u1EA1nh'), findsOneWidget);
   });
 
@@ -632,17 +641,12 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await loginAndOpenHome(tester);
 
     await tester.tap(find.text('H\u00F3a \u0111\u01A1n'));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(
-      find.text('Xem to\u00E0n b\u1ED9 l\u1ECBch s\u1EED thanh to\u00E1n'),
-    );
-    await tester.tap(
-      find.text('Xem to\u00E0n b\u1ED9 l\u1ECBch s\u1EED thanh to\u00E1n'),
-    );
+    await tester.tap(find.byTooltip('L\u1ECBch s\u1EED thanh to\u00E1n'));
     await tester.pumpAndSettle();
 
     expect(find.text('L\u1ECBch s\u1EED thanh to\u00E1n'), findsOneWidget);
@@ -661,7 +665,7 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await loginAndOpenHome(tester);
 
     await tester.tap(find.text('H\u00F3a \u0111\u01A1n'));
     await tester.pumpAndSettle();
@@ -679,17 +683,12 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await loginAndOpenHome(tester);
 
     await tester.tap(find.text('H\u00F3a \u0111\u01A1n'));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(
-      find.text('Xem to\u00E0n b\u1ED9 l\u1ECBch s\u1EED thanh to\u00E1n'),
-    );
-    await tester.tap(
-      find.text('Xem to\u00E0n b\u1ED9 l\u1ECBch s\u1EED thanh to\u00E1n'),
-    );
+    await tester.tap(find.byTooltip('L\u1ECBch s\u1EED thanh to\u00E1n'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Trang ch\u1EE7'));

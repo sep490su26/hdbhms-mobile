@@ -719,52 +719,56 @@ class _PortfolioMetric extends StatelessWidget {
     final iconBackgroundColor = color.withValues(alpha: 0.14);
 
     return Container(
-      height: 88,
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      height: 70,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: accentColor),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 26,
-            height: 26,
-            decoration: BoxDecoration(
-              color: iconBackgroundColor,
-              borderRadius: BorderRadius.circular(8),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: iconBackgroundColor,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: 13),
             ),
-            child: Icon(icon, color: color, size: 15),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: color,
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-              height: 19 / 16,
+            const SizedBox(height: 3),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: color,
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                height: 17 / 14,
+              ),
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            maxLines: 2,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: AppColors.bodyText,
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              height: 11 / 9,
+            const SizedBox(height: 1),
+            Text(
+              label,
+              maxLines: 2,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.bodyText,
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                height: 11 / 9,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

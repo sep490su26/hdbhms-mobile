@@ -6,9 +6,11 @@ import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart
 
 import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
+import 'package:hdbhms_mobile/services/home/current_room_service.dart';
 import 'package:hdbhms_mobile/services/maintenance/maintenance_ticket_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
+import 'package:hdbhms_mobile/utils/room_scope.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
@@ -23,9 +25,17 @@ class MaintenanceTicketListScreen extends StatefulWidget {
   const MaintenanceTicketListScreen({
     super.key,
     this.ticketService = const MaintenanceTicketService(),
+    this.currentRoomService = const CurrentRoomService(),
+    this.roomId,
+    this.roomCode = '',
+    this.notificationInitialUnreadCount,
   });
 
   final MaintenanceTicketService ticketService;
+  final CurrentRoomService currentRoomService;
+  final int? roomId;
+  final String roomCode;
+  final int? notificationInitialUnreadCount;
 
   @override
   State<MaintenanceTicketListScreen> createState() =>
@@ -36,6 +46,7 @@ class _MaintenanceTicketListScreenState
     extends State<MaintenanceTicketListScreen> {
   late Future<List<MaintenanceTicketModel>> _ticketsFuture;
   late final TextEditingController _keywordController;
+  RoomScope _roomScope = const RoomScope();
   String _selectedStatus = _allOption;
   String _selectedCategory = _allOption;
 
@@ -52,11 +63,18 @@ class _MaintenanceTicketListScreenState
     super.dispose();
   }
 
-  Future<List<MaintenanceTicketModel>> _loadTickets() {
+  Future<List<MaintenanceTicketModel>> _loadTickets() async {
+    _roomScope = await resolveRoomScope(
+      roomId: widget.roomId,
+      roomCode: widget.roomCode,
+      currentRoomService: widget.currentRoomService,
+    );
+    if (!_roomScope.hasRoom) return const [];
     return widget.ticketService.getTickets(
       keyword: _keywordController.text,
       status: _selectedStatus,
       category: _selectedCategory,
+      roomId: _roomScope.roomId,
     );
   }
 
@@ -98,6 +116,7 @@ class _MaintenanceTicketListScreenState
           ticketId: ticket.id,
           ticket: ticket,
           ticketService: widget.ticketService,
+          notificationInitialUnreadCount: widget.notificationInitialUnreadCount,
         ),
       ),
     );
@@ -184,7 +203,12 @@ class _MaintenanceTicketListScreenState
         onSupportTap: _refresh,
         onBillsTap: () {
           Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const BillSelectionPage()),
+            MaterialPageRoute(
+              builder: (context) => BillSelectionPage(
+                roomId: _activeRoomId,
+                roomCode: _activeRoomCode,
+              ),
+            ),
           );
         },
         onProfileTap: () {
@@ -195,11 +219,21 @@ class _MaintenanceTicketListScreenState
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+          MaterialPageRoute(
+            builder: (context) => TenantRequestScreen(
+              roomId: _activeRoomId,
+              roomCode: _activeRoomCode,
+            ),
+          ),
         ),
       ),
     );
   }
+
+  int? get _activeRoomId => _roomScope.roomId ?? widget.roomId;
+
+  String get _activeRoomCode =>
+      _roomScope.roomCode.isNotEmpty ? _roomScope.roomCode : widget.roomCode;
 
   Widget _buildHeader() {
     return Container(
@@ -236,9 +270,10 @@ class _MaintenanceTicketListScreenState
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 44, height: 44),
-            icon: const AppNotificationBell(
+            icon: AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: 24,
+              initialUnreadCount: widget.notificationInitialUnreadCount,
             ),
             tooltip: 'Thông báo',
           ),
@@ -386,10 +421,7 @@ class _FilterPanel extends StatelessWidget {
           controller: keywordController,
           textInputAction: TextInputAction.search,
           onSubmitted: (_) => onFilter(),
-          decoration: _inputDecoration(
-            hintText: 'Nhập mã #SC-XXXX...',
-            prefixIcon: Icons.search_rounded,
-          ),
+          decoration: _inputDecoration(prefixIcon: Icons.search_rounded),
         ),
         const SizedBox(height: 14),
         const _FieldLabel('Trạng thái'),
@@ -471,7 +503,6 @@ class _TicketFilterPicker extends StatelessWidget {
     final hasSelection = value != _allOption;
     final selectedIcon = _ticketFilterOptionIcon(label, value) ?? icon;
     return Semantics(
-      key: key,
       button: true,
       label: '$label: $value',
       child: Material(

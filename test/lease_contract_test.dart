@@ -16,12 +16,25 @@ class _FakeLeaseContractService extends LeaseContractService {
     this.error,
     this.submitRenewalError,
     this.onSubmitLiquidation,
+    this.onSubmitRenewal,
   });
 
   final LeaseContract? contract;
   final Object? error;
   final Object? submitRenewalError;
-  final void Function(int contractId, String reason)? onSubmitLiquidation;
+  final void Function(int contractId, DateTime? liquidationDate, String reason)?
+  onSubmitLiquidation;
+  final void Function(
+    int contractId,
+    DateTime newStartDate,
+    DateTime newEndDate,
+    int renewalTermMonths,
+    num monthlyRent,
+    int paymentCycleMonths,
+    num depositAmount,
+    String note,
+  )?
+  onSubmitRenewal;
 
   @override
   Future<LeaseContract> getMyActiveContract({int? tenantId}) async {
@@ -45,9 +58,10 @@ class _FakeLeaseContractService extends LeaseContractService {
   @override
   Future<void> submitLiquidationRequest({
     required int contractId,
+    DateTime? liquidationDate,
     String reason = '',
   }) async {
-    onSubmitLiquidation?.call(contractId, reason);
+    onSubmitLiquidation?.call(contractId, liquidationDate, reason);
   }
 
   @override
@@ -55,6 +69,7 @@ class _FakeLeaseContractService extends LeaseContractService {
     required int contractId,
     required DateTime newStartDate,
     required DateTime newEndDate,
+    required int renewalTermMonths,
     required num monthlyRent,
     required int paymentCycleMonths,
     required num depositAmount,
@@ -64,6 +79,16 @@ class _FakeLeaseContractService extends LeaseContractService {
     if (error != null) {
       throw error;
     }
+    onSubmitRenewal?.call(
+      contractId,
+      newStartDate,
+      newEndDate,
+      renewalTermMonths,
+      monthlyRent,
+      paymentCycleMonths,
+      depositAmount,
+      note,
+    );
   }
 }
 
@@ -212,6 +237,44 @@ void main() {
     );
   });
 
+  test('LeaseContractService submits liquidation date', () async {
+    SharedPreferences.setMockInitialValues({
+      AuthService.accessTokenKey: 'token-123',
+      AuthService.tenantIdKey: 23,
+    });
+
+    final service = LeaseContractService(
+      client: MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(
+          request.url.path,
+          '/api/v1/lease-contracts/9/liquidation-requests',
+        );
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['liquidationDate'], '2026-08-15');
+        expect(body['reason'], 'Can thanh ly som');
+
+        return http.Response(
+          jsonEncode({
+            'data': {
+              'id': 99,
+              'requestType': 'CONTRACT_LIQUIDATION',
+              'status': 'PENDING',
+            },
+          }),
+          201,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }),
+    );
+
+    await service.submitLiquidationRequest(
+      contractId: 9,
+      liquidationDate: DateTime(2026, 8, 15),
+      reason: ' Can thanh ly som ',
+    );
+  });
+
   testWidgets('contract screen shows expiring warning and room 201 data', (
     tester,
   ) async {
@@ -240,6 +303,7 @@ void main() {
     tester,
   ) async {
     int? submittedContractId;
+    DateTime? submittedLiquidationDate;
     String? submittedReason;
     final contract = _contract(
       endDate: DateTime.now().add(const Duration(days: 20)),
@@ -250,8 +314,9 @@ void main() {
         home: LeaseContractScreen(
           contractService: _FakeLeaseContractService(
             contract: contract,
-            onSubmitLiquidation: (contractId, reason) {
+            onSubmitLiquidation: (contractId, liquidationDate, reason) {
               submittedContractId = contractId;
+              submittedLiquidationDate = liquidationDate;
               submittedReason = reason;
             },
           ),
@@ -274,6 +339,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(submittedContractId, 9);
+    expect(submittedLiquidationDate, isNotNull);
     expect(submittedReason, 'Can thanh ly som');
   });
 
@@ -306,6 +372,103 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Hợp đồng đã có yêu cầu đang chờ duyệt.'), findsWidgets);
+  });
+
+  testWidgets('contract screen sends custom extension term months', (
+    tester,
+  ) async {
+    int? submittedMonths;
+    DateTime? submittedStartDate;
+    DateTime? submittedEndDate;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LeaseContractScreen(
+          contractService: _FakeLeaseContractService(
+            contract: _contract(endDate: DateTime(2026, 7, 31)),
+            onSubmitRenewal:
+                (
+                  contractId,
+                  newStartDate,
+                  newEndDate,
+                  renewalTermMonths,
+                  monthlyRent,
+                  paymentCycleMonths,
+                  depositAmount,
+                  note,
+                ) {
+                  submittedMonths = renewalTermMonths;
+                  submittedStartDate = newStartDate;
+                  submittedEndDate = newEndDate;
+                },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Gia hạn\nhợp đồng'));
+    await tester.tap(find.text('Gia hạn\nhợp đồng'));
+    await tester.pumpAndSettle();
+
+    final termField = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextField &&
+          widget.decoration?.labelText == 'Thời hạn gia hạn (tháng)',
+    );
+    await tester.enterText(termField, '18');
+    await tester.tap(find.text('Gửi yêu cầu phê duyệt'));
+    await tester.pumpAndSettle();
+
+    expect(submittedMonths, 18);
+    expect(submittedStartDate, DateTime(2026, 8, 1));
+    expect(submittedEndDate, DateTime(2028, 1, 31));
+  });
+
+  testWidgets('contract screen blocks extension term under 6 months', (
+    tester,
+  ) async {
+    int? submittedMonths;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LeaseContractScreen(
+          contractService: _FakeLeaseContractService(
+            contract: _contract(endDate: DateTime(2026, 7, 31)),
+            onSubmitRenewal:
+                (
+                  contractId,
+                  newStartDate,
+                  newEndDate,
+                  renewalTermMonths,
+                  monthlyRent,
+                  paymentCycleMonths,
+                  depositAmount,
+                  note,
+                ) {
+                  submittedMonths = renewalTermMonths;
+                },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Gia hạn\nhợp đồng'));
+    await tester.tap(find.text('Gia hạn\nhợp đồng'));
+    await tester.pumpAndSettle();
+
+    final termField = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextField &&
+          widget.decoration?.labelText == 'Thời hạn gia hạn (tháng)',
+    );
+    await tester.enterText(termField, '5');
+    await tester.tap(find.text('Gửi yêu cầu phê duyệt'));
+    await tester.pumpAndSettle();
+
+    expect(submittedMonths, isNull);
+    expect(find.text('Thời hạn gia hạn tối thiểu 6 tháng.'), findsWidgets);
   });
 
   testWidgets('contract screen shows empty state with retry', (tester) async {

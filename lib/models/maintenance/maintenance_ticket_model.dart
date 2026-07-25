@@ -13,6 +13,7 @@ class MaintenanceTicketModel {
     this.roomCode = '',
     this.priority = TicketPriority.medium,
     this.ticketScope = TicketScope.tenantRoom,
+    this.repairRequested = true,
     this.ticketStatusLabel = '',
     this.billingStatus = '',
     this.billingStatusLabel = '',
@@ -37,6 +38,7 @@ class MaintenanceTicketModel {
   final String roomCode;
   final TicketPriority priority;
   final TicketScope ticketScope;
+  final bool repairRequested;
   final String ticketStatusLabel;
   final String billingStatus;
   final String billingStatusLabel;
@@ -73,6 +75,7 @@ class MaintenanceTicketModel {
     String? roomCode,
     TicketPriority? priority,
     TicketScope? ticketScope,
+    bool? repairRequested,
     String? ticketStatusLabel,
     String? billingStatus,
     String? billingStatusLabel,
@@ -97,6 +100,7 @@ class MaintenanceTicketModel {
       roomCode: roomCode ?? this.roomCode,
       priority: priority ?? this.priority,
       ticketScope: ticketScope ?? this.ticketScope,
+      repairRequested: repairRequested ?? this.repairRequested,
       ticketStatusLabel: ticketStatusLabel ?? this.ticketStatusLabel,
       billingStatus: billingStatus ?? this.billingStatus,
       billingStatusLabel: billingStatusLabel ?? this.billingStatusLabel,
@@ -114,23 +118,27 @@ class MaintenanceTicketModel {
   factory MaintenanceTicketModel.fromJson(Map<String, dynamic> json) {
     return MaintenanceTicketModel(
       id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
-      code: json['ticketCode']?.toString() ?? json['code']?.toString() ?? '',
+      code: _firstString(json, ['ticketCode', 'ticket_code', 'code']),
       category: TicketCategory.fromBackend(json['category']?.toString() ?? ''),
       title: json['title']?.toString() ?? '',
       description: _maintenanceDisplayText(
         json['description']?.toString() ?? '',
       ),
       createdDate:
-          DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+          DateTime.tryParse(_firstString(json, ['createdAt', 'created_at'])) ??
           DateTime.now(),
       status: TicketStatus.fromBackend(json['status']?.toString() ?? ''),
-      roomId: int.tryParse(json['roomId']?.toString() ?? ''),
-      roomCode: json['roomCode']?.toString() ?? '',
+      roomId: _asInt(json['roomId'] ?? json['room_id']),
+      roomCode: _firstString(json, ['roomCode', 'room_code']),
       priority: TicketPriority.fromBackend(
         json['severity']?.toString() ?? json['priority']?.toString() ?? '',
       ),
       ticketScope: TicketScope.fromBackend(
         json['scope']?.toString() ?? json['ticketScope']?.toString() ?? '',
+      ),
+      repairRequested: _asBoolOrDefault(
+        json['repair_requested'] ?? json['repairRequested'],
+        true,
       ),
       ticketStatusLabel: _firstString(json, [
         'ticket_status_label',
@@ -162,6 +170,7 @@ class CreateMaintenanceTicketRequest {
     required this.title,
     required this.description,
     required this.attachments,
+    this.repairRequested = true,
     this.ticketScope = TicketScope.tenantRoom,
     this.priority = TicketPriority.medium,
   });
@@ -170,6 +179,7 @@ class CreateMaintenanceTicketRequest {
   final TicketCategory category;
   final String title;
   final String description;
+  final bool repairRequested;
   final TicketScope ticketScope;
   final TicketPriority priority;
   final List<MaintenanceAttachment> attachments;
@@ -180,6 +190,7 @@ class CreateMaintenanceTicketRequest {
       'category': category.key,
       'title': title,
       'description': description,
+      'repairRequested': repairRequested,
       'ticketScope': ticketScope.key,
       'priority': priority.key,
       'attachments': attachments
@@ -231,6 +242,7 @@ class MaintenanceTicketDetail {
     required this.createdAt,
     this.propertyName = '',
     this.ticketScope = TicketScope.tenantRoom,
+    this.repairRequested = true,
     this.rejectionReason = '',
     this.beforeAttachments = const [],
     this.afterAttachments = const [],
@@ -263,6 +275,7 @@ class MaintenanceTicketDetail {
   final DateTime createdAt;
   final String propertyName;
   final TicketScope ticketScope;
+  final bool repairRequested;
   final String rejectionReason;
   final List<TicketAttachment> beforeAttachments;
   final List<TicketAttachment> afterAttachments;
@@ -299,6 +312,7 @@ class MaintenanceTicketDetail {
     TicketStatus? status,
     String? propertyName,
     TicketScope? ticketScope,
+    bool? repairRequested,
     String? rejectionReason,
     List<TicketAttachment>? beforeAttachments,
     List<TicketAttachment>? afterAttachments,
@@ -331,6 +345,7 @@ class MaintenanceTicketDetail {
       createdAt: createdAt,
       propertyName: propertyName ?? this.propertyName,
       ticketScope: ticketScope ?? this.ticketScope,
+      repairRequested: repairRequested ?? this.repairRequested,
       rejectionReason: rejectionReason ?? this.rejectionReason,
       beforeAttachments: beforeAttachments ?? this.beforeAttachments,
       afterAttachments: afterAttachments ?? this.afterAttachments,
@@ -365,6 +380,7 @@ class MaintenanceTicketDetail {
       priority: ticket.priority,
       createdAt: ticket.createdDate,
       ticketScope: ticket.ticketScope,
+      repairRequested: ticket.repairRequested,
       ticketStatusLabel: ticket.ticketStatusLabel,
       billingStatus: ticket.billingStatus,
       billingStatusLabel: ticket.billingStatusLabel,
@@ -417,14 +433,17 @@ class MaintenanceTicketDetail {
 
     return MaintenanceTicketDetail(
       id: _asInt(json['id']) ?? 0,
-      ticketCode:
-          json['ticketCode']?.toString() ?? json['code']?.toString() ?? '',
+      ticketCode: _firstString(json, ['ticketCode', 'ticket_code', 'code']),
       status: status,
-      roomId: _asInt(json['roomId']) ?? 0,
-      roomCode: json['roomCode']?.toString() ?? '',
-      propertyName: json['propertyName']?.toString() ?? '',
+      roomId: _asInt(json['roomId'] ?? json['room_id']) ?? 0,
+      roomCode: _firstString(json, ['roomCode', 'room_code']),
+      propertyName: _firstString(json, ['propertyName', 'property_name']),
       ticketScope: TicketScope.fromBackend(
         json['scope']?.toString() ?? json['ticketScope']?.toString() ?? '',
+      ),
+      repairRequested: _asBoolOrDefault(
+        json['repair_requested'] ?? json['repairRequested'],
+        true,
       ),
       category: category,
       categoryName: category.label,
@@ -436,9 +455,12 @@ class MaintenanceTicketDetail {
         json['severity']?.toString() ?? json['priority']?.toString() ?? '',
       ),
       createdAt:
-          DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+          DateTime.tryParse(_firstString(json, ['createdAt', 'created_at'])) ??
           DateTime.now(),
-      rejectionReason: json['rejectionReason']?.toString() ?? '',
+      rejectionReason: _firstString(json, [
+        'rejectionReason',
+        'rejection_reason',
+      ]),
       beforeAttachments: before,
       afterAttachments: after,
       repairInfo: repairInfo,
@@ -850,6 +872,14 @@ num? _asNum(Object? value) {
 bool _asBool(Object? value) {
   if (value is bool) return value;
   final normalized = value?.toString().trim().toLowerCase();
+  return normalized == 'true' || normalized == '1';
+}
+
+bool _asBoolOrDefault(Object? value, bool fallback) {
+  if (value == null) return fallback;
+  if (value is bool) return value;
+  final normalized = value.toString().trim().toLowerCase();
+  if (normalized.isEmpty) return fallback;
   return normalized == 'true' || normalized == '1';
 }
 

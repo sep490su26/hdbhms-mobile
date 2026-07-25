@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../models/payment/tenant_invoice_model.dart';
+import '../../services/home/current_room_service.dart';
 import '../../services/payment/tenant_invoice_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
+import '../../utils/room_scope.dart';
 import '../../widgets/tenant_bottom_navigation.dart';
 import '../../widgets/app_screen_shell.dart';
 import '../../widgets/app_notification_bell.dart';
@@ -20,9 +22,15 @@ class BillSelectionPage extends StatefulWidget {
   const BillSelectionPage({
     super.key,
     this.invoiceService = const TenantInvoiceService(),
+    this.currentRoomService = const CurrentRoomService(),
+    this.roomId,
+    this.roomCode = '',
   });
 
   final TenantInvoiceService invoiceService;
+  final CurrentRoomService currentRoomService;
+  final int? roomId;
+  final String roomCode;
 
   @override
   State<BillSelectionPage> createState() => _BillSelectionPageState();
@@ -38,7 +46,7 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
   @override
   void initState() {
     super.initState();
-    _invoicesFuture = widget.invoiceService.fetchMyInvoices();
+    _invoicesFuture = _loadInvoices();
   }
 
   @override
@@ -99,7 +107,10 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
         onSupportTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => const MaintenanceTicketListScreen(),
+              builder: (context) => MaintenanceTicketListScreen(
+                roomId: widget.roomId,
+                roomCode: widget.roomCode,
+              ),
             ),
           );
         },
@@ -111,7 +122,12 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+          MaterialPageRoute(
+            builder: (context) => TenantRequestScreen(
+              roomId: widget.roomId,
+              roomCode: widget.roomCode,
+            ),
+          ),
         ),
       ),
     );
@@ -119,15 +135,32 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
 
   void _reloadInvoices() {
     setState(() {
-      _invoicesFuture = widget.invoiceService.fetchMyInvoices();
+      _invoicesFuture = _loadInvoices();
     });
+  }
+
+  Future<List<TenantInvoice>> _loadInvoices() async {
+    final scope = await resolveRoomScope(
+      roomId: widget.roomId,
+      roomCode: widget.roomCode,
+      currentRoomService: widget.currentRoomService,
+    );
+    if (!scope.hasRoom) return const [];
+    return widget.invoiceService.fetchMyInvoices(
+      roomId: scope.roomId,
+      roomCode: scope.roomCode,
+    );
   }
 
   void _openPaymentHistory() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) =>
-            PaymentHistoryPage(invoiceService: widget.invoiceService),
+        builder: (context) => PaymentHistoryPage(
+          invoiceService: widget.invoiceService,
+          currentRoomService: widget.currentRoomService,
+          roomId: widget.roomId,
+          roomCode: widget.roomCode,
+        ),
       ),
     );
   }
@@ -1070,7 +1103,10 @@ class _PendingBillCard extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Row(
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(
@@ -1092,19 +1128,15 @@ class _PendingBillCard extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
                               _InvoiceTypePill(invoice: invoice),
-                              const Spacer(),
-                              Flexible(
-                                child: Text(
-                                  'Hạn: ${_formatDate(invoice.dueDate)}',
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: AppColors.bodyText,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                    height: 15 / 11,
-                                  ),
+                              Text(
+                                'Hạn: ${_formatDate(invoice.dueDate)}',
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: AppColors.bodyText,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  height: 15 / 11,
                                 ),
                               ),
                             ],

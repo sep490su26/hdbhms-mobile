@@ -47,6 +47,7 @@ class _CreateMaintenanceTicketScreenState
   CurrentRentedRoom? _currentRoom;
   String? _attachmentError;
   bool _isSubmitting = false;
+  bool _repairRequested = true;
   final List<MaintenanceAttachment> _attachments = [];
 
   ImagePicker get _imagePicker => widget.imagePicker ?? ImagePicker();
@@ -240,6 +241,7 @@ class _CreateMaintenanceTicketScreenState
             _descriptionController.text,
           ),
           description: _descriptionController.text.trim(),
+          repairRequested: _repairRequested,
           attachments: List.unmodifiable(_attachments),
         ),
       );
@@ -438,6 +440,18 @@ class _CreateMaintenanceTicketScreenState
                       ),
                     ),
                   ],
+                  const SizedBox(height: 16),
+                  const _FieldLabel('Mong muốn xử lý'),
+                  const SizedBox(height: 7),
+                  _RepairIntentSelector(
+                    repairRequested: _repairRequested,
+                    enabled: !_isSubmitting,
+                    onChanged: (value) {
+                      setState(() {
+                        _repairRequested = value;
+                      });
+                    },
+                  ),
                   const SizedBox(height: 32),
                   SizedBox(
                     width: double.infinity,
@@ -555,6 +569,126 @@ class _IntroCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _RepairIntentSelector extends StatelessWidget {
+  const _RepairIntentSelector({
+    required this.repairRequested,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final bool repairRequested;
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _RepairIntentOption(
+            selected: repairRequested,
+            enabled: enabled,
+            icon: Icons.handyman_outlined,
+            title: 'Cần sửa chữa',
+            subtitle: 'Nhờ quản lý xử lý sự cố',
+            onTap: () => onChanged(true),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _RepairIntentOption(
+            selected: !repairRequested,
+            enabled: enabled,
+            icon: Icons.info_outline_rounded,
+            title: 'Chỉ báo sự cố',
+            subtitle: 'Ghi nhận để quản lý theo dõi',
+            onTap: () => onChanged(false),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RepairIntentOption extends StatelessWidget {
+  const _RepairIntentOption({
+    required this.selected,
+    required this.enabled,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final bool selected;
+  final bool enabled;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = selected ? AppColors.deepBlue : AppColors.cardBorder;
+    return Material(
+      color: selected
+          ? AppColors.deepBlue.withValues(alpha: 0.07)
+          : AppColors.surface,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 92),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: borderColor, width: selected ? 1.5 : 1),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, color: AppColors.deepBlue, size: 20),
+                  const Spacer(),
+                  Icon(
+                    selected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    color: selected ? AppColors.deepBlue : AppColors.bodyText,
+                    size: 18,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: AppColors.inputText,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  height: 16 / 13,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: AppColors.bodyText,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  height: 15 / 11,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -22,6 +22,7 @@ class MaintenanceTicketDetailScreen extends StatefulWidget {
     this.role = TicketUserRole.tenant,
     this.ticketService = const MaintenanceTicketService(),
     this.imagePicker,
+    this.notificationInitialUnreadCount,
   });
 
   final int ticketId;
@@ -29,6 +30,7 @@ class MaintenanceTicketDetailScreen extends StatefulWidget {
   final TicketUserRole role;
   final MaintenanceTicketService ticketService;
   final ImagePicker? imagePicker;
+  final int? notificationInitialUnreadCount;
 
   @override
   State<MaintenanceTicketDetailScreen> createState() =>
@@ -325,9 +327,10 @@ class _MaintenanceTicketDetailScreenState
                 builder: (context) => const NotificationListScreen(),
               ),
             ),
-            icon: const AppNotificationBell(
+            icon: AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: AppColors.topBarIconSize,
+              initialUnreadCount: widget.notificationInitialUnreadCount,
             ),
             tooltip: 'Thông báo',
           ),
@@ -547,6 +550,11 @@ class _TicketInfoCard extends StatelessWidget {
           _InfoText(
             label: 'Thời gian tạo',
             value: _formatDateTime(detail.createdAt),
+          ),
+          const SizedBox(height: 18),
+          _InfoText(
+            label: 'Mong muốn xử lý',
+            value: detail.repairRequested ? 'Cần sửa chữa' : 'Chỉ báo sự cố',
           ),
           const SizedBox(height: 18),
           _InfoText(label: 'Mô tả chi tiết', value: detail.description),

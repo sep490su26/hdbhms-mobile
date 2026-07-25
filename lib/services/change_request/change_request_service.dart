@@ -27,6 +27,8 @@ class ChangeRequestService {
     ChangeRequestType? type,
     ChangeRequestStatus? status,
     String? search,
+    int? roomId,
+    String? roomCode,
     int page = 0,
     int size = 50,
   }) async {
@@ -43,7 +45,8 @@ class ChangeRequestService {
 
     final json = await _getJson(_uri('/change-requests/my', query));
     final list = _extractList(json);
-    return list.map(ChangeRequest.fromJson).toList(growable: false);
+    final requests = list.map(ChangeRequest.fromJson).toList(growable: false);
+    return _filterRequestsByRoom(requests, roomId: roomId, roomCode: roomCode);
   }
 
   // ── Stats ─────────────────────────────────────────────────────────────────
@@ -163,6 +166,114 @@ class ChangeRequestService {
       return ChangeRequest.fromJson(Map<String, dynamic>.from(data));
     }
     return ChangeRequest.fromJson(json);
+  }
+
+  List<ChangeRequest> _filterRequestsByRoom(
+    List<ChangeRequest> requests, {
+    int? roomId,
+    String? roomCode,
+  }) {
+    final normalizedCode = roomCode?.trim().toLowerCase() ?? '';
+    if ((roomId ?? 0) <= 0 && normalizedCode.isEmpty) {
+      return requests;
+    }
+    return requests
+        .where(
+          (request) => _requestMatchesRoom(
+            request,
+            roomId: roomId,
+            roomCode: normalizedCode,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  bool _requestMatchesRoom(
+    ChangeRequest request, {
+    int? roomId,
+    required String roomCode,
+  }) {
+    final payload = _payloadMap(request.requestPayload);
+    final ids = <int?>[
+      _asInt(payload['roomId'] ?? payload['room_id']),
+      _asInt(payload['currentRoomId'] ?? payload['current_room_id']),
+      _asInt(payload['sourceRoomId'] ?? payload['source_room_id']),
+      _asInt(payload['oldRoomId'] ?? payload['old_room_id']),
+      _asInt(payload['targetRoomId'] ?? payload['target_room_id']),
+      _asInt(payload['newRoomId'] ?? payload['new_room_id']),
+      _nestedInt(payload['room'], ['id', 'roomId', 'room_id']),
+      _nestedInt(payload['oldRoom'], ['id', 'roomId', 'room_id']),
+      _nestedInt(payload['targetRoom'], ['id', 'roomId', 'room_id']),
+    ].whereType<int>();
+    if ((roomId ?? 0) > 0 && ids.contains(roomId)) return true;
+
+    if (roomCode.isEmpty) return false;
+    final codes =
+        <String>[
+          payload['roomCode']?.toString() ?? '',
+          payload['room_code']?.toString() ?? '',
+          payload['currentRoomCode']?.toString() ?? '',
+          payload['oldRoomCode']?.toString() ?? '',
+          payload['targetRoomCode']?.toString() ?? '',
+          payload['newRoomCode']?.toString() ?? '',
+          payload['room']?.toString() ?? '',
+          _nestedString(payload['room'], ['roomCode', 'room_code', 'code']),
+          _nestedString(payload['oldRoom'], ['roomCode', 'room_code', 'code']),
+          _nestedString(payload['targetRoom'], [
+            'roomCode',
+            'room_code',
+            'code',
+          ]),
+        ].map((value) => value.trim().toLowerCase()).where((value) {
+          return value.isNotEmpty && value != 'null';
+        });
+    return codes.any((value) => value == roomCode || value.contains(roomCode));
+  }
+
+  Map<String, dynamic> _payloadMap(String? rawPayload) {
+    if (rawPayload == null || rawPayload.trim().isEmpty) return const {};
+    try {
+      final decoded = jsonDecode(rawPayload);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) {
+        return decoded.map((key, value) => MapEntry(key.toString(), value));
+      }
+    } catch (_) {
+      return const {};
+    }
+    return const {};
+  }
+
+  int? _nestedInt(Object? raw, List<String> keys) {
+    final map = _asMap(raw);
+    for (final key in keys) {
+      final value = _asInt(map[key]);
+      if (value != null) return value;
+    }
+    return null;
+  }
+
+  String _nestedString(Object? raw, List<String> keys) {
+    final map = _asMap(raw);
+    for (final key in keys) {
+      final value = map[key]?.toString() ?? '';
+      if (value.trim().isNotEmpty) return value;
+    }
+    return '';
+  }
+
+  Map<String, dynamic> _asMap(Object? raw) {
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is Map) {
+      return raw.map((key, value) => MapEntry(key.toString(), value));
+    }
+    return const {};
+  }
+
+  int? _asInt(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '');
   }
 }
 

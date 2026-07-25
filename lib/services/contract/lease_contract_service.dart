@@ -393,6 +393,7 @@ class LeaseContractService {
 
   Future<void> submitLiquidationRequest({
     required int contractId,
+    DateTime? liquidationDate,
     String reason = '',
   }) async {
     final client = _effectiveClient;
@@ -404,6 +405,9 @@ class LeaseContractService {
             ),
             headers: const {'Content-Type': 'application/json'},
             body: jsonEncode({
+              'liquidationDate': liquidationDate == null
+                  ? null
+                  : _dateOnlyString(liquidationDate),
               'reason': reason.trim().isEmpty ? null : reason.trim(),
             }),
           )
@@ -434,6 +438,7 @@ class LeaseContractService {
     required int contractId,
     required DateTime newStartDate,
     required DateTime newEndDate,
+    required int renewalTermMonths,
     required num monthlyRent,
     required int paymentCycleMonths,
     required num depositAmount,
@@ -450,6 +455,7 @@ class LeaseContractService {
             body: jsonEncode({
               'newStartDate': _dateOnlyString(newStartDate),
               'newEndDate': _dateOnlyString(newEndDate),
+              'renewalTermMonths': renewalTermMonths,
               'monthlyRent': monthlyRent.round(),
               'paymentCycleMonths': paymentCycleMonths,
               'depositAmount': depositAmount.round(),

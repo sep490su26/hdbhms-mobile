@@ -78,7 +78,7 @@ enum ChangeRequestType {
       case ChangeRequestType.roomTransfer:
         return 'Chuyển phòng';
       case ChangeRequestType.contractRenewal:
-        return 'Tái ký hợp đồng';
+        return 'Gia hạn hợp đồng';
       case ChangeRequestType.contractLiquidation:
         return 'Thanh lý hợp đồng';
       case ChangeRequestType.moveOut:

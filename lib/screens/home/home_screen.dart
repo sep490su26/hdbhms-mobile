@@ -116,6 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
             homeService: widget.homeService,
             profileService: widget.profileService,
             tenantInvoiceService: widget.tenantInvoiceService,
+            roomContext: _provider.selectedRoom,
           ),
         );
       },
@@ -216,8 +217,11 @@ class _HomeScreenState extends State<HomeScreen> {
     } else {
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (context) =>
-              BillSelectionPage(invoiceService: widget.tenantInvoiceService),
+          builder: (context) => BillSelectionPage(
+            invoiceService: widget.tenantInvoiceService,
+            roomId: _provider.selectedRoom?.roomId,
+            roomCode: _provider.selectedRoom?.roomCode ?? '',
+          ),
         ),
       );
     }
@@ -1560,12 +1564,14 @@ class _HomeBottomNavigation extends StatelessWidget {
     required this.homeService,
     required this.profileService,
     required this.tenantInvoiceService,
+    required this.roomContext,
   });
 
   final AuthService authService;
   final HomeService homeService;
   final TenantProfileService profileService;
   final TenantInvoiceService tenantInvoiceService;
+  final ActiveRoomItem? roomContext;
 
   Future<void> _handleLogout(BuildContext context) async {
     await authService.logout();
@@ -1589,15 +1595,21 @@ class _HomeBottomNavigation extends StatelessWidget {
       onBillsTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) =>
-                BillSelectionPage(invoiceService: tenantInvoiceService),
+            builder: (context) => BillSelectionPage(
+              invoiceService: tenantInvoiceService,
+              roomId: roomContext?.roomId,
+              roomCode: roomContext?.roomCode ?? '',
+            ),
           ),
         );
       },
       onSupportTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => const MaintenanceTicketListScreen(),
+            builder: (context) => MaintenanceTicketListScreen(
+              roomId: roomContext?.roomId,
+              roomCode: roomContext?.roomCode ?? '',
+            ),
           ),
         );
       },
@@ -1613,7 +1625,12 @@ class _HomeBottomNavigation extends StatelessWidget {
         );
       },
       onRequestsTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+        MaterialPageRoute(
+          builder: (context) => TenantRequestScreen(
+            roomId: roomContext?.roomId,
+            roomCode: roomContext?.roomCode ?? '',
+          ),
+        ),
       ),
     );
   }

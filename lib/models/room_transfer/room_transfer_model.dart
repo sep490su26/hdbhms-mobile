@@ -224,6 +224,7 @@ class RoomTransferRequest {
     this.newContractId,
     this.oldRoomPrice,
     this.newRoomPrice,
+    this.priceDifferenceAmount,
     this.priceDifferenceToPay,
     this.reason = '',
     this.reservedSlots,
@@ -276,6 +277,7 @@ class RoomTransferRequest {
   final int? newContractId;
   final int? oldRoomPrice;
   final int? newRoomPrice;
+  final int? priceDifferenceAmount;
   final int? priceDifferenceToPay;
   final String reason;
   final int? reservedSlots;
@@ -400,6 +402,7 @@ class RoomTransferRequest {
       newContractId: _asInt(json['newContractId']),
       oldRoomPrice: _asInt(json['oldRoomPrice']),
       newRoomPrice: _asInt(json['newRoomPrice']),
+      priceDifferenceAmount: _asInt(json['priceDifferenceAmount']),
       priceDifferenceToPay: _asInt(json['priceDifferenceToPay']),
       reason: _str(json, 'reason'),
       reservedSlots: _asInt(json['reservedSlots']),

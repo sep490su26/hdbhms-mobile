@@ -388,12 +388,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
   }
 
   int _rentDifference(RoomTransferRequest transfer) {
-    final oldPrice = transfer.oldRoomPrice;
-    final newPrice = transfer.newRoomPrice;
-    if (oldPrice != null && newPrice != null) {
-      return newPrice - oldPrice;
-    }
-    return transfer.priceDifferenceToPay ?? 0;
+    return transfer.priceDifferenceAmount ?? transfer.priceDifferenceToPay ?? 0;
   }
 
   bool _requiresHolderSelectionForConfirmation(RoomTransferRequest transfer) {
@@ -1269,7 +1264,8 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
 
   String _formatMoney(num? value) {
     if (value == null) return '—';
-    final normalized = value.round().toString();
+    final amount = value.round();
+    final normalized = amount.abs().toString();
     final buffer = StringBuffer();
     for (var i = 0; i < normalized.length; i++) {
       final remaining = normalized.length - i;
@@ -1278,7 +1274,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
         buffer.write('.');
       }
     }
-    return '${buffer.toString()} đ';
+    return '${amount < 0 ? '-' : ''}${buffer.toString()} đ';
   }
 
   bool _canViewFullTransferFlow(RoomTransferRequest transfer) {
@@ -1555,7 +1551,9 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
         ),
         _InfoRow(
           label: 'Chênh lệch',
-          value: _formatMoney(transfer.priceDifferenceToPay),
+          value: _formatMoney(
+            transfer.priceDifferenceAmount ?? transfer.priceDifferenceToPay,
+          ),
           valueColor: AppColors.primary,
         ),
       ]);

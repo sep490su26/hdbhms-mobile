@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
@@ -330,8 +331,13 @@ class _CreateRequestGrid extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (_) => _CreateRequestSheet(
         type: type,
-        onSubmit: (note) async {
-          await _submitLifecycleRequest(type, note);
+        onSubmit: (note, liquidationDate, renewalTermMonths) async {
+          await _submitLifecycleRequest(
+            type,
+            note,
+            liquidationDate,
+            renewalTermMonths,
+          );
         },
       ),
     );
@@ -340,6 +346,8 @@ class _CreateRequestGrid extends StatelessWidget {
   Future<void> _submitLifecycleRequest(
     TenantRequestType type,
     String note,
+    DateTime? liquidationDate,
+    int? renewalTermMonths,
   ) async {
     final contractId = contract.id;
     if (contractId == null) {
@@ -349,6 +357,7 @@ class _CreateRequestGrid extends StatelessWidget {
     if (type == TenantRequestType.terminateContract) {
       await contractService.submitLiquidationRequest(
         contractId: contractId,
+        liquidationDate: liquidationDate,
         reason: note,
       );
     } else if (type == TenantRequestType.renewContract) {
@@ -358,15 +367,16 @@ class _CreateRequestGrid extends StatelessWidget {
         endDate.month,
         endDate.day,
       ).add(const Duration(days: 1));
-      final newEndDate = DateTime(
-        newStartDate.year + 1,
-        newStartDate.month,
-        newStartDate.day,
+      final termMonths = renewalTermMonths ?? 12;
+      final newEndDate = _addMonthsClamped(
+        newStartDate,
+        termMonths,
       ).subtract(const Duration(days: 1));
       await contractService.submitRenewalRequest(
         contractId: contractId,
         newStartDate: newStartDate,
         newEndDate: newEndDate,
+        renewalTermMonths: termMonths,
         monthlyRent: contract.monthlyRent ?? 0,
         paymentCycleMonths: contract.paymentCycleMonths ?? 1,
         depositAmount: contract.depositAmount ?? 0,
@@ -471,7 +481,12 @@ class _CreateRequestSheet extends StatefulWidget {
   const _CreateRequestSheet({required this.type, required this.onSubmit});
 
   final TenantRequestType type;
-  final Future<void> Function(String note) onSubmit;
+  final Future<void> Function(
+    String note,
+    DateTime? liquidationDate,
+    int? renewalTermMonths,
+  )
+  onSubmit;
 
   @override
   State<_CreateRequestSheet> createState() => _CreateRequestSheetState();
@@ -479,13 +494,41 @@ class _CreateRequestSheet extends StatefulWidget {
 
 class _CreateRequestSheetState extends State<_CreateRequestSheet> {
   final _ctrl = TextEditingController();
+  final _renewalMonthsCtrl = TextEditingController(text: '12');
   bool _submitting = false;
   String _error = '';
+  DateTime? _liquidationDate;
+
+  bool get _isLiquidation => widget.type == TenantRequestType.terminateContract;
+  bool get _isRenewal => widget.type == TenantRequestType.renewContract;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isLiquidation) {
+      _liquidationDate = DateTime.now();
+    }
+  }
 
   @override
   void dispose() {
     _ctrl.dispose();
+    _renewalMonthsCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickLiquidationDate() async {
+    final today = DateTime.now();
+    final initialDate = _liquidationDate ?? today;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate.isBefore(today) ? today : initialDate,
+      firstDate: today,
+      lastDate: DateTime(today.year + 2, today.month, today.day),
+    );
+    if (picked != null) {
+      setState(() => _liquidationDate = picked);
+    }
   }
 
   @override
@@ -523,6 +566,49 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
               ),
             ),
             const SizedBox(height: 14),
+            if (_isLiquidation) ...[
+              GestureDetector(
+                onTap: _pickLiquidationDate,
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: 'Ngày thanh lý',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _liquidationDate == null
+                            ? 'Chọn ngày'
+                            : '${_liquidationDate!.day.toString().padLeft(2, '0')}/'
+                                  '${_liquidationDate!.month.toString().padLeft(2, '0')}/'
+                                  '${_liquidationDate!.year}',
+                      ),
+                      const Icon(Icons.calendar_month_outlined, size: 20),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
+            if (_isRenewal) ...[
+              TextField(
+                controller: _renewalMonthsCtrl,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  labelText: 'Thời hạn gia hạn (tháng)',
+                  hintText: 'Ví dụ: 12',
+                  helperText: 'Tối thiểu 6 tháng',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
             TextField(
               controller: _ctrl,
               maxLines: 3,
@@ -551,12 +637,31 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
                 onPressed: _submitting
                     ? null
                     : () async {
+                        final renewalTermMonths = _isRenewal
+                            ? int.tryParse(_renewalMonthsCtrl.text.trim())
+                            : null;
+                        if (_isRenewal &&
+                            (renewalTermMonths == null ||
+                                renewalTermMonths < 6)) {
+                          const message = 'Thời hạn gia hạn tối thiểu 6 tháng.';
+                          setState(() => _error = message);
+                          ScaffoldMessenger.of(context)
+                            ..hideCurrentSnackBar()
+                            ..showSnackBar(
+                              const SnackBar(content: Text(message)),
+                            );
+                          return;
+                        }
                         setState(() {
                           _submitting = true;
                           _error = '';
                         });
                         try {
-                          await widget.onSubmit(_ctrl.text.trim());
+                          await widget.onSubmit(
+                            _ctrl.text.trim(),
+                            _liquidationDate,
+                            renewalTermMonths,
+                          );
                           if (context.mounted) {
                             Navigator.of(context).pop(true);
                           }
@@ -1334,6 +1439,15 @@ void _showContractFile(
 }
 
 DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
+
+DateTime _addMonthsClamped(DateTime date, int months) {
+  final monthIndex = date.month + months - 1;
+  final year = date.year + monthIndex ~/ 12;
+  final month = monthIndex % 12 + 1;
+  final lastDay = DateTime(year, month + 1, 0).day;
+  final day = date.day > lastDay ? lastDay : date.day;
+  return DateTime(year, month, day);
+}
 
 String _roomTitle(LeaseRoom room) {
   if (room.roomName.trim().isNotEmpty) {

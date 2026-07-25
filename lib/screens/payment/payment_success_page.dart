@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
+import '../../services/payment/tenant_invoice_service.dart';
 import '../home/home_screen.dart';
 import 'payment_history_page.dart';
 
@@ -8,11 +9,13 @@ class PaymentSuccessPage extends StatefulWidget {
   const PaymentSuccessPage({
     super.key,
     this.invoice,
+    this.invoiceService = const TenantInvoiceService(),
     this.transactionCode = '#TXN-882910',
     this.completedAt,
   });
 
   final TenantInvoice? invoice;
+  final TenantInvoiceService invoiceService;
   final String transactionCode;
   final DateTime? completedAt;
 
@@ -134,7 +137,11 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
                                   const SizedBox(height: 16),
                                   _ConfirmationNote(theme: theme),
                                   const SizedBox(height: 20),
-                                  _SuccessActions(theme: theme),
+                                  _SuccessActions(
+                                    theme: theme,
+                                    invoiceService: widget.invoiceService,
+                                    invoice: widget.invoice,
+                                  ),
                                 ],
                               ),
                             ),
@@ -675,9 +682,15 @@ class _ConfirmationNote extends StatelessWidget {
 }
 
 class _SuccessActions extends StatelessWidget {
-  const _SuccessActions({required this.theme});
+  const _SuccessActions({
+    required this.theme,
+    required this.invoiceService,
+    required this.invoice,
+  });
 
   final _SuccessTheme theme;
+  final TenantInvoiceService invoiceService;
+  final TenantInvoice? invoice;
 
   @override
   Widget build(BuildContext context) {
@@ -690,7 +703,11 @@ class _SuccessActions extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => const PaymentHistoryPage(),
+                  builder: (context) => PaymentHistoryPage(
+                    invoiceService: invoiceService,
+                    roomId: invoice?.roomId,
+                    roomCode: invoice?.roomCode ?? '',
+                  ),
                 ),
               );
             },

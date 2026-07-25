@@ -61,7 +61,13 @@ void main() {
     final service = _ticketService();
 
     await tester.pumpWidget(
-      MaterialApp(home: MaintenanceTicketListScreen(ticketService: service)),
+      MaterialApp(
+        home: MaintenanceTicketListScreen(
+          ticketService: service,
+          roomId: 106,
+          notificationInitialUnreadCount: 0,
+        ),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -83,7 +89,13 @@ void main() {
     final service = _ticketService();
 
     await tester.pumpWidget(
-      MaterialApp(home: MaintenanceTicketListScreen(ticketService: service)),
+      MaterialApp(
+        home: MaintenanceTicketListScreen(
+          ticketService: service,
+          roomId: 106,
+          notificationInitialUnreadCount: 0,
+        ),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -105,7 +117,13 @@ void main() {
     final service = _ticketService();
 
     await tester.pumpWidget(
-      MaterialApp(home: MaintenanceTicketListScreen(ticketService: service)),
+      MaterialApp(
+        home: MaintenanceTicketListScreen(
+          ticketService: service,
+          roomId: 106,
+          notificationInitialUnreadCount: 0,
+        ),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -139,7 +157,13 @@ void main() {
       );
 
       await tester.pumpWidget(
-        MaterialApp(home: MaintenanceTicketListScreen(ticketService: service)),
+        MaterialApp(
+          home: MaintenanceTicketListScreen(
+            ticketService: service,
+            roomId: 106,
+            notificationInitialUnreadCount: 0,
+          ),
+        ),
       );
       await tester.pumpAndSettle();
 
@@ -180,6 +204,7 @@ void main() {
         category: 'RULE_VIOLATION',
         billingStatus: 'PENDING_PAYMENT',
         billingStatusLabel: 'Chờ thanh toán',
+        chargeToTenant: true,
         lineType: 'VIOLATION_FINE',
       ),
     );
@@ -217,6 +242,7 @@ void main() {
         home: MaintenanceTicketDetailScreen(
           ticketId: 1,
           ticketService: service,
+          notificationInitialUnreadCount: 0,
         ),
       ),
     );
@@ -249,6 +275,7 @@ void main() {
         home: MaintenanceTicketDetailScreen(
           ticketId: 1,
           ticketService: service,
+          notificationInitialUnreadCount: 0,
         ),
       ),
     );
