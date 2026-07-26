@@ -18,6 +18,10 @@ class LeaseContract {
     this.roleInContract = '',
     this.isPrimary = false,
     this.canRecordIntention = false,
+    this.canRecordOccupantIntention = false,
+    this.occupantIntention = '',
+    this.occupantIntentionNote = '',
+    this.occupantIntentionRecordedAt,
     this.canRenew = false,
     this.canRenewBlockedReason = '',
     this.signedAt,
@@ -41,6 +45,10 @@ class LeaseContract {
   final String roleInContract;
   final bool isPrimary;
   final bool canRecordIntention;
+  final bool canRecordOccupantIntention;
+  final String occupantIntention;
+  final String occupantIntentionNote;
+  final DateTime? occupantIntentionRecordedAt;
   final bool canRenew;
   final String canRenewBlockedReason;
   final DateTime? signedAt;
@@ -97,6 +105,16 @@ class LeaseContract {
       roleInContract: _firstString(json, const ['roleInContract']),
       isPrimary: _firstBool(json, const ['isPrimary']),
       canRecordIntention: _firstBool(json, const ['canRecordIntention']),
+      canRecordOccupantIntention: _firstBool(json, const [
+        'canRecordOccupantIntention',
+      ]),
+      occupantIntention: _firstString(json, const ['occupantIntention']),
+      occupantIntentionNote: _firstString(json, const [
+        'occupantIntentionNote',
+      ]),
+      occupantIntentionRecordedAt: _firstDate(json, const [
+        'occupantIntentionRecordedAt',
+      ]),
       canRenew: _firstBool(json, const ['canRenew']),
       canRenewBlockedReason: _firstString(json, const [
         'canRenewBlockedReason',

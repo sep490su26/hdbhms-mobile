@@ -17,6 +17,7 @@ class _FakeLeaseContractService extends LeaseContractService {
     this.submitRenewalError,
     this.onSubmitLiquidation,
     this.onSubmitRenewal,
+    this.onRecordOccupantIntention,
   });
 
   final LeaseContract? contract;
@@ -35,6 +36,8 @@ class _FakeLeaseContractService extends LeaseContractService {
     String note,
   )?
   onSubmitRenewal;
+  final void Function(int contractId, String intention, String note)?
+  onRecordOccupantIntention;
 
   @override
   Future<LeaseContract> getMyActiveContract({int? tenantId}) async {
@@ -52,6 +55,16 @@ class _FakeLeaseContractService extends LeaseContractService {
     DateTime? expectedMoveOutDate,
     String note = '',
   }) async {
+    return contract!;
+  }
+
+  @override
+  Future<LeaseContract> recordOccupantIntention({
+    required int contractId,
+    required String intention,
+    String note = '',
+  }) async {
+    onRecordOccupantIntention?.call(contractId, intention, note);
     return contract!;
   }
 
@@ -275,6 +288,62 @@ void main() {
     );
   });
 
+  test('LeaseContractService records occupant intention', () async {
+    SharedPreferences.setMockInitialValues({
+      AuthService.accessTokenKey: 'token-123',
+      AuthService.tenantIdKey: 23,
+    });
+
+    var callCount = 0;
+    final service = LeaseContractService(
+      client: MockClient((request) async {
+        callCount++;
+        if (callCount == 1) {
+          expect(request.method, 'POST');
+          expect(
+            request.url.path,
+            '/api/v1/lease-contracts/9/occupant-intention',
+          );
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          expect(body['intention'], 'JOIN_RENEWAL');
+          expect(body['note'], 'O tiep neu hop dong moi duoc ky');
+
+          return http.Response(
+            jsonEncode({
+              'data': {'id': 9},
+            }),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+
+        expect(request.method, 'GET');
+        expect(request.url.path, '/api/v1/lease-contracts/9');
+        return http.Response(
+          jsonEncode({
+            'data': {
+              'id': 9,
+              'contractCode': 'HD-201',
+              'status': 'ACTIVE',
+              'room': {'roomCode': '201', 'name': 'Phòng 201'},
+              'occupantIntention': 'JOIN_RENEWAL',
+            },
+          }),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }),
+    );
+
+    final contract = await service.recordOccupantIntention(
+      contractId: 9,
+      intention: 'JOIN_RENEWAL',
+      note: ' O tiep neu hop dong moi duoc ky ',
+    );
+
+    expect(contract.occupantIntention, 'JOIN_RENEWAL');
+  });
+
   testWidgets('contract screen shows expiring warning and room 201 data', (
     tester,
   ) async {
@@ -471,6 +540,39 @@ void main() {
     expect(find.text('Thời hạn gia hạn tối thiểu 6 tháng.'), findsWidgets);
   });
 
+  testWidgets('co-occupant records intention from contract screen', (
+    tester,
+  ) async {
+    int? submittedContractId;
+    String? submittedIntention;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LeaseContractScreen(
+          contractService: _FakeLeaseContractService(
+            contract: _contract(coOccupantCanRecord: true),
+            onRecordOccupantIntention: (contractId, intention, note) {
+              submittedContractId = contractId;
+              submittedIntention = intention;
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ý định của bạn'), findsOneWidget);
+    expect(find.text('Gia hạn\nhợp đồng'), findsNothing);
+
+    await tester.ensureVisible(find.text('Tiếp tục ở\nnếu tái ký'));
+    await tester.tap(find.text('Tiếp tục ở\nnếu tái ký'));
+    await tester.pumpAndSettle();
+
+    expect(submittedContractId, 9);
+    expect(submittedIntention, 'JOIN_RENEWAL');
+    expect(find.text('Đã lưu ý định của bạn.'), findsOneWidget);
+  });
+
   testWidgets('contract screen shows empty state with retry', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
@@ -491,7 +593,11 @@ void main() {
   });
 }
 
-LeaseContract _contract({DateTime? endDate, bool isPrimary = false}) {
+LeaseContract _contract({
+  DateTime? endDate,
+  bool isPrimary = false,
+  bool coOccupantCanRecord = false,
+}) {
   return LeaseContract(
     id: 9,
     contractCode: 'HD-201',
@@ -513,7 +619,12 @@ LeaseContract _contract({DateTime? endDate, bool isPrimary = false}) {
       LeaseServiceFee(name: 'Phí dịch vụ (cố định)', amount: 50000),
     ],
     contractFileUrl: '',
-    roleInContract: isPrimary ? 'PRIMARY' : '',
+    roleInContract: isPrimary
+        ? 'PRIMARY'
+        : coOccupantCanRecord
+        ? 'CO_OCCUPANT'
+        : '',
     isPrimary: isPrimary,
+    canRecordOccupantIntention: coOccupantCanRecord,
   );
 }

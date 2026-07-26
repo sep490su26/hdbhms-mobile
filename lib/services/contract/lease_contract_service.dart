@@ -391,6 +391,47 @@ class LeaseContractService {
     }
   }
 
+  Future<LeaseContract> recordOccupantIntention({
+    required int contractId,
+    required String intention,
+    String note = '',
+  }) async {
+    final client = _effectiveClient;
+    try {
+      final response = await client
+          .post(
+            Uri.parse(
+              '${ApiConfig.baseUrl}/lease-contracts/$contractId/occupant-intention',
+            ),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'intention': intention,
+              'note': note.trim().isEmpty ? null : note.trim(),
+            }),
+          )
+          .timeout(_timeout);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return getContractById(contractId);
+      }
+      throw LeaseContractException(_messageForLifecycleRequestError(response));
+    } on LeaseContractException {
+      rethrow;
+    } on TimeoutException {
+      throw const LeaseContractException('Không kết nối được máy chủ');
+    } on http.ClientException {
+      throw const LeaseContractException('Không kết nối được máy chủ');
+    } on FormatException {
+      throw const LeaseContractException(
+        'Không thể lưu ý định. Vui lòng thử lại.',
+      );
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
+
   Future<void> submitLiquidationRequest({
     required int contractId,
     DateTime? liquidationDate,

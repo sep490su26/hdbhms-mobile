@@ -278,6 +278,34 @@ class _CreateRequestGrid extends StatelessWidget {
   final LeaseContractService contractService;
   final Future<void> Function() onChanged;
 
+  bool get _isCoOccupant =>
+      contract.roleInContract.trim().toUpperCase() == 'CO_OCCUPANT';
+
+  Future<void> _submitOccupantIntention(
+    BuildContext context,
+    String intention,
+  ) async {
+    final contractId = contract.id;
+    if (contractId == null) return;
+
+    try {
+      await contractService.recordOccupantIntention(
+        contractId: contractId,
+        intention: intention,
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Đã lưu ý định của bạn.')));
+      await onChanged();
+    } on LeaseContractException catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+
   Future<void> _openCreateForm(
     BuildContext context,
     TenantRequestType type,
@@ -397,6 +425,89 @@ class _CreateRequestGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (_isCoOccupant) {
+      final currentIntention = switch (contract.occupantIntention) {
+        'FOLLOW_PRIMARY_MOVE_OUT' => 'Rời phòng theo người đứng tên',
+        'JOIN_RENEWAL' => 'Tiếp tục ở nếu tái ký',
+        _ => 'Chưa phản hồi',
+      };
+
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: AppColors.deepBlue.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.fact_check_outlined,
+                      color: AppColors.deepBlue,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 9),
+                  const Text(
+                    'Ý định của bạn',
+                    style: TextStyle(
+                      color: AppColors.inputText,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      height: 20 / 15,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              currentIntention,
+              style: const TextStyle(
+                color: AppColors.bodyText,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (contract.canRecordOccupantIntention) ...[
+              const SizedBox(height: 10),
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 1.45,
+                children: [
+                  AppActionTile(
+                    icon: Icons.logout_rounded,
+                    label: 'Rời phòng\ntheo người đứng tên',
+                    accentColor: AppColors.actionRose,
+                    onTap: () => _submitOccupantIntention(
+                      context,
+                      'FOLLOW_PRIMARY_MOVE_OUT',
+                    ),
+                  ),
+                  AppActionTile(
+                    icon: Icons.autorenew_rounded,
+                    label: 'Tiếp tục ở\nnếu tái ký',
+                    accentColor: AppColors.actionBlue,
+                    onTap: () =>
+                        _submitOccupantIntention(context, 'JOIN_RENEWAL'),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(

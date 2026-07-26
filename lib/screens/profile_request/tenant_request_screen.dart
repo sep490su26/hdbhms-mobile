@@ -198,6 +198,10 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
     }
     final payload = _payloadOf(cr);
     final refundStatus = payload['depositRefundStatus']?.toString();
+    final stage = payload['liquidationStage']?.toString();
+    if (stage == 'WAITING_PAYMENT') {
+      return 'Thanh lý hợp đồng · ${_liquidationStageLabel(stage!)}';
+    }
     if (refundStatus == 'RECORDED_BY_MANAGER') {
       return 'Quản lý đã ghi nhận hoàn cọc, vui lòng xác nhận.';
     }
@@ -207,7 +211,6 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
     if (refundStatus == 'APPROVED_WAITING_REFUND') {
       return 'Khoản hoàn cọc đã được duyệt, đang chờ hoàn tiền.';
     }
-    final stage = payload['liquidationStage']?.toString();
     if (stage != null && stage.isNotEmpty) {
       return 'Thanh lý hợp đồng · ${_liquidationStageLabel(stage)}';
     }
@@ -1254,6 +1257,103 @@ class _DetailRow extends StatelessWidget {
   }
 }
 
+class _LiquidationProgressStep {
+  const _LiquidationProgressStep({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+}
+
+class _ProgressStepRow extends StatelessWidget {
+  const _ProgressStepRow({
+    required this.step,
+    required this.isDone,
+    required this.isActive,
+    required this.isLast,
+    required this.color,
+  });
+
+  final _LiquidationProgressStep step;
+  final bool isDone;
+  final bool isActive;
+  final bool isLast;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = !isDone && !isActive;
+    final dotColor = isDone || isActive ? color : const Color(0xFFD8DEE9);
+    final icon = isDone ? Icons.check_rounded : Icons.circle;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: isDone || isActive ? dotColor : Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: dotColor, width: 1.4),
+                ),
+                child: Icon(
+                  icon,
+                  size: isDone ? 15 : 7,
+                  color: isDone || isActive ? Colors.white : dotColor,
+                ),
+              ),
+              if (!isLast)
+                Container(
+                  width: 2,
+                  height: 30,
+                  color: isDone
+                      ? color.withValues(alpha: 0.45)
+                      : const Color(0xFFE5E7EB),
+                ),
+            ],
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 1),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    step.title,
+                    style: TextStyle(
+                      color: muted ? AppColors.bodyText : AppColors.inputText,
+                      fontSize: 13,
+                      fontWeight: isActive || isDone
+                          ? FontWeight.w900
+                          : FontWeight.w700,
+                      height: 18 / 13,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    step.subtitle,
+                    style: TextStyle(
+                      color: muted ? AppColors.bodyText : color,
+                      fontSize: 12,
+                      fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                      height: 17 / 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── API Request detail dialog ─────────────────────────────────────────────────────
 class _ApiRequestDetailDialog extends StatefulWidget {
   const _ApiRequestDetailDialog({required this.changeRequest});
@@ -1366,8 +1466,12 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
   bool get _canConfirmDepositRefund {
     return widget.changeRequest.requestType ==
             ChangeRequestType.contractLiquidation &&
-        _payload['depositRefundStatus'] == 'RECORDED_BY_MANAGER';
+        _payload['depositRefundStatus'] == 'RECORDED_BY_MANAGER' &&
+        _liquidationFinalInvoicePaid(_payload);
   }
+
+  bool get _isLiquidationRequest =>
+      widget.changeRequest.requestType == ChangeRequestType.contractLiquidation;
 
   @override
   Widget build(BuildContext context) {
@@ -1475,6 +1579,13 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
                         ),
                       ],
                     ),
+                    if (_isLiquidationRequest) ...[
+                      const SizedBox(height: 12),
+                      _DetailSection(
+                        title: 'Tiến trình thanh lý',
+                        children: _buildLiquidationProgress(_payload),
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     if (_loadingTransfer)
                       const Center(
@@ -1713,6 +1824,132 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
     return 'Không xử lý được yêu cầu.';
   }
 
+  List<Widget> _buildLiquidationProgress(Map<String, dynamic> payload) {
+    final stage = payload['liquidationStage']?.toString() ?? '';
+    final refundStatus = payload['depositRefundStatus']?.toString() ?? '';
+    final currentIndex = _liquidationProgressIndex(stage, refundStatus);
+    final rejected =
+        widget.changeRequest.status == ChangeRequestStatus.rejected;
+    final cancelled =
+        widget.changeRequest.status == ChangeRequestStatus.cancelled ||
+        refundStatus == 'CANCELLED';
+    final disputed = refundStatus == 'DISPUTED';
+    final steps = [
+      _LiquidationProgressStep(
+        title: 'Gửi yêu cầu',
+        subtitle: _formatTime(widget.changeRequest.createdAt),
+      ),
+      _LiquidationProgressStep(
+        title: 'Chủ trọ duyệt',
+        subtitle: widget.changeRequest.status == ChangeRequestStatus.pending
+            ? 'Đang chờ quyết định'
+            : widget.changeRequest.status.label,
+      ),
+      _LiquidationProgressStep(
+        title: 'Bàn giao & tất toán',
+        subtitle: _stageGroupSubtitle(stage, const {
+          'WAITING_HANDOVER',
+          'WAITING_FINAL_INVOICE',
+          'WAITING_PAYMENT',
+        }),
+      ),
+      _LiquidationProgressStep(
+        title: 'Hoàn cọc',
+        subtitle: _refundProgressSubtitle(payload, refundStatus),
+      ),
+      _LiquidationProgressStep(
+        title: 'Ký biên bản',
+        subtitle: _stageGroupSubtitle(stage, const {
+          'WAITING_SIGNED_DOCUMENT',
+          'READY_TO_CONFIRM',
+        }),
+      ),
+      _LiquidationProgressStep(
+        title: 'Hoàn tất',
+        subtitle:
+            stage == 'CONFIRMED' ||
+                widget.changeRequest.status == ChangeRequestStatus.completed
+            ? 'Đã thanh lý hợp đồng'
+            : 'Chưa hoàn tất',
+      ),
+    ];
+
+    return [
+      for (var i = 0; i < steps.length; i++)
+        _ProgressStepRow(
+          step: steps[i],
+          isDone: !rejected && !cancelled && !disputed && currentIndex > i,
+          isActive: rejected || cancelled || disputed
+              ? currentIndex == i
+              : currentIndex == i,
+          isLast: i == steps.length - 1,
+          color: rejected || cancelled || disputed
+              ? const Color(0xFFDC2626)
+              : _accentColor,
+        ),
+    ];
+  }
+
+  bool _liquidationFinalInvoicePaid(Map<String, dynamic> payload) {
+    final direct = payload['finalInvoicePaid'];
+    if (direct is bool) return direct;
+    final checklist = payload['liquidationChecklist'];
+    if (checklist is Map) {
+      final value = checklist['finalInvoicePaid'];
+      if (value is bool) return value;
+    }
+    return false;
+  }
+
+  int _liquidationProgressIndex(String stage, String refundStatus) {
+    if (widget.changeRequest.status == ChangeRequestStatus.rejected ||
+        widget.changeRequest.status == ChangeRequestStatus.cancelled) {
+      return 1;
+    }
+    if (widget.changeRequest.status == ChangeRequestStatus.completed) {
+      return 5;
+    }
+    if (stage == 'WAITING_PAYMENT' || !_liquidationFinalInvoicePaid(_payload)) {
+      return 2;
+    }
+    if (refundStatus == 'DISPUTED' ||
+        refundStatus == 'WAITING_OWNER_APPROVAL' ||
+        refundStatus == 'APPROVED_WAITING_REFUND' ||
+        refundStatus == 'RECORDED_BY_MANAGER') {
+      return 3;
+    }
+    return switch (stage) {
+      'WAITING_APPROVAL' || '' => 1,
+      'WAITING_HANDOVER' || 'WAITING_FINAL_INVOICE' || 'WAITING_PAYMENT' => 2,
+      'WAITING_DEPOSIT_REFUND' =>
+        refundStatus == 'TENANT_CONFIRMED' || refundStatus == 'NOT_REQUIRED'
+            ? 4
+            : 3,
+      'WAITING_SIGNED_DOCUMENT' || 'READY_TO_CONFIRM' => 4,
+      'CONFIRMED' => 5,
+      _ => 1,
+    };
+  }
+
+  String _stageGroupSubtitle(String stage, Set<String> activeStages) {
+    if (activeStages.contains(stage)) return _stageLabel(stage);
+    return 'Chưa tới bước này';
+  }
+
+  String _refundProgressSubtitle(
+    Map<String, dynamic> payload,
+    String refundStatus,
+  ) {
+    final amount = _firstPayloadValue(payload, ['depositRefundAmount']);
+    final amountText = amount == null || amount.toString().trim().isEmpty
+        ? ''
+        : ' · ${_formatMoney(amount)}';
+    if (refundStatus.isEmpty || refundStatus == 'PENDING') {
+      return 'Chờ ghi nhận hoàn cọc$amountText';
+    }
+    return '${_refundStatusLabel(refundStatus)}$amountText';
+  }
+
   List<Widget> _buildTypeDetails() {
     // If room transfer data is available, use it
     if (widget.changeRequest.requestType == ChangeRequestType.roomTransfer &&
@@ -1910,7 +2147,6 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
     }
 
     _addMoneyRow(rows, p, 'Cọc ban đầu', ['depositAmount']);
-    _addMoneyRow(rows, p, 'Khấu trừ cọc', ['depositDeductionAmount']);
     _addMoneyRow(rows, p, 'Cấn trừ công nợ', ['depositOffsetAmount']);
     _addMoneyRow(rows, p, 'Cọc phải hoàn', ['depositRefundAmount']);
     _addMoneyRow(rows, p, 'Đã ghi nhận hoàn', ['depositRefundedAmount']);

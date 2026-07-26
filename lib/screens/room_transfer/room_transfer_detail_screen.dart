@@ -1469,12 +1469,6 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
       return '#$id';
     }
 
-    String idLabel(String prefix, int? id) {
-      if (id == null || id <= 0) return '';
-      if (prefix.isEmpty) return '#$id';
-      return '$prefix #$id';
-    }
-
     bool hasValue(String value) {
       final normalized = value.trim();
       return normalized.isNotEmpty && normalized != '—';
@@ -1494,7 +1488,6 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
       _InfoRow(label: 'Mã yêu cầu', value: transfer.requestCode),
     ];
 
-    addRow(rows, label: 'Hợp đồng cũ', value: transfer.oldContractCode);
     rows.add(
       _InfoRow(
         label: 'Phòng cũ',
@@ -1524,33 +1517,22 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
       label: 'Người chuyển',
       value: _formatProfileNames(transfer.transferringTenantNames),
     );
-    addRow(
-      rows,
-      label: 'Người đứng tên hợp đồng của phòng cũ',
-      value: _formatProfileNames(transfer.sourceHolderCandidateNames),
-    );
 
     final nominatedHolderId = transfer.nominatedHolderProfileId;
     if (nominatedHolderId != null && nominatedHolderId > 0) {
+      final holderName = transfer.sourceHolderCandidateNames[nominatedHolderId]
+          ?.trim();
       addRow(
         rows,
-        label: 'Đã đề cử',
-        value:
-            transfer.sourceHolderCandidateNames[nominatedHolderId] ??
-            '#$nominatedHolderId',
+        label: 'Người ở lại đứng tên',
+        value: holderName == null || holderName.isEmpty
+            ? 'Đã chọn'
+            : holderName,
       );
     }
 
     if (_canViewTransferFinancials(transfer)) {
-      rows.addAll([
-        _InfoRow(
-          label: 'Giá phòng cũ',
-          value: _formatMoney(transfer.oldRoomPrice),
-        ),
-        _InfoRow(
-          label: 'Giá phòng mới',
-          value: _formatMoney(transfer.newRoomPrice),
-        ),
+      rows.add(
         _InfoRow(
           label: 'Chênh lệch',
           value: _formatMoney(
@@ -1558,70 +1540,24 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
           ),
           valueColor: AppColors.primary,
         ),
-      ]);
-      addRow(rows, label: 'Cách xử lý', value: transfer.paymentBranchLabel);
-      final invoiceText = [
-        idLabel('Chênh lệch', transfer.transferDifferenceInvoiceId),
-        idLabel('Điện/nước cũ', transfer.oldRoomFinalInvoiceId),
-      ].where((item) => item.isNotEmpty).join(' · ');
-      addRow(
-        rows,
-        label: 'Hóa đơn',
-        value: invoiceText,
-        valueColor: AppColors.primary,
       );
+      addRow(rows, label: 'Cách xử lý', value: transfer.paymentBranchLabel);
     }
 
     if (_canViewFullTransferFlow(transfer)) {
-      rows.add(
-        _InfoRow(label: 'Hình thức', value: transfer.targetTransferType.label),
-      );
-      addRow(
-        rows,
-        label: 'Hợp đồng mới',
-        value: idLabel('', transfer.newContractId),
-      );
-      addRow(
-        rows,
-        label: 'Hợp đồng đích',
-        value: idLabel('', transfer.targetContractId),
-      );
-      addRow(
-        rows,
-        label: 'Giữ chỗ',
-        value: transfer.reservedSlots == null
-            ? ''
-            : '${transfer.reservedSlots} chỗ',
-      );
-      addRow(
-        rows,
-        label: 'Hết hạn giữ',
-        value: transfer.reservationExpiresAt == null
-            ? ''
-            : _formatDateTime(transfer.reservationExpiresAt),
-      );
-      addRow(
-        rows,
-        label: 'Còn lại phòng cũ',
-        value: transfer.remainingOccupantCountAfterTransfer == null
-            ? ''
-            : '${transfer.remainingOccupantCountAfterTransfer} người',
-      );
-      addRow(
-        rows,
-        label: 'Sau chuyển',
-        value: transfer.sourceRoomWillBeEmptyAfterTransfer == null
-            ? ''
-            : (transfer.sourceRoomWillBeEmptyAfterTransfer == true
-                  ? 'Phòng cũ trống'
-                  : 'Phòng cũ còn người ở'),
-      );
-      final handoverText = [
-        if (transfer.transferOutHandoverRequired) 'Bàn giao phòng cũ',
-        if (transfer.transferInHandoverRequired) 'Nhận phòng mới',
-        if (transfer.roomHandoverRequired) 'Bàn giao phòng',
-      ].join(' · ');
-      addRow(rows, label: 'Bàn giao', value: handoverText);
+      final remainingCount = transfer.remainingOccupantCountAfterTransfer;
+      final hasRemainingHolder =
+          nominatedHolderId != null && nominatedHolderId > 0;
+      final afterTransfer = hasRemainingHolder
+          ? 'Phòng cũ còn người ở'
+          : remainingCount != null && remainingCount > 0
+          ? 'Phòng cũ còn $remainingCount người'
+          : transfer.sourceRoomWillBeEmptyAfterTransfer == null
+          ? ''
+          : transfer.sourceRoomWillBeEmptyAfterTransfer == true
+          ? 'Phòng cũ trống'
+          : 'Phòng cũ còn người ở';
+      addRow(rows, label: 'Sau chuyển', value: afterTransfer);
     }
 
     rows.addAll([
@@ -2526,31 +2462,31 @@ class _StatusBanner extends StatelessWidget {
         TransferRequestStatus.waitingManagerApproval =>
           'Yêu cầu đang chờ quản lý phê duyệt.',
         TransferRequestStatus.managerApproved =>
-          'Quản lý đã duyệt. Nếu người gửi yêu cầu đang là người đứng tên hợp đồng thì cần đề cử người đứng tên hợp đồng mới trước khi đi tiếp.',
+          'Quản lý đã duyệt, chờ bước tiếp theo.',
         TransferRequestStatus.waitingHolderResponse =>
           'Đang chờ người đứng tên hợp đồng mới của phòng cũ phản hồi đề cử.',
         TransferRequestStatus.waitingApproval =>
           'Yêu cầu đang chờ quản lý phê duyệt.',
         TransferRequestStatus.waitingNewContract =>
-          'Đang chờ đề cử người đứng tên hợp đồng mới hoặc tạo hợp đồng mới cho yêu cầu chuyển phòng.',
+          'Chờ chọn người đứng tên hoặc tạo hợp đồng mới.',
         TransferRequestStatus.waitingTargetHolderApproval =>
           'Đang chờ chủ phòng đích phê duyệt yêu cầu chuyển vào.',
         TransferRequestStatus.waitingTenantConfirmation =>
-          'Đang chờ người thuê xác nhận yêu cầu chuyển phòng và phương án thanh toán.',
+          'Chờ người thuê xác nhận phương án chuyển phòng.',
         TransferRequestStatus.waitingContractConfirmation =>
-          'Hệ thống đang chuẩn bị hợp đồng để quản lý xử lý bước ký trực tiếp.',
+          'Chờ quản lý xác nhận hợp đồng.',
         TransferRequestStatus.waitingPayment =>
-          'Yêu cầu chưa được xác nhận. Vui lòng thanh toán hóa đơn chênh lệch để hoàn tất xác nhận yêu cầu.',
+          'Cần thanh toán hóa đơn chênh lệch.',
         TransferRequestStatus.waitingSigning =>
-          'Quản lý đang xử lý ký trực tiếp với khách và tải bản hợp đồng đã ký lên hệ thống.',
+          'Chờ quản lý upload hợp đồng đã ký.',
         TransferRequestStatus.waitingContractSigning =>
-          'Quản lý đang xử lý ký trực tiếp với khách và tải bản hợp đồng đã ký lên hệ thống.',
+          'Chờ quản lý upload hợp đồng đã ký.',
         TransferRequestStatus.waitingTransferDate =>
-          'Hồ sơ đã sẵn sàng. Ngày chuyển chỉ là ngày dự kiến; quản lý có thể bắt đầu phiên chuyển phòng khi hai bên đã có mặt.',
+          'Hồ sơ đã sẵn sàng, chờ ngày chuyển.',
         TransferRequestStatus.readyForHandover =>
-          'Hồ sơ đã sẵn sàng cho phiên chuyển phòng: checkout phòng cũ, check-in phòng mới và execute.',
+          'Chờ bàn giao phòng cũ và nhận phòng mới.',
         TransferRequestStatus.waitingExecution =>
-          'Phiên chuyển phòng đang diễn ra. Quản lý hoàn tất check-in phòng mới rồi execute giao dịch.',
+          'Phiên chuyển phòng đang diễn ra.',
         TransferRequestStatus.executed =>
           'Việc chuyển phòng đã được thực hiện thành công.',
         TransferRequestStatus.completed => 'Yêu cầu chuyển phòng đã hoàn tất.',
