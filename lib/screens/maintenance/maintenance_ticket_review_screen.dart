@@ -4,7 +4,7 @@ import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
 import 'package:hdbhms_mobile/services/maintenance/maintenance_ticket_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
-import 'package:hdbhms_mobile/widgets/star_rating_input.dart';
+import '../../widgets/star_rating_input.dart';
 import 'package:hdbhms_mobile/widgets/ticket_attachment_grid.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
@@ -427,15 +427,15 @@ class _ReviewFormCard extends StatelessWidget {
               fillColor: const Color(0xFFF3F3F5),
               counterText: '',
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 borderSide: const BorderSide(color: AppColors.cardBorder),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 borderSide: const BorderSide(color: AppColors.cardBorder),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 borderSide: const BorderSide(color: AppColors.deepBlue),
               ),
             ),
@@ -523,7 +523,7 @@ class _SectionCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(22, 22, 22, 24),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: const Color(0xFFE9E7EA)),
         boxShadow: [
           BoxShadow(
@@ -560,7 +560,7 @@ class _SummaryBox extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
       decoration: BoxDecoration(
         color: const Color(0xFFF3F1F2),
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -642,7 +642,7 @@ class _MissingAfterPhotoWarning extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       decoration: BoxDecoration(
         color: const Color(0xFFFFF3D6),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: const Color(0xFFF4C76B)),
       ),
       child: const Row(
@@ -653,7 +653,7 @@ class _MissingAfterPhotoWarning extends StatelessWidget {
             child: Text(
               'Quản lý chưa tải lên ảnh sau sửa',
               style: TextStyle(
-                color: Color(0xFF92400E),
+                color: AppColors.warningText,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 height: 18 / 13,

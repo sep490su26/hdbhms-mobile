@@ -40,6 +40,8 @@ class App extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       navigatorKey: App.navigatorKey,
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
       builder: (context, child) {
         return DefaultTextHeightBehavior(
           textHeightBehavior: const TextHeightBehavior(
@@ -185,11 +187,11 @@ class _AppRootState extends State<_AppRoot> {
     return FutureBuilder<Widget>(
       future: _startPageFuture,
       builder: (context, snapshot) {
-        if (snapshot.hasData) {
-          return snapshot.data!;
+        if (!snapshot.hasData) {
+          return const AppSplashScreen();
         }
 
-        return const AppSplashScreen();
+        return snapshot.data!;
       },
     );
   }

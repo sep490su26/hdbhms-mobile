@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/widgets/app_empty_state.dart';
 
 import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/home/home_summary_model.dart';
@@ -538,7 +539,7 @@ class _HeroDetailLine extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.24),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: Colors.white.withValues(alpha: 0.26)),
       ),
       child: Row(
@@ -662,7 +663,7 @@ class _RentalPortfolioCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
             decoration: BoxDecoration(
               color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(AppColors.radiusMd),
               border: Border.all(color: AppColors.cardBorder),
             ),
             child: Row(
@@ -723,7 +724,7 @@ class _PortfolioMetric extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: accentColor),
       ),
       child: FittedBox(
@@ -738,7 +739,7 @@ class _PortfolioMetric extends StatelessWidget {
               height: 22,
               decoration: BoxDecoration(
                 color: iconBackgroundColor,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
               ),
               child: Icon(icon, color: color, size: 13),
             ),
@@ -785,7 +786,7 @@ class _OverviewGuideCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder),
         boxShadow: [
           BoxShadow(
@@ -841,7 +842,7 @@ class _GuideIcon extends StatelessWidget {
       height: 40,
       decoration: BoxDecoration(
         color: AppColors.primaryLight,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
       ),
       child: const Icon(
         Icons.tips_and_updates_outlined,
@@ -875,7 +876,7 @@ class _HeroImageIndicator extends StatelessWidget {
             color: selected
                 ? Colors.white
                 : Colors.white.withValues(alpha: 0.46),
-            borderRadius: BorderRadius.circular(99),
+            borderRadius: BorderRadius.circular(AppColors.radiusPill),
           ),
         );
       }),
@@ -897,7 +898,7 @@ class _FallbackPropertyImage extends StatelessWidget {
     ];
     final colors = [
       const Color(0xFF071426),
-      const Color(0xFF12345C),
+      AppColors.darkBlue,
       const Color(0xFF1D4ED8),
     ];
     return DecoratedBox(
@@ -946,7 +947,7 @@ class _RoomSectionHeader extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
             color: AppColors.primaryLight,
-            borderRadius: BorderRadius.circular(99),
+            borderRadius: BorderRadius.circular(AppColors.radiusPill),
           ),
           child: Text(
             '$roomCount phòng',
@@ -976,14 +977,14 @@ class _RoomOverviewCard extends StatelessWidget {
 
     return Material(
       color: AppColors.surface,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
             border: Border.all(color: AppColors.cardBorder),
             boxShadow: [
               BoxShadow(
@@ -1000,7 +1001,7 @@ class _RoomOverviewCard extends StatelessWidget {
                 height: 50,
                 decoration: BoxDecoration(
                   color: AppColors.deepBlue,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 ),
                 alignment: Alignment.center,
                 child: Text(
@@ -1081,7 +1082,7 @@ class _RoomOverviewCard extends StatelessWidget {
                     height: 32,
                     decoration: BoxDecoration(
                       color: AppColors.surfaceMuted,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
                       border: Border.all(color: AppColors.cardBorder),
                     ),
                     child: const Icon(
@@ -1147,7 +1148,7 @@ class _RoomStatusPill extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.11),
-          borderRadius: BorderRadius.circular(99),
+          borderRadius: BorderRadius.circular(AppColors.radiusPill),
         ),
         child: Text(
           label,
@@ -1167,37 +1168,20 @@ class _RoomStatusPill extends StatelessWidget {
 
 class _EmptyRoomsCard extends StatelessWidget {
   const _EmptyRoomsCard();
-
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: const Column(
-        children: [
-          Icon(
-            Icons.meeting_room_outlined,
-            color: AppColors.deepBlue,
-            size: 32,
-          ),
-          SizedBox(height: 10),
-          Text(
-            'Chưa có phòng đang thuê',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.inputText,
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
+      border: Border.all(color: AppColors.cardBorder),
+    ),
+    child: const AppEmptyState(
+      icon: Icons.meeting_room_outlined,
+      title: 'Ch\u01B0a c\u00F3 ph\u00F2ng \u0111ang thu\u00EA',
+      compact: true,
+    ),
+  );
 }
 
 class _OverviewLoadingState extends StatelessWidget {

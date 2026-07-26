@@ -696,7 +696,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
           builder: (context, setDialogState) {
             return AlertDialog(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(AppColors.radiusLg),
               ),
               title: const Text(
                 'Chọn người đứng tên hợp đồng mới',
@@ -937,7 +937,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                     height: 4,
                     decoration: BoxDecoration(
                       color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
+                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
                     ),
                   ),
                 ),
@@ -1218,7 +1218,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
         content: Text(content),
         actions: [
@@ -1230,12 +1230,12 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
             onPressed: () => Navigator.of(ctx).pop(true),
             style: ElevatedButton.styleFrom(
               backgroundColor: isDestructive
-                  ? const Color(0xFFDC2626)
+                  ? AppColors.danger
                   : AppColors.deepBlue,
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
               ),
             ),
             child: Text(confirmLabel),
@@ -1365,7 +1365,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: borderColor),
       ),
       child: Column(
@@ -1407,9 +1407,9 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
         label: 'Kết quả lúc tạo',
         value: _formatEligibilityResult(transfer.eligibleAtCreation),
         valueColor: transfer.eligibleAtCreation == false
-            ? const Color(0xFFDC2626)
+            ? AppColors.danger
             : transfer.eligibleAtCreation == true
-            ? const Color(0xFF16A34A)
+            ? AppColors.successText
             : null,
       ),
       _InfoRow(
@@ -1419,7 +1419,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
       _InfoRow(
         label: 'Tổng nợ',
         value: _formatMoney(debt?.totalDebtAmount ?? 0),
-        valueColor: debt?.overLimit == true ? const Color(0xFFDC2626) : null,
+        valueColor: debt?.overLimit == true ? AppColors.danger : null,
       ),
       _InfoRow(
         label: 'Nợ thuê / điện nước',
@@ -1448,8 +1448,8 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
           title: 'Vi phạm gần nhất',
           items: violation!.latestDescriptions.take(3).toList(growable: false),
           borderColor: const Color(0xFFFDE68A),
-          backgroundColor: const Color(0xFFFFFBEB),
-          textColor: const Color(0xFF92400E),
+          backgroundColor: AppColors.warningSurface,
+          textColor: AppColors.warningText,
         ),
       ]);
     }
@@ -1921,7 +1921,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
         _ActionButton(
           label: 'Hủy yêu cầu chuyển phòng',
           icon: Icons.cancel_outlined,
-          color: const Color(0xFFDC2626),
+          color: AppColors.danger,
           busy: busy,
           onTap: _cancelTransfer,
         ),
@@ -1943,7 +1943,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
             _ActionButton(
               label: 'Xác nhận yêu cầu',
               icon: Icons.check_circle_outline,
-              color: const Color(0xFF16A34A),
+              color: AppColors.successText,
               busy: busy,
               enabled: _canConfirmTenantTransfer(_transfer!),
               onTap: _confirmTenantSettlement,
@@ -1954,7 +1954,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
             _ActionButton(
               label: 'Từ chối yêu cầu',
               icon: Icons.cancel_outlined,
-              color: const Color(0xFFDC2626),
+              color: AppColors.danger,
               busy: busy,
               onTap: _rejectContract,
             ),
@@ -1984,8 +1984,8 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(12),
+                color: AppColors.infoSurface,
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 border: Border.all(color: const Color(0xFFBFDBFE)),
               ),
               child: Row(
@@ -2033,9 +2033,9 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFFBEB),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFF59E0B)),
+                  color: AppColors.warningSurface,
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                  border: Border.all(color: AppColors.warning),
                 ),
                 child: const Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2050,7 +2050,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                       child: Text(
                         'Bạn được đề cử làm người đứng tên hợp đồng mới của phòng cũ. Vui lòng xác nhận để yêu cầu chuyển phòng tiếp tục.',
                         style: TextStyle(
-                          color: Color(0xFF92400E),
+                          color: AppColors.warningText,
                           fontSize: 13.5,
                           fontWeight: FontWeight.w600,
                           height: 1.45,
@@ -2066,7 +2066,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
               _ActionButton(
                 label: 'Xác nhận làm người đứng tên hợp đồng mới',
                 icon: Icons.how_to_reg_outlined,
-                color: const Color(0xFF16A34A),
+                color: AppColors.successText,
                 busy: busy,
                 onTap: _acceptHolderNomination,
               ),
@@ -2076,7 +2076,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
               _ActionButton(
                 label: 'Từ chối đề cử',
                 icon: Icons.cancel_outlined,
-                color: const Color(0xFFDC2626),
+                color: AppColors.danger,
                 busy: busy,
                 onTap: _rejectHolderNomination,
               ),
@@ -2090,9 +2090,9 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFFBEB),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFF59E0B)),
+                  color: AppColors.warningSurface,
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                  border: Border.all(color: AppColors.warning),
                 ),
                 child: const Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2107,7 +2107,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                       child: Text(
                         'Đã đề cử người đứng tên hợp đồng mới cho phòng cũ. Hệ thống đang chờ người được đề cử phản hồi trước khi đi tiếp.',
                         style: TextStyle(
-                          color: Color(0xFF92400E),
+                          color: AppColors.warningText,
                           fontSize: 13.5,
                           fontWeight: FontWeight.w600,
                           height: 1.45,
@@ -2145,8 +2145,8 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(12),
+                color: AppColors.infoSurface,
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 border: Border.all(color: const Color(0xFFBFDBFE)),
               ),
               child: Row(
@@ -2208,7 +2208,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
               foregroundColor: AppColors.deepBlue,
               side: const BorderSide(color: AppColors.deepBlue),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
               ),
             ),
             child: const Text(
@@ -2229,9 +2229,9 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFFBEB),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFF59E0B)),
+          color: AppColors.warningSurface,
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+          border: Border.all(color: AppColors.warning),
         ),
         child: const Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2246,7 +2246,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
               child: Text(
                 'Bạn đã chọn thanh toán ngay. Yêu cầu chỉ được xác nhận sau khi hóa đơn chênh lệch thanh toán thành công.',
                 style: TextStyle(
-                  color: Color(0xFF92400E),
+                  color: AppColors.warningText,
                   fontSize: 13.5,
                   fontWeight: FontWeight.w600,
                   height: 1.45,
@@ -2291,25 +2291,25 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
         TransferRequestStatus.waitingPayment => const Color(0xFFD97706),
         TransferRequestStatus.waitingSigning => AppColors.deepBlue,
         TransferRequestStatus.waitingContractSigning => AppColors.deepBlue,
-        TransferRequestStatus.waitingTransferDate => const Color(0xFF2563EB),
-        TransferRequestStatus.readyForHandover => const Color(0xFF2563EB),
-        TransferRequestStatus.waitingExecution => const Color(0xFF2563EB),
-        TransferRequestStatus.executed => const Color(0xFF16A34A),
-        TransferRequestStatus.completed => const Color(0xFF16A34A),
-        TransferRequestStatus.rejected => const Color(0xFFDC2626),
-        TransferRequestStatus.cancelled => const Color(0xFF6B7280),
-        TransferRequestStatus.expired => const Color(0xFF6B7280),
+        TransferRequestStatus.waitingTransferDate => AppColors.primary,
+        TransferRequestStatus.readyForHandover => AppColors.primary,
+        TransferRequestStatus.waitingExecution => AppColors.primary,
+        TransferRequestStatus.executed => AppColors.successText,
+        TransferRequestStatus.completed => AppColors.successText,
+        TransferRequestStatus.rejected => AppColors.danger,
+        TransferRequestStatus.cancelled => AppColors.neutral,
+        TransferRequestStatus.expired => AppColors.neutral,
       };
     }
 
     return switch (_req.status) {
       ChangeRequestStatus.pending => const Color(0xFFD97706),
       ChangeRequestStatus.underReview => AppColors.deepBlue,
-      ChangeRequestStatus.approved => const Color(0xFF16A34A),
-      ChangeRequestStatus.rejected => const Color(0xFFDC2626),
-      ChangeRequestStatus.processing => const Color(0xFF2563EB),
-      ChangeRequestStatus.completed => const Color(0xFF16A34A),
-      ChangeRequestStatus.cancelled => const Color(0xFF6B7280),
+      ChangeRequestStatus.approved => AppColors.successText,
+      ChangeRequestStatus.rejected => AppColors.danger,
+      ChangeRequestStatus.processing => AppColors.primary,
+      ChangeRequestStatus.completed => AppColors.successText,
+      ChangeRequestStatus.cancelled => AppColors.neutral,
     };
   }
 
@@ -2406,39 +2406,39 @@ class _StatusBanner extends StatelessWidget {
         TransferRequestStatus.waitingPayment => const Color(0xFFD97706),
         TransferRequestStatus.waitingSigning => AppColors.deepBlue,
         TransferRequestStatus.waitingContractSigning => AppColors.deepBlue,
-        TransferRequestStatus.waitingTransferDate => const Color(0xFF2563EB),
-        TransferRequestStatus.readyForHandover => const Color(0xFF2563EB),
-        TransferRequestStatus.waitingExecution => const Color(0xFF2563EB),
-        TransferRequestStatus.executed => const Color(0xFF16A34A),
-        TransferRequestStatus.completed => const Color(0xFF16A34A),
-        TransferRequestStatus.rejected => const Color(0xFFDC2626),
-        TransferRequestStatus.cancelled => const Color(0xFF6B7280),
-        TransferRequestStatus.expired => const Color(0xFF6B7280),
+        TransferRequestStatus.waitingTransferDate => AppColors.primary,
+        TransferRequestStatus.readyForHandover => AppColors.primary,
+        TransferRequestStatus.waitingExecution => AppColors.primary,
+        TransferRequestStatus.executed => AppColors.successText,
+        TransferRequestStatus.completed => AppColors.successText,
+        TransferRequestStatus.rejected => AppColors.danger,
+        TransferRequestStatus.cancelled => AppColors.neutral,
+        TransferRequestStatus.expired => AppColors.neutral,
       };
     }
 
     return switch (requestStatus) {
       ChangeRequestStatus.pending => const Color(0xFFD97706),
       ChangeRequestStatus.underReview => AppColors.deepBlue,
-      ChangeRequestStatus.approved => const Color(0xFF16A34A),
-      ChangeRequestStatus.rejected => const Color(0xFFDC2626),
-      ChangeRequestStatus.processing => const Color(0xFF2563EB),
-      ChangeRequestStatus.completed => const Color(0xFF16A34A),
-      ChangeRequestStatus.cancelled => const Color(0xFF6B7280),
+      ChangeRequestStatus.approved => AppColors.successText,
+      ChangeRequestStatus.rejected => AppColors.danger,
+      ChangeRequestStatus.processing => AppColors.primary,
+      ChangeRequestStatus.completed => AppColors.successText,
+      ChangeRequestStatus.cancelled => AppColors.neutral,
     };
   }
 
   Color get _bg {
-    if (neutral) return const Color(0xFFEFF1FF);
+    if (neutral) return AppColors.primarySurface;
     final status = transferStatus;
     if (status != null) {
       return switch (status) {
         TransferRequestStatus.requested => const Color(0xFFFFF7ED),
         TransferRequestStatus.waitingManagerApproval => const Color(0xFFFFF7ED),
-        TransferRequestStatus.managerApproved => const Color(0xFFEFF1FF),
+        TransferRequestStatus.managerApproved => AppColors.primarySurface,
         TransferRequestStatus.waitingHolderResponse => const Color(0xFFFFF7ED),
         TransferRequestStatus.waitingApproval => const Color(0xFFFFF7ED),
-        TransferRequestStatus.waitingNewContract => const Color(0xFFEFF1FF),
+        TransferRequestStatus.waitingNewContract => AppColors.primarySurface,
         TransferRequestStatus.waitingTargetHolderApproval => const Color(
           0xFFFFF7ED,
         ),
@@ -2449,11 +2449,11 @@ class _StatusBanner extends StatelessWidget {
           0xFFEFF1FF,
         ),
         TransferRequestStatus.waitingPayment => const Color(0xFFFFF7ED),
-        TransferRequestStatus.waitingSigning => const Color(0xFFEFF1FF),
-        TransferRequestStatus.waitingContractSigning => const Color(0xFFEFF1FF),
-        TransferRequestStatus.waitingTransferDate => const Color(0xFFEFF6FF),
-        TransferRequestStatus.readyForHandover => const Color(0xFFEFF6FF),
-        TransferRequestStatus.waitingExecution => const Color(0xFFEFF6FF),
+        TransferRequestStatus.waitingSigning => AppColors.primarySurface,
+        TransferRequestStatus.waitingContractSigning => AppColors.primarySurface,
+        TransferRequestStatus.waitingTransferDate => AppColors.infoSurface,
+        TransferRequestStatus.readyForHandover => AppColors.infoSurface,
+        TransferRequestStatus.waitingExecution => AppColors.infoSurface,
         TransferRequestStatus.executed => const Color(0xFFD4F8DE),
         TransferRequestStatus.completed => const Color(0xFFD4F8DE),
         TransferRequestStatus.rejected => const Color(0xFFFFE4E4),
@@ -2464,10 +2464,10 @@ class _StatusBanner extends StatelessWidget {
 
     return switch (requestStatus) {
       ChangeRequestStatus.pending => const Color(0xFFFFF7ED),
-      ChangeRequestStatus.underReview => const Color(0xFFEFF1FF),
+      ChangeRequestStatus.underReview => AppColors.primarySurface,
       ChangeRequestStatus.approved => const Color(0xFFD4F8DE),
       ChangeRequestStatus.rejected => const Color(0xFFFFE4E4),
-      ChangeRequestStatus.processing => const Color(0xFFEFF1FF),
+      ChangeRequestStatus.processing => AppColors.primarySurface,
       ChangeRequestStatus.completed => const Color(0xFFD4F8DE),
       ChangeRequestStatus.cancelled => const Color(0xFFF5F5F5),
     };
@@ -2482,7 +2482,7 @@ class _StatusBanner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: _bg,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
       ),
       child: Row(
         children: [
@@ -2591,7 +2591,7 @@ class _SectionCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(
@@ -2703,7 +2703,7 @@ class _ActionButton extends StatelessWidget {
           disabledForegroundColor: Colors.white.withValues(alpha: 0.8),
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
           ),
         ),
       ),
@@ -2724,7 +2724,7 @@ class _TransferLoadingCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Row(
@@ -2766,7 +2766,7 @@ class _TransferLoadStateCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(
@@ -2814,7 +2814,7 @@ class _TransferLoadStateCard extends StatelessWidget {
                 foregroundColor: AppColors.deepBlue,
                 side: const BorderSide(color: AppColors.deepBlue),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 ),
               ),
             ),
@@ -2838,8 +2838,8 @@ class _TransferActionLoadingCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFF1FF),
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.primarySurface,
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: const Color(0xFFD7DCFF)),
       ),
       child: Row(
@@ -2889,9 +2889,9 @@ class _TargetHolderApprovalCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFBEB),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFF59E0B), width: 1.5),
+        color: AppColors.warningSurface,
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        border: Border.all(color: AppColors.warning, width: 1.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2908,7 +2908,7 @@ class _TargetHolderApprovalCard extends StatelessWidget {
                 child: Text(
                   'Yêu cầu chuyển vào phòng bạn',
                   style: TextStyle(
-                    color: Color(0xFF92400E),
+                    color: AppColors.warningText,
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                   ),
@@ -2920,7 +2920,7 @@ class _TargetHolderApprovalCard extends StatelessWidget {
           const Text(
             'Một người dùng đang yêu cầu chuyển vào phòng của bạn. Vui lòng xem xét và phê duyệt hoặc từ chối yêu cầu này.',
             style: TextStyle(
-              color: Color(0xFF92400E),
+              color: AppColors.warningText,
               fontSize: 13,
               fontWeight: FontWeight.w500,
               height: 1.5,
@@ -2933,7 +2933,7 @@ class _TargetHolderApprovalCard extends StatelessWidget {
                 child: _ApprovalButton(
                   label: 'Từ chối',
                   icon: Icons.close_outlined,
-                  color: const Color(0xFFDC2626),
+                  color: AppColors.danger,
                   busy: busy,
                   onTap: onReject,
                 ),
@@ -2943,7 +2943,7 @@ class _TargetHolderApprovalCard extends StatelessWidget {
                 child: _ApprovalButton(
                   label: 'Đồng ý',
                   icon: Icons.check_outlined,
-                  color: const Color(0xFF16A34A),
+                  color: AppColors.successText,
                   busy: busy,
                   onTap: onApprove,
                 ),
@@ -2997,7 +2997,7 @@ class _ApprovalButton extends StatelessWidget {
           disabledBackgroundColor: color.withValues(alpha: 0.5),
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
           ),
         ),
       ),
@@ -3216,7 +3216,7 @@ class _StatusTimeline extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(
@@ -3266,10 +3266,10 @@ class _StatusTimeline extends StatelessWidget {
                   height: 32,
                   decoration: BoxDecoration(
                     color: isCompleted
-                        ? const Color(0xFF16A34A)
+                        ? AppColors.successText
                         : isCurrent
                         ? AppColors.deepBlue
-                        : const Color(0xFFE5E7EB),
+                        : AppColors.neutralBorder,
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -3285,8 +3285,8 @@ class _StatusTimeline extends StatelessWidget {
                     width: 2,
                     height: 24,
                     color: isCompleted
-                        ? const Color(0xFF16A34A)
-                        : const Color(0xFFE5E7EB),
+                        ? AppColors.successText
+                        : AppColors.neutralBorder,
                   ),
               ],
             ),
@@ -3298,7 +3298,7 @@ class _StatusTimeline extends StatelessWidget {
                   step.label,
                   style: TextStyle(
                     color: isCompleted
-                        ? const Color(0xFF16A34A)
+                        ? AppColors.successText
                         : isCurrent
                         ? AppColors.deepBlue
                         : AppColors.bodyText,
@@ -3352,12 +3352,12 @@ class _SettlementChoiceTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             border: Border.all(color: const Color(0xFFD1D5DB)),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
           ),
           child: Row(
             children: [
@@ -3365,8 +3365,8 @@ class _SettlementChoiceTile extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEFF1FF),
-                  borderRadius: BorderRadius.circular(10),
+                  color: AppColors.primarySurface,
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 ),
                 child: Icon(icon, color: AppColors.deepBlue, size: 22),
               ),
@@ -3380,7 +3380,7 @@ class _SettlementChoiceTile extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF111827),
+                        color: AppColors.neutralStrong,
                       ),
                     ),
                     const SizedBox(height: 2),

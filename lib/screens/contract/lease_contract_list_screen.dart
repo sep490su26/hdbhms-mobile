@@ -1,6 +1,7 @@
 // ignore_for_file: unused_element
 
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/widgets/app_empty_state.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
 import 'package:hdbhms_mobile/models/contract/contract_list_item_model.dart';
@@ -339,7 +340,7 @@ class _FilterBar extends StatelessWidget {
                 height: 34,
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFD8D5),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
                 child: const Icon(
                   Icons.close_rounded,
@@ -376,8 +377,8 @@ class _FilterChip extends StatelessWidget {
         height: 34,
         padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFFEFF1FF) : const Color(0xFFF5F4F8),
-          borderRadius: BorderRadius.circular(8),
+          color: isActive ? AppColors.primarySurface : const Color(0xFFF5F4F8),
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
           border: Border.all(
             color: isActive
                 ? AppColors.deepBlue.withValues(alpha: 0.5)
@@ -432,8 +433,8 @@ class _StatusDropdown extends StatelessWidget {
       height: 34,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: isActive ? const Color(0xFFEFF1FF) : const Color(0xFFF5F4F8),
-        borderRadius: BorderRadius.circular(8),
+        color: isActive ? AppColors.primarySurface : const Color(0xFFF5F4F8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(
           color: isActive
               ? AppColors.deepBlue.withValues(alpha: 0.5)
@@ -520,14 +521,14 @@ class _ContractCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.surface,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         child: Container(
           padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
             border: Border.all(
               color: AppColors.cardBorder.withValues(alpha: 0.6),
             ),
@@ -538,8 +539,8 @@ class _ContractCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEFF1FF),
-                  borderRadius: BorderRadius.circular(8),
+                  color: AppColors.primarySurface,
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
                 child: const Icon(
                   Icons.description_outlined,
@@ -648,7 +649,7 @@ class _StatusBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
       ),
       child: Text(
         label,
@@ -667,96 +668,31 @@ class _StatusBadge extends StatelessWidget {
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.onRetry});
-
   final VoidCallback onRetry;
-
   @override
-  Widget build(BuildContext context) {
-    return RefreshIndicator(
-      color: AppColors.deepBlue,
-      onRefresh: () async => onRetry(),
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
-        children: [
-          const SizedBox(height: 120),
-          const Icon(
-            Icons.description_outlined,
-            color: AppColors.deepBlue,
-            size: 46,
-          ),
-          const SizedBox(height: 14),
-          const Text(
-            'Bạn chưa có hợp đồng thuê nào',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.inputText,
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
-              height: 20 / 15,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Center(
-            child: ElevatedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Thử lại'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppEmptyState(
+    icon: Icons.description_outlined,
+    title:
+        'B\u1EA1n ch\u01B0a c\u00F3 h\u1EE3p \u0111\u1ED3ng thu\u00EA n\u00E0o',
+    actionLabel: 'Th\u1EED l\u1EA1i',
+    onAction: onRetry,
+    scrollable: true,
+    onRefresh: () async => onRetry(),
+    topSpacing: 120,
+  );
 }
 
 class _EmptyFilterState extends StatelessWidget {
   const _EmptyFilterState({required this.onClear});
-
   final VoidCallback onClear;
-
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.filter_list_off_rounded,
-              color: AppColors.deepBlue,
-              size: 42,
-            ),
-            const SizedBox(height: 14),
-            const Text(
-              'Không có hợp đồng phù hợp với bộ lọc',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.inputText,
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 18),
-            ElevatedButton.icon(
-              onPressed: onClear,
-              icon: const Icon(Icons.clear_all_rounded),
-              label: const Text('Xóa bộ lọc'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppEmptyState(
+    icon: Icons.filter_list_off_rounded,
+    title:
+        'Kh\u00F4ng c\u00F3 h\u1EE3p \u0111\u1ED3ng ph\u00F9 h\u1EE3p v\u1EDBi b\u1ED9 l\u1ECDc',
+    actionLabel: 'X\u00F3a b\u1ED9 l\u1ECDc',
+    onAction: onClear,
+  );
 }
 
 class _ErrorState extends StatelessWidget {

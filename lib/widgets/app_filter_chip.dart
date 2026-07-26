@@ -36,7 +36,7 @@ class AppFilterChip extends StatelessWidget {
                 )
               : null,
           color: isActive ? null : AppColors.surface,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(AppColors.radiusPill),
           border: Border.all(
             color: isActive
                 ? Colors.white.withValues(alpha: 0.2)
@@ -61,7 +61,7 @@ class AppFilterChip extends StatelessWidget {
                 size: 14,
                 color: isActive ? Colors.white : AppColors.bodyText,
               ),
-              const SizedBox(width: 5),
+              const SizedBox(width: 3),
             ],
             Text(
               label,

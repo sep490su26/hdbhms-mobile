@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/widgets/app_empty_state.dart';
 import 'package:flutter/services.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
@@ -166,7 +167,7 @@ class _ContractHeader extends StatelessWidget {
                         RoomAmenitiesScreen(contractId: contractId),
                   ),
                 ),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -174,7 +175,7 @@ class _ContractHeader extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: AppColors.deepBlue.withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
@@ -410,7 +411,7 @@ class _CreateRequestGrid extends StatelessWidget {
                   padding: const EdgeInsets.all(7),
                   decoration: BoxDecoration(
                     color: AppColors.deepBlue.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
                   ),
                   child: const Icon(
                     Icons.add_circle_outline_rounded,
@@ -573,7 +574,7 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
                   decoration: InputDecoration(
                     labelText: 'Ngày thanh lý',
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
                     ),
                   ),
                   child: Row(
@@ -603,7 +604,7 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
                   hintText: 'Ví dụ: 12',
                   helperText: 'Tối thiểu 6 tháng',
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
                   ),
                 ),
               ),
@@ -615,7 +616,7 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
               decoration: InputDecoration(
                 hintText: 'Ghi chú / mô tả',
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 ),
               ),
             ),
@@ -624,7 +625,7 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
               Text(
                 _error,
                 style: const TextStyle(
-                  color: Color(0xFFDC2626),
+                  color: AppColors.danger,
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                 ),
@@ -682,7 +683,7 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 13),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
                   ),
                 ),
                 child: _submitting
@@ -733,7 +734,7 @@ class _ContractWarning extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
         decoration: BoxDecoration(
           color: const Color(0xFFFFD8D5),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
           border: Border.all(color: const Color(0xFFFFA9A3)),
         ),
         child: Row(
@@ -796,7 +797,7 @@ class _RoomHeroCard extends StatelessWidget {
     final hasImage = imageUrl.isNotEmpty;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(AppColors.radiusLg),
       child: SizedBox(
         height: 200,
         width: double.infinity,
@@ -868,7 +869,9 @@ class _RoomHeroCard extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(
+                            AppColors.radiusPill,
+                          ),
                           border: Border.all(
                             color: Colors.white.withValues(alpha: 0.25),
                           ),
@@ -899,7 +902,7 @@ class _RoomHeroCard extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(AppColors.radiusPill),
                     border: Border.all(
                       color: Colors.white.withValues(alpha: 0.18),
                     ),
@@ -935,10 +938,10 @@ class _ModernRoomBannerBg extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF0B1F3A), // deepBlue
-            Color(0xFF12345C), // darkBlue
+            AppColors.deepBlue, // deepBlue
+            AppColors.darkBlue, // darkBlue
             Color(0xFF1A4A8A), // mid
-            Color(0xFF2563EB), // primary
+            AppColors.primary, // primary
           ],
           stops: [0.0, 0.35, 0.65, 1.0],
         ),
@@ -954,7 +957,7 @@ class _ModernRoomBannerBg extends StatelessWidget {
               height: 160,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF2563EB).withValues(alpha: 0.22),
+                color: AppColors.primary.withValues(alpha: 0.22),
               ),
             ),
           ),
@@ -1007,7 +1010,7 @@ class _StatusBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: const Color(0xFFA7B4FF),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
       ),
       child: Text(
         _statusLabel(status),
@@ -1160,7 +1163,7 @@ class _TermTile extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
       decoration: BoxDecoration(
         color: const Color(0xFFF1F0F0),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1218,7 +1221,7 @@ class _DocumentSection extends StatelessWidget {
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   ),
                 ),
               ),
@@ -1241,7 +1244,7 @@ class _SectionCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: AppColors.cardBorder.withValues(alpha: 0.45)),
       ),
       child: Column(
@@ -1306,18 +1309,18 @@ class _ContractLoadingState extends StatelessWidget {
 
 class _ContractEmptyState extends StatelessWidget {
   const _ContractEmptyState({required this.onRetry});
-
   final VoidCallback onRetry;
-
   @override
-  Widget build(BuildContext context) {
-    return _StateMessage(
-      icon: Icons.description_outlined,
-      title: 'Bạn chưa có hợp đồng thuê phòng đang hiệu lực',
-      buttonLabel: 'Thử lại',
-      onRetry: onRetry,
-    );
-  }
+  Widget build(BuildContext context) => AppEmptyState(
+    icon: Icons.description_outlined,
+    title:
+        'B\u1EA1n ch\u01B0a c\u00F3 h\u1EE3p \u0111\u1ED3ng thu\u00EA ph\u00F2ng \u0111ang hi\u1EC7u l\u1EF1c',
+    actionLabel: 'Th\u1EED l\u1EA1i',
+    onAction: onRetry,
+    scrollable: true,
+    onRefresh: () async => onRetry(),
+    topSpacing: 120,
+  );
 }
 
 class _ContractErrorState extends StatelessWidget {

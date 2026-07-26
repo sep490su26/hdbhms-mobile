@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/payment/tenant_invoice_service.dart';
-import '../../theme/app_colors.dart';
 import '../../widgets/app_top_bar.dart';
 import '../home/home_screen.dart';
 import 'payment_history_page.dart';
@@ -216,7 +216,7 @@ class _SuccessHeader extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(AppColors.radiusPill),
               border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
             ),
             child: Row(
@@ -457,7 +457,7 @@ class _TransactionCard extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   color: theme.softAccent,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 ),
                 child: Icon(theme.icon, color: theme.primary, size: 23),
               ),
@@ -493,7 +493,7 @@ class _TransactionCard extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: theme.softAccent,
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(AppColors.radiusPill),
                 ),
                 child: Text(
                   'ĐÃ THANH TOÁN',
@@ -513,7 +513,7 @@ class _TransactionCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 20),
             decoration: BoxDecoration(
               color: theme.softSurface,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(AppColors.radiusLg),
             ),
             child: Column(
               children: [
@@ -640,7 +640,7 @@ class _PaidItem extends StatelessWidget {
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
         color: theme.softSurface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
         border: Border.all(color: theme.primary.withValues(alpha: 0.08)),
       ),
       child: Row(
@@ -650,7 +650,7 @@ class _PaidItem extends StatelessWidget {
             height: 40,
             decoration: BoxDecoration(
               color: theme.softAccent,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppColors.radiusMd),
             ),
             child: Icon(item.icon, color: theme.primary, size: 21),
           ),
@@ -711,7 +711,7 @@ class _ConfirmationNote extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Row(
@@ -760,7 +760,7 @@ class _SuccessActions extends StatelessWidget {
                 end: Alignment.centerRight,
                 colors: [AppColors.deepBlue, AppColors.primary],
               ),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
             ),
             child: FilledButton.icon(
               onPressed: () {
@@ -778,7 +778,7 @@ class _SuccessActions extends StatelessWidget {
                 backgroundColor: Colors.transparent,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
                 textStyle: const TextStyle(
                   fontSize: 15,
@@ -805,7 +805,7 @@ class _SuccessActions extends StatelessWidget {
               foregroundColor: AppColors.primary,
               side: const BorderSide(color: AppColors.cardBorder),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
               ),
               textStyle: const TextStyle(
                 fontSize: 14,
@@ -833,7 +833,7 @@ class _LightCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: AppColors.cardBorder),
         boxShadow: [
           BoxShadow(
@@ -1038,7 +1038,7 @@ class _SuccessTheme {
         checkColor: Colors.white,
         ink: AppColors.inputText,
         mutedInk: AppColors.bodyText,
-        softAccent: Color(0xFFE7F8F1),
+        softAccent: AppColors.successSurface,
         softSurface: AppColors.inputFill,
       );
     }
@@ -1053,7 +1053,7 @@ class _SuccessTheme {
       checkColor: Colors.white,
       ink: AppColors.inputText,
       mutedInk: AppColors.bodyText,
-      softAccent: Color(0xFFE7F8F1),
+      softAccent: AppColors.successSurface,
       softSurface: AppColors.inputFill,
     );
   }

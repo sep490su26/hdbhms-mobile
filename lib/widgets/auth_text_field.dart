@@ -144,7 +144,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
   }
 
   static final OutlineInputBorder _fieldBorder = OutlineInputBorder(
-    borderRadius: BorderRadius.circular(14),
+    borderRadius: BorderRadius.circular(AppColors.radiusMd),
     borderSide: const BorderSide(color: AppColors.border),
   );
 }

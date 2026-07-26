@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/payment/tenant_invoice_service.dart';
-import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/app_screen_shell.dart';
 import '../../widgets/app_top_bar.dart';
@@ -347,7 +347,7 @@ class _PreviewTile extends StatelessWidget {
     return Card(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -357,7 +357,7 @@ class _PreviewTile extends StatelessWidget {
                 height: 40,
                 decoration: BoxDecoration(
                   color: AppColors.primaryLight,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
                 child: Icon(icon, color: AppColors.primary),
               ),

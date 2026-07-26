@@ -230,7 +230,7 @@ class _RulesBanner extends StatelessWidget {
     final imageUrl = _resolveImageUrl(response.bannerImageUrl);
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
       child: SizedBox(
         height: 193,
         width: double.infinity,
@@ -472,7 +472,7 @@ class _FineSection extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
         color: const Color(0xFFFFF1EF),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: const Color(0xFFFFB8B2)),
       ),
       child: Column(
@@ -545,7 +545,7 @@ class _FineTile extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -749,7 +749,7 @@ Map<RuleCategory, List<PropertyRule>> _groupRules(List<PropertyRule> rules) {
 BoxDecoration _sectionDecoration() {
   return BoxDecoration(
     color: AppColors.surface,
-    borderRadius: BorderRadius.circular(10),
+    borderRadius: BorderRadius.circular(AppColors.radiusMd),
     boxShadow: [
       BoxShadow(
         color: Colors.black.withValues(alpha: 0.04),

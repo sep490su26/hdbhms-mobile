@@ -326,7 +326,7 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
       barrierDismissible: false,
       barrierColor: Colors.black54,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
         title: const Text(
           'Thành công!',
           style: TextStyle(fontWeight: FontWeight.w800),
@@ -342,7 +342,7 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
               backgroundColor: AppColors.deepBlue,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
               ),
             ),
             child: const Text('Đóng'),
@@ -580,7 +580,7 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
               ),
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
               ),
             ),
           ),
@@ -622,7 +622,7 @@ class _SectionCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(
@@ -669,19 +669,19 @@ class _SettlementOptionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final activeColor = selected ? AppColors.deepBlue : const Color(0xFF9CA3AF);
     final textColor = enabled
-        ? const Color(0xFF111827)
+        ? AppColors.neutralStrong
         : const Color(0xFF9CA3AF);
 
     return InkWell(
       onTap: enabled ? onTap : null,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
           color: selected
               ? AppColors.deepBlue.withValues(alpha: 0.06)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
           border: Border.all(
             color: selected
                 ? AppColors.deepBlue.withValues(alpha: 0.55)
@@ -716,7 +716,7 @@ class _SettlementOptionTile extends StatelessWidget {
                     subtitle,
                     style: TextStyle(
                       color: enabled
-                          ? const Color(0xFF6B7280)
+                          ? AppColors.neutral
                           : const Color(0xFF9CA3AF),
                       fontSize: 12,
                     ),
@@ -753,7 +753,7 @@ class _MoveOutContextCard extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(

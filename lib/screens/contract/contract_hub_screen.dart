@@ -149,7 +149,7 @@ class _ContractHubScreenState extends State<ContractHubScreen>
       padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: AppColors.cardBorder),
         boxShadow: [
           BoxShadow(
@@ -170,7 +170,7 @@ class _ContractHubScreenState extends State<ContractHubScreen>
         ),
         dividerColor: Colors.transparent,
         indicator: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
           gradient: const LinearGradient(
             colors: [AppColors.deepBlue, AppColors.primary],
           ),

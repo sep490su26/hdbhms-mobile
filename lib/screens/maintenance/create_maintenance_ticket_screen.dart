@@ -538,7 +538,7 @@ class _IntroCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 22, 24, 22),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: const Color(0xFFEAE8EA)),
         boxShadow: [
           BoxShadow(
@@ -641,15 +641,15 @@ class _RepairIntentOption extends StatelessWidget {
       color: selected
           ? AppColors.deepBlue.withValues(alpha: 0.07)
           : AppColors.surface,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
       child: InkWell(
         onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         child: Container(
           constraints: const BoxConstraints(minHeight: 92),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
             border: Border.all(color: borderColor, width: selected ? 1.5 : 1),
           ),
           child: Column(
@@ -748,7 +748,7 @@ class _UploadSlot extends StatelessWidget {
               ),
               child: Material(
                 color: AppColors.surface,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
                   onTap: enabled ? onTap : null,
@@ -764,7 +764,7 @@ class _UploadSlot extends StatelessWidget {
               top: -8,
               right: -7,
               child: Material(
-                color: const Color(0xFF111827),
+                color: AppColors.neutralStrong,
                 shape: const CircleBorder(),
                 child: InkWell(
                   customBorder: const CircleBorder(),
@@ -936,7 +936,7 @@ InputDecoration _inputDecoration({String? hintText}) {
 }
 
 final OutlineInputBorder _fieldBorder = OutlineInputBorder(
-  borderRadius: BorderRadius.circular(8),
+  borderRadius: BorderRadius.circular(AppColors.radiusSm),
   borderSide: const BorderSide(color: AppColors.cardBorder),
 );
 

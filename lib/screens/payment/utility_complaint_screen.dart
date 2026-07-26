@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/payment/tenant_invoice_service.dart';
-import '../../theme/app_colors.dart';
 import '../../widgets/app_top_bar.dart';
 
 /// Màn hình khiếu nại chỉ số điện nước – full-screen thay bottom sheet cũ.
@@ -190,7 +190,7 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
                                                 color:
                                                     line.lineType ==
                                                         'ELECTRICITY'
-                                                    ? const Color(0xFFF59E0B)
+                                                    ? AppColors.warning
                                                     : const Color(0xFF0EA5E9),
                                                 size: 18,
                                               ),
@@ -358,9 +358,9 @@ class _HeroCard extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF0B1F3A), Color(0xFF2563EB)],
+          colors: [AppColors.deepBlue, AppColors.primary],
         ),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: const Color(0x1FFFFFFF)),
       ),
       child: Row(
@@ -370,7 +370,7 @@ class _HeroCard extends StatelessWidget {
             height: 46,
             decoration: BoxDecoration(
               color: const Color(0xFFFBBF24),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
               boxShadow: [
                 BoxShadow(
                   color: const Color(0xFFFBBF24).withValues(alpha: 0.4),
@@ -467,7 +467,7 @@ class _FormCard extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
         border: Border.all(color: AppColors.cardBorder),
         boxShadow: [
           BoxShadow(
@@ -532,7 +532,7 @@ class _ReadOnlyField extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       decoration: BoxDecoration(
         color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Row(
@@ -579,9 +579,9 @@ class _ReadingSnapshotCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isElec = line.lineType == 'ELECTRICITY';
     final accentColor = isElec
-        ? const Color(0xFFF59E0B)
+        ? AppColors.warning
         : const Color(0xFF0EA5E9);
-    final bgColor = isElec ? const Color(0xFFFFFBEB) : const Color(0xFFEFF6FF);
+    final bgColor = isElec ? AppColors.warningSurface : AppColors.infoSurface;
     final unit = isElec ? 'kWh' : 'm³';
     String withUnit(double? value) {
       if (value == null) return '--';
@@ -593,7 +593,7 @@ class _ReadingSnapshotCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: accentColor.withValues(alpha: 0.25)),
       ),
       child: Column(
@@ -677,7 +677,7 @@ class _SnapshotRow extends StatelessWidget {
           value,
           style: TextStyle(
             color: highlight
-                ? const Color(0xFFDC2626)
+                ? AppColors.danger
                 : bold
                 ? AppColors.inputText
                 : AppColors.inputText,
@@ -703,7 +703,7 @@ class _InfoNote extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFFF0F9FF),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: const Color(0xFFBAE6FD)),
       ),
       child: const Row(
@@ -748,7 +748,7 @@ class _SubmitButton extends StatelessWidget {
           end: Alignment.centerRight,
           colors: [AppColors.deepBlue, AppColors.primary],
         ),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
       ),
       child: FilledButton.icon(
         onPressed: submitting ? null : onPressed,
@@ -756,7 +756,7 @@ class _SubmitButton extends StatelessWidget {
           backgroundColor: Colors.transparent,
           disabledBackgroundColor: Colors.transparent,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusSm)),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
         ),
         icon: submitting
@@ -781,7 +781,7 @@ class _SubmitButton extends StatelessWidget {
 
 InputDecoration _fieldDecoration({String? hintText, IconData? prefixIcon}) {
   final border = OutlineInputBorder(
-    borderRadius: BorderRadius.circular(8),
+    borderRadius: BorderRadius.circular(AppColors.radiusSm),
     borderSide: const BorderSide(color: AppColors.cardBorder),
   );
   return InputDecoration(

@@ -79,7 +79,7 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_messageForSubmitError(error)),
-          backgroundColor: const Color(0xFFDC2626),
+          backgroundColor: AppColors.danger,
         ),
       );
     }
@@ -174,7 +174,7 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
                 ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFEFF8FF),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   border: Border.all(
                     color: const Color(0xFF0284C7).withValues(alpha: 0.35),
                   ),
@@ -249,8 +249,8 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEFF1FF),
-                  borderRadius: BorderRadius.circular(8),
+                  color: AppColors.primarySurface,
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   border: Border.all(
                     color: AppColors.deepBlue.withValues(alpha: 0.25),
                   ),
@@ -312,7 +312,7 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(AppColors.radiusLg),
                 ),
               ),
             ),
@@ -328,7 +328,7 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
                 foregroundColor: AppColors.bodyText,
                 side: const BorderSide(color: AppColors.cardBorder),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(AppColors.radiusLg),
                 ),
               ),
               child: const Text(
@@ -391,7 +391,7 @@ class _SuccessDialogState extends State<_SuccessDialog>
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(AppColors.radiusLg),
               boxShadow: [
                 BoxShadow(
                   color: AppColors.deepBlue.withValues(alpha: 0.18),
@@ -473,8 +473,8 @@ class _SuccessDialogState extends State<_SuccessDialog>
                           vertical: 12,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEFF1FF),
-                          borderRadius: BorderRadius.circular(12),
+                          color: AppColors.primarySurface,
+                          borderRadius: BorderRadius.circular(AppColors.radiusMd),
                           border: Border.all(
                             color: AppColors.deepBlue.withValues(alpha: 0.2),
                           ),
@@ -513,7 +513,7 @@ class _SuccessDialogState extends State<_SuccessDialog>
                             foregroundColor: Colors.white,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(AppColors.radiusLg),
                             ),
                           ),
                           child: const Row(
@@ -565,7 +565,7 @@ class _SectionCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder),
         boxShadow: [
           BoxShadow(
@@ -651,7 +651,7 @@ class _Field extends StatelessWidget {
               const Text(
                 '*',
                 style: TextStyle(
-                  color: Color(0xFFDC2626),
+                  color: AppColors.danger,
                   fontSize: 13,
                   fontWeight: FontWeight.w900,
                 ),
@@ -685,23 +685,23 @@ class _Field extends StatelessWidget {
               vertical: 12,
             ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
               borderSide: const BorderSide(color: AppColors.cardBorder),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
               borderSide: const BorderSide(color: AppColors.cardBorder),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
               borderSide: const BorderSide(
                 color: AppColors.deepBlue,
                 width: 1.5,
               ),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xFFDC2626)),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
+              borderSide: const BorderSide(color: AppColors.danger),
             ),
           ),
         ),

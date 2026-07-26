@@ -465,13 +465,13 @@ class _TicketStatusBanner extends StatelessWidget {
       TicketStatus.completed => (
         Icons.check_circle_outline_rounded,
         AppColors.success,
-        const Color(0xFFE7F8F1),
+        AppColors.successSurface,
         'Sự cố đã được xử lý hoàn tất.',
       ),
       TicketStatus.rejected => (
         Icons.cancel_outlined,
         AppColors.danger,
-        const Color(0xFFFFE9E8),
+        AppColors.dangerSurface,
         'Phiếu đã bị từ chối.',
       ),
       TicketStatus.cancelled => (
@@ -489,7 +489,7 @@ class _TicketStatusBanner extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: background,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
         ),
         child: Row(
           children: [
@@ -897,7 +897,7 @@ class _SectionCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(
@@ -1086,7 +1086,7 @@ class _SecondaryActionButton extends StatelessWidget {
           backgroundColor: AppColors.primaryLight.withValues(alpha: 0.72),
           side: BorderSide(color: AppColors.primary.withValues(alpha: 0.24)),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppColors.radiusLg),
           ),
         ),
         child: Text(
@@ -1433,7 +1433,7 @@ class _SheetTextField extends StatelessWidget {
       keyboardType: keyboardType,
       decoration: InputDecoration(
         labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusSm)),
       ),
       validator: validator,
     );

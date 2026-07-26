@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 
-enum AppBrandLogoVariant { login, overview }
+enum AppBrandLogoVariant { login, overview, splash }
 
 /// Reusable property logo based on the apartment icon used across the app.
 class AppBrandLogo extends StatelessWidget {
@@ -15,7 +15,40 @@ class AppBrandLogo extends StatelessWidget {
     return switch (variant) {
       AppBrandLogoVariant.login => const _LoginBrandLogo(),
       AppBrandLogoVariant.overview => const _OverviewBrandLogo(),
+      AppBrandLogoVariant.splash => const _SplashBrandLogo(),
     };
+  }
+}
+
+class _SplashBrandLogo extends StatelessWidget {
+  const _SplashBrandLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 104,
+      height: 104,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, AppColors.primaryLight],
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.3),
+            blurRadius: 28,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: const Icon(
+        Icons.apartment_rounded,
+        color: AppColors.primary,
+        size: 56,
+      ),
+    );
   }
 }
 
@@ -33,7 +66,7 @@ class _LoginBrandLogo extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [Colors.white, AppColors.primaryLight],
         ),
-        borderRadius: BorderRadius.circular(17),
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
         boxShadow: [
           BoxShadow(
             color: AppColors.primary.withValues(alpha: 0.3),
@@ -69,7 +102,7 @@ class _OverviewBrandLogo extends StatelessWidget {
               height: 46,
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
               ),
             ),
@@ -83,7 +116,7 @@ class _OverviewBrandLogo extends StatelessWidget {
                 end: Alignment.bottomRight,
                 colors: [Colors.white, Color(0xFFDBEAFE)],
               ),
-              borderRadius: BorderRadius.circular(15),
+              borderRadius: BorderRadius.circular(AppColors.radiusLg),
               border: Border.all(color: Colors.white, width: 1.2),
               boxShadow: [
                 BoxShadow(

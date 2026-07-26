@@ -151,10 +151,10 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
         icon: const Icon(
           Icons.check_circle,
-          color: Color(0xFF16A34A),
+          color: AppColors.successText,
           size: 48,
         ),
         title: const Text(
@@ -175,7 +175,7 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
               ),
             ),
             child: const Text('Đã hiểu'),
@@ -296,14 +296,14 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFFBEB),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFF59E0B)),
+                  color: AppColors.warningSurface,
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                  border: Border.all(color: AppColors.warning),
                 ),
                 child: const Text(
                   'Không tìm thấy người ở lại phòng cũ phù hợp để đề cử làm người đứng tên hợp đồng mới.',
                   style: TextStyle(
-                    color: Color(0xFF92400E),
+                    color: AppColors.warningText,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     height: 1.4,
@@ -361,7 +361,7 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
                 alpha: 0.5,
               ),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
               ),
               elevation: 0,
             ),
@@ -388,8 +388,8 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFFEFF1FF),
-              borderRadius: BorderRadius.circular(10),
+              color: AppColors.primarySurface,
+              borderRadius: BorderRadius.circular(AppColors.radiusMd),
             ),
             child: Row(
               children: [
@@ -418,10 +418,10 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
             child: OutlinedButton(
               onPressed: _submitting ? null : _acceptNomination,
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF16A34A),
-                side: const BorderSide(color: Color(0xFF16A34A)),
+                foregroundColor: AppColors.successText,
+                side: const BorderSide(color: AppColors.successText),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 ),
               ),
               child: const Text(
@@ -455,7 +455,7 @@ class _SectionCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(

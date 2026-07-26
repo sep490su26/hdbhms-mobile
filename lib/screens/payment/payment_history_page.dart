@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/home/current_room_service.dart';
 import '../../services/payment/tenant_invoice_service.dart';
-import '../../theme/app_colors.dart';
 import '../../utils/room_scope.dart';
 import '../../widgets/app_notification_bell.dart';
 import '../../widgets/app_screen_shell.dart';
 import '../../widgets/app_top_bar.dart';
 import '../../widgets/app_skeleton.dart';
 import '../../widgets/app_filter_chip.dart';
+import '../../widgets/app_month_year_picker.dart';
 import '../../widgets/tenant_bottom_navigation.dart';
 import '../maintenance/maintenance_ticket_list_screen.dart';
 import '../notification/notification_list_screen.dart';
@@ -37,9 +38,8 @@ class PaymentHistoryPage extends StatefulWidget {
 class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
   final TextEditingController _searchController = TextEditingController();
   late Future<List<TenantInvoice>> _invoicesFuture;
-  _HistoryDateFilter _selectedDateFilter = _HistoryDateFilter.all;
+  DateTime? _selectedPaidMonth;
   _HistoryInvoiceTypeFilter _selectedTypeFilter = _HistoryInvoiceTypeFilter.all;
-  DateTimeRange? _customPaidDateRange;
 
   @override
   void initState() {
@@ -76,9 +76,8 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
   void _clearFilters() {
     _searchController.clear();
     setState(() {
-      _selectedDateFilter = _HistoryDateFilter.all;
+      _selectedPaidMonth = null;
       _selectedTypeFilter = _HistoryInvoiceTypeFilter.all;
-      _customPaidDateRange = null;
     });
   }
 
@@ -128,8 +127,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                   const SizedBox(height: 12),
 
                   _HistoryDateFilterControl(
-                    selectedFilter: _selectedDateFilter,
-                    customDateRange: _customPaidDateRange,
+                    selectedMonth: _selectedPaidMonth,
                     onTap: _selectPaidDateFilter,
                     onReload: _reload,
                   ),
@@ -207,11 +205,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
             return false;
           }
           final date = _historyDate(invoice);
-          if (!_matchesHistoryDateFilter(
-            date,
-            _selectedDateFilter,
-            _customPaidDateRange,
-          )) {
+          if (!_matchesHistoryDateFilter(date, _selectedPaidMonth)) {
             return false;
           }
           if (keyword.isEmpty) return true;
@@ -230,34 +224,13 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
   }
 
   Future<void> _selectPaidDateFilter() async {
-    final selected = await showModalBottomSheet<_HistoryDateFilter>(
+    final selected = await showAppMonthYearPicker(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      showDragHandle: false,
-      builder: (context) =>
-          _HistoryDateFilterSheet(activeFilter: _selectedDateFilter),
+      selectedMonth: _selectedPaidMonth,
+      title: 'Chọn tháng giao dịch',
     );
     if (!mounted || selected == null) return;
-
-    if (selected == _HistoryDateFilter.custom) {
-      final now = DateTime.now();
-      final picked = await showDateRangePicker(
-        context: context,
-        firstDate: DateTime(2020),
-        lastDate: now,
-        initialDateRange: _customPaidDateRange,
-        helpText: 'Chọn khoảng ngày giao dịch',
-      );
-      if (!mounted || picked == null) return;
-      setState(() {
-        _selectedDateFilter = selected;
-        _customPaidDateRange = picked;
-      });
-      return;
-    }
-
-    setState(() => _selectedDateFilter = selected);
+    setState(() => _selectedPaidMonth = selected.year == 0 ? null : selected);
   }
 }
 
@@ -354,6 +327,11 @@ class _SearchField extends StatelessWidget {
       textInputAction: TextInputAction.search,
       decoration: InputDecoration(
         hintText: 'Tìm theo mã hóa đơn, phòng, nội dung...',
+        hintStyle: const TextStyle(
+          color: AppColors.bodyText,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+        ),
         prefixIcon: const Icon(
           Icons.search_rounded,
           color: AppColors.bodyText,
@@ -373,15 +351,15 @@ class _SearchField extends StatelessWidget {
         ),
         border: OutlineInputBorder(
           borderSide: BorderSide(color: AppColors.cardBorder),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
         ),
         enabledBorder: OutlineInputBorder(
           borderSide: BorderSide(color: AppColors.cardBorder),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
         ),
         focusedBorder: OutlineInputBorder(
           borderSide: const BorderSide(color: AppColors.primary),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
         ),
       ),
       style: const TextStyle(
@@ -397,14 +375,12 @@ class _SearchField extends StatelessWidget {
 
 class _HistoryDateFilterControl extends StatelessWidget {
   const _HistoryDateFilterControl({
-    required this.selectedFilter,
-    required this.customDateRange,
+    required this.selectedMonth,
     required this.onTap,
     required this.onReload,
   });
 
-  final _HistoryDateFilter selectedFilter;
-  final DateTimeRange? customDateRange;
+  final DateTime? selectedMonth;
   final VoidCallback onTap;
   final VoidCallback onReload;
 
@@ -412,20 +388,20 @@ class _HistoryDateFilterControl extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         child: Ink(
           height: 48,
           padding: const EdgeInsets.only(left: 12, right: 4),
           decoration: BoxDecoration(
-            color: selectedFilter == _HistoryDateFilter.all
+            color: selectedMonth == null
                 ? AppColors.surface
                 : AppColors.primaryLight,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
             border: Border.all(
-              color: selectedFilter == _HistoryDateFilter.all
+              color: selectedMonth == null
                   ? AppColors.cardBorder
                   : AppColors.primary.withValues(alpha: 0.38),
             ),
@@ -435,13 +411,13 @@ class _HistoryDateFilterControl extends StatelessWidget {
               Icon(
                 Icons.event_outlined,
                 size: 19,
-                color: selectedFilter == _HistoryDateFilter.all
+                color: selectedMonth == null
                     ? AppColors.bodyText
                     : AppColors.deepBlue,
               ),
               const SizedBox(width: 9),
               const Text(
-                'Ngày giao dịch',
+                'Tháng giao dịch',
                 style: TextStyle(
                   color: AppColors.bodyText,
                   fontSize: 13,
@@ -451,7 +427,7 @@ class _HistoryDateFilterControl extends StatelessWidget {
               const Spacer(),
               Flexible(
                 child: Text(
-                  _historyDateFilterLabel(selectedFilter, customDateRange),
+                  _monthLabel(selectedMonth),
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.end,
                   style: const TextStyle(
@@ -528,6 +504,7 @@ class _HistoryTypeFilterBar extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _HistoryDateFilterSheet extends StatelessWidget {
   const _HistoryDateFilterSheet({required this.activeFilter});
 
@@ -613,7 +590,7 @@ class _HistoryBottomSheetHandle extends StatelessWidget {
       height: 4,
       decoration: BoxDecoration(
         color: AppColors.deepBlue,
-        borderRadius: BorderRadius.circular(99),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
       ),
     );
   }
@@ -638,7 +615,7 @@ class _HistoryDateFilterOption extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         child: SizedBox(
           height: 48,
           child: Row(
@@ -688,7 +665,7 @@ class _HistoryCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
         border: Border.all(color: AppColors.cardBorder),
         boxShadow: [
           BoxShadow(
@@ -709,7 +686,7 @@ class _HistoryCard extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0xFF10B981), Color(0xFF059669)],
+                  colors: [AppColors.success, Color(0xFF059669)],
                 ),
                 borderRadius: BorderRadius.horizontal(
                   left: Radius.circular(16),
@@ -728,7 +705,7 @@ class _HistoryCard extends StatelessWidget {
                       height: 42,
                       decoration: BoxDecoration(
                         color: const Color(0xFFEDEFFF),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(AppColors.radiusMd),
                       ),
                       child: Icon(
                         _historyIcon(invoice),
@@ -792,7 +769,9 @@ class _HistoryCard extends StatelessWidget {
                             ),
                             decoration: BoxDecoration(
                               color: const Color(0xFFD7FBE4),
-                              borderRadius: BorderRadius.circular(999),
+                              borderRadius: BorderRadius.circular(
+                                AppColors.radiusPill,
+                              ),
                             ),
                             child: const FittedBox(
                               fit: BoxFit.scaleDown,
@@ -801,7 +780,7 @@ class _HistoryCard extends StatelessWidget {
                                 children: [
                                   Icon(
                                     Icons.check_circle_rounded,
-                                    color: Color(0xFF16A34A),
+                                    color: AppColors.successText,
                                     size: 12,
                                   ),
                                   SizedBox(width: 4),
@@ -893,7 +872,7 @@ class _HistoryError extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFFFFF0EF),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: const Color(0xFFFFB5AE)),
       ),
       child: Column(
@@ -902,7 +881,7 @@ class _HistoryError extends StatelessWidget {
           Text(
             message,
             style: const TextStyle(
-              color: Color(0xFFB42318),
+              color: AppColors.dangerText,
               fontSize: 13,
               fontWeight: FontWeight.w700,
             ),
@@ -912,9 +891,7 @@ class _HistoryError extends StatelessWidget {
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded, size: 16),
             label: const Text('Thử lại'),
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFFB42318),
-            ),
+            style: TextButton.styleFrom(foregroundColor: AppColors.dangerText),
           ),
         ],
       ),
@@ -940,7 +917,7 @@ class _HistoryEmpty extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Row(
@@ -951,7 +928,7 @@ class _HistoryEmpty extends StatelessWidget {
             height: 36,
             decoration: BoxDecoration(
               color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(AppColors.radiusMd),
             ),
             child: const Icon(
               Icons.receipt_long_outlined,
@@ -1037,32 +1014,18 @@ bool _matchesHistoryTypeFilter(
   };
 }
 
-bool _matchesHistoryDateFilter(
-  DateTime date,
-  _HistoryDateFilter filter,
-  DateTimeRange? customRange,
-) {
-  if (filter == _HistoryDateFilter.all) return true;
-  final normalizedDate = _dateOnly(date);
-  if (filter == _HistoryDateFilter.custom) {
-    if (customRange == null) return true;
-    return !normalizedDate.isBefore(_dateOnly(customRange.start)) &&
-        !normalizedDate.isAfter(_dateOnly(customRange.end));
-  }
-
-  final days = switch (filter) {
-    _HistoryDateFilter.last7Days => 7,
-    _HistoryDateFilter.last30Days => 30,
-    _HistoryDateFilter.last90Days => 90,
-    _ => 0,
-  };
-  final today = _dateOnly(DateTime.now());
-  return !normalizedDate.isBefore(today.subtract(Duration(days: days - 1))) &&
-      !normalizedDate.isAfter(today);
+bool _matchesHistoryDateFilter(DateTime date, DateTime? selectedMonth) {
+  return selectedMonth == null ||
+      (date.year == selectedMonth.year && date.month == selectedMonth.month);
 }
 
+// ignore: unused_element
 DateTime _dateOnly(DateTime value) =>
     DateTime(value.year, value.month, value.day);
+
+String _monthLabel(DateTime? selectedMonth) => selectedMonth == null
+    ? 'Tất cả tháng'
+    : 'Tháng ${selectedMonth.month.toString().padLeft(2, '0')}/${selectedMonth.year}';
 
 String _historyDateFilterLabel(
   _HistoryDateFilter filter,

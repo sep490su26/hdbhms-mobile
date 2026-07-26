@@ -488,7 +488,7 @@ class _IdentityStepper extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
@@ -605,7 +605,7 @@ class _ImageCaptureStepCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -641,7 +641,7 @@ class _ImageCaptureStepCard extends StatelessWidget {
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.72),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
                     ),
                     child: const Center(
                       child: CircularProgressIndicator(
@@ -701,7 +701,7 @@ class _ImageCaptureStepCard extends StatelessWidget {
     foregroundColor: AppColors.deepBlue,
     side: const BorderSide(color: AppColors.deepBlue),
     minimumSize: const Size.fromHeight(44),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusSm)),
     textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
   );
 }
@@ -729,7 +729,7 @@ class _ImageMeta extends StatelessWidget {
       children: [
         const Icon(
           Icons.check_circle_rounded,
-          color: Color(0xFF16A34A),
+          color: AppColors.successText,
           size: 18,
         ),
         const SizedBox(width: 8),
@@ -780,7 +780,7 @@ class _SelectedImagePreview extends StatelessWidget {
     return AspectRatio(
       aspectRatio: 1.6,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         child: Image.memory(file.bytes, fit: BoxFit.cover),
       ),
     );
@@ -799,7 +799,7 @@ class _InstructionBox extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: const Color(0xFFF5F6FF),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: const Color(0xFFE0E3F7)),
       ),
       child: Row(
@@ -900,7 +900,7 @@ class _IdCardPreview extends StatelessWidget {
             width: double.infinity,
             decoration: BoxDecoration(
               color: const Color(0xFFF2F0F0),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
               border: Border.all(
                 color: AppColors.cardBorder,
                 style: BorderStyle.solid,
@@ -980,7 +980,7 @@ class _ReviewStepCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -1047,7 +1047,7 @@ class _ReviewRow extends StatelessWidget {
         children: [
           Icon(
             isReady ? Icons.check_circle_rounded : Icons.error_outline_rounded,
-            color: isReady ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+            color: isReady ? AppColors.successText : AppColors.danger,
             size: 20,
           ),
           const SizedBox(width: 10),
@@ -1095,7 +1095,7 @@ class _ReviewThumbnail extends StatelessWidget {
     final thumbnail = isPortrait
         ? ClipOval(child: SizedBox(width: 44, height: 44, child: content))
         : ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
             child: SizedBox(width: 56, height: 40, child: content),
           );
 
@@ -1190,7 +1190,7 @@ class _BottomActionBar extends StatelessWidget {
                     foregroundColor: AppColors.bodyText,
                     minimumSize: const Size.fromHeight(48),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
                     ),
                   ),
                   child: const Text('Tr\u1EDF v\u1EC1'),
@@ -1209,7 +1209,7 @@ class _BottomActionBar extends StatelessWidget {
                   disabledForegroundColor: AppColors.bodyText,
                   minimumSize: const Size.fromHeight(48),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   ),
                 ),
                 child: isLoading
