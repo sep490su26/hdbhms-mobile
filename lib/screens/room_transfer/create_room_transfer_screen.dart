@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:hdbhms_mobile/widgets/app_date_picker.dart';
+
 import 'package:hdbhms_mobile/models/contract/lease_contract_model.dart';
 import 'package:hdbhms_mobile/models/room_transfer/room_transfer_model.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
+import 'package:hdbhms_mobile/widgets/app_date_picker.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
+import 'package:hdbhms_mobile/widgets/request_form_widgets.dart';
+import 'package:hdbhms_mobile/widgets/room_picker_sheet.dart';
+import 'package:hdbhms_mobile/widgets/section_card.dart';
 
 class CreateRoomTransferScreen extends StatefulWidget {
   const CreateRoomTransferScreen({
@@ -17,8 +22,6 @@ class CreateRoomTransferScreen extends StatefulWidget {
     this.contractService = const LeaseContractService(),
   });
 
-  /// If provided, skips the "getMyActiveContract" call and loads this contract
-  /// directly.
   final int? preloadedContractId;
   final RoomTransferService transferService;
   final LeaseContractService contractService;
@@ -30,774 +33,294 @@ class CreateRoomTransferScreen extends StatefulWidget {
 
 class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _reasonCtrl = TextEditingController();
-
-  LeaseContract? _currentContract;
-  AvailableRoom? _selectedTargetRoom;
-  DateTime? _selectedDate;
-  bool _loadingContract = true;
+  final _reasonController = TextEditingController();
+  LeaseContract? _contract;
+  List<AvailableRoom> _rooms = const [];
+  AvailableRoom? _targetRoom;
+  DateTime? _transferDate;
+  bool _loading = true;
   bool _loadingRooms = false;
   bool _submitting = false;
-  String? _errorMessage;
-
-  List<AvailableRoom> _availableRooms = [];
+  String? _error;
+  String? _roomError;
 
   @override
   void initState() {
     super.initState();
-    _loadCurrentContract();
+    _load();
   }
 
   @override
   void dispose() {
-    _reasonCtrl.dispose();
+    _reasonController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadCurrentContract() async {
+  Future<void> _load() async {
     setState(() {
-      _loadingContract = true;
-      _errorMessage = null;
+      _loading = true;
+      _error = null;
     });
     try {
-      final LeaseContract contract;
-      final id = widget.preloadedContractId;
-      if (id != null) {
-        // Use the preloaded contract ID (from LeaseContractScreen)
-        contract = await widget.contractService.getContractById(id);
-      } else {
-        // Fallback: get the active contract
-        contract = await widget.contractService.getMyActiveContract();
-      }
+      final contract = widget.preloadedContractId == null
+          ? await widget.contractService.getMyActiveContract()
+          : await widget.contractService.getContractById(
+              widget.preloadedContractId!,
+            );
       if (!mounted) return;
       setState(() {
-        _currentContract = contract;
-        _loadingContract = false;
+        _contract = contract;
+        _loading = false;
       });
-      // Now load available rooms using the property from the contract
-      await _loadAvailableRooms(contract);
-    } on LeaseContractNotFoundException {
+      await _loadRooms(contract);
+    } catch (error) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Bạn chưa có hợp đồng thuê phòng đang hiệu lực.';
-        _loadingContract = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = e.toString();
-        _loadingContract = false;
+        _loading = false;
+        _error = error is LeaseContractException
+            ? error.message
+            : 'Không thể tải thông tin hợp đồng.';
       });
     }
   }
 
-  Future<void> _loadAvailableRooms(LeaseContract contract) async {
-    setState(() => _loadingRooms = true);
+  Future<void> _loadRooms(LeaseContract contract) async {
+    final propertyId = contract.room.propertyId;
+    if (propertyId == null || propertyId <= 0) {
+      setState(() => _roomError = 'Không xác định được khu nhà của hợp đồng.');
+      return;
+    }
+    setState(() {
+      _loadingRooms = true;
+      _roomError = null;
+    });
     try {
-      final propertyId = await _resolvePropertyId(contract);
-      if (propertyId == null || propertyId <= 0) {
-        throw const LeaseContractException(
-          'Không xác định được nhà trọ của hợp đồng hiện tại.',
-        );
-      }
       final rooms = await widget.transferService.fetchAvailableRooms(
         propertyId: propertyId,
-        page: 0,
         size: 100,
       );
       if (!mounted) return;
       setState(() {
-        _availableRooms = rooms
+        _rooms = rooms
             .where(
-              (r) =>
-                  r.currentStatus == 'VACANT' ||
-                  r.currentStatus == 'SOON_VACANT',
+              (room) =>
+                  room.currentStatus == 'VACANT' ||
+                  room.currentStatus == 'SOON_VACANT',
             )
             .toList(growable: false);
         _loadingRooms = false;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
-        _availableRooms = [];
         _loadingRooms = false;
+        _roomError = 'Không thể tải danh sách phòng.';
       });
     }
   }
 
-  Future<int?> _resolvePropertyId(LeaseContract contract) async {
-    final contractPropertyId = contract.room.propertyId;
-    if (contractPropertyId != null && contractPropertyId > 0) {
-      return contractPropertyId;
+  Future<void> _openPicker() async {
+    final contract = _contract;
+    if (contract == null) return;
+    if (_loadingRooms) return;
+    if (_roomError != null) {
+      await _loadRooms(contract);
+      return;
     }
-
-    final contexts = await widget.contractService.fetchMyActiveRooms();
-    final contractId = contract.id;
-    for (final context in contexts) {
-      if (contractId != null && context.contractId == contractId) {
-        return context.propertyId;
-      }
-    }
-    for (final context in contexts) {
-      final sameRoomId =
-          contract.room.id != null &&
-          contract.room.id! > 0 &&
-          context.roomId == contract.room.id;
-      final sameRoomCode =
-          contract.room.roomCode.trim().isNotEmpty &&
-          context.roomCode == contract.room.roomCode;
-      if (sameRoomId || sameRoomCode) {
-        return context.propertyId;
-      }
-    }
-    return null;
+    final selected = await showModalBottomSheet<AvailableRoom>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => RoomPickerSheet(
+        rooms: _rooms,
+        currentRoomId: contract.room.id,
+        initialSelection: _targetRoom,
+      ),
+    );
+    if (selected != null && mounted) setState(() => _targetRoom = selected);
   }
 
   Future<void> _pickDate() async {
-    final now = DateTime.now();
-    final tomorrow = DateTime(now.year, now.month, now.day + 1);
+    final today = DateTime.now();
+    final first = DateTime(today.year, today.month, today.day);
     final picked = await AppDatePicker.show(
       context: context,
-      initialDate: _selectedDate ?? tomorrow,
-      firstDate: tomorrow,
-      lastDate: DateTime(now.year + 2),
+      initialDate: _transferDate ?? first,
+      firstDate: first,
+      lastDate: DateTime(first.year + 5),
     );
-    if (picked != null) {
-      setState(() => _selectedDate = picked);
-    }
-  }
-
-  String _formatDate(DateTime d) {
-    return '${d.day.toString().padLeft(2, '0')}/'
-        '${d.month.toString().padLeft(2, '0')}/'
-        '${d.year}';
+    if (picked != null && mounted) setState(() => _transferDate = picked);
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) {
-      _snack('Vui lòng hoàn thành các trường bắt buộc.');
-      return;
-    }
-    if (_currentContract == null) {
-      _snack('Không tìm thấy hợp đồng hiện tại.');
-      return;
-    }
-    if (_selectedTargetRoom == null) {
-      _snack('Vui lòng chọn phòng đích.');
-      return;
-    }
-    if (_selectedDate == null) {
-      _snack('Vui lòng chọn ngày chuyển dự kiến.');
-      return;
-    }
-
-    setState(() => _submitting = true);
-
+    if (!_formKey.currentState!.validate()) return;
+    final contractId = _contract?.id;
+    final target = _targetRoom;
+    final date = _transferDate;
+    if (contractId == null || target == null || date == null) return;
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
     try {
       await widget.transferService.createTransferRequest(
-        sourceContractId: _currentContract!.id ?? 0,
-        targetRoomId: _selectedTargetRoom!.id,
-        requestedTransferDate: _selectedDate!,
-        reason: _reasonCtrl.text.trim().isNotEmpty
-            ? _reasonCtrl.text.trim()
-            : null,
+        sourceContractId: contractId,
+        targetRoomId: target.id,
+        requestedTransferDate: date,
+        reason: _reasonController.text,
       );
-
       if (!mounted) return;
-      _showSuccessDialog();
-    } on RoomTransferException catch (e) {
+      setState(() => _submitting = false);
+      await showRequestSuccessSheet(
+        context,
+        message:
+            'Yêu cầu chuyển sang ${target.displayName} đã được gửi tới quản lý để xét duyệt.',
+        onReturnToContract: () => Navigator.of(context).pop(),
+      );
+    } catch (error) {
       if (!mounted) return;
-      _snack(e.message);
-    } catch (e) {
-      if (!mounted) return;
-      _snack('Không thể tạo yêu cầu chuyển phòng. Vui lòng thử lại.');
-    } finally {
-      if (mounted) {
-        setState(() => _submitting = false);
-      }
+      setState(() {
+        _submitting = false;
+        _error = error is RoomTransferException
+            ? error.message
+            : 'Không thể gửi yêu cầu. Vui lòng thử lại.';
+      });
     }
   }
-
-  void _snack(String msg) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(msg)));
-  }
-
-  void _showSuccessDialog() {
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.black54,
-      builder: (_) => _TransferSuccessDialog(
-        targetRoomName: _selectedTargetRoom?.displayName ?? '',
-        onDone: () {
-          Navigator.of(context).pop(); // close dialog
-          Navigator.of(context).pop(); // pop this screen
-        },
-      ),
-    );
-  }
-
-  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: AppScreenShell(header: _buildHeader(), child: _buildBody()),
-      ),
-    );
-  }
-
-  // ignore: unused_element
-  Widget _buildLegacyHeader() {
-    return Container(
-      height: AppColors.topBarHeight,
-      padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: AppColors.cardBorder.withValues(alpha: 0.65),
-          ),
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AppColors.background,
+    body: SafeArea(
+      child: AppScreenShell(
+        header: AppTopBar(
+          title: 'Chuyển phòng',
+          onBack: () => Navigator.of(context).maybePop(),
         ),
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null && _contract == null
+            ? _LoadError(message: _error!, onRetry: _load)
+            : _buildForm(),
       ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-            icon: const Icon(
-              Icons.arrow_back_rounded,
-              color: AppColors.deepBlue,
-              size: 24,
-            ),
-            tooltip: 'Trở về',
-          ),
-          const Expanded(
-            child: Text('Chuyển phòng', style: AppColors.topBarTitleStyle),
-          ),
-        ],
-      ),
-    );
-  }
+    ),
+  );
 
-  Widget _buildHeader() {
-    return AppTopBar(
-      title: 'Chuyển phòng',
-      onBack: () => Navigator.of(context).maybePop(),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_loadingContract) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.deepBlue),
-      );
-    }
-
-    if (_errorMessage != null) {
-      return _ErrorState(
-        message: _errorMessage!,
-        onRetry: _loadCurrentContract,
-      );
-    }
-
+  Widget _buildForm() {
+    final contract = _contract!;
     return Form(
       key: _formKey,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(14, 16, 14, 28),
-        children: [
-          // ── Source contract info ────────────────────────────────────────
-          _SectionCard(
-            title: 'Hợp đồng hiện tại',
-            icon: Icons.home_work_outlined,
-            children: [
-              _InfoRow(
-                label: 'Mã hợp đồng',
-                value: _currentContract?.contractCode ?? '--',
-              ),
-              const SizedBox(height: 8),
-              const Divider(height: 1, color: Color(0xFFEEECEE)),
-              const SizedBox(height: 8),
-              _InfoRow(
-                label: 'Phòng hiện tại',
-                value:
-                    _currentContract?.room.roomName ??
-                    _currentContract?.room.roomCode ??
-                    '--',
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 14),
-
-          // ── Target room picker ──────────────────────────────────────────
-          _SectionCard(
-            title: 'Phòng đích',
-            icon: Icons.swap_horiz_rounded,
-            required: true,
-            children: [
-              if (_loadingRooms)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      color: AppColors.deepBlue,
-                      strokeWidth: 2,
-                    ),
+      child: RequestFormScaffold(
+        action: StickyRequestAction(
+          label: 'Gửi yêu cầu chuyển phòng',
+          onPressed: _submit,
+          isLoading: _submitting,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('HỢP ĐỒNG HIỆN TẠI', style: AppTypography.label),
+            const SizedBox(height: AppColors.space8),
+            RequestContractSummaryCard(
+              room: _roomLabel(contract),
+              contractCode: _dash(contract.contractCode),
+              expiry: _date(contract.endDate),
+              monthlyRent: contract.monthlyRent == null
+                  ? null
+                  : '${CurrencyFormatter.vnd(contract.monthlyRent!)} / tháng',
+            ),
+            const SizedBox(height: AppColors.space24),
+            const Text('PHÒNG MUỐN CHUYỂN ĐẾN *', style: AppTypography.label),
+            const SizedBox(height: AppColors.space8),
+            FormField<AvailableRoom>(
+              validator: (_) => _targetRoom == null
+                  ? 'Vui lòng chọn phòng muốn chuyển đến.'
+                  : null,
+              builder: (field) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _RoomSelector(
+                    room: _targetRoom,
+                    loading: _loadingRooms,
+                    error: _roomError,
+                    onTap: () async {
+                      await _openPicker();
+                      field.didChange(_targetRoom);
+                    },
                   ),
-                )
-              else
-                _RoomPickerField(
-                  selectedRoom: _selectedTargetRoom,
-                  rooms: _availableRooms,
-                  currentRoomCode: _currentContract?.room.roomCode ?? '',
-                  onChanged: (room) =>
-                      setState(() => _selectedTargetRoom = room),
-                ),
-            ],
-          ),
-
-          const SizedBox(height: 14),
-
-          // ── Transfer date ───────────────────────────────────────────────
-          _SectionCard(
-            title: 'Ngày chuyển dự kiến',
-            icon: Icons.calendar_month_outlined,
-            required: true,
-            children: [
-              _DateField(
-                selectedDate: _selectedDate,
-                onPick: _pickDate,
-                format: _formatDate,
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 14),
-
-          // ── Reason ──────────────────────────────────────────────────────
-          _SectionCard(
-            title: 'Lý do chuyển phòng',
-            icon: Icons.notes_outlined,
-            children: [
-              TextFormField(
-                controller: _reasonCtrl,
-                maxLines: 3,
-                keyboardType: TextInputType.multiline,
-                textCapitalization: TextCapitalization.sentences,
-                enableSuggestions: true,
-                autocorrect: true,
-                decoration: const InputDecoration(
-                  hintText: 'Nhập lý do chuyển phòng (không bắt buộc)',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(10)),
-                    borderSide: BorderSide(color: AppColors.border),
-                  ),
-                  filled: true,
-                  fillColor: AppColors.inputFill,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                ),
-                style: const TextStyle(
-                  color: AppColors.inputText,
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-
-          // ── Submit button ───────────────────────────────────────────────
-          SizedBox(
-            height: 48,
-            child: ElevatedButton(
-              onPressed: _submitting ? null : _submit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: AppColors.deepBlue.withValues(
-                  alpha: 0.5,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                ),
-                elevation: 0,
-              ),
-              child: _submitting
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text(
-                      'Gửi yêu cầu chuyển phòng',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                  if (field.errorText != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6, left: 12),
+                      child: Text(
+                        field.errorText!,
+                        style: const TextStyle(
+                          color: AppColors.danger,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Sub-widgets ──────────────────────────────────────────────────────────────
-
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({
-    required this.title,
-    required this.icon,
-    required this.children,
-    this.required = false,
-  });
-
-  final String title;
-  final IconData icon;
-  final List<Widget> children;
-  final bool required;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusMd),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: AppColors.deepBlue, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Semantics(
-                  label: required ? '$title, bắt buộc' : title,
-                  child: RichText(
-                    text: TextSpan(
-                      style: const TextStyle(
-                        color: Color(0xFF000666),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                      ),
-                      children: [
-                        TextSpan(text: title),
-                        if (required)
-                          const TextSpan(
-                            text: ' *',
-                            style: TextStyle(color: AppColors.danger),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
+                ],
               ),
+            ),
+            if (_targetRoom != null && contract.monthlyRent != null) ...[
+              const SizedBox(height: AppColors.space16),
+              const Text('SO SÁNH CHI PHÍ', style: AppTypography.label),
+              const SizedBox(height: AppColors.space8),
+              _PriceComparison(contract: contract, target: _targetRoom!),
             ],
-          ),
-          const SizedBox(height: 12),
-          ...children,
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 110,
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: AppColors.bodyText,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            textAlign: TextAlign.end,
-            style: const TextStyle(
-              color: AppColors.inputText,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _RoomPickerField extends StatefulWidget {
-  const _RoomPickerField({
-    required this.selectedRoom,
-    required this.rooms,
-    required this.currentRoomCode,
-    required this.onChanged,
-  });
-
-  final AvailableRoom? selectedRoom;
-  final List<AvailableRoom> rooms;
-  final String currentRoomCode;
-  final ValueChanged<AvailableRoom?> onChanged;
-
-  @override
-  State<_RoomPickerField> createState() => _RoomPickerFieldState();
-}
-
-class _RoomPickerFieldState extends State<_RoomPickerField> {
-  String _search = '';
-
-  List<AvailableRoom> get _filtered {
-    final query = _search.trim().toLowerCase();
-    if (query.isEmpty) return widget.rooms;
-    return widget.rooms.where((r) {
-      return r.roomCode.toLowerCase().contains(query) ||
-          r.roomName.toLowerCase().contains(query) ||
-          r.propertyName.toLowerCase().contains(query) ||
-          r.floorName.toLowerCase().contains(query);
-    }).toList();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Search box
-        TextField(
-          onChanged: (v) => setState(() => _search = v),
-          decoration: const InputDecoration(
-            hintText: 'Tìm phòng theo mã, tên...',
-            prefixIcon: Icon(Icons.search, color: AppColors.hintText),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(10)),
-              borderSide: BorderSide(color: AppColors.border),
-            ),
-            filled: true,
-            fillColor: AppColors.inputFill,
-            contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          ),
-          style: const TextStyle(color: AppColors.inputText, fontSize: 14),
-        ),
-
-        const SizedBox(height: 10),
-
-        // Selected room display
-        if (widget.selectedRoom != null)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(AppColors.radiusMd),
-              border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.check_circle,
-                  color: AppColors.primary,
-                  size: 20,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(height: AppColors.space24),
+            const Text('NGÀY CHUYỂN DỰ KIẾN *', style: AppTypography.label),
+            const SizedBox(height: AppColors.space8),
+            FormField<DateTime>(
+              validator: (_) => _transferDate == null
+                  ? 'Vui lòng chọn ngày chuyển dự kiến.'
+                  : null,
+              builder: (field) => InkWell(
+                onTap: _submitting
+                    ? null
+                    : () async {
+                        await _pickDate();
+                        field.didChange(_transferDate);
+                      },
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                child: InputDecorator(
+                  decoration: InputDecoration(errorText: field.errorText),
+                  child: Row(
                     children: [
-                      Text(
-                        widget.selectedRoom!.displayName,
-                        style: const TextStyle(
-                          color: AppColors.inputText,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                      Expanded(
+                        child: Text(
+                          _transferDate == null
+                              ? 'Chọn ngày'
+                              : _date(_transferDate),
+                          style: _transferDate == null
+                              ? AppTypography.body
+                              : AppTypography.label,
                         ),
                       ),
-                      Text(
-                        '${widget.selectedRoom!.propertyName} - ${widget.selectedRoom!.floorName}',
-                        style: const TextStyle(
-                          color: AppColors.bodyText,
-                          fontSize: 12,
-                        ),
-                      ),
-                      Text(
-                        'Giá: ${CurrencyFormatter.vnd(widget.selectedRoom!.listedPrice.toDouble())}/tháng',
-                        style: const TextStyle(
-                          color: AppColors.successText,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      const Icon(Icons.calendar_today_outlined, size: 20),
                     ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.close,
-                    color: AppColors.bodyText,
-                    size: 18,
-                  ),
-                  onPressed: () => widget.onChanged(null),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints.tightFor(
-                    width: 28,
-                    height: 28,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-        const SizedBox(height: 8),
-
-        // Room list
-        if (_filtered.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Center(
-              child: Text(
-                'Không tìm thấy phòng phù hợp',
-                style: TextStyle(color: AppColors.bodyText, fontSize: 13),
               ),
             ),
-          )
-        else
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 220),
-            child: ListView.separated(
-              shrinkWrap: true,
-              itemCount: _filtered.length,
-              separatorBuilder: (_, _) =>
-                  const Divider(height: 1, color: Color(0xFFEEECEE)),
-              itemBuilder: (context, index) {
-                final room = _filtered[index];
-                final isCurrent = room.roomCode == widget.currentRoomCode;
-                final isSelected = widget.selectedRoom?.id == room.id;
-
-                return ListTile(
-                  dense: true,
-                  enabled: !isCurrent,
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(
-                    isCurrent ? Icons.block : Icons.meeting_room_outlined,
-                    color: isCurrent ? AppColors.bodyText : AppColors.deepBlue,
-                    size: 22,
-                  ),
-                  title: Text(
-                    room.displayName,
-                    style: TextStyle(
-                      color: isCurrent
-                          ? AppColors.bodyText
-                          : AppColors.inputText,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  subtitle: Text(
-                    isCurrent
-                        ? '(Phòng hiện tại)'
-                        : '${room.statusLabel} · ${room.propertyName} - ${room.floorName}',
-                    style: const TextStyle(
-                      color: AppColors.bodyText,
-                      fontSize: 11,
-                    ),
-                  ),
-                  trailing: isSelected
-                      ? const Icon(
-                          Icons.check_circle,
-                          color: AppColors.primary,
-                          size: 18,
-                        )
-                      : null,
-                  onTap: isCurrent ? null : () => widget.onChanged(room),
-                );
-              },
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _DateField extends StatelessWidget {
-  const _DateField({
-    required this.selectedDate,
-    required this.onPick,
-    required this.format,
-  });
-
-  final DateTime? selectedDate;
-  final VoidCallback onPick;
-  final String Function(DateTime) format;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onPick,
-      borderRadius: BorderRadius.circular(AppColors.radiusMd),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          color: AppColors.inputFill,
-          borderRadius: BorderRadius.circular(AppColors.radiusMd),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            const Icon(
-              Icons.event_outlined,
-              color: AppColors.hintText,
-              size: 20,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                selectedDate == null
-                    ? 'Chọn ngày chuyển dự kiến'
-                    : format(selectedDate!),
-                style: TextStyle(
-                  color: selectedDate == null
-                      ? AppColors.hintText
-                      : AppColors.inputText,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
+            const SizedBox(height: AppColors.space24),
+            const Text('LÝ DO CHUYỂN PHÒNG', style: AppTypography.label),
+            const SizedBox(height: AppColors.space8),
+            TextFormField(
+              controller: _reasonController,
+              minLines: 3,
+              maxLines: 5,
+              decoration: const InputDecoration(
+                hintText: 'Nhập lý do (không bắt buộc)...',
               ),
             ),
-            const Icon(
-              Icons.arrow_forward_ios,
-              color: AppColors.hintText,
-              size: 16,
-            ),
+            if (_error != null) ...[
+              const SizedBox(height: AppColors.space16),
+              Text(
+                _error!,
+                style: AppTypography.body.copyWith(color: AppColors.dangerText),
+              ),
+            ],
           ],
         ),
       ),
@@ -805,128 +328,159 @@ class _DateField extends StatelessWidget {
   }
 }
 
-class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
+class _RoomSelector extends StatelessWidget {
+  const _RoomSelector({
+    required this.room,
+    required this.loading,
+    required this.error,
+    required this.onTap,
+  });
+  final AvailableRoom? room;
+  final bool loading;
+  final String? error;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: room == null
+        ? 'Chọn phòng muốn chuyển đến'
+        : 'Đổi phòng, đang chọn ${room!.displayName}',
+    child: Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+        child: Container(
+          padding: const EdgeInsets.all(AppColors.space12),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.cardBorder),
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                room == null
+                    ? Icons.meeting_room_outlined
+                    : Icons.check_circle_rounded,
+                color: room == null ? AppColors.primary : AppColors.successText,
+              ),
+              const SizedBox(width: AppColors.space12),
+              Expanded(
+                child: room == null
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            loading
+                                ? 'Đang tải phòng...'
+                                : error ?? 'Chọn phòng phù hợp',
+                            style: AppTypography.cardTitle,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            error == null
+                                ? 'Xem giá, tầng và trạng thái'
+                                : 'Chạm để thử lại',
+                            style: AppTypography.caption,
+                          ),
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            room!.displayName,
+                            style: AppTypography.cardTitle,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${room!.statusLabel} · ${CurrencyFormatter.vnd(room!.listedPrice)} / tháng',
+                            style: AppTypography.body,
+                          ),
+                        ],
+                      ),
+              ),
+              if (room != null)
+                Text(
+                  'Thay đổi',
+                  style: AppTypography.label.copyWith(color: AppColors.primary),
+                )
+              else
+                const Icon(Icons.chevron_right_rounded),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class _PriceComparison extends StatelessWidget {
+  const _PriceComparison({required this.contract, required this.target});
+  final LeaseContract contract;
+  final AvailableRoom target;
+  @override
+  Widget build(BuildContext context) {
+    final difference = target.listedPrice - contract.monthlyRent!;
+    final label = difference == 0
+        ? 'Không thay đổi'
+        : '${difference > 0 ? '+' : '-'}${CurrencyFormatter.vnd(difference.abs())} / tháng';
+    return SectionCard(
+      child: Column(
+        children: [
+          RequestReadOnlyRow(
+            label: 'Phòng hiện tại',
+            value: _roomLabel(contract),
+          ),
+          const Divider(),
+          RequestReadOnlyRow(label: 'Phòng mới', value: target.displayName),
+          const Divider(),
+          RequestReadOnlyRow(
+            label: 'Chênh lệch',
+            value: label,
+            valueColor: difference > 0
+                ? AppColors.warningText
+                : AppColors.successText,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoadError extends StatelessWidget {
+  const _LoadError({required this.message, required this.onRetry});
   final String message;
   final VoidCallback onRetry;
-
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF0F0),
-                borderRadius: BorderRadius.circular(AppColors.radiusLg),
-              ),
-              child: const Icon(
-                Icons.error_outline,
-                color: AppColors.danger,
-                size: 30,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.inputText,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 16),
-            OutlinedButton(onPressed: onRetry, child: const Text('Thử lại')),
-          ],
-        ),
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: AppColors.danger,
+            size: 36,
+          ),
+          const SizedBox(height: 12),
+          Text(message, textAlign: TextAlign.center, style: AppTypography.body),
+          const SizedBox(height: 16),
+          ElevatedButton(onPressed: onRetry, child: const Text('Thử lại')),
+        ],
       ),
-    );
-  }
+    ),
+  );
 }
 
-class _TransferSuccessDialog extends StatelessWidget {
-  const _TransferSuccessDialog({
-    required this.targetRoomName,
-    required this.onDone,
-  });
-
-  final String targetRoomName;
-  final VoidCallback onDone;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 32),
-        padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppColors.radiusLg),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0FFF4),
-                borderRadius: BorderRadius.circular(AppColors.radiusLg),
-              ),
-              child: const Icon(
-                Icons.check_circle,
-                color: AppColors.success,
-                size: 36,
-              ),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'Gửi yêu cầu thành công',
-              style: TextStyle(
-                color: AppColors.inputText,
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Yêu cầu chuyển sang $targetRoomName đã được gửi.\nQuản lý sẽ duyệt trong thời gian sớm nhất.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.bodyText,
-                fontSize: 13,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 22),
-            SizedBox(
-              width: double.infinity,
-              height: 44,
-              child: ElevatedButton(
-                onPressed: onDone,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.deepBlue,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                  ),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  'Đã hiểu',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+String _date(DateTime? date) => date == null
+    ? '--'
+    : '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+String _dash(String value) => value.trim().isEmpty ? '--' : value;
+String _roomLabel(LeaseContract contract) => _dash(
+  contract.room.roomName.isEmpty
+      ? contract.room.roomCode
+      : contract.room.roomName,
+);

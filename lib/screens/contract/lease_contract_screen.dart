@@ -20,6 +20,8 @@ import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen
 import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
 import 'package:hdbhms_mobile/screens/profile_request/add_roommate_request_screen.dart';
 import 'package:hdbhms_mobile/screens/room_transfer/create_room_transfer_screen.dart';
+import 'package:hdbhms_mobile/screens/contract/renew_contract_request_screen.dart';
+import 'package:hdbhms_mobile/screens/contract/terminate_contract_screen.dart';
 import 'package:hdbhms_mobile/screens/contract/room_amenities_screen.dart';
 import 'package:hdbhms_mobile/widgets/app_action_tile.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
@@ -300,10 +302,15 @@ class _CreateRequestGrid extends StatelessWidget {
     }
 
     if (type == TenantRequestType.terminateContract) {
-      final submitted = await _openLifecycleRequestSheet(context, type);
-      if (submitted == true && context.mounted) {
-        _openRequestList(context, type);
-      }
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => TerminateContractScreen(
+            contract: contract,
+            contractService: contractService,
+          ),
+        ),
+      );
+      if (context.mounted) await onChanged();
       return;
     }
 
@@ -317,12 +324,20 @@ class _CreateRequestGrid extends StatelessWidget {
       return;
     }
 
-    final submitted = await _openLifecycleRequestSheet(context, type);
-    if (submitted == true && context.mounted) {
-      _openRequestList(context, type);
+    if (type == TenantRequestType.renewContract) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => RenewContractRequestScreen(
+            contract: contract,
+            contractService: contractService,
+          ),
+        ),
+      );
+      if (context.mounted) await onChanged();
     }
   }
 
+  // ignore: unused_element
   Future<bool?> _openLifecycleRequestSheet(
     BuildContext context,
     TenantRequestType type,
@@ -388,6 +403,7 @@ class _CreateRequestGrid extends StatelessWidget {
     await onChanged();
   }
 
+  // ignore: unused_element
   void _openRequestList(BuildContext context, TenantRequestType type) {
     ScaffoldMessenger.of(
       context,
@@ -443,14 +459,14 @@ class _CreateRequestGrid extends StatelessWidget {
             children: [
               AppActionTile(
                 icon: Icons.autorenew_rounded,
-                label: 'Gia hạn\nhợp đồng',
+                label: 'Gia hạn hợp đồng',
                 accentColor: AppColors.actionBlue,
                 onTap: () =>
                     _openCreateForm(context, TenantRequestType.renewContract),
               ),
               AppActionTile(
                 icon: Icons.cancel_outlined,
-                label: 'Thanh lý\nhợp đồng',
+                label: 'Thanh lý hợp đồng',
                 accentColor: AppColors.actionRose,
                 onTap: () => _openCreateForm(
                   context,
@@ -459,14 +475,14 @@ class _CreateRequestGrid extends StatelessWidget {
               ),
               AppActionTile(
                 icon: Icons.swap_horiz_rounded,
-                label: 'Chuyển\nphòng',
+                label: 'Chuyển phòng',
                 accentColor: AppColors.actionCyan,
                 onTap: () =>
                     _openCreateForm(context, TenantRequestType.changeRoom),
               ),
               AppActionTile(
                 icon: Icons.person_add_outlined,
-                label: 'Thêm\nngười ở',
+                label: 'Thêm người ở cùng',
                 accentColor: AppColors.actionEmerald,
                 onTap: () =>
                     _openCreateForm(context, TenantRequestType.addRoommate),

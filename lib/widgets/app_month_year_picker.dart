@@ -48,6 +48,7 @@ class _MonthYearPickerSheet extends StatefulWidget {
 
 class _MonthYearPickerSheetState extends State<_MonthYearPickerSheet> {
   late int _year;
+  DateTime? _pendingMonth;
 
   DateTime get _firstMonth {
     final month = widget.firstMonth;
@@ -75,6 +76,7 @@ class _MonthYearPickerSheetState extends State<_MonthYearPickerSheet> {
         : initial.isAfter(_lastMonth)
         ? _lastMonth.year
         : initial.year;
+    _pendingMonth = widget.selectedMonth;
   }
 
   @override
@@ -110,33 +112,42 @@ class _MonthYearPickerSheetState extends State<_MonthYearPickerSheet> {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  widget.title,
-                  style: const TextStyle(
-                    color: AppColors.inputText,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.title,
+                      style: const TextStyle(
+                        color: AppColors.inputText,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Chọn từ ${_formatMonth(_firstMonth)} đến ${_formatMonth(_lastMonth)}',
+                      style: const TextStyle(
+                        color: AppColors.bodyText,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              TextButton.icon(
-                onPressed: () => Navigator.of(context).pop(DateTime(0)),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.deepBlue,
-                  textStyle: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                icon: const Icon(Icons.clear_rounded, size: 18),
-                label: const Text('Tất cả'),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
+          const SizedBox(height: 18),
+          Container(
+            height: 52,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceMuted,
+              borderRadius: BorderRadius.circular(AppColors.radiusMd),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
               IconButton(
                 onPressed: _year > _firstMonth.year
                     ? () => setState(() => _year -= 1)
@@ -167,22 +178,36 @@ class _MonthYearPickerSheetState extends State<_MonthYearPickerSheet> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          ),
+          const SizedBox(height: 18),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'CHỌN THÁNG',
+              style: TextStyle(
+                color: AppColors.bodyText,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.7,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: months.length,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
+              crossAxisCount: 4,
               mainAxisSpacing: 8,
               crossAxisSpacing: 8,
-              childAspectRatio: 2.2,
+              childAspectRatio: 1.65,
             ),
             itemBuilder: (context, index) {
               final month = index + 1;
               final selected =
-                  widget.selectedMonth?.year == _year &&
-                  widget.selectedMonth?.month == month;
+                  _pendingMonth?.year == _year &&
+                  _pendingMonth?.month == month;
               final candidate = DateTime(_year, month);
               final isAvailable =
                   !candidate.isBefore(_firstMonth) &&
@@ -196,7 +221,7 @@ class _MonthYearPickerSheetState extends State<_MonthYearPickerSheet> {
                 borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 child: InkWell(
                   onTap: isAvailable
-                      ? () => Navigator.of(context).pop(candidate)
+                      ? () => setState(() => _pendingMonth = candidate)
                       : null,
                   borderRadius: BorderRadius.circular(AppColors.radiusMd),
                   child: Center(
@@ -217,8 +242,45 @@ class _MonthYearPickerSheetState extends State<_MonthYearPickerSheet> {
               );
             },
           ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).pop(DateTime(0)),
+                  icon: const Icon(Icons.clear_rounded, size: 18),
+                  label: const Text('Tất cả'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.deepBlue,
+                    minimumSize: const Size(0, 48),
+                    side: const BorderSide(color: AppColors.cardBorder),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _pendingMonth == null
+                      ? null
+                      : () => Navigator.of(context).pop(_pendingMonth),
+                  icon: const Icon(Icons.check_rounded, size: 18),
+                  label: const Text('Áp dụng'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.deepBlue,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(0, 48),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
+
+  String _formatMonth(DateTime value) =>
+      'tháng ${value.month.toString().padLeft(2, '0')}/${value.year}';
 }
