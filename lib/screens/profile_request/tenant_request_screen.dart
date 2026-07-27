@@ -199,9 +199,6 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
     final payload = _payloadOf(cr);
     final refundStatus = payload['depositRefundStatus']?.toString();
     final stage = payload['liquidationStage']?.toString();
-    if (stage == 'WAITING_PAYMENT') {
-      return 'Thanh lý hợp đồng · ${_liquidationStageLabel(stage!)}';
-    }
     if (refundStatus == 'RECORDED_BY_MANAGER') {
       return 'Quản lý đã ghi nhận hoàn cọc, vui lòng xác nhận.';
     }
@@ -210,6 +207,9 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
     }
     if (refundStatus == 'APPROVED_WAITING_REFUND') {
       return 'Khoản hoàn cọc đã được duyệt, đang chờ hoàn tiền.';
+    }
+    if (stage == 'WAITING_PAYMENT') {
+      return 'Thanh lý hợp đồng · ${_liquidationStageLabel(stage!)}';
     }
     if (stage != null && stage.isNotEmpty) {
       return 'Thanh lý hợp đồng · ${_liquidationStageLabel(stage)}';
@@ -1467,8 +1467,7 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
   bool get _canConfirmDepositRefund {
     return widget.changeRequest.requestType ==
             ChangeRequestType.contractLiquidation &&
-        _payload['depositRefundStatus'] == 'RECORDED_BY_MANAGER' &&
-        _liquidationFinalInvoicePaid(_payload);
+        _payload['depositRefundStatus'] == 'RECORDED_BY_MANAGER';
   }
 
   bool get _isLiquidationRequest =>
@@ -1897,17 +1896,6 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
     ];
   }
 
-  bool _liquidationFinalInvoicePaid(Map<String, dynamic> payload) {
-    final direct = payload['finalInvoicePaid'];
-    if (direct is bool) return direct;
-    final checklist = payload['liquidationChecklist'];
-    if (checklist is Map) {
-      final value = checklist['finalInvoicePaid'];
-      if (value is bool) return value;
-    }
-    return false;
-  }
-
   int _liquidationProgressIndex(String stage, String refundStatus) {
     if (widget.changeRequest.status == ChangeRequestStatus.rejected ||
         widget.changeRequest.status == ChangeRequestStatus.cancelled) {
@@ -1916,14 +1904,20 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
     if (widget.changeRequest.status == ChangeRequestStatus.completed) {
       return 5;
     }
-    if (stage == 'WAITING_PAYMENT' || !_liquidationFinalInvoicePaid(_payload)) {
-      return 2;
+    if (stage.isEmpty || stage == 'WAITING_APPROVAL') {
+      return 1;
     }
     if (refundStatus == 'DISPUTED' ||
         refundStatus == 'WAITING_OWNER_APPROVAL' ||
         refundStatus == 'APPROVED_WAITING_REFUND' ||
         refundStatus == 'RECORDED_BY_MANAGER') {
       return 3;
+    }
+    if (refundStatus == 'TENANT_CONFIRMED' || refundStatus == 'NOT_REQUIRED') {
+      return 4;
+    }
+    if (stage == 'WAITING_PAYMENT') {
+      return 2;
     }
     return switch (stage) {
       'WAITING_APPROVAL' || '' => 1,

@@ -547,15 +547,17 @@ class _HeroDetailLine extends StatelessWidget {
         children: [
           Icon(icon, color: Colors.white, size: 15),
           const SizedBox(width: 5),
-          Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.92),
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              height: 14 / 11,
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.92),
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                height: 14 / 11,
+              ),
             ),
           ),
         ],
@@ -1114,13 +1116,17 @@ class _RoomMeta extends StatelessWidget {
       children: [
         Icon(icon, color: AppColors.bodyText, size: 14),
         const SizedBox(width: 4),
-        Text(
-          text,
-          style: const TextStyle(
-            color: AppColors.bodyText,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            height: 14 / 11,
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.bodyText,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              height: 14 / 11,
+            ),
           ),
         ),
       ],

@@ -2,10 +2,15 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hdbhms_mobile/models/change_request/change_request_model.dart';
 import 'package:hdbhms_mobile/models/contract/lease_contract_model.dart';
+import 'package:hdbhms_mobile/models/room_transfer/room_transfer_model.dart';
 import 'package:hdbhms_mobile/screens/contract/lease_contract_screen.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
+import 'package:hdbhms_mobile/services/change_request/change_request_service.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
+import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -102,6 +107,37 @@ class _FakeLeaseContractService extends LeaseContractService {
       depositAmount,
       note,
     );
+  }
+}
+
+class _FakeChangeRequestService extends ChangeRequestService {
+  const _FakeChangeRequestService(this.requests);
+
+  final List<ChangeRequest> requests;
+
+  @override
+  Future<List<ChangeRequest>> getMyRequests({
+    ChangeRequestType? type,
+    ChangeRequestStatus? status,
+    String? search,
+    int? roomId,
+    String? roomCode,
+    int page = 0,
+    int size = 50,
+  }) async {
+    return requests
+        .where((request) => type == null || request.requestType == type)
+        .where((request) => status == null || request.status == status)
+        .toList(growable: false);
+  }
+}
+
+class _EmptyRoomTransferService extends RoomTransferService {
+  const _EmptyRoomTransferService();
+
+  @override
+  Future<List<RoomTransferRequest>> fetchPendingHolderNominations() async {
+    return const [];
   }
 }
 
@@ -410,6 +446,107 @@ void main() {
     expect(submittedContractId, 9);
     expect(submittedLiquidationDate, isNotNull);
     expect(submittedReason, 'Can thanh ly som');
+  });
+
+  testWidgets('liquidation progress waits at approval for pending request', (
+    tester,
+  ) async {
+    final request = ChangeRequest(
+      id: 44,
+      requestCode: 'CR-44',
+      requestType: ChangeRequestType.contractLiquidation,
+      title: 'Yeu cau thanh ly hop dong HD-TEST',
+      description: 'Can thanh ly som',
+      status: ChangeRequestStatus.pending,
+      requesterId: 1,
+      createdAt: DateTime(2026, 8, 1, 9),
+      requestPayload: jsonEncode({
+        'contractId': 9,
+        'roomId': 201,
+        'roomCode': '201',
+        'liquidationDate': '2026-08-15',
+      }),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TenantRequestScreen(
+          changeRequestService: _FakeChangeRequestService([request]),
+          roomTransferService: const _EmptyRoomTransferService(),
+          roomId: 201,
+          roomCode: '201',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Can thanh ly som'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ti\u1EBFn tr\u00ECnh thanh l\u00FD'), findsOneWidget);
+    final approvalSubtitle = tester.widget<Text>(
+      find.text('\u0110ang ch\u1EDD quy\u1EBFt \u0111\u1ECBnh'),
+    );
+    expect(approvalSubtitle.style?.fontWeight, FontWeight.w800);
+    final laterSubtitles = tester.widgetList<Text>(
+      find.text('Ch\u01B0a t\u1EDBi b\u01B0\u1EDBc n\u00E0y'),
+    );
+    expect(
+      laterSubtitles.any((text) => text.style?.fontWeight == FontWeight.w800),
+      isFalse,
+    );
+    await tester.pump(const Duration(seconds: 16));
+  });
+
+  testWidgets('liquidation refund confirmation shows tenant action', (
+    tester,
+  ) async {
+    final request = ChangeRequest(
+      id: 45,
+      requestCode: 'CR-45',
+      requestType: ChangeRequestType.contractLiquidation,
+      title: 'Yeu cau thanh ly hop dong HD-TEST',
+      description: 'Can thanh ly som',
+      status: ChangeRequestStatus.processing,
+      requesterId: 1,
+      createdAt: DateTime(2026, 8, 1, 9),
+      requestPayload: jsonEncode({
+        'contractId': 9,
+        'roomId': 201,
+        'roomCode': '201',
+        'liquidationDate': '2026-08-15',
+        'liquidationStage': 'WAITING_PAYMENT',
+        'depositRefundStatus': 'RECORDED_BY_MANAGER',
+        'depositRefundAmount': 2000,
+      }),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TenantRequestScreen(
+          changeRequestService: _FakeChangeRequestService([request]),
+          roomTransferService: const _EmptyRoomTransferService(),
+          roomId: 201,
+          roomCode: '201',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.textContaining('Qu\u1EA3n l\u00FD \u0111\u00E3 ghi nh\u1EADn'),
+    );
+    await tester.pumpAndSettle();
+
+    final refundSubtitle = tester.widget<Text>(
+      find.text('Ch\u1EDD b\u1EA1n x\u00E1c nh\u1EADn \u00B7 2.000\u0111'),
+    );
+    expect(refundSubtitle.style?.fontWeight, FontWeight.w800);
+    expect(
+      find.text('\u0110\u00E3 nh\u1EADn ti\u1EC1n c\u1ECDc'),
+      findsOneWidget,
+    );
+    await tester.pump(const Duration(seconds: 16));
   });
 
   testWidgets('contract screen shows error when renewal request submit fails', (

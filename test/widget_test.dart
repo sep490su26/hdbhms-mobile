@@ -117,10 +117,14 @@ class _FakeTenantProfileService extends TenantProfileService {
 class _FakeTenantInvoiceService extends TenantInvoiceService {
   _FakeTenantInvoiceService();
 
-  int _fetchCount = 0;
+  bool _paymentConfirmed = false;
 
   void reset() {
-    _fetchCount = 0;
+    _paymentConfirmed = false;
+  }
+
+  void markPaymentConfirmed() {
+    _paymentConfirmed = true;
   }
 
   @override
@@ -128,8 +132,7 @@ class _FakeTenantInvoiceService extends TenantInvoiceService {
     int? roomId,
     String? roomCode,
   }) async {
-    _fetchCount += 1;
-    if (_fetchCount >= 3) {
+    if (_paymentConfirmed) {
       return _tenantInvoicesAfterPayment;
     }
     return _tenantInvoicesBeforePayment;
@@ -557,7 +560,7 @@ void main() {
     await tester.tap(find.text('2.450.000\u0111').first);
     await tester.pumpAndSettle();
 
-    expect(find.text('Thanh to\u00E1n an to\u00E0n'), findsOneWidget);
+    expect(find.text('Thanh to\u00E1n ti\u1EC1n ph\u00F2ng'), findsWidgets);
     expect(find.text('2.450.000\u0111'), findsOneWidget);
     await scrollUntilTextVisible(tester, 'RESIDENT_99283_JULY');
     expect(find.text('RESIDENT_99283_JULY'), findsOneWidget);
@@ -588,6 +591,7 @@ void main() {
       tester,
       'T\u00F4i \u0111\u00E3 chuy\u1EC3n kho\u1EA3n',
     );
+    _fakeTenantInvoiceService.markPaymentConfirmed();
     await tester.tap(find.text('T\u00F4i \u0111\u00E3 chuy\u1EC3n kho\u1EA3n'));
     await tester.pumpAndSettle();
 
@@ -614,6 +618,7 @@ void main() {
       tester,
       'T\u00F4i \u0111\u00E3 chuy\u1EC3n kho\u1EA3n',
     );
+    _fakeTenantInvoiceService.markPaymentConfirmed();
     await tester.tap(find.text('T\u00F4i \u0111\u00E3 chuy\u1EC3n kho\u1EA3n'));
     await tester.pumpAndSettle();
 
@@ -631,7 +636,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('T\u1EA5t c\u1EA3 th\u1EDDi gian'), findsOneWidget);
+    expect(find.text('T\u1EA5t c\u1EA3 th\u00E1ng'), findsOneWidget);
     expect(find.text('S\u1EEDa t\u1EE7 l\u1EA1nh'), findsOneWidget);
   });
 
@@ -922,7 +927,7 @@ void main() {
   );
 
   test(
-    'reset password sends snake case payload and clears cached session',
+    'reset password sends camel case payload and clears cached session',
     () async {
       SharedPreferences.setMockInitialValues({
         AuthService.accessTokenKey: 'old-token',
@@ -951,8 +956,8 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
 
       expect(requestBody['token'], '950638');
-      expect(requestBody['new_password'], 'Changed123');
-      expect(requestBody.containsKey('newPassword'), isFalse);
+      expect(requestBody['newPassword'], 'Changed123');
+      expect(requestBody.containsKey('new_password'), isFalse);
       expect(prefs.getString(AuthService.accessTokenKey), isNull);
       expect(prefs.getString(AuthService.sessionIdKey), isNull);
       expect(prefs.getString(AuthService.onboardingActionsKey), isNull);
