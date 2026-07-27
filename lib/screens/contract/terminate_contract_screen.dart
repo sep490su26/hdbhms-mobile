@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/widgets/app_date_picker.dart';
 
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
@@ -89,7 +90,7 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
       return;
     }
     final initial = _expectedDate ?? tomorrow;
-    final picked = await showDatePicker(
+    final picked = await AppDatePicker.show(
       context: context,
       initialDate: initial.isBefore(tomorrow) ? tomorrow : initial,
       firstDate: tomorrow,

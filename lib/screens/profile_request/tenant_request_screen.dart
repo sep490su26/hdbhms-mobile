@@ -21,6 +21,7 @@ import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart
 import 'package:hdbhms_mobile/screens/room_transfer/room_transfer_detail_screen.dart';
 import 'package:hdbhms_mobile/widgets/app_filter_chip.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
+import 'package:hdbhms_mobile/widgets/app_list_state.dart';
 
 /// Màn "Yêu cầu" – danh sách yêu cầu + filter theo loại
 class TenantRequestScreen extends StatefulWidget {
@@ -56,6 +57,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
   RoomScope _roomScope = const RoomScope();
 
   bool _loadingApi = false;
+  String? _loadError;
 
   @override
   void initState() {
@@ -83,6 +85,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
     setState(() => _loadingApi = true);
     var apiRequests = const <ChangeRequest>[];
     var holderNominations = const <RoomTransferRequest>[];
+    var requestLoadFailed = false;
     final roomScope = await resolveRoomScope(
       roomId: widget.roomId,
       roomCode: widget.roomCode,
@@ -97,6 +100,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
         _holderNominationMap.clear();
         _requests.clear();
         _loadingApi = false;
+        _loadError = null;
       });
       return;
     }
@@ -122,7 +126,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
         // Room-transfer details are optional for rendering other request types.
       }
     } catch (_) {
-      // Keep the screen usable when one request source is temporarily down.
+      requestLoadFailed = true;
     }
 
     try {
@@ -178,6 +182,9 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
         )
         ..insertAll(0, converted);
       _loadingApi = false;
+      _loadError = requestLoadFailed && converted.isEmpty
+          ? 'Không tải được danh sách yêu cầu. Vui lòng thử lại.'
+          : null;
     });
   }
 
@@ -449,6 +456,14 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
                       ),
                     ),
                   )
+                else if (_loadError != null && _requests.isEmpty)
+                  AppListState(
+                    kind: AppListStateKind.error,
+                    title: 'Không tải được danh sách yêu cầu',
+                    description: _loadError!,
+                    actionLabel: 'Thử lại',
+                    onAction: _loadApiRequests,
+                  )
                 else if (filtered.isEmpty)
                   _buildEmpty()
                 else
@@ -470,51 +485,13 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
   }
 
   Widget _buildEmpty() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 68,
-              height: 68,
-              decoration: BoxDecoration(
-                color: AppColors.primarySurface,
-                borderRadius: BorderRadius.circular(AppColors.radiusLg),
-              ),
-              child: const Icon(
-                Icons.inbox_outlined,
-                color: AppColors.deepBlue,
-                size: 34,
-              ),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'Chưa có yêu cầu nào',
-              style: TextStyle(
-                color: AppColors.inputText,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                height: 20 / 16,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _filterType == null
-                  ? 'Bạn chưa tạo yêu cầu nào.'
-                  : 'Không có yêu cầu phù hợp với bộ lọc hiện tại.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.bodyText,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                height: 18 / 13,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return AppListState(
+      kind: AppListStateKind.empty,
+      title: _filterType == null ? 'Chưa có yêu cầu nào' : 'Không có yêu cầu phù hợp',
+      description: _filterType == null
+          ? 'Các yêu cầu của bạn sẽ hiển thị tại đây.'
+          : 'Thử thay đổi bộ lọc để xem các yêu cầu khác.',
+      icon: Icons.inbox_outlined,
     );
   }
 

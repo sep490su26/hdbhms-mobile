@@ -61,15 +61,11 @@ class NotificationService {
     } on NotificationException {
       rethrow;
     } on TimeoutException {
-      throw const NotificationException(
-        'KhÃ´ng káº¿t ná»‘i Ä‘Æ°á»£c mÃ¡y chá»§',
-      );
+      throw const NotificationException('Không kết nối được máy chủ');
     } on http.ClientException {
-      throw const NotificationException(
-        'KhÃ´ng káº¿t ná»‘i Ä‘Æ°á»£c mÃ¡y chá»§',
-      );
+      throw const NotificationException('Không kết nối được máy chủ');
     } on FormatException {
-      throw const NotificationException('Dá»¯ liá»‡u khÃ´ng há»£p lá»‡');
+      throw const NotificationException('Dữ liệu không hợp lệ');
     } finally {
       if (_client == null) {
         client.close();
@@ -217,13 +213,9 @@ class NotificationService {
     } on NotificationException {
       rethrow;
     } on TimeoutException {
-      throw const NotificationException(
-        'KhÃ´ng káº¿t ná»‘i Ä‘Æ°á»£c mÃ¡y chá»§',
-      );
+      throw const NotificationException('Không kết nối được máy chủ');
     } on http.ClientException {
-      throw const NotificationException(
-        'KhÃ´ng káº¿t ná»‘i Ä‘Æ°á»£c mÃ¡y chá»§',
-      );
+      throw const NotificationException('Không kết nối được máy chủ');
     } finally {
       if (_client == null) {
         client.close();

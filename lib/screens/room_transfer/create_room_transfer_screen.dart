@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/widgets/app_date_picker.dart';
 import 'package:hdbhms_mobile/models/contract/lease_contract_model.dart';
 import 'package:hdbhms_mobile/models/room_transfer/room_transfer_model.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
@@ -155,7 +156,7 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
   Future<void> _pickDate() async {
     final now = DateTime.now();
     final tomorrow = DateTime(now.year, now.month, now.day + 1);
-    final picked = await showDatePicker(
+    final picked = await AppDatePicker.show(
       context: context,
       initialDate: _selectedDate ?? tomorrow,
       firstDate: tomorrow,

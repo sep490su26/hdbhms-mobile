@@ -942,20 +942,39 @@ class _RoomSectionHeader extends StatelessWidget {
             height: 24 / 19,
           ),
         ),
-        const SizedBox(width: 8),
+        const Spacer(),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.fromLTRB(10, 7, 11, 7),
           decoration: BoxDecoration(
-            color: AppColors.primaryLight,
-            borderRadius: BorderRadius.circular(AppColors.radiusPill),
+            color: AppColors.deepBlue,
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.deepBlue.withValues(alpha: 0.18),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          child: Text(
-            '$roomCount phòng',
-            style: const TextStyle(
-              color: AppColors.primary,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.meeting_room_outlined,
+                color: Colors.white,
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '$roomCount phòng',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  height: 16 / 12,
+                ),
+              ),
+            ],
           ),
         ),
       ],

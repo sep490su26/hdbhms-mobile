@@ -13,6 +13,7 @@ import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
+import 'package:hdbhms_mobile/widgets/app_list_state.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/create_maintenance_ticket_screen.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_detail_screen.dart';
@@ -137,47 +138,53 @@ class _MaintenanceTicketListScreenState
               return RefreshIndicator(
                 color: AppColors.deepBlue,
                 onRefresh: _refresh,
-                child: ListView(
+                child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(14, 18, 14, 96),
-                  children: [
-                    _MaintenanceSectionHeader(
-                      ticketCount: snapshot.hasData ? tickets.length : null,
-                      onCreateTicket: _openCreateTicket,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 18, 14, 96),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _MaintenanceSectionHeader(
+                          ticketCount: snapshot.hasData ? tickets.length : null,
+                          onCreateTicket: _openCreateTicket,
+                        ),
+                        const SizedBox(height: 18),
+                        _FilterPanel(
+                          keywordController: _keywordController,
+                          selectedStatus: _selectedStatus,
+                          selectedCategory: _selectedCategory,
+                          onStatusChanged: (value) {
+                            setState(() {
+                              _selectedStatus = value ?? _allOption;
+                            });
+                          },
+                          onCategoryChanged: (value) {
+                            setState(() {
+                              _selectedCategory = value ?? _allOption;
+                            });
+                          },
+                          onFilter: _applyFilter,
+                        ),
+                        const SizedBox(height: 20),
+                        if (snapshot.connectionState == ConnectionState.waiting)
+                          const _LoadingState()
+                        else if (snapshot.hasError)
+                          _ErrorState(onRetry: _applyFilter)
+                        else if (tickets.isEmpty)
+                          _EmptyState(
+                            hasActiveFilter: _hasActiveFilter,
+                            onRetry: _applyFilter,
+                            onCreateTicket: _openCreateTicket,
+                          )
+                        else
+                          _TicketTableCard(
+                            tickets: tickets,
+                            onTicketTap: _openTicketDetail,
+                          ),
+                      ],
                     ),
-                    const SizedBox(height: 18),
-                    _FilterPanel(
-                      keywordController: _keywordController,
-                      selectedStatus: _selectedStatus,
-                      selectedCategory: _selectedCategory,
-                      onStatusChanged: (value) {
-                        setState(() {
-                          _selectedStatus = value ?? _allOption;
-                        });
-                      },
-                      onCategoryChanged: (value) {
-                        setState(() {
-                          _selectedCategory = value ?? _allOption;
-                        });
-                      },
-                      onFilter: _applyFilter,
-                    ),
-                    const SizedBox(height: 20),
-                    if (snapshot.connectionState == ConnectionState.waiting)
-                      const _LoadingState()
-                    else if (snapshot.hasError)
-                      _ErrorState(onRetry: _applyFilter)
-                    else if (tickets.isEmpty)
-                      _EmptyState(
-                        hasActiveFilter: _hasActiveFilter,
-                        onRetry: _applyFilter,
-                      )
-                    else
-                      _TicketTableCard(
-                        tickets: tickets,
-                        onTicketTap: _openTicketDetail,
-                      ),
-                  ],
+                  ),
                 ),
               );
             },
@@ -371,54 +378,68 @@ class _FilterPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _FieldLabel('Tìm kiếm ticket'),
-        const SizedBox(height: 6),
-        TextField(
-          controller: keywordController,
-          textInputAction: TextInputAction.search,
-          onSubmitted: (_) => onFilter(),
-          decoration: _inputDecoration(
-            hintText: 'Nhập mã phiếu, tiêu đề hoặc mô tả',
-            prefixIcon: Icons.search_rounded,
-          ),
-        ),
-        const SizedBox(height: 14),
-        const _FieldLabel('Trạng thái'),
-        const SizedBox(height: 6),
-        _TicketFilterPicker(
-          key: const ValueKey('ticket-status-filter'),
-          label: 'Trạng thái',
-          value: selectedStatus,
-          options: _statusOptions,
-          icon: Icons.flag_outlined,
-          onChanged: onStatusChanged,
-        ),
-        const SizedBox(height: 14),
-        const _FieldLabel('Loại sự cố'),
-        const SizedBox(height: 6),
-        _TicketFilterPicker(
-          key: const ValueKey('ticket-category-filter'),
-          label: 'Loại sự cố',
-          value: selectedCategory,
-          options: _categoryOptions,
-          icon: Icons.category_outlined,
-          onChanged: onCategoryChanged,
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          child: AppPrimaryGradientButton(
-            onPressed: onFilter,
-            child: const Text(
-              'Lọc',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        border: Border.all(color: AppColors.cardBorder.withValues(alpha: 0.85)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _FieldLabel('Tìm kiếm ticket'),
+          const SizedBox(height: 6),
+          TextField(
+            controller: keywordController,
+            textInputAction: TextInputAction.search,
+            onSubmitted: (_) => onFilter(),
+            style: const TextStyle(
+              color: AppColors.inputText,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              height: 18 / 13,
+            ),
+            decoration: _inputDecoration(
+              hintText: 'Nhập mã phiếu, tiêu đề hoặc mô tả',
+              prefixIcon: Icons.search_rounded,
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: 14),
+          const _FieldLabel('Trạng thái'),
+          const SizedBox(height: 6),
+          _TicketFilterPicker(
+            key: const ValueKey('ticket-status-filter'),
+            label: 'Trạng thái',
+            value: selectedStatus,
+            options: _statusOptions,
+            icon: Icons.flag_outlined,
+            onChanged: onStatusChanged,
+          ),
+          const SizedBox(height: 14),
+          const _FieldLabel('Loại sự cố'),
+          const SizedBox(height: 6),
+          _TicketFilterPicker(
+            key: const ValueKey('ticket-category-filter'),
+            label: 'Loại sự cố',
+            value: selectedCategory,
+            options: _categoryOptions,
+            icon: Icons.category_outlined,
+            onChanged: onCategoryChanged,
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: AppPrimaryGradientButton(
+              onPressed: onFilter,
+              child: const Text(
+                'Lọc',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -493,12 +514,11 @@ class _TicketFilterPicker extends StatelessWidget {
                   color: hasSelection ? AppColors.deepBlue : AppColors.bodyText,
                 ),
                 const SizedBox(width: 9),
-                const Spacer(),
                 Expanded(
                   child: Text(
                     value,
                     overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.end,
+                    textAlign: TextAlign.start,
                     style: const TextStyle(
                       color: AppColors.deepBlue,
                       fontSize: 13,
@@ -687,35 +707,18 @@ class _TicketTableCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusSm),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
+    return Column(
+      children: [
+        for (final ticket in tickets) ...[
+          _TicketRow(ticket: ticket, onTap: () => onTicketTap(ticket)),
+          if (ticket != tickets.last) const SizedBox(height: 10),
         ],
-      ),
-      child: Column(
-        children: [
-          const _TicketHeaderRow(),
-          for (var i = 0; i < tickets.length; i++) ...[
-            if (i > 0) const Divider(color: Color(0xFFD9D8DF), height: 1),
-            _TicketRow(
-              ticket: tickets[i],
-              onTap: () => onTicketTap(tickets[i]),
-            ),
-          ],
-        ],
-      ),
+      ],
     );
   }
 }
 
+// ignore: unused_element
 class _TicketHeaderRow extends StatelessWidget {
   const _TicketHeaderRow();
 
@@ -769,88 +772,112 @@ class _TicketRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.transparent,
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
       child: InkWell(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 18, 10, 18),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+            border: Border.all(
+              color: AppColors.cardBorder.withValues(alpha: 0.85),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                width: 70,
-                child: Text(
-                  ticket.code,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.deepBlue,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    height: 16 / 12,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySurface,
+                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                    ),
+                    child: Icon(
+                      _categoryIcon(ticket.category),
+                      color: AppColors.deepBlue,
+                      size: 22,
+                    ),
                   ),
-                ),
-              ),
-              Expanded(
-                flex: 2,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            _categoryIcon(ticket.category),
-                            color: AppColors.bodyText,
-                            size: 14,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          ticket.code,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.deepBlue,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            height: 15 / 11,
+                            letterSpacing: 0.3,
                           ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              ticket.category.label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.bodyText,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w900,
-                                height: 16 / 12,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        ticket.description,
-                        maxLines: 5,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.inputText,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          height: 18 / 13,
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 3),
+                        Text(
+                          ticket.category.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.inputText,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            height: 18 / 14,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
+                  SizedBox(width: 106, child: _StatusSummary(ticket: ticket)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                ticket.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.bodyText,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  height: 18 / 13,
                 ),
               ),
-              SizedBox(
-                width: 74,
-                child: Text(
-                  _formatDate(ticket.createdDate),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
+              const SizedBox(height: 11),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.calendar_today_outlined,
                     color: AppColors.bodyText,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    height: 15 / 11,
+                    size: 14,
                   ),
-                ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _formatDate(ticket.createdDate),
+                    style: const TextStyle(
+                      color: AppColors.bodyText,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      height: 15 / 11,
+                    ),
+                  ),
+                  const Spacer(),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.bodyText,
+                    size: 20,
+                  ),
+                ],
               ),
-              SizedBox(width: 112, child: _StatusSummary(ticket: ticket)),
             ],
           ),
         ),
@@ -941,23 +968,192 @@ class _LoadingState extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.hasActiveFilter, required this.onRetry});
+  const _EmptyState({
+    required this.hasActiveFilter,
+    required this.onRetry,
+    required this.onCreateTicket,
+  });
 
   final bool hasActiveFilter;
   final VoidCallback onRetry;
+  final VoidCallback onCreateTicket;
 
   @override
   Widget build(BuildContext context) {
-    return _StateMessage(
-      icon: Icons.inbox_outlined,
-      title: hasActiveFilter
-          ? 'Không có phiếu sự cố phù hợp'
-          : 'Chưa có phiếu sự cố',
-      iconColor: AppColors.darkBlue,
-      titleColor: AppColors.darkBlue,
-      onRetry: onRetry,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        children: [
+          const _NoMaintenanceTicketsIllustration(),
+          const SizedBox(height: 18),
+          Text(
+            hasActiveFilter
+                ? 'Không có phiếu sự cố phù hợp'
+                : 'Chưa có phiếu sự cố',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppColors.deepBlue,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              height: 22 / 16,
+            ),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            hasActiveFilter
+                ? 'Thử thay đổi từ khóa, trạng thái hoặc danh mục để xem các phiếu khác.'
+                : 'Khi bạn gửi yêu cầu sửa chữa, phiếu sự cố sẽ hiển thị tại đây.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppColors.bodyText,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              height: 19 / 13,
+            ),
+          ),
+          const SizedBox(height: 18),
+          if (hasActiveFilter)
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Tải lại'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.deepBlue,
+                minimumSize: const Size(0, 44),
+                textStyle: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            )
+          else
+            AppPrimaryGradientButton(
+              onPressed: onCreateTicket,
+              height: 44,
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add_rounded, size: 18, color: Colors.white),
+                  SizedBox(width: 7),
+                  Text('Tạo phiếu sự cố'),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
+}
+
+class _NoMaintenanceTicketsIllustration extends StatelessWidget {
+  const _NoMaintenanceTicketsIllustration();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 220,
+      height: 172,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 164,
+            height: 164,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFFE8EAFC),
+            ),
+          ),
+          Positioned(
+            top: 0,
+            right: 18,
+            child: const _IllustrationOrb(size: 48),
+          ),
+          Positioned(
+            bottom: 2,
+            left: 6,
+            child: const _IllustrationOrb(size: 34),
+          ),
+          Container(
+            width: 202,
+            height: 142,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppColors.radiusLg),
+              border: Border.all(color: AppColors.cardBorder),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x12101F3A),
+                  blurRadius: 12,
+                  offset: Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.deepBlue, width: 3),
+                  ),
+                  child: const Icon(
+                    Icons.build_rounded,
+                    color: AppColors.deepBlue,
+                    size: 29,
+                  ),
+                ),
+                const SizedBox(height: 15),
+                const _IllustrationLine(width: 70),
+                const SizedBox(height: 7),
+                const _IllustrationLine(width: 102),
+                const SizedBox(height: 7),
+                const _IllustrationLine(width: 50),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IllustrationOrb extends StatelessWidget {
+  const _IllustrationOrb({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    decoration: const BoxDecoration(
+      shape: BoxShape.circle,
+      color: Color(0xFFE0E3F5),
+    ),
+  );
+}
+
+class _IllustrationLine extends StatelessWidget {
+  const _IllustrationLine({required this.width});
+
+  final double width;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: width,
+    height: 6,
+    decoration: BoxDecoration(
+      color: AppColors.cardBorder,
+      borderRadius: BorderRadius.circular(AppColors.radiusPill),
+    ),
+  );
 }
 
 class _ErrorState extends StatelessWidget {
@@ -968,7 +1164,6 @@ class _ErrorState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _StateMessage(
-      icon: Icons.error_outline_rounded,
       title: 'Không tải được danh sách sự cố',
       onRetry: onRetry,
     );
@@ -977,59 +1172,21 @@ class _ErrorState extends StatelessWidget {
 
 class _StateMessage extends StatelessWidget {
   const _StateMessage({
-    required this.icon,
     required this.title,
     required this.onRetry,
-    this.iconColor = AppColors.deepBlue,
-    this.titleColor = AppColors.inputText,
   });
 
-  final IconData icon;
   final String title;
   final VoidCallback onRetry;
-  final Color iconColor;
-  final Color titleColor;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 54, 20, 54),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusSm),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: iconColor, size: 42),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: titleColor,
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
-              height: 20 / 15,
-            ),
-          ),
-          const SizedBox(height: 16),
-          AppPrimaryGradientButton(
-            onPressed: onRetry,
-            height: 44,
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.refresh_rounded, size: 18, color: Colors.white),
-                SizedBox(width: 7),
-                Text('Thử lại'),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppListState(
+    kind: AppListStateKind.error,
+    title: title,
+    description: 'Kiểm tra kết nối mạng rồi thử tải lại danh sách.',
+    actionLabel: 'Thử lại',
+    onAction: onRetry,
+  );
 }
 
 class _BadgeColors {

@@ -920,6 +920,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     return showModalBottomSheet<SettlementType>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -949,6 +950,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
+                    color: AppColors.inputText,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -956,7 +958,11 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                   isPositive
                       ? 'Phòng mới có giá cao hơn, chênh lệch cần trả: $formattedDiff.'
                       : 'Phòng mới có giá thấp hơn, chênh lệch cần xử lý: $formattedDiff.',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.bodyText,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 20),
                 for (final choice in choices) ...[
@@ -973,6 +979,13 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                   width: double.infinity,
                   child: TextButton(
                     onPressed: () => Navigator.of(ctx).pop(),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.deepBlue,
+                      textStyle: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                     child: const Text('Đóng'),
                   ),
                 ),

@@ -90,7 +90,7 @@ class _AppSplashScreenState extends State<AppSplashScreen>
                 children: [
                   const Spacer(flex: 3),
                   Semantics(
-                    label: 'HDBHMS, hệ thống quản lý nhà trọ',
+                    label: 'Nhà Trọ Hải Đăng, hệ thống quản lý nhà trọ',
                     image: true,
                     child: FadeTransition(
                       opacity: _logoOpacity,
@@ -116,14 +116,17 @@ class _AppSplashScreenState extends State<AppSplashScreen>
                     opacity: _titleOpacity,
                     child: SlideTransition(
                       position: _titleOffset,
-                      child: Text(
-                        'HDBHMS',
-                        textAlign: TextAlign.center,
-                        style: AppTypography.pageTitle.copyWith(
-                          color: Colors.white,
-                          fontSize: 36,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 2.4,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'Nhà Trọ Hải Đăng',
+                          textAlign: TextAlign.center,
+                          style: AppTypography.pageTitle.copyWith(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.2,
+                          ),
                         ),
                       ),
                     ),

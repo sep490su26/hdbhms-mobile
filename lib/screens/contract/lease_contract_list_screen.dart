@@ -1,6 +1,7 @@
 // ignore_for_file: unused_element
 
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/widgets/app_date_picker.dart';
 import 'package:hdbhms_mobile/widgets/app_empty_state.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
@@ -87,7 +88,7 @@ class _LeaseContractListScreenState extends State<LeaseContractListScreen> {
 
   Future<void> _pickDateRange() async {
     final now = DateTime.now();
-    final picked = await showDateRangePicker(
+    final picked = await AppDatePicker.showRange(
       context: context,
       firstDate: DateTime(2020),
       lastDate: now,

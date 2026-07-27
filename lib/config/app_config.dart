@@ -3,6 +3,6 @@
 class AppConfig {
   const AppConfig._();
 
-  static const appName = 'HDBHMS Mobile';
+  static const appName = 'Nhà Trọ Hải Đăng';
   static String get apiBaseUrl => ApiConfig.baseUrl;
 }

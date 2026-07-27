@@ -1351,6 +1351,18 @@ class _CompleteSheetState extends State<_CompleteSheet> {
             OutlinedButton.icon(
               onPressed: _pickAfterFiles,
               icon: const Icon(Icons.add_photo_alternate_outlined),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.deepBlue,
+                side: const BorderSide(color: AppColors.deepBlue),
+                minimumSize: const Size.fromHeight(44),
+                textStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                ),
+              ),
               label: Text(
                 _selectedFileCount == 0
                     ? 'Thêm ảnh sau sửa chữa'
@@ -1431,9 +1443,34 @@ class _SheetTextField extends StatelessWidget {
       minLines: minLines,
       maxLines: maxLines,
       keyboardType: keyboardType,
+      style: const TextStyle(
+        color: AppColors.inputText,
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+      ),
       decoration: InputDecoration(
         labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusSm)),
+        filled: true,
+        fillColor: AppColors.surface,
+        labelStyle: const TextStyle(
+          color: AppColors.bodyText,
+          fontWeight: FontWeight.w600,
+        ),
+        floatingLabelStyle: const TextStyle(
+          color: AppColors.deepBlue,
+          fontWeight: FontWeight.w800,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
+          borderSide: const BorderSide(color: AppColors.cardBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
+          borderSide: const BorderSide(color: AppColors.deepBlue, width: 1.5),
+        ),
       ),
       validator: validator,
     );

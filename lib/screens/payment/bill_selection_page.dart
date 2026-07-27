@@ -18,7 +18,7 @@ import 'payment_history_page.dart';
 import 'qr_payment_page.dart';
 import 'utility_complaint_screen.dart';
 import '../../widgets/app_filter_chip.dart';
-import '../../widgets/app_month_year_picker.dart';
+import '../../widgets/app_list_state.dart';
 
 class BillSelectionPage extends StatefulWidget {
   const BillSelectionPage({
@@ -41,7 +41,6 @@ class BillSelectionPage extends StatefulWidget {
 class _BillSelectionPageState extends State<BillSelectionPage> {
   _BillStatusFilter _activeStatusFilter = _BillStatusFilter.all;
   _BillTypeFilter _activeTypeFilter = _BillTypeFilter.all;
-  DateTime? _selectedDueMonth;
   late Future<List<TenantInvoice>> _invoicesFuture;
 
   @override
@@ -65,12 +64,10 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
               _BillFilterBar(
                 activeStatus: _activeStatusFilter,
                 activeType: _activeTypeFilter,
-                selectedDueMonth: _selectedDueMonth,
                 onStatusChanged: (filter) =>
                     setState(() => _activeStatusFilter = filter),
                 onTypeChanged: (filter) =>
                     setState(() => _activeTypeFilter = filter),
-                onDateFilterTap: _selectDueDateFilter,
               ),
               const SizedBox(height: 18),
               FutureBuilder<List<TenantInvoice>>(
@@ -165,16 +162,6 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
     );
   }
 
-  Future<void> _selectDueDateFilter() async {
-    final selected = await showAppMonthYearPicker(
-      context: context,
-      selectedMonth: _selectedDueMonth,
-      title: 'Chọn tháng hạn thanh toán',
-    );
-    if (!mounted || selected == null) return;
-    setState(() => _selectedDueMonth = selected.year == 0 ? null : selected);
-  }
-
   void _openInvoicePreviewFlow(BuildContext context, TenantInvoice invoice) {
     final isUtility = invoice.invoiceType.toUpperCase() == 'UTILITY';
     final canOpenQr =
@@ -263,7 +250,6 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
   ) {
     final typeFilteredInvoices = invoices
         .where((invoice) => _matchesTypeFilter(invoice, _activeTypeFilter))
-        .where((invoice) => _matchesDueDateFilter(invoice, _selectedDueMonth))
         .toList(growable: false);
 
     final pendingBills = _withSpacing(
@@ -303,15 +289,10 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
     }
 
     if (typeFilteredInvoices.isEmpty) {
-      final hasDateFilter = _selectedDueMonth != null;
       return [
         _BillEmptyState(
-          title: hasDateFilter
-              ? 'Không có hóa đơn trong khoảng đã chọn'
-              : 'Không có hóa đơn ${_typeFilterEmptyLabel(_activeTypeFilter)}',
-          message: hasDateFilter
-              ? 'Thử thay đổi hạn thanh toán hoặc loại hóa đơn để xem các khoản khác.'
-              : 'Thử chọn loại hóa đơn khác để xem các khoản đang có.',
+          title: 'Không có hóa đơn ${_typeFilterEmptyLabel(_activeTypeFilter)}',
+          message: 'Thử chọn loại hóa đơn khác để xem các khoản đang có.',
         ),
       ];
     }
@@ -343,10 +324,6 @@ enum _BillStatusFilter { all, unpaid }
 
 enum _BillTypeFilter { all, rent, utility, other }
 
-// Kept only for the legacy sheet below while it is phased out; the active UI
-// now filters exclusively by month and year.
-enum _BillDateFilter { all, overdue, next7Days, next30Days, next90Days, custom }
-
 bool _matchesTypeFilter(TenantInvoice invoice, _BillTypeFilter filter) {
   return switch (filter) {
     _BillTypeFilter.all => true,
@@ -364,31 +341,6 @@ String _typeFilterEmptyLabel(_BillTypeFilter filter) {
     _BillTypeFilter.other => 'khác',
   };
 }
-
-bool _matchesDueDateFilter(TenantInvoice invoice, DateTime? selectedMonth) {
-  if (selectedMonth == null) return true;
-  final dueDate = invoice.dueDate;
-  if (dueDate == null) return false;
-  return dueDate.year == selectedMonth.year &&
-      dueDate.month == selectedMonth.month;
-}
-
-// ignore: unused_element
-DateTime _dateOnly(DateTime value) =>
-    DateTime(value.year, value.month, value.day);
-
-String _billDateFilterLabel(DateTime? selectedMonth) => selectedMonth == null
-    ? 'Tất cả tháng'
-    : 'Tháng ${selectedMonth.month.toString().padLeft(2, '0')}/${selectedMonth.year}';
-
-String _legacyBillDateFilterLabel(_BillDateFilter filter) => switch (filter) {
-  _BillDateFilter.all => 'Tất cả thời hạn',
-  _BillDateFilter.overdue => 'Quá hạn',
-  _BillDateFilter.next7Days => '7 ngày tới',
-  _BillDateFilter.next30Days => '30 ngày tới',
-  _BillDateFilter.next90Days => '90 ngày tới',
-  _BillDateFilter.custom => 'Khoảng ngày',
-};
 
 List<Widget> _withSpacing(List<Widget> widgets, double spacing) {
   if (widgets.isEmpty) return const [];
@@ -483,32 +435,13 @@ class _BillErrorState extends StatelessWidget {
   final VoidCallback onRetry;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF0EF),
-        borderRadius: BorderRadius.circular(AppColors.radiusMd),
-        border: Border.all(color: const Color(0xFFFFB5AE)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            message,
-            style: const TextStyle(
-              color: AppColors.dangerText,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextButton(onPressed: onRetry, child: const Text('Thử lại')),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppListState(
+    kind: AppListStateKind.error,
+    title: 'Không tải được hóa đơn',
+    description: message,
+    actionLabel: 'Thử lại',
+    onAction: onRetry,
+  );
 }
 
 class _BillEmptyState extends StatelessWidget {
@@ -518,82 +451,26 @@ class _BillEmptyState extends StatelessWidget {
   final String message;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusMd),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(AppColors.radiusMd),
-            ),
-            child: const Icon(
-              Icons.receipt_long_outlined,
-              color: AppColors.deepBlue,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  textAlign: TextAlign.left,
-                  style: const TextStyle(
-                    color: AppColors.inputText,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                    height: 18 / 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  message,
-                  textAlign: TextAlign.left,
-                  style: const TextStyle(
-                    color: AppColors.bodyText,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    height: 18 / 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppListState(
+    kind: AppListStateKind.empty,
+    title: title,
+    description: message,
+    icon: Icons.receipt_long_outlined,
+  );
 }
 
 class _BillFilterBar extends StatelessWidget {
   const _BillFilterBar({
     required this.activeStatus,
     required this.activeType,
-    required this.selectedDueMonth,
     required this.onStatusChanged,
     required this.onTypeChanged,
-    required this.onDateFilterTap,
   });
 
   final _BillStatusFilter activeStatus;
   final _BillTypeFilter activeType;
-  final DateTime? selectedDueMonth;
   final ValueChanged<_BillStatusFilter> onStatusChanged;
   final ValueChanged<_BillTypeFilter> onTypeChanged;
-  final VoidCallback onDateFilterTap;
 
   @override
   Widget build(BuildContext context) {
@@ -655,222 +532,7 @@ class _BillFilterBar extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 10),
-        Semantics(
-          button: true,
-          label:
-              'Lọc theo tháng hạn thanh toán: ${_billDateFilterLabel(selectedDueMonth)}',
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(AppColors.radiusMd),
-            child: InkWell(
-              onTap: onDateFilterTap,
-              borderRadius: BorderRadius.circular(AppColors.radiusMd),
-              child: Ink(
-                height: 44,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: selectedDueMonth == null
-                      ? AppColors.surface
-                      : AppColors.primaryLight,
-                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                  border: Border.all(
-                    color: selectedDueMonth == null
-                        ? AppColors.cardBorder
-                        : AppColors.primary.withValues(alpha: 0.38),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.event_outlined,
-                      size: 19,
-                      color: selectedDueMonth == null
-                          ? AppColors.bodyText
-                          : AppColors.deepBlue,
-                    ),
-                    const SizedBox(width: 9),
-                    const Text(
-                      'Tháng hạn thanh toán',
-                      style: TextStyle(
-                        color: AppColors.bodyText,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const Spacer(),
-                    Flexible(
-                      child: Text(
-                        _billDateFilterLabel(selectedDueMonth),
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.end,
-                        style: const TextStyle(
-                          color: AppColors.deepBlue,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      color: AppColors.deepBlue,
-                      size: 20,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
       ],
-    );
-  }
-}
-
-// ignore: unused_element
-class _BillDateFilterSheet extends StatelessWidget {
-  const _BillDateFilterSheet({required this.activeFilter});
-
-  final _BillDateFilter activeFilter;
-
-  @override
-  Widget build(BuildContext context) {
-    final filters = _BillDateFilter.values;
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.7;
-    final preferredHeight = 128.0 + (filters.length * 48.0);
-
-    return SafeArea(
-      top: false,
-      child: SizedBox(
-        height: preferredHeight > maxHeight ? maxHeight : preferredHeight,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 12, 20, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(child: _BottomSheetHandle()),
-                  SizedBox(height: 18),
-                  Text(
-                    'Lọc theo hạn thanh toán',
-                    style: TextStyle(
-                      color: AppColors.inputText,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  SizedBox(height: 6),
-                  Text(
-                    'Các hóa đơn trong khoảng được chọn sẽ hiển thị.',
-                    style: TextStyle(
-                      color: AppColors.bodyText,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1, color: AppColors.cardBorder),
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
-                itemCount: filters.length,
-                itemBuilder: (context, index) {
-                  final filter = filters[index];
-                  return _DateFilterOption(
-                    label: _legacyBillDateFilterLabel(filter),
-                    icon: switch (filter) {
-                      _BillDateFilter.all => Icons.date_range_outlined,
-                      _BillDateFilter.overdue => Icons.warning_amber_rounded,
-                      _BillDateFilter.next7Days => Icons.looks_one_outlined,
-                      _BillDateFilter.next30Days => Icons.date_range_rounded,
-                      _BillDateFilter.next90Days =>
-                        Icons.calendar_month_rounded,
-                      _BillDateFilter.custom => Icons.edit_calendar_outlined,
-                    },
-                    isSelected: activeFilter == filter,
-                    onTap: () => Navigator.of(context).pop(filter),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BottomSheetHandle extends StatelessWidget {
-  const _BottomSheetHandle();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 36,
-      height: 4,
-      decoration: BoxDecoration(
-        color: AppColors.deepBlue,
-        borderRadius: BorderRadius.circular(AppColors.radiusPill),
-      ),
-    );
-  }
-}
-
-class _DateFilterOption extends StatelessWidget {
-  const _DateFilterOption({
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppColors.radiusMd),
-        child: SizedBox(
-          height: 48,
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                size: 20,
-                color: isSelected ? AppColors.primary : AppColors.bodyText,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: AppColors.inputText,
-                    fontSize: 14,
-                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                  ),
-                ),
-              ),
-              if (isSelected)
-                const Icon(
-                  Icons.check_rounded,
-                  color: AppColors.primary,
-                  size: 20,
-                ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

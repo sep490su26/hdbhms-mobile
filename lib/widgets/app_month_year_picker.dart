@@ -7,6 +7,8 @@ Future<DateTime?> showAppMonthYearPicker({
   required BuildContext context,
   required DateTime? selectedMonth,
   required String title,
+  DateTime? firstMonth,
+  DateTime? lastMonth,
 }) {
   return showModalBottomSheet<DateTime?>(
     context: context,
@@ -18,8 +20,12 @@ Future<DateTime?> showAppMonthYearPicker({
         top: Radius.circular(AppColors.radiusLg),
       ),
     ),
-    builder: (_) =>
-        _MonthYearPickerSheet(selectedMonth: selectedMonth, title: title),
+    builder: (_) => _MonthYearPickerSheet(
+      selectedMonth: selectedMonth,
+      title: title,
+      firstMonth: firstMonth,
+      lastMonth: lastMonth,
+    ),
   );
 }
 
@@ -27,10 +33,14 @@ class _MonthYearPickerSheet extends StatefulWidget {
   const _MonthYearPickerSheet({
     required this.selectedMonth,
     required this.title,
+    this.firstMonth,
+    this.lastMonth,
   });
 
   final DateTime? selectedMonth;
   final String title;
+  final DateTime? firstMonth;
+  final DateTime? lastMonth;
 
   @override
   State<_MonthYearPickerSheet> createState() => _MonthYearPickerSheetState();
@@ -39,10 +49,32 @@ class _MonthYearPickerSheet extends StatefulWidget {
 class _MonthYearPickerSheetState extends State<_MonthYearPickerSheet> {
   late int _year;
 
+  DateTime get _firstMonth {
+    final month = widget.firstMonth;
+    return month == null ? DateTime(2000, 1) : DateTime(month.year, month.month);
+  }
+
+  DateTime get _lastMonth {
+    final now = DateTime.now();
+    final month = widget.lastMonth;
+    final result = month == null
+        ? DateTime(now.year, now.month)
+        : DateTime(month.year, month.month);
+    return result.isBefore(_firstMonth) ? _firstMonth : result;
+  }
+
   @override
   void initState() {
     super.initState();
-    _year = widget.selectedMonth?.year ?? DateTime.now().year;
+    final selected = widget.selectedMonth;
+    final initial = selected == null
+        ? _lastMonth
+        : DateTime(selected.year, selected.month);
+    _year = initial.isBefore(_firstMonth)
+        ? _firstMonth.year
+        : initial.isAfter(_lastMonth)
+        ? _lastMonth.year
+        : initial.year;
   }
 
   @override
@@ -89,6 +121,13 @@ class _MonthYearPickerSheetState extends State<_MonthYearPickerSheet> {
               ),
               TextButton.icon(
                 onPressed: () => Navigator.of(context).pop(DateTime(0)),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.deepBlue,
+                  textStyle: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 icon: const Icon(Icons.clear_rounded, size: 18),
                 label: const Text('Tất cả'),
               ),
@@ -99,9 +138,14 @@ class _MonthYearPickerSheetState extends State<_MonthYearPickerSheet> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                onPressed: () => setState(() => _year -= 1),
+                onPressed: _year > _firstMonth.year
+                    ? () => setState(() => _year -= 1)
+                    : null,
                 tooltip: 'Năm trước',
-                icon: const Icon(Icons.chevron_left_rounded),
+                icon: const Icon(
+                  Icons.chevron_left_rounded,
+                  color: AppColors.deepBlue,
+                ),
               ),
               Text(
                 'Năm $_year',
@@ -112,9 +156,14 @@ class _MonthYearPickerSheetState extends State<_MonthYearPickerSheet> {
                 ),
               ),
               IconButton(
-                onPressed: () => setState(() => _year += 1),
+                onPressed: _year < _lastMonth.year
+                    ? () => setState(() => _year += 1)
+                    : null,
                 tooltip: 'Năm sau',
-                icon: const Icon(Icons.chevron_right_rounded),
+                icon: const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.deepBlue,
+                ),
               ),
             ],
           ),
@@ -134,18 +183,31 @@ class _MonthYearPickerSheetState extends State<_MonthYearPickerSheet> {
               final selected =
                   widget.selectedMonth?.year == _year &&
                   widget.selectedMonth?.month == month;
+              final candidate = DateTime(_year, month);
+              final isAvailable =
+                  !candidate.isBefore(_firstMonth) &&
+                  !candidate.isAfter(_lastMonth);
               return Material(
-                color: selected ? AppColors.primary : AppColors.surfaceMuted,
+                color: selected
+                    ? AppColors.primary
+                    : isAvailable
+                    ? AppColors.surfaceMuted
+                    : AppColors.surfaceMuted.withValues(alpha: 0.45),
                 borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 child: InkWell(
-                  onTap: () =>
-                      Navigator.of(context).pop(DateTime(_year, month)),
+                  onTap: isAvailable
+                      ? () => Navigator.of(context).pop(candidate)
+                      : null,
                   borderRadius: BorderRadius.circular(AppColors.radiusMd),
                   child: Center(
                     child: Text(
                       months[index],
                       style: TextStyle(
-                        color: selected ? Colors.white : AppColors.inputText,
+                        color: selected
+                            ? Colors.white
+                            : isAvailable
+                            ? AppColors.inputText
+                            : AppColors.hintText,
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/widgets/app_date_picker.dart';
 import 'package:hdbhms_mobile/widgets/app_empty_state.dart';
 import 'package:flutter/services.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
@@ -521,7 +522,7 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
   Future<void> _pickLiquidationDate() async {
     final today = DateTime.now();
     final initialDate = _liquidationDate ?? today;
-    final picked = await showDatePicker(
+    final picked = await AppDatePicker.show(
       context: context,
       initialDate: initialDate.isBefore(today) ? today : initialDate,
       firstDate: today,
@@ -573,8 +574,29 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
                 child: InputDecorator(
                   decoration: InputDecoration(
                     labelText: 'Ngày thanh lý',
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    labelStyle: const TextStyle(
+                      color: AppColors.bodyText,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    floatingLabelStyle: const TextStyle(
+                      color: AppColors.deepBlue,
+                      fontWeight: FontWeight.w800,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                      borderSide: const BorderSide(color: AppColors.cardBorder),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                      borderSide: const BorderSide(
+                        color: AppColors.deepBlue,
+                        width: 1.5,
+                      ),
                     ),
                   ),
                   child: Row(
@@ -586,8 +608,17 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
                             : '${_liquidationDate!.day.toString().padLeft(2, '0')}/'
                                   '${_liquidationDate!.month.toString().padLeft(2, '0')}/'
                                   '${_liquidationDate!.year}',
+                        style: const TextStyle(
+                          color: AppColors.inputText,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                      const Icon(Icons.calendar_month_outlined, size: 20),
+                      const Icon(
+                        Icons.calendar_month_outlined,
+                        color: AppColors.deepBlue,
+                        size: 20,
+                      ),
                     ],
                   ),
                 ),
@@ -599,12 +630,39 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
                 controller: _renewalMonthsCtrl,
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                style: const TextStyle(
+                  color: AppColors.inputText,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
                 decoration: InputDecoration(
                   labelText: 'Thời hạn gia hạn (tháng)',
                   hintText: 'Ví dụ: 12',
                   helperText: 'Tối thiểu 6 tháng',
+                  filled: true,
+                  fillColor: AppColors.surface,
+                  labelStyle: const TextStyle(
+                    color: AppColors.bodyText,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  hintStyle: const TextStyle(color: AppColors.hintText),
+                  helperStyle: const TextStyle(
+                    color: AppColors.bodyText,
+                    fontWeight: FontWeight.w600,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                    borderSide: const BorderSide(color: AppColors.cardBorder),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                    borderSide: const BorderSide(
+                      color: AppColors.deepBlue,
+                      width: 1.5,
+                    ),
                   ),
                 ),
               ),
@@ -613,10 +671,29 @@ class _CreateRequestSheetState extends State<_CreateRequestSheet> {
             TextField(
               controller: _ctrl,
               maxLines: 3,
+              style: const TextStyle(
+                color: AppColors.inputText,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
               decoration: InputDecoration(
                 hintText: 'Ghi chú / mô tả',
+                filled: true,
+                fillColor: AppColors.surface,
+                hintStyle: const TextStyle(color: AppColors.hintText),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                  borderSide: const BorderSide(color: AppColors.cardBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                  borderSide: const BorderSide(
+                    color: AppColors.deepBlue,
+                    width: 1.5,
+                  ),
                 ),
               ),
             ),
