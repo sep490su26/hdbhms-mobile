@@ -285,7 +285,7 @@ class _LoginCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 26, 24, 28),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
         border: Border.all(color: Colors.white.withValues(alpha: 0.9)),
         boxShadow: [
           BoxShadow(
@@ -375,7 +375,7 @@ class _LoginCard extends StatelessWidget {
                   elevation: 0,
                   shadowColor: Colors.black.withValues(alpha: 0.1),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(AppColors.radiusLg),
                   ),
                 ),
                 child: isLoading

@@ -1,7 +1,22 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  const AppColors._();
+  AppColors._();
+
+  /// Shared corner radii. Keep component shapes within this compact scale.
+  static const radiusSm = 8.0;
+  static const radiusMd = 12.0;
+  static const radiusLg = 16.0;
+  static const radiusPill = 999.0;
+
+  /// The only spacing values used by shared components and new screens.
+  static const space4 = 4.0;
+  static const space8 = 8.0;
+  static const space12 = 12.0;
+  static const space16 = 16.0;
+  static const space24 = 24.0;
+  static const space32 = 32.0;
+  static const minimumTouchTarget = 48.0;
 
   static const darkBlue = Color(0xFF12345C);
   static const deepBlue = Color(0xFF0B1F3A);
@@ -31,6 +46,20 @@ class AppColors {
   static const success = Color(0xFF10B981);
   static const warning = Color(0xFFF59E0B);
   static const danger = Color(0xFFDC2626);
+
+  // Semantic status and supporting surfaces. These retain the existing palette
+  // while keeping screen code free of anonymous colour literals.
+  static const successText = Color(0xFF16A34A);
+  static const successSurface = Color(0xFFE7F8F1);
+  static const warningText = Color(0xFF92400E);
+  static const warningSurface = Color(0xFFFFFBEB);
+  static const dangerText = Color(0xFFB42318);
+  static const dangerSurface = Color(0xFFFFE9E8);
+  static const infoSurface = Color(0xFFEFF6FF);
+  static const primarySurface = Color(0xFFEFF1FF);
+  static const neutralStrong = Color(0xFF111827);
+  static const neutral = Color(0xFF6B7280);
+  static const neutralBorder = Color(0xFFE5E7EB);
 
   static const heroGradient = LinearGradient(
     begin: Alignment.topLeft,

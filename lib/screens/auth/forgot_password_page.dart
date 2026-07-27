@@ -167,7 +167,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                   alpha: 0.05,
                                 ),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(
+                                    AppColors.radiusLg,
+                                  ),
                                 ),
                               ),
                             ),
@@ -191,7 +193,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                     color: AppColors.primary,
                                   ),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(
+                                      AppColors.radiusLg,
+                                    ),
                                   ),
                                 ),
                                 child: Text(
@@ -291,7 +295,7 @@ class _SuccessMessage extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.primaryLight.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
         border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
       ),
       child: Column(

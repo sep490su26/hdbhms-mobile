@@ -424,7 +424,7 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
                   alpha: 0.5,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 ),
                 elevation: 0,
               ),
@@ -473,7 +473,7 @@ class _SectionCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(
@@ -615,7 +615,7 @@ class _RoomPickerFieldState extends State<_RoomPickerField> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: AppColors.primaryLight.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(AppColors.radiusMd),
               border: Border.all(
                 color: AppColors.primary.withValues(alpha: 0.3),
               ),
@@ -650,7 +650,7 @@ class _RoomPickerFieldState extends State<_RoomPickerField> {
                       Text(
                         'Giá: ${CurrencyFormatter.vnd(widget.selectedRoom!.listedPrice.toDouble())}/tháng',
                         style: const TextStyle(
-                          color: Color(0xFF16A34A),
+                          color: AppColors.successText,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
@@ -761,13 +761,13 @@ class _DateField extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onPick,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
           color: AppColors.inputFill,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
           border: Border.all(color: AppColors.border),
         ),
         child: Row(
@@ -822,7 +822,7 @@ class _ErrorState extends StatelessWidget {
               height: 60,
               decoration: BoxDecoration(
                 color: const Color(0xFFFFF0F0),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(AppColors.radiusLg),
               ),
               child: const Icon(
                 Icons.error_outline,
@@ -866,7 +866,7 @@ class _TransferSuccessDialog extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AppColors.radiusLg),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -876,7 +876,7 @@ class _TransferSuccessDialog extends StatelessWidget {
               height: 64,
               decoration: BoxDecoration(
                 color: const Color(0xFFF0FFF4),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(AppColors.radiusLg),
               ),
               child: const Icon(
                 Icons.check_circle,
@@ -913,7 +913,7 @@ class _TransferSuccessDialog extends StatelessWidget {
                   backgroundColor: AppColors.deepBlue,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
                   ),
                   elevation: 0,
                 ),

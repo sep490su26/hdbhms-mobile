@@ -3,10 +3,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 import '../../models/notification/notification_model.dart';
 import '../../services/notification/notification_service.dart';
-import '../../theme/app_colors.dart';
 import '../../widgets/app_screen_shell.dart';
 import '../../widgets/app_skeleton.dart';
 import '../../widgets/app_top_bar.dart';
@@ -310,8 +310,8 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
               width: 68,
               height: 68,
               decoration: BoxDecoration(
-                color: const Color(0xFFEFF1FF),
-                borderRadius: BorderRadius.circular(16),
+                color: AppColors.primarySurface,
+                borderRadius: BorderRadius.circular(AppColors.radiusLg),
               ),
               child: const Icon(
                 Icons.notifications_off_outlined,
@@ -461,7 +461,7 @@ class _FilterChip extends StatelessWidget {
                 )
               : null,
           color: isActive ? null : AppColors.surface,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(AppColors.radiusPill),
           border: Border.all(
             color: isActive
                 ? Colors.white.withValues(alpha: 0.2)
@@ -521,13 +521,13 @@ class _NotificationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.surface,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
             border: Border.all(
               color: item.isRead
                   ? AppColors.cardBorder.withValues(alpha: 0.7)
@@ -690,7 +690,7 @@ class _StatusBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
         color: AppColors.deepBlue.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
       ),
       child: const Text(
         'Chưa đọc',
@@ -722,7 +722,7 @@ class _NotificationDetailDialog extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppColors.radiusLg),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -737,8 +737,8 @@ class _NotificationDetailDialog extends StatelessWidget {
                     width: 38,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEFF1FF),
-                      borderRadius: BorderRadius.circular(10),
+                      color: AppColors.primarySurface,
+                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
                     ),
                     child: const Icon(
                       Icons.notifications_rounded,
@@ -852,7 +852,7 @@ class _NotificationDetailDialog extends StatelessWidget {
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
                     ),
                   ),
                   child: const Text(

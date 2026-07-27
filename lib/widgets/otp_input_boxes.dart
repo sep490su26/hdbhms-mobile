@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:hdbhms_mobile/theme/app_colors.dart';
@@ -139,7 +139,7 @@ class _OtpBox extends StatelessWidget {
 
   static OutlineInputBorder _border(Color color, {double width = 1}) {
     return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppColors.radiusSm),
       borderSide: BorderSide(color: color, width: width),
     );
   }

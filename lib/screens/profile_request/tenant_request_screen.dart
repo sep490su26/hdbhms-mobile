@@ -483,8 +483,8 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
               width: 68,
               height: 68,
               decoration: BoxDecoration(
-                color: const Color(0xFFEFF1FF),
-                borderRadius: BorderRadius.circular(16),
+                color: AppColors.primarySurface,
+                borderRadius: BorderRadius.circular(AppColors.radiusLg),
               ),
               child: const Icon(
                 Icons.inbox_outlined,
@@ -572,6 +572,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
   Widget _buildHeader() {
     return AppTopBar(
       title: 'Yêu cầu',
+      pageIcon: Icons.assignment_outlined,
       trailing: IconButton(
         onPressed: () => Navigator.of(context).push(
           MaterialPageRoute(
@@ -641,7 +642,7 @@ class _RequestCountBadge extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(10, 7, 11, 7),
       decoration: BoxDecoration(
         color: AppColors.deepBlue,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
         boxShadow: [
           BoxShadow(
             color: AppColors.deepBlue.withValues(alpha: 0.24),
@@ -727,14 +728,14 @@ class _RequestCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.surface,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         child: Container(
           padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
             border: Border.all(
               color: AppColors.cardBorder.withValues(alpha: 0.8),
             ),
@@ -855,7 +856,7 @@ class _StatusBadge extends StatelessWidget {
 
   Color get _bg => switch (status) {
     TenantRequestStatus.pending => const Color(0xFFFFF7ED),
-    TenantRequestStatus.processing => const Color(0xFFEFF1FF),
+    TenantRequestStatus.processing => AppColors.primarySurface,
     TenantRequestStatus.approved => const Color(0xFFD4F8DE),
     TenantRequestStatus.rejected => const Color(0xFFFFE4E4),
   };
@@ -863,8 +864,8 @@ class _StatusBadge extends StatelessWidget {
   Color get _fg => switch (status) {
     TenantRequestStatus.pending => const Color(0xFFD97706),
     TenantRequestStatus.processing => AppColors.deepBlue,
-    TenantRequestStatus.approved => const Color(0xFF16A34A),
-    TenantRequestStatus.rejected => const Color(0xFFDC2626),
+    TenantRequestStatus.approved => AppColors.successText,
+    TenantRequestStatus.rejected => AppColors.danger,
   };
 
   @override
@@ -873,7 +874,7 @@ class _StatusBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
         color: _bg,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
       ),
       child: Text(
         status.label,
@@ -904,14 +905,14 @@ class _RequestDetailDialog extends StatelessWidget {
 
   Color get _accentColor => switch (request.type) {
     TenantRequestType.renewContract => AppColors.deepBlue,
-    TenantRequestType.terminateContract => const Color(0xFFDC2626),
+    TenantRequestType.terminateContract => AppColors.danger,
     TenantRequestType.changeRoom => const Color(0xFF0284C7),
-    TenantRequestType.addRoommate => const Color(0xFF16A34A),
+    TenantRequestType.addRoommate => AppColors.successText,
     TenantRequestType.utilityComplaint => const Color(0xFFEA580C),
   };
 
   Color get _accentBg => switch (request.type) {
-    TenantRequestType.renewContract => const Color(0xFFEFF1FF),
+    TenantRequestType.renewContract => AppColors.primarySurface,
     TenantRequestType.terminateContract => const Color(0xFFFFF0F0),
     TenantRequestType.changeRoom => const Color(0xFFEFF8FF),
     TenantRequestType.addRoommate => const Color(0xFFF0FFF4),
@@ -921,8 +922,8 @@ class _RequestDetailDialog extends StatelessWidget {
   Color get _statusColor => switch (request.status) {
     TenantRequestStatus.pending => const Color(0xFFD97706),
     TenantRequestStatus.processing => AppColors.deepBlue,
-    TenantRequestStatus.approved => const Color(0xFF16A34A),
-    TenantRequestStatus.rejected => const Color(0xFFDC2626),
+    TenantRequestStatus.approved => AppColors.successText,
+    TenantRequestStatus.rejected => AppColors.danger,
   };
 
   String get _detailTitle => switch (request.type) {
@@ -942,7 +943,7 @@ class _RequestDetailDialog extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 430),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppColors.radiusLg),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.12),
@@ -964,7 +965,7 @@ class _RequestDetailDialog extends StatelessWidget {
                     height: 38,
                     decoration: BoxDecoration(
                       color: _accentBg,
-                      borderRadius: BorderRadius.circular(9),
+                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
                     ),
                     child: Icon(_icon, color: _accentColor, size: 22),
                   ),
@@ -1080,7 +1081,7 @@ class _RequestDetailDialog extends StatelessWidget {
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
                     ),
                   ),
                   child: const Text(
@@ -1132,7 +1133,7 @@ class _RequestDetailDialog extends StatelessWidget {
         _DetailRow(
           label: 'Ngày trả phòng dự kiến',
           value: d['Ngày trả phòng dự kiến'] ?? 'Chưa có thông tin',
-          valueColor: const Color(0xFFDC2626),
+          valueColor: AppColors.danger,
         ),
       ],
       TenantRequestType.changeRoom => [
@@ -1188,7 +1189,7 @@ class _DetailSection extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder.withValues(alpha: 0.65)),
       ),
       child: Column(
@@ -1420,10 +1421,10 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
   Color get _accentColor => switch (widget.changeRequest.requestType) {
     ChangeRequestType.roomTransfer => const Color(0xFF0284C7),
     ChangeRequestType.contractRenewal => AppColors.deepBlue,
-    ChangeRequestType.contractLiquidation => const Color(0xFFDC2626),
-    ChangeRequestType.moveOut => const Color(0xFFDC2626),
-    ChangeRequestType.depositRefundRequest => const Color(0xFF16A34A),
-    ChangeRequestType.addCoOccupant => const Color(0xFF16A34A),
+    ChangeRequestType.contractLiquidation => AppColors.danger,
+    ChangeRequestType.moveOut => AppColors.danger,
+    ChangeRequestType.depositRefundRequest => AppColors.successText,
+    ChangeRequestType.addCoOccupant => AppColors.successText,
     ChangeRequestType.complaint => const Color(0xFFEA580C),
     ChangeRequestType.meterReadingCorrection => AppColors.deepBlue,
     ChangeRequestType.invoiceAdjustment => const Color(0xFF7C3AED),
@@ -1432,24 +1433,24 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
 
   Color get _accentBg => switch (widget.changeRequest.requestType) {
     ChangeRequestType.roomTransfer => const Color(0xFFEFF8FF),
-    ChangeRequestType.contractRenewal => const Color(0xFFEFF1FF),
+    ChangeRequestType.contractRenewal => AppColors.primarySurface,
     ChangeRequestType.contractLiquidation => const Color(0xFFFFF0F0),
     ChangeRequestType.moveOut => const Color(0xFFFFF0F0),
     ChangeRequestType.depositRefundRequest => const Color(0xFFF0FFF4),
     ChangeRequestType.addCoOccupant => const Color(0xFFF0FFF4),
     ChangeRequestType.complaint => const Color(0xFFFFF7ED),
-    ChangeRequestType.meterReadingCorrection => const Color(0xFFEFF1FF),
+    ChangeRequestType.meterReadingCorrection => AppColors.primarySurface,
     ChangeRequestType.invoiceAdjustment => const Color(0xFFF3E8FF),
-    ChangeRequestType.rentPriceAdjustment => const Color(0xFFE0F2FE),
+    ChangeRequestType.rentPriceAdjustment => AppColors.primaryLight,
   };
 
   Color get _statusColor => switch (widget.changeRequest.status) {
     ChangeRequestStatus.pending => const Color(0xFFD97706),
     ChangeRequestStatus.underReview => const Color(0xFF0284C7),
-    ChangeRequestStatus.approved => const Color(0xFF16A34A),
-    ChangeRequestStatus.rejected => const Color(0xFFDC2626),
+    ChangeRequestStatus.approved => AppColors.successText,
+    ChangeRequestStatus.rejected => AppColors.danger,
     ChangeRequestStatus.processing => AppColors.deepBlue,
-    ChangeRequestStatus.completed => const Color(0xFF16A34A),
+    ChangeRequestStatus.completed => AppColors.successText,
     ChangeRequestStatus.cancelled => const Color(0xFF9CA3AF),
   };
 
@@ -1482,7 +1483,7 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
         constraints: const BoxConstraints(maxWidth: 430),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppColors.radiusLg),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.12),
@@ -1504,7 +1505,7 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
                     height: 38,
                     decoration: BoxDecoration(
                       color: _accentBg,
-                      borderRadius: BorderRadius.circular(9),
+                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
                     ),
                     child: Icon(_icon, color: _accentColor, size: 22),
                   ),
@@ -1654,11 +1655,13 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
                             ? null
                             : _confirmDepositRefund,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF16A34A),
+                          backgroundColor: AppColors.successText,
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(
+                              AppColors.radiusSm,
+                            ),
                           ),
                         ),
                         child: _submittingRefund
@@ -1688,10 +1691,12 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
                             ? null
                             : _disputeDepositRefund,
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFFDC2626),
+                          foregroundColor: AppColors.danger,
                           side: const BorderSide(color: Color(0xFFFECACA)),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(
+                              AppColors.radiusSm,
+                            ),
                           ),
                         ),
                         child: const Text(
@@ -1717,7 +1722,9 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(
+                            AppColors.radiusSm,
+                          ),
                         ),
                       ),
                       child: const Text(
@@ -2234,13 +2241,13 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
 
   Color _refundStatusColor(String value) {
     if (value == 'TENANT_CONFIRMED' || value == 'NOT_REQUIRED') {
-      return const Color(0xFF16A34A);
+      return AppColors.successText;
     }
     if (value == 'RECORDED_BY_MANAGER' || value == 'APPROVED_WAITING_REFUND') {
       return AppColors.deepBlue;
     }
     if (value == 'WAITING_OWNER_APPROVAL') return const Color(0xFFD97706);
-    if (value == 'DISPUTED') return const Color(0xFFDC2626);
+    if (value == 'DISPUTED') return AppColors.danger;
     if (value == 'OVERRIDDEN') return const Color(0xFF7C3AED);
     return AppColors.bodyText;
   }

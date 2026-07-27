@@ -138,7 +138,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                     height: 58,
                     decoration: BoxDecoration(
                       color: AppColors.primaryLight,
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(AppColors.radiusLg),
                     ),
                     child: const Icon(
                       Icons.lock_reset_rounded,
@@ -220,7 +220,9 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(
+                            AppColors.radiusLg,
+                          ),
                         ),
                       ),
                       child: _isLoading

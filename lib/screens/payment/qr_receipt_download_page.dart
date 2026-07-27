@@ -5,12 +5,12 @@ import 'dart:ui' as ui;
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:flutter/rendering.dart';
 import 'package:gal/gal.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
-import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/app_primary_gradient_button.dart';
 import '../../widgets/app_screen_shell.dart';
@@ -147,7 +147,7 @@ Future<bool> downloadQrReceipt(
                   ),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(AppColors.radiusLg),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.16),
@@ -300,7 +300,7 @@ class QrReceiptTemplate extends StatelessWidget {
                         height: 46,
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(AppColors.radiusMd),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.28),
@@ -348,7 +348,7 @@ class QrReceiptTemplate extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(AppColors.radiusPill),
                           border: Border.all(
                             color: Colors.white.withValues(alpha: 0.35),
                           ),
@@ -429,10 +429,10 @@ class QrReceiptTemplate extends StatelessWidget {
                       colors: [
                         Color(0xFF1D4ED8),
                         Color(0xFF6366F1),
-                        Color(0xFF8B5CF6),
+                        AppColors.accentViolet,
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(AppColors.radiusLg),
                     boxShadow: [
                       BoxShadow(
                         color: const Color(0xFF1D4ED8).withValues(alpha: 0.22),
@@ -446,7 +446,7 @@ class QrReceiptTemplate extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(AppColors.radiusLg),
                     ),
                     child: Column(
                       children: [
@@ -527,8 +527,8 @@ class QrReceiptTemplate extends StatelessWidget {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFEFF6FF),
-                            borderRadius: BorderRadius.circular(999),
+                            color: AppColors.infoSurface,
+                            borderRadius: BorderRadius.circular(AppColors.radiusPill),
                           ),
                           child: const Text(
                             'Mở app ngân hàng hoặc ví điện tử  →  Quét mã QR',
@@ -551,7 +551,7 @@ class QrReceiptTemplate extends StatelessWidget {
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(AppColors.radiusLg),
                     border: Border.all(color: _border),
                     boxShadow: [
                       BoxShadow(
@@ -586,8 +586,8 @@ class QrReceiptTemplate extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFEF9EC),
-                    borderRadius: BorderRadius.circular(13),
-                    border: Border.all(color: const Color(0xFFF59E0B)),
+                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                    border: Border.all(color: AppColors.warning),
                   ),
                   child: const Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -602,7 +602,7 @@ class QrReceiptTemplate extends StatelessWidget {
                         child: Text(
                           'Sau khi chuyển khoản thành công, hệ thống sẽ tự động xác nhận.',
                           style: TextStyle(
-                            color: Color(0xFF92400E),
+                            color: AppColors.warningText,
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             height: 1.45,
@@ -624,7 +624,7 @@ class QrReceiptTemplate extends StatelessWidget {
                       height: 18,
                       decoration: BoxDecoration(
                         color: _primary,
-                        borderRadius: BorderRadius.circular(5),
+                        borderRadius: BorderRadius.circular(AppColors.radiusSm),
                       ),
                       child: const Icon(
                         Icons.apartment_rounded,

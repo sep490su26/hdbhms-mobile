@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/payment/tenant_invoice_service.dart';
-import '../../theme/app_colors.dart';
 import 'qr_payment_page.dart';
 import 'utility_complaint_screen.dart';
 
@@ -30,10 +30,10 @@ class BillDetailScreen extends StatelessWidget {
   };
 
   static const _lineColors = <String, Color>{
-    'ELECTRICITY': Color(0xFFF59E0B),
+    'ELECTRICITY': AppColors.warning,
     'WATER': Color(0xFF0EA5E9),
     'RENT': Color(0xFF6366F1),
-    'SERVICE': Color(0xFF10B981),
+    'SERVICE': AppColors.success,
     'VIOLATION_FINE': Color(0xFFEF4444),
     'MAINTENANCE_COMPENSATION': Color(0xFFF97316),
   };
@@ -205,9 +205,9 @@ class BillDetailScreen extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF0B1F3A), Color(0xFF2563EB)],
+          colors: [AppColors.deepBlue, AppColors.primary],
         ),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: const Color(0x1FFFFFFF)),
       ),
       child: Row(
@@ -217,7 +217,7 @@ class BillDetailScreen extends StatelessWidget {
             height: 46,
             decoration: BoxDecoration(
               color: const Color(0xFFFBBF24),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
               boxShadow: [
                 BoxShadow(
                   color: const Color(0xFFFBBF24).withValues(alpha: 0.4),
@@ -279,9 +279,9 @@ class BillDetailScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: isPending
-                      ? const Color(0xFFFF6B6B).withValues(alpha: 0.25)
-                      : const Color(0xFF10B981).withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(999),
+                      ? AppColors.accentWarm.withValues(alpha: 0.25)
+                      : AppColors.success.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(AppColors.radiusPill),
                 ),
                 child: Text(
                   isPending ? 'Chờ thanh toán' : 'Đã thanh toán',
@@ -312,7 +312,7 @@ class BillDetailScreen extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: const Color(0xFFE8EDF2)),
         boxShadow: [
           BoxShadow(
@@ -333,8 +333,8 @@ class BillDetailScreen extends StatelessWidget {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.infoSurface,
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   ),
                   child: const Icon(
                     Icons.list_alt_rounded,
@@ -387,7 +387,7 @@ class BillDetailScreen extends StatelessWidget {
                             height: 36,
                             decoration: BoxDecoration(
                               color: color.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(11),
+                              borderRadius: BorderRadius.circular(AppColors.radiusMd),
                             ),
                             child: Icon(icon, color: color, size: 19),
                           ),
@@ -440,7 +440,7 @@ class BillDetailScreen extends StatelessWidget {
                           padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                           decoration: BoxDecoration(
                             color: color.withValues(alpha: 0.06),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(AppColors.radiusSm),
                             border: Border.all(
                               color: color.withValues(alpha: 0.18),
                             ),
@@ -527,9 +527,9 @@ class BillDetailScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFFEFF6FF), Color(0xFFF0FDF4)],
+                colors: [AppColors.infoSurface, Color(0xFFF0FDF4)],
               ),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
             ),
             child: Row(
               children: [
@@ -612,12 +612,12 @@ class BillDetailScreen extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: openComplaint,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFFBEB),
-            borderRadius: BorderRadius.circular(8),
+            color: AppColors.warningSurface,
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
             border: Border.all(color: const Color(0xFFFDE68A)),
           ),
           child: Column(
@@ -631,11 +631,11 @@ class BillDetailScreen extends StatelessWidget {
                     height: 44,
                     decoration: BoxDecoration(
                       color: const Color(0xFFFBBF24).withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
                     ),
                     child: const Icon(
                       Icons.report_problem_outlined,
-                      color: Color(0xFFF59E0B),
+                      color: AppColors.warning,
                       size: 22,
                     ),
                   ),
@@ -647,7 +647,7 @@ class BillDetailScreen extends StatelessWidget {
                         Text(
                           'Chỉ số không chính xác?',
                           style: TextStyle(
-                            color: Color(0xFF92400E),
+                            color: AppColors.warningText,
                             fontSize: 14,
                             fontWeight: FontWeight.w900,
                             height: 18 / 14,
@@ -678,10 +678,10 @@ class BillDetailScreen extends StatelessWidget {
                     end: Alignment.centerRight,
                     colors: [AppColors.deepBlue, AppColors.primary],
                   ),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFF59E0B).withValues(alpha: 0.24),
+                      color: AppColors.warning.withValues(alpha: 0.24),
                       blurRadius: 16,
                       offset: const Offset(0, 8),
                     ),
@@ -728,7 +728,7 @@ class BillDetailScreen extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(
@@ -741,7 +741,7 @@ class BillDetailScreen extends StatelessWidget {
                 height: 32,
                 decoration: BoxDecoration(
                   color: AppColors.primaryLight,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
                 child: const Icon(
                   Icons.key_outlined,
@@ -792,7 +792,7 @@ class BillDetailScreen extends StatelessWidget {
                 end: Alignment.centerRight,
                 colors: [AppColors.deepBlue, AppColors.primary],
               ),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
             ),
             child: FilledButton.icon(
               onPressed: () => Navigator.of(context).pushReplacement(
@@ -807,7 +807,7 @@ class BillDetailScreen extends StatelessWidget {
                 backgroundColor: Colors.transparent,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
                 textStyle: const TextStyle(
                   fontSize: 15,
@@ -875,7 +875,7 @@ class _InvoiceTypeBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
         border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
       ),
       child: Row(
@@ -905,14 +905,14 @@ class _ReviewStatusCard extends StatelessWidget {
   static (Color, Color, String, IconData) _statusInfo(String status) =>
       switch (status.toUpperCase()) {
         'PENDING' => (
-          const Color(0xFFFFFBEB),
-          const Color(0xFFF59E0B),
+          AppColors.warningSurface,
+          AppColors.warning,
           'Đang xem xét',
           Icons.hourglass_top_rounded,
         ),
         'APPROVED' => (
           const Color(0xFFF0FDF4),
-          const Color(0xFF10B981),
+          AppColors.success,
           'Được chấp thuận',
           Icons.check_circle_outline_rounded,
         ),
@@ -941,14 +941,14 @@ class _ReviewStatusCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           Icon(
             isElec ? Icons.bolt_rounded : Icons.water_drop_rounded,
-            color: isElec ? const Color(0xFFF59E0B) : const Color(0xFF0EA5E9),
+            color: isElec ? AppColors.warning : const Color(0xFF0EA5E9),
             size: 18,
           ),
           const SizedBox(width: 10),
@@ -966,7 +966,7 @@ class _ReviewStatusCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(AppColors.radiusPill),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -1009,7 +1009,7 @@ class _MeterValueChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(

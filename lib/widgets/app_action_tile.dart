@@ -21,14 +21,14 @@ class AppActionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.surface,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppColors.radiusSm),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         child: Container(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 11),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
             border: Border.all(color: AppColors.cardBorder),
             boxShadow: [
               BoxShadow(
@@ -49,7 +49,7 @@ class AppActionTile extends StatelessWidget {
                     height: 36,
                     decoration: BoxDecoration(
                       color: accentColor.withValues(alpha: 0.13),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
                     ),
                     child: Icon(icon, color: accentColor, size: 20),
                   ),
@@ -77,7 +77,7 @@ class AppActionTile extends StatelessWidget {
                 height: 4,
                 decoration: BoxDecoration(
                   color: accentColor.withValues(alpha: 0.28),
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(AppColors.radiusPill),
                 ),
               ),
             ],
@@ -108,14 +108,14 @@ class AppActionRowButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.surface,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppColors.radiusSm),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         child: Container(
           padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
             border: Border.all(color: AppColors.cardBorder),
             boxShadow: [
               BoxShadow(
@@ -132,7 +132,7 @@ class AppActionRowButton extends StatelessWidget {
                 height: 42,
                 decoration: BoxDecoration(
                   color: accentColor.withValues(alpha: 0.13),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
                 child: Icon(icon, color: accentColor, size: 22),
               ),

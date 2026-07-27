@@ -51,7 +51,7 @@ class _AttachmentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: const Color(0xFFF3F4F6),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppColors.radiusSm),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => _openPreview(context),
@@ -158,7 +158,7 @@ class _EmptyAttachments extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 24, 14, 24),
       decoration: BoxDecoration(
         color: const Color(0xFFF7F7F8),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: AppColors.cardBorder.withValues(alpha: 0.5)),
       ),
       child: Text(
@@ -210,7 +210,7 @@ class _VideoPlaceholder extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF111827), Color(0xFF374151)],
+          colors: [AppColors.neutralStrong, Color(0xFF374151)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),

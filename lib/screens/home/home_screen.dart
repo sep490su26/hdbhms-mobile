@@ -326,10 +326,13 @@ class _HomeHeader extends StatelessWidget {
             onPressed: onChangeRoom,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const Icon(
-              Icons.swap_horiz_rounded,
-              color: AppColors.topBarIconColor,
-              size: 24,
+            icon: Semantics(
+              label: 'Ch\u1ECDn ph\u00F2ng kh\u00E1c',
+              child: Icon(
+                Icons.swap_horiz_rounded,
+                color: AppColors.topBarIconColor,
+                size: 24,
+              ),
             ),
             tooltip: 'Chọn phòng khác',
           ),
@@ -342,10 +345,13 @@ class _HomeHeader extends StatelessWidget {
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const Icon(
-              Icons.preview_rounded,
-              color: AppColors.topBarIconColor,
-              size: 22,
+            icon: Semantics(
+              label: 'Xem tr\u01B0\u1EDBc c\u00E1c m\u00E0n thanh to\u00E1n',
+              child: Icon(
+                Icons.preview_rounded,
+                color: AppColors.topBarIconColor,
+                size: 22,
+              ),
             ),
             tooltip: 'Xem trước các màn thanh toán',
           ),
@@ -358,8 +364,11 @@ class _HomeHeader extends StatelessWidget {
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: AppNotificationBell(
-              initialUnreadCount: summary.notificationSummary.unreadCount,
+            icon: Semantics(
+              label: 'Th\u00F4ng b\u00E1o',
+              child: AppNotificationBell(
+                initialUnreadCount: summary.notificationSummary.unreadCount,
+              ),
             ),
             tooltip: 'Thông báo',
           ),
@@ -396,13 +405,9 @@ class _HomeLoadingState extends StatelessWidget {
         SizedBox(height: 20),
         AppSkeleton(width: 112, height: 20),
         SizedBox(height: 17),
-        Row(
-          children: [
-            Expanded(child: AppSkeleton(width: double.infinity, height: 116)),
-            SizedBox(width: 12),
-            Expanded(child: AppSkeleton(width: double.infinity, height: 116)),
-          ],
-        ),
+        AppSkeleton(width: double.infinity, height: 176, borderRadius: 16),
+        SizedBox(height: 16),
+        AppSkeleton(width: double.infinity, height: 176, borderRadius: 16),
         SizedBox(height: 20),
         AppSkeleton(width: 112, height: 20),
         SizedBox(height: 17),
@@ -462,8 +467,8 @@ class _RoomSelector extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: const Color(0xFFEFF1FF),
-              borderRadius: BorderRadius.circular(8),
+              color: AppColors.primarySurface,
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
             ),
             child: const Icon(
               Icons.meeting_room_outlined,
@@ -502,7 +507,7 @@ class _RoomSelector extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
                   color: AppColors.primaryLight,
-                  borderRadius: BorderRadius.circular(9),
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 ),
                 alignment: Alignment.center,
                 child: const Text(
@@ -568,8 +573,8 @@ class _RoomSelector extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEFF1FF),
-                  borderRadius: BorderRadius.circular(6),
+                  color: AppColors.primarySurface,
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
                 child: const Icon(
                   Icons.meeting_room_outlined,
@@ -617,9 +622,9 @@ class _RoomSelector extends StatelessWidget {
                   height: 32,
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? const Color(0xFFEFF1FF)
+                        ? AppColors.primarySurface
                         : const Color(0xFFF5F5F7),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   ),
                   child: Icon(
                     Icons.meeting_room_outlined,
@@ -671,7 +676,9 @@ class _RoomSelector extends StatelessWidget {
       context: context,
       position: position,
       items: items,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+      ),
       elevation: 8,
       constraints: const BoxConstraints(minWidth: 230, maxWidth: 310),
     ).then((selectedRoomIndex) {
@@ -747,7 +754,7 @@ class _UserAvatar extends StatelessWidget {
       height: 52,
       decoration: BoxDecoration(
         color: AppColors.deepBlue,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
         boxShadow: [
           BoxShadow(
             color: AppColors.deepBlue.withValues(alpha: 0.12),
@@ -867,12 +874,16 @@ class _PaymentStatusCard extends StatelessWidget {
         ? const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF061827), AppColors.deepBlue, AppColors.primary],
+            colors: [
+              AppColors.heroGradientStart,
+              AppColors.deepBlue,
+              AppColors.primary,
+            ],
           )
         : const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Colors.white, Color(0xFFF0F7F4)],
+            colors: [Colors.white, AppColors.requirementBackground],
           );
     final mainTextColor = hasUnpaid ? Colors.white : AppColors.inputText;
     final mutedTextColor = hasUnpaid
@@ -884,7 +895,7 @@ class _PaymentStatusCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       decoration: BoxDecoration(
         gradient: cardGradient,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
         border: Border.all(
           color: hasUnpaid
               ? Colors.white.withValues(alpha: 0.18)
@@ -909,8 +920,8 @@ class _PaymentStatusCard extends StatelessWidget {
                   hasMultipleBills
                       ? 'Tổng cần thanh toán'
                       : 'Trạng thái thanh toán',
-                  style: const TextStyle(
-                    color: AppColors.inputText,
+                  style: TextStyle(
+                    color: mainTextColor,
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                     height: 20 / 15,
@@ -957,7 +968,7 @@ class _PaymentStatusCard extends StatelessWidget {
               color: hasUnpaid
                   ? Colors.white.withValues(alpha: 0.13)
                   : AppColors.surfaceMuted,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppColors.radiusMd),
               border: Border.all(
                 color: hasUnpaid
                     ? Colors.white.withValues(alpha: 0.14)
@@ -1003,7 +1014,7 @@ class _PaymentStatusCard extends StatelessWidget {
                 disabledForegroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(AppColors.radiusLg),
                 ),
               ),
               child: Text(
@@ -1036,7 +1047,7 @@ class _PaymentBadge extends StatelessWidget {
         color: isUnpaid
             ? AppColors.accentWarm.withValues(alpha: 0.16)
             : AppColors.success.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
         border: Border.all(
           color: isUnpaid
               ? AppColors.accentWarm.withValues(alpha: 0.34)
@@ -1048,7 +1059,7 @@ class _PaymentBadge extends StatelessWidget {
             ? (unpaidCount > 1 ? '$unpaidCount khoản' : 'Chưa thanh toán')
             : 'Đã thanh toán',
         style: TextStyle(
-          color: isUnpaid ? const Color(0xFFB42318) : AppColors.success,
+          color: isUnpaid ? AppColors.dangerText : AppColors.success,
           fontSize: 12,
           fontWeight: FontWeight.w800,
           height: 16 / 12,
@@ -1150,7 +1161,7 @@ class _UtilityCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppColors.radiusLg),
           border: Border.all(color: AppColors.cardBorder),
           boxShadow: [
             BoxShadow(
@@ -1170,7 +1181,7 @@ class _UtilityCard extends StatelessWidget {
                   height: 44,
                   decoration: BoxDecoration(
                     color: iconBackground,
-                    borderRadius: BorderRadius.circular(13),
+                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
                   ),
                   child: Icon(icon, color: iconColor, size: 24),
                 ),
@@ -1346,13 +1357,13 @@ class _UtilityTrendBadge extends StatelessWidget {
       UtilityTrendDirection.increase => (
         Icons.trending_up_rounded,
         AppColors.danger,
-        const Color(0xFFFFE9E8),
+        AppColors.dangerSurface,
         'Tăng',
       ),
       UtilityTrendDirection.decrease => (
         Icons.trending_down_rounded,
         AppColors.success,
-        const Color(0xFFE7F8F1),
+        AppColors.successSurface,
         'Giảm',
       ),
       UtilityTrendDirection.stable => (
@@ -1373,7 +1384,7 @@ class _UtilityTrendBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

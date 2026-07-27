@@ -231,7 +231,7 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
               _InfoRow(
                 label: 'Ngày hết hạn',
                 value: _expiryLabel,
-                valueColor: const Color(0xFFDC2626),
+                valueColor: AppColors.danger,
               ),
             ],
           ),
@@ -251,7 +251,7 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                   ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFF7ED),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
                     border: Border.all(
                       color: const Color(0xFFEA580C).withValues(alpha: 0.35),
                     ),
@@ -291,7 +291,7 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                 ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFEFF8FF),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   border: Border.all(
                     color: const Color(0xFF0284C7).withValues(alpha: 0.35),
                   ),
@@ -343,7 +343,7 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                   Text(
                     '*',
                     style: TextStyle(
-                      color: Color(0xFFDC2626),
+                      color: AppColors.danger,
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
                     ),
@@ -362,7 +362,7 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                   ),
                   decoration: BoxDecoration(
                     color: AppColors.background,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
                     border: Border.all(
                       color: _expectedDate != null
                           ? AppColors.deepBlue
@@ -440,7 +440,7 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                   Text(
                     '*',
                     style: TextStyle(
-                      color: Color(0xFFDC2626),
+                      color: AppColors.danger,
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
                     ),
@@ -479,23 +479,23 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                     vertical: 12,
                   ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
                     borderSide: const BorderSide(color: AppColors.cardBorder),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
                     borderSide: const BorderSide(color: AppColors.cardBorder),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
                     borderSide: const BorderSide(
                       color: AppColors.deepBlue,
                       width: 1.5,
                     ),
                   ),
                   errorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFDC2626)),
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                    borderSide: const BorderSide(color: AppColors.danger),
                   ),
                 ),
               ),
@@ -546,7 +546,7 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(AppColors.radiusLg),
                 ),
               ),
             ),
@@ -563,7 +563,7 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                 foregroundColor: AppColors.bodyText,
                 side: const BorderSide(color: AppColors.cardBorder),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(AppColors.radiusLg),
                 ),
               ),
               child: const Text(
@@ -599,7 +599,7 @@ class _SectionCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder),
         boxShadow: [
           BoxShadow(
@@ -729,10 +729,10 @@ class _TerminateSuccessDialogState extends State<_TerminateSuccessDialog>
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(AppColors.radiusLg),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFDC2626).withValues(alpha: 0.14),
+                  color: AppColors.danger.withValues(alpha: 0.14),
                   blurRadius: 40,
                   offset: const Offset(0, 12),
                 ),
@@ -751,7 +751,7 @@ class _TerminateSuccessDialogState extends State<_TerminateSuccessDialog>
                       end: Alignment.bottomRight,
                       colors: [
                         Color(0xFFC62828),
-                        Color(0xFFDC2626),
+                        AppColors.danger,
                         Color(0xFFE53935),
                       ],
                     ),
@@ -812,7 +812,7 @@ class _TerminateSuccessDialogState extends State<_TerminateSuccessDialog>
                         ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFFFF5F5),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(AppColors.radiusMd),
                           border: Border.all(
                             color: const Color(
                               0xFFDC2626,
@@ -825,7 +825,7 @@ class _TerminateSuccessDialogState extends State<_TerminateSuccessDialog>
                             Icon(
                               Icons.info_outline_rounded,
                               size: 18,
-                              color: Color(0xFFDC2626),
+                              color: AppColors.danger,
                             ),
                             SizedBox(width: 10),
                             Expanded(
@@ -849,11 +849,11 @@ class _TerminateSuccessDialogState extends State<_TerminateSuccessDialog>
                         child: ElevatedButton(
                           onPressed: widget.onHome,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFDC2626),
+                            backgroundColor: AppColors.danger,
                             foregroundColor: Colors.white,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(AppColors.radiusMd),
                             ),
                           ),
                           child: const Row(

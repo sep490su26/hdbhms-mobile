@@ -226,6 +226,7 @@ class _MaintenanceTicketListScreenState
   Widget _buildHeader() {
     return AppTopBar(
       title: 'Báo cáo sự cố',
+      pageIcon: Icons.build_circle_outlined,
       trailing: IconButton(
         onPressed: () => Navigator.of(context).push(
           MaterialPageRoute(
@@ -300,7 +301,7 @@ class _TicketCountBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: AppColors.primaryLight.withValues(alpha: 0.82),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
         border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
       ),
       child: Wrap(
@@ -379,7 +380,10 @@ class _FilterPanel extends StatelessWidget {
           controller: keywordController,
           textInputAction: TextInputAction.search,
           onSubmitted: (_) => onFilter(),
-          decoration: _inputDecoration(prefixIcon: Icons.search_rounded),
+          decoration: _inputDecoration(
+            hintText: 'Nhập mã phiếu, tiêu đề hoặc mô tả',
+            prefixIcon: Icons.search_rounded,
+          ),
         ),
         const SizedBox(height: 14),
         const _FieldLabel('Trạng thái'),
@@ -465,16 +469,16 @@ class _TicketFilterPicker extends StatelessWidget {
       label: '$label: $value',
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         child: InkWell(
           onTap: () => _selectOption(context),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
           child: Ink(
             height: 48,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
               color: hasSelection ? AppColors.primaryLight : AppColors.surface,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppColors.radiusMd),
               border: Border.all(
                 color: hasSelection
                     ? AppColors.primary.withValues(alpha: 0.38)
@@ -550,7 +554,9 @@ class _TicketFilterSheet extends StatelessWidget {
                       height: 4,
                       decoration: BoxDecoration(
                         color: AppColors.deepBlue,
-                        borderRadius: BorderRadius.circular(99),
+                        borderRadius: BorderRadius.circular(
+                          AppColors.radiusPill,
+                        ),
                       ),
                     ),
                   ),
@@ -619,7 +625,7 @@ class _TicketFilterOption extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         child: SizedBox(
           height: 48,
           child: Row(
@@ -685,7 +691,7 @@ class _TicketTableCard extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -877,7 +883,7 @@ class _StatusSummary extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
           decoration: BoxDecoration(
             color: colors.background,
-            borderRadius: BorderRadius.circular(5),
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -991,7 +997,7 @@ class _StateMessage extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 54, 20, 54),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
       ),
       child: Column(
         children: [
@@ -1041,6 +1047,11 @@ class _BadgeColors {
 InputDecoration _inputDecoration({String? hintText, IconData? prefixIcon}) {
   return InputDecoration(
     hintText: hintText,
+    hintStyle: const TextStyle(
+      color: AppColors.bodyText,
+      fontSize: 13,
+      fontWeight: FontWeight.w600,
+    ),
     prefixIcon: prefixIcon == null
         ? null
         : Icon(prefixIcon, color: AppColors.bodyText, size: 22),
@@ -1056,7 +1067,7 @@ InputDecoration _inputDecoration({String? hintText, IconData? prefixIcon}) {
 }
 
 final OutlineInputBorder _fieldBorder = OutlineInputBorder(
-  borderRadius: BorderRadius.circular(8),
+  borderRadius: BorderRadius.circular(AppColors.radiusSm),
   borderSide: const BorderSide(color: AppColors.cardBorder),
 );
 

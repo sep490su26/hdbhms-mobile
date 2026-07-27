@@ -3,13 +3,13 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/notification/notification_service.dart';
 import '../../services/payment/tenant_invoice_service.dart';
-import '../../theme/app_colors.dart';
 import '../../widgets/app_top_bar.dart';
 import 'payment_success_page.dart';
 import 'qr_receipt_download_page.dart';
@@ -317,7 +317,7 @@ class _Header extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(AppColors.radiusPill),
               border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
             ),
             child: const Row(
@@ -358,7 +358,7 @@ class _PaymentHero extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [AppColors.deepBlue, AppColors.primary],
         ),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: AppColors.deepBlue),
       ),
       child: Row(
@@ -368,7 +368,7 @@ class _PaymentHero extends StatelessWidget {
             height: 54,
             decoration: BoxDecoration(
               color: theme.accent,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
               boxShadow: [
                 BoxShadow(
                   color: theme.accent.withValues(alpha: 0.35),
@@ -471,7 +471,7 @@ class _QrCard extends StatelessWidget {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
                     border: Border.all(
                       color: theme.primary.withValues(alpha: 0.2),
                       width: 2,
@@ -485,7 +485,7 @@ class _QrCard extends StatelessWidget {
                     ],
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
                     child: _QrImage(qrCode: qrCode, theme: theme),
                   ),
                 ),
@@ -497,7 +497,7 @@ class _QrCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: theme.softAccent,
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(AppColors.radiusPill),
             ),
             child: FittedBox(
               fit: BoxFit.scaleDown,
@@ -530,7 +530,7 @@ class _QrCard extends StatelessWidget {
                 disabledBackgroundColor: theme.primary.withValues(alpha: 0.55),
                 disabledForegroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
                 textStyle: const TextStyle(
                   fontSize: 13,
@@ -672,10 +672,10 @@ class _CopyableField extends StatelessWidget {
       button: true,
       child: Material(
         color: theme.softSurface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         child: InkWell(
           onTap: () => _copyValue(context, field.value),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(13, 12, 8, 12),
             child: Row(
@@ -685,7 +685,7 @@ class _CopyableField extends StatelessWidget {
                   height: 38,
                   decoration: BoxDecoration(
                     color: theme.softAccent,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   ),
                   child: Icon(field.icon, color: theme.primary, size: 20),
                 ),
@@ -743,7 +743,7 @@ class _SecurityNote extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Row(
@@ -789,7 +789,7 @@ class _ConfirmButton extends StatelessWidget {
             end: Alignment.centerRight,
             colors: [AppColors.deepBlue, AppColors.primary],
           ),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
         ),
         child: FilledButton.icon(
           onPressed: checking ? null : onPressed,
@@ -799,7 +799,7 @@ class _ConfirmButton extends StatelessWidget {
             disabledBackgroundColor: Colors.transparent,
             disabledForegroundColor: theme.iconColor.withValues(alpha: 0.75),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
             ),
             textStyle: const TextStyle(
               fontSize: 15,
@@ -835,7 +835,7 @@ class _LightCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: AppColors.cardBorder),
         boxShadow: [
           BoxShadow(

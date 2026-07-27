@@ -128,7 +128,7 @@ class _MobilePdfViewerState extends State<MobilePdfViewer> {
             backgroundColor: const Color(0xFF2E7D32),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
             ),
             duration: const Duration(seconds: 3),
           ),
@@ -144,7 +144,7 @@ class _MobilePdfViewerState extends State<MobilePdfViewer> {
             backgroundColor: const Color(0xFFB00020),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
             ),
             duration: const Duration(seconds: 3),
           ),
@@ -321,7 +321,7 @@ class _MobilePdfViewerState extends State<MobilePdfViewer> {
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
               ),
             ),

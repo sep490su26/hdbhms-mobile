@@ -268,7 +268,7 @@ class _ChangePasswordFormCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(22, 24, 22, 26),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
         border: Border.all(color: AppColors.cardBorder),
         boxShadow: [
           BoxShadow(
@@ -340,7 +340,7 @@ class _ChangePasswordFormCard extends StatelessWidget {
                   elevation: 0,
                   shadowColor: Colors.black.withValues(alpha: 0.05),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(AppColors.radiusLg),
                   ),
                 ),
                 child: isLoading
@@ -381,7 +381,7 @@ class _PasswordRequirements extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.requirementBackground,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

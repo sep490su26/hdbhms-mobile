@@ -10,12 +10,14 @@ class AppTopBar extends StatelessWidget {
     this.onBack,
     this.trailing,
     this.leading,
+    this.pageIcon,
   });
 
   final String title;
   final VoidCallback? onBack;
   final Widget? trailing;
   final Widget? leading;
+  final IconData? pageIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -30,24 +32,52 @@ class AppTopBar extends StatelessWidget {
           ),
         ),
       ),
-      child: Row(
-        children: [
-          if (leading != null)
-            leading!
-          else if (onBack != null)
-            IconButton(
-              onPressed: onBack,
-              constraints: const BoxConstraints.tightFor(width: 44, height: 44),
-              icon: const Icon(Icons.arrow_back_rounded),
-              tooltip: 'Quay lại',
-            )
-          else
-            const SizedBox(width: 12),
-          const SizedBox(width: 4),
-          Expanded(child: Text(title, style: AppColors.topBarTitleStyle)),
-          // ignore: use_null_aware_elements
-          if (trailing != null) trailing!,
-        ],
+      child: IconTheme(
+        data: const IconThemeData(
+          color: AppColors.topBarIconColor,
+          size: AppColors.topBarIconSize,
+        ),
+        child: Row(
+          children: [
+            if (leading != null)
+              leading!
+            else if (onBack != null)
+              Semantics(
+                button: true,
+                label: 'Quay l\u1EA1i',
+                child: IconButton(
+                  onPressed: onBack,
+                  constraints: const BoxConstraints.tightFor(
+                    width: AppColors.minimumTouchTarget,
+                    height: AppColors.minimumTouchTarget,
+                  ),
+                  icon: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: AppColors.topBarIconColor,
+                  ),
+                  tooltip: 'Quay lại',
+                ),
+              )
+            else
+              const SizedBox(width: 12),
+            const SizedBox(width: 4),
+            if (pageIcon != null) ...[
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.13),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                ),
+                child: Icon(pageIcon, color: AppColors.deepBlue, size: 20),
+              ),
+              const SizedBox(width: 10),
+            ],
+            Expanded(child: Text(title, style: AppColors.topBarTitleStyle)),
+            // ignore: use_null_aware_elements
+            if (trailing != null) trailing!,
+          ],
+        ),
       ),
     );
   }

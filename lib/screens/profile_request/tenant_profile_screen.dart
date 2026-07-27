@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/widgets/app_empty_state.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
@@ -226,6 +227,7 @@ class _ProfileHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppTopBar(
       title: 'Hồ sơ cá nhân',
+      pageIcon: Icons.person_outline_rounded,
       onBack: onBack,
       trailing: IconButton(
         onPressed: () => Navigator.of(context).push(
@@ -383,7 +385,7 @@ class _UpdateProfileButton extends StatelessWidget {
           elevation: 0,
           minimumSize: const Size(0, 48),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppColors.radiusLg),
           ),
           textStyle: const TextStyle(
             fontSize: 14,
@@ -411,12 +413,12 @@ class _LogoutButton extends StatelessWidget {
         icon: const Icon(Icons.logout_rounded, size: 20),
         label: const Text('Đăng xuất'),
         style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFFDC2626),
+          foregroundColor: AppColors.danger,
           backgroundColor: const Color(0xFFFFF1F2),
           side: const BorderSide(color: Color(0xFFFCA5A5)),
           minimumSize: const Size(0, 48),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppColors.radiusLg),
           ),
           textStyle: const TextStyle(
             fontSize: 14,
@@ -449,7 +451,7 @@ class _ChangePasswordButton extends StatelessWidget {
           side: BorderSide(color: AppColors.primary.withValues(alpha: 0.24)),
           minimumSize: const Size(0, 48),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppColors.radiusLg),
           ),
           textStyle: const TextStyle(
             fontSize: 14,
@@ -476,7 +478,11 @@ class _ProfileSummaryCard extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF061827), AppColors.deepBlue, AppColors.primary],
+          colors: [
+            AppColors.heroGradientStart,
+            AppColors.deepBlue,
+            AppColors.primary,
+          ],
         ),
       ),
       child: Column(
@@ -700,7 +706,7 @@ class _TenantProfileImageState extends State<_TenantProfileImage> {
             );
           },
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
             child: AspectRatio(
               aspectRatio: 16 / 9,
               child: Image.memory(snapshot.data!, fit: BoxFit.cover),
@@ -827,7 +833,9 @@ class _ImageOverlayDialogState extends State<_ImageOverlayDialog>
                           minScale: 0.5,
                           maxScale: 5,
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                              AppColors.radiusMd,
+                            ),
                             child: Image.memory(
                               widget.imageBytes,
                               fit: BoxFit.contain,
@@ -870,7 +878,7 @@ class _LoadingImage extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: const Color(0xFFEDECF1),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
           border: Border.all(color: const Color(0xFFDAD8E0)),
         ),
         child: const Center(
@@ -895,7 +903,12 @@ class _EmergencyContactsSection extends StatelessWidget {
       icon: Icons.contact_emergency_outlined,
       title: 'Thông tin người thân',
       children: contacts.isEmpty
-          ? const [_EmptyText('Chưa có liên hệ khẩn cấp')]
+          ? const [
+              _EmptyText(
+                'Chưa có liên hệ khẩn cấp',
+                icon: Icons.contact_emergency_outlined,
+              ),
+            ]
           : [
               for (var i = 0; i < contacts.length; i++) ...[
                 if (i > 0) const _InlineDivider(),
@@ -921,7 +934,12 @@ class _VehiclesSection extends StatelessWidget {
       icon: Icons.two_wheeler_rounded,
       title: 'Thông tin xe',
       children: vehicles.isEmpty
-          ? const [_EmptyText('Chưa có phương tiện')]
+          ? const [
+              _EmptyText(
+                'Chưa có phương tiện',
+                icon: Icons.two_wheeler_rounded,
+              ),
+            ]
           : [
               for (var i = 0; i < vehicles.length; i++) ...[
                 if (i > 0) const _InlineDivider(),
@@ -981,7 +999,7 @@ class _InfoSectionCard extends StatelessWidget {
                 height: 34,
                 decoration: BoxDecoration(
                   color: AppColors.primaryLight,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 ),
                 child: Icon(icon, color: AppColors.deepBlue, size: 19),
               ),
@@ -1076,7 +1094,7 @@ class _VehicleImage extends StatelessWidget {
         child: AspectRatio(
           aspectRatio: 16 / 9,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
             child: Image.network(
               imageUrl,
               fit: BoxFit.cover,
@@ -1091,33 +1109,26 @@ class _VehicleImage extends StatelessWidget {
 }
 
 class _EmptyImage extends StatelessWidget {
-  const _EmptyImage({this.text = 'Chưa có ảnh phương tiện'});
-
+  const _EmptyImage({
+    this.text = 'Ch\u01B0a c\u00F3 \u1EA3nh ph\u01B0\u01A1ng ti\u1EC7n',
+  });
   final String text;
-
   @override
-  Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 16 / 9,
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFEDECF1),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: const Color(0xFFDAD8E0)),
-        ),
-        child: Center(
-          child: Text(
-            text,
-            style: const TextStyle(
-              color: AppColors.bodyText,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
+  Widget build(BuildContext context) => AspectRatio(
+    aspectRatio: 16 / 9,
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xFFEDECF1),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+        border: Border.all(color: const Color(0xFFDAD8E0)),
       ),
-    );
-  }
+      child: AppEmptyState(
+        icon: Icons.image_not_supported_outlined,
+        title: text,
+        compact: true,
+      ),
+    ),
+  );
 }
 
 class VehicleImagePreviewPage extends StatelessWidget {
@@ -1219,29 +1230,29 @@ class _ProfileErrorState extends StatelessWidget {
 }
 
 class _EmptyText extends StatelessWidget {
-  const _EmptyText(this.text);
+  const _EmptyText(this.text, {this.icon = Icons.info_outline_rounded});
 
   final String text;
+  final IconData icon;
 
   @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        color: AppColors.bodyText,
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
-        height: 18 / 13,
-      ),
-    );
-  }
+  Widget build(BuildContext context) => SizedBox(
+    width: double.infinity,
+    child: AppEmptyState(
+      icon: icon,
+      title: text,
+      description: 'Thông tin này sẽ được hiển thị sau khi được bổ sung.',
+      iconColor: AppColors.bodyText,
+      compact: true,
+    ),
+  );
 }
 
 BoxDecoration _cardDecoration({Gradient? gradient}) {
   return BoxDecoration(
     color: gradient == null ? AppColors.surface : null,
     gradient: gradient,
-    borderRadius: BorderRadius.circular(16),
+    borderRadius: BorderRadius.circular(AppColors.radiusLg),
     border: Border.all(
       color: gradient == null
           ? AppColors.cardBorder

@@ -91,7 +91,7 @@ class _AppNotificationBellState extends State<AppNotificationBell> {
                 decoration: BoxDecoration(
                   color: AppColors.danger,
                   border: Border.all(color: AppColors.surface, width: 1.5),
-                  borderRadius: BorderRadius.circular(9),
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 ),
                 alignment: Alignment.center,
                 child: Text(

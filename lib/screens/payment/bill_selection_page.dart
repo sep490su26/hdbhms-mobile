@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/home/current_room_service.dart';
 import '../../services/payment/tenant_invoice_service.dart';
-import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../utils/room_scope.dart';
 import '../../widgets/tenant_bottom_navigation.dart';
@@ -18,6 +18,7 @@ import 'payment_history_page.dart';
 import 'qr_payment_page.dart';
 import 'utility_complaint_screen.dart';
 import '../../widgets/app_filter_chip.dart';
+import '../../widgets/app_month_year_picker.dart';
 
 class BillSelectionPage extends StatefulWidget {
   const BillSelectionPage({
@@ -40,8 +41,7 @@ class BillSelectionPage extends StatefulWidget {
 class _BillSelectionPageState extends State<BillSelectionPage> {
   _BillStatusFilter _activeStatusFilter = _BillStatusFilter.all;
   _BillTypeFilter _activeTypeFilter = _BillTypeFilter.all;
-  _BillDateFilter _activeDateFilter = _BillDateFilter.all;
-  DateTimeRange? _customDueDateRange;
+  DateTime? _selectedDueMonth;
   late Future<List<TenantInvoice>> _invoicesFuture;
 
   @override
@@ -65,8 +65,7 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
               _BillFilterBar(
                 activeStatus: _activeStatusFilter,
                 activeType: _activeTypeFilter,
-                activeDateFilter: _activeDateFilter,
-                customDateRange: _customDueDateRange,
+                selectedDueMonth: _selectedDueMonth,
                 onStatusChanged: (filter) =>
                     setState(() => _activeStatusFilter = filter),
                 onTypeChanged: (filter) =>
@@ -167,34 +166,13 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
   }
 
   Future<void> _selectDueDateFilter() async {
-    final selected = await showModalBottomSheet<_BillDateFilter>(
+    final selected = await showAppMonthYearPicker(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      showDragHandle: false,
-      builder: (context) =>
-          _BillDateFilterSheet(activeFilter: _activeDateFilter),
+      selectedMonth: _selectedDueMonth,
+      title: 'Chọn tháng hạn thanh toán',
     );
     if (!mounted || selected == null) return;
-
-    if (selected == _BillDateFilter.custom) {
-      final now = DateTime.now();
-      final picked = await showDateRangePicker(
-        context: context,
-        firstDate: DateTime(2020),
-        lastDate: DateTime(now.year + 10),
-        initialDateRange: _customDueDateRange,
-        helpText: 'Chọn khoảng hạn thanh toán',
-      );
-      if (!mounted || picked == null) return;
-      setState(() {
-        _activeDateFilter = selected;
-        _customDueDateRange = picked;
-      });
-      return;
-    }
-
-    setState(() => _activeDateFilter = selected);
+    setState(() => _selectedDueMonth = selected.year == 0 ? null : selected);
   }
 
   void _openInvoicePreviewFlow(BuildContext context, TenantInvoice invoice) {
@@ -285,13 +263,7 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
   ) {
     final typeFilteredInvoices = invoices
         .where((invoice) => _matchesTypeFilter(invoice, _activeTypeFilter))
-        .where(
-          (invoice) => _matchesDueDateFilter(
-            invoice,
-            _activeDateFilter,
-            _customDueDateRange,
-          ),
-        )
+        .where((invoice) => _matchesDueDateFilter(invoice, _selectedDueMonth))
         .toList(growable: false);
 
     final pendingBills = _withSpacing(
@@ -331,7 +303,7 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
     }
 
     if (typeFilteredInvoices.isEmpty) {
-      final hasDateFilter = _activeDateFilter != _BillDateFilter.all;
+      final hasDateFilter = _selectedDueMonth != null;
       return [
         _BillEmptyState(
           title: hasDateFilter
@@ -363,23 +335,16 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
                 ),
               ]
             : pendingBills,
-      _BillStatusFilter.paid =>
-        paidBills.isEmpty
-            ? const [
-                _BillEmptyState(
-                  title: 'Chưa có lịch sử thanh toán',
-                  message: 'Các hóa đơn đã thanh toán sẽ được lưu ở đây.',
-                ),
-              ]
-            : paidBills,
     };
   }
 }
 
-enum _BillStatusFilter { all, unpaid, paid }
+enum _BillStatusFilter { all, unpaid }
 
 enum _BillTypeFilter { all, rent, utility, other }
 
+// Kept only for the legacy sheet below while it is phased out; the active UI
+// now filters exclusively by month and year.
 enum _BillDateFilter { all, overdue, next7Days, next30Days, next90Days, custom }
 
 bool _matchesTypeFilter(TenantInvoice invoice, _BillTypeFilter filter) {
@@ -400,56 +365,30 @@ String _typeFilterEmptyLabel(_BillTypeFilter filter) {
   };
 }
 
-bool _matchesDueDateFilter(
-  TenantInvoice invoice,
-  _BillDateFilter filter,
-  DateTimeRange? customRange,
-) {
-  if (filter == _BillDateFilter.all) return true;
+bool _matchesDueDateFilter(TenantInvoice invoice, DateTime? selectedMonth) {
+  if (selectedMonth == null) return true;
   final dueDate = invoice.dueDate;
   if (dueDate == null) return false;
-
-  final today = _dateOnly(DateTime.now());
-  final normalizedDueDate = _dateOnly(dueDate);
-  if (filter == _BillDateFilter.overdue) {
-    return !invoice.isPaid && normalizedDueDate.isBefore(today);
-  }
-  if (filter == _BillDateFilter.custom) {
-    if (customRange == null) return true;
-    return !normalizedDueDate.isBefore(_dateOnly(customRange.start)) &&
-        !normalizedDueDate.isAfter(_dateOnly(customRange.end));
-  }
-
-  final days = switch (filter) {
-    _BillDateFilter.next7Days => 7,
-    _BillDateFilter.next30Days => 30,
-    _BillDateFilter.next90Days => 90,
-    _ => 0,
-  };
-  final endDate = today.add(Duration(days: days - 1));
-  return !normalizedDueDate.isBefore(today) &&
-      !normalizedDueDate.isAfter(endDate);
+  return dueDate.year == selectedMonth.year &&
+      dueDate.month == selectedMonth.month;
 }
 
+// ignore: unused_element
 DateTime _dateOnly(DateTime value) =>
     DateTime(value.year, value.month, value.day);
 
-String _billDateFilterLabel(
-  _BillDateFilter filter,
-  DateTimeRange? customRange,
-) {
-  return switch (filter) {
-    _BillDateFilter.all => 'Tất cả thời hạn',
-    _BillDateFilter.overdue => 'Quá hạn',
-    _BillDateFilter.next7Days => '7 ngày tới',
-    _BillDateFilter.next30Days => '30 ngày tới',
-    _BillDateFilter.next90Days => '90 ngày tới',
-    _BillDateFilter.custom =>
-      customRange == null
-          ? 'Khoảng ngày'
-          : '${_formatDate(customRange.start)} - ${_formatDate(customRange.end)}',
-  };
-}
+String _billDateFilterLabel(DateTime? selectedMonth) => selectedMonth == null
+    ? 'Tất cả tháng'
+    : 'Tháng ${selectedMonth.month.toString().padLeft(2, '0')}/${selectedMonth.year}';
+
+String _legacyBillDateFilterLabel(_BillDateFilter filter) => switch (filter) {
+  _BillDateFilter.all => 'Tất cả thời hạn',
+  _BillDateFilter.overdue => 'Quá hạn',
+  _BillDateFilter.next7Days => '7 ngày tới',
+  _BillDateFilter.next30Days => '30 ngày tới',
+  _BillDateFilter.next90Days => '90 ngày tới',
+  _BillDateFilter.custom => 'Khoảng ngày',
+};
 
 List<Widget> _withSpacing(List<Widget> widgets, double spacing) {
   if (widgets.isEmpty) return const [];
@@ -502,7 +441,7 @@ class _InvoiceTypePill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
         border: Border.all(color: color.withValues(alpha: 0.18)),
       ),
       child: Row(
@@ -550,7 +489,7 @@ class _BillErrorState extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFFFFF0EF),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: const Color(0xFFFFB5AE)),
       ),
       child: Column(
@@ -559,7 +498,7 @@ class _BillErrorState extends StatelessWidget {
           Text(
             message,
             style: const TextStyle(
-              color: Color(0xFFB42318),
+              color: AppColors.dangerText,
               fontSize: 13,
               fontWeight: FontWeight.w700,
             ),
@@ -585,7 +524,7 @@ class _BillEmptyState extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Row(
@@ -596,7 +535,7 @@ class _BillEmptyState extends StatelessWidget {
             height: 36,
             decoration: BoxDecoration(
               color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(AppColors.radiusMd),
             ),
             child: const Icon(
               Icons.receipt_long_outlined,
@@ -643,8 +582,7 @@ class _BillFilterBar extends StatelessWidget {
   const _BillFilterBar({
     required this.activeStatus,
     required this.activeType,
-    required this.activeDateFilter,
-    required this.customDateRange,
+    required this.selectedDueMonth,
     required this.onStatusChanged,
     required this.onTypeChanged,
     required this.onDateFilterTap,
@@ -652,8 +590,7 @@ class _BillFilterBar extends StatelessWidget {
 
   final _BillStatusFilter activeStatus;
   final _BillTypeFilter activeType;
-  final _BillDateFilter activeDateFilter;
-  final DateTimeRange? customDateRange;
+  final DateTime? selectedDueMonth;
   final ValueChanged<_BillStatusFilter> onStatusChanged;
   final ValueChanged<_BillTypeFilter> onTypeChanged;
   final VoidCallback onDateFilterTap;
@@ -679,13 +616,6 @@ class _BillFilterBar extends StatelessWidget {
                 icon: Icons.pending_actions_rounded,
                 isActive: activeStatus == _BillStatusFilter.unpaid,
                 onTap: () => onStatusChanged(_BillStatusFilter.unpaid),
-              ),
-              const SizedBox(width: 8),
-              AppFilterChip(
-                label: 'Đã thanh toán',
-                icon: Icons.task_alt_rounded,
-                isActive: activeStatus == _BillStatusFilter.paid,
-                onTap: () => onStatusChanged(_BillStatusFilter.paid),
               ),
             ],
           ),
@@ -729,23 +659,23 @@ class _BillFilterBar extends StatelessWidget {
         Semantics(
           button: true,
           label:
-              'Lọc theo hạn thanh toán: ${_billDateFilterLabel(activeDateFilter, customDateRange)}',
+              'Lọc theo tháng hạn thanh toán: ${_billDateFilterLabel(selectedDueMonth)}',
           child: Material(
             color: Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
             child: InkWell(
               onTap: onDateFilterTap,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppColors.radiusMd),
               child: Ink(
                 height: 44,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  color: activeDateFilter == _BillDateFilter.all
+                  color: selectedDueMonth == null
                       ? AppColors.surface
                       : AppColors.primaryLight,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
                   border: Border.all(
-                    color: activeDateFilter == _BillDateFilter.all
+                    color: selectedDueMonth == null
                         ? AppColors.cardBorder
                         : AppColors.primary.withValues(alpha: 0.38),
                   ),
@@ -755,13 +685,13 @@ class _BillFilterBar extends StatelessWidget {
                     Icon(
                       Icons.event_outlined,
                       size: 19,
-                      color: activeDateFilter == _BillDateFilter.all
+                      color: selectedDueMonth == null
                           ? AppColors.bodyText
                           : AppColors.deepBlue,
                     ),
                     const SizedBox(width: 9),
                     const Text(
-                      'Hạn thanh toán',
+                      'Tháng hạn thanh toán',
                       style: TextStyle(
                         color: AppColors.bodyText,
                         fontSize: 13,
@@ -771,7 +701,7 @@ class _BillFilterBar extends StatelessWidget {
                     const Spacer(),
                     Flexible(
                       child: Text(
-                        _billDateFilterLabel(activeDateFilter, customDateRange),
+                        _billDateFilterLabel(selectedDueMonth),
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.end,
                         style: const TextStyle(
@@ -798,6 +728,7 @@ class _BillFilterBar extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _BillDateFilterSheet extends StatelessWidget {
   const _BillDateFilterSheet({required this.activeFilter});
 
@@ -851,7 +782,7 @@ class _BillDateFilterSheet extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final filter = filters[index];
                   return _DateFilterOption(
-                    label: _billDateFilterLabel(filter, null),
+                    label: _legacyBillDateFilterLabel(filter),
                     icon: switch (filter) {
                       _BillDateFilter.all => Icons.date_range_outlined,
                       _BillDateFilter.overdue => Icons.warning_amber_rounded,
@@ -884,7 +815,7 @@ class _BottomSheetHandle extends StatelessWidget {
       height: 4,
       decoration: BoxDecoration(
         color: AppColors.deepBlue,
-        borderRadius: BorderRadius.circular(99),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
       ),
     );
   }
@@ -909,7 +840,7 @@ class _DateFilterOption extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         child: SizedBox(
           height: 48,
           child: Row(
@@ -953,12 +884,20 @@ class _BillHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppTopBar(
       title: 'Hóa đơn',
+      pageIcon: Icons.receipt_long_outlined,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
             onPressed: onOpenHistory,
-            icon: const Icon(Icons.history_rounded),
+            constraints: const BoxConstraints.tightFor(
+              width: AppColors.minimumTouchTarget,
+              height: AppColors.minimumTouchTarget,
+            ),
+            icon: const Icon(
+              Icons.history_rounded,
+              color: AppColors.topBarIconColor,
+            ),
             tooltip: 'Lịch sử thanh toán',
           ),
           IconButton(
@@ -1058,11 +997,11 @@ class _PendingBillCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
         child: Ink(
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppColors.radiusLg),
             border: Border.all(color: AppColors.cardBorder),
             boxShadow: [
               BoxShadow(
@@ -1139,12 +1078,14 @@ class _PendingBillCard extends StatelessWidget {
                                 ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFFFD6D6),
-                                  borderRadius: BorderRadius.circular(999),
+                                  borderRadius: BorderRadius.circular(
+                                    AppColors.radiusPill,
+                                  ),
                                 ),
                                 child: const Text(
                                   'CHỜ THANH TOÁN',
                                   style: TextStyle(
-                                    color: Color(0xFFDC2626),
+                                    color: AppColors.danger,
                                     fontSize: 10,
                                     fontWeight: FontWeight.w900,
                                     height: 14 / 10,
@@ -1220,7 +1161,7 @@ class _ReviewStatusChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: const Color(0xFFFFF7ED),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
         border: Border.all(color: const Color(0xFFFED7AA)),
       ),
       child: const Row(
@@ -1256,13 +1197,13 @@ class _ComplaintButton extends StatelessWidget {
           gradient: LinearGradient(
             colors: [const Color(0xFFFFF7ED), const Color(0xFFFEF3C7)],
           ),
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(AppColors.radiusPill),
           border: Border.all(
             color: const Color(0xFFFBBF24).withValues(alpha: 0.6),
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+              color: AppColors.warning.withValues(alpha: 0.15),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -1280,7 +1221,7 @@ class _ComplaintButton extends StatelessWidget {
             Text(
               'Khiếu nại điện nước',
               style: TextStyle(
-                color: Color(0xFF92400E),
+                color: AppColors.warningText,
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
               ),
@@ -1340,7 +1281,7 @@ class _PaidBillCard extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(22, 16, 18, 15),
         decoration: BoxDecoration(
           color: const Color(0xFFF8FCFA),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppColors.radiusLg),
           border: Border.all(color: AppColors.success.withValues(alpha: 0.18)),
           boxShadow: [
             BoxShadow(
@@ -1395,7 +1336,9 @@ class _PaidBillCard extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF8096FF),
-                          borderRadius: BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(
+                            AppColors.radiusPill,
+                          ),
                         ),
                         child: const Text(
                           'ĐÃ THANH TOÁN',
