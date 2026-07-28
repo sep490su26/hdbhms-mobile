@@ -20,7 +20,6 @@ class _FakeLeaseContractService extends LeaseContractService {
     this.contract,
     this.error,
     this.submitRenewalError,
-    this.onSubmitLiquidation,
     this.onSubmitRenewal,
     this.onRecordOccupantIntention,
   });
@@ -28,8 +27,6 @@ class _FakeLeaseContractService extends LeaseContractService {
   final LeaseContract? contract;
   final Object? error;
   final Object? submitRenewalError;
-  final void Function(int contractId, DateTime? liquidationDate, String reason)?
-  onSubmitLiquidation;
   final void Function(
     int contractId,
     DateTime newStartDate,
@@ -79,7 +76,7 @@ class _FakeLeaseContractService extends LeaseContractService {
     DateTime? liquidationDate,
     String reason = '',
   }) async {
-    onSubmitLiquidation?.call(contractId, liquidationDate, reason);
+    return;
   }
 
   @override
@@ -404,12 +401,9 @@ void main() {
     expect(find.text('Quản lý tài liệu'), findsOneWidget);
   });
 
-  testWidgets('contract screen submits liquidation approval request', (
+  testWidgets('contract screen opens the full-screen liquidation form', (
     tester,
   ) async {
-    int? submittedContractId;
-    DateTime? submittedLiquidationDate;
-    String? submittedReason;
     final contract = _contract(
       endDate: DateTime.now().add(const Duration(days: 20)),
     );
@@ -417,35 +411,18 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: LeaseContractScreen(
-          contractService: _FakeLeaseContractService(
-            contract: contract,
-            onSubmitLiquidation: (contractId, liquidationDate, reason) {
-              submittedContractId = contractId;
-              submittedLiquidationDate = liquidationDate;
-              submittedReason = reason;
-            },
-          ),
+          contractService: _FakeLeaseContractService(contract: contract),
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Thanh lý\nhợp đồng'));
-    await tester.tap(find.text('Thanh lý\nhợp đồng'));
+    await tester.ensureVisible(find.text('Thanh lý hợp đồng'));
+    await tester.tap(find.text('Thanh lý hợp đồng'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('Gửi yêu cầu phê duyệt: Thanh lý hợp đồng'),
-      findsOneWidget,
-    );
-
-    await tester.enterText(find.byType(TextField), 'Can thanh ly som');
-    await tester.tap(find.text('Gửi yêu cầu phê duyệt'));
-    await tester.pumpAndSettle();
-
-    expect(submittedContractId, 9);
-    expect(submittedLiquidationDate, isNotNull);
-    expect(submittedReason, 'Can thanh ly som');
+    expect(find.text('Yêu cầu kết thúc hợp đồng'), findsOneWidget);
+    expect(find.text('Ngày thanh lý'), findsOneWidget);
   });
 
   testWidgets('liquidation progress waits at approval for pending request', (
@@ -570,11 +547,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Gia hạn\nhợp đồng'));
-    await tester.tap(find.text('Gia hạn\nhợp đồng'));
+    await tester.ensureVisible(find.text('Gia hạn hợp đồng'));
+    await tester.tap(find.text('Gia hạn hợp đồng'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Gửi yêu cầu phê duyệt'));
+    await tester.tap(find.text('Gửi yêu cầu gia hạn'));
     await tester.pumpAndSettle();
 
     expect(find.text('Hợp đồng đã có yêu cầu đang chờ duyệt.'), findsWidgets);
@@ -613,17 +590,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Gia hạn\nhợp đồng'));
-    await tester.tap(find.text('Gia hạn\nhợp đồng'));
+    await tester.ensureVisible(find.text('Gia hạn hợp đồng'));
+    await tester.tap(find.text('Gia hạn hợp đồng'));
     await tester.pumpAndSettle();
 
     final termField = find.byWidgetPredicate(
       (widget) =>
-          widget is TextField &&
-          widget.decoration?.labelText == 'Thời hạn gia hạn (tháng)',
+          widget is TextField && widget.decoration?.hintText == 'Ví dụ: 9',
     );
     await tester.enterText(termField, '18');
-    await tester.tap(find.text('Gửi yêu cầu phê duyệt'));
+    await tester.tap(find.text('Gửi yêu cầu gia hạn'));
     await tester.pumpAndSettle();
 
     expect(submittedMonths, 18);
@@ -660,17 +636,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Gia hạn\nhợp đồng'));
-    await tester.tap(find.text('Gia hạn\nhợp đồng'));
+    await tester.ensureVisible(find.text('Gia hạn hợp đồng'));
+    await tester.tap(find.text('Gia hạn hợp đồng'));
     await tester.pumpAndSettle();
 
     final termField = find.byWidgetPredicate(
       (widget) =>
-          widget is TextField &&
-          widget.decoration?.labelText == 'Thời hạn gia hạn (tháng)',
+          widget is TextField && widget.decoration?.hintText == 'Ví dụ: 9',
     );
     await tester.enterText(termField, '5');
-    await tester.tap(find.text('Gửi yêu cầu phê duyệt'));
+    await tester.tap(find.text('Gửi yêu cầu gia hạn'));
     await tester.pumpAndSettle();
 
     expect(submittedMonths, isNull);

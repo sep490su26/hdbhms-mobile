@@ -9,6 +9,7 @@ import '../../models/notification/notification_model.dart';
 import '../../services/notification/notification_service.dart';
 import '../../widgets/app_screen_shell.dart';
 import '../../widgets/app_skeleton.dart';
+import '../../widgets/app_list_state.dart';
 import '../../widgets/app_top_bar.dart';
 
 /// Màn danh sách thông báo với filter Tất cả / Chưa đọc / Đã đọc.
@@ -302,49 +303,16 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
   Widget _buildEmpty() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 68,
-              height: 68,
-              decoration: BoxDecoration(
-                color: AppColors.primarySurface,
-                borderRadius: BorderRadius.circular(AppColors.radiusLg),
-              ),
-              child: const Icon(
-                Icons.notifications_off_outlined,
-                color: AppColors.deepBlue,
-                size: 34,
-              ),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'Không có thông báo',
-              style: TextStyle(
-                color: AppColors.inputText,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                height: 20 / 16,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _activeFilter == _NotifFilter.all
-                  ? 'Bạn chưa có thông báo nào.'
-                  : _activeFilter == _NotifFilter.unread
-                  ? 'Không có thông báo chưa đọc.'
-                  : 'Không có thông báo đã đọc.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.bodyText,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                height: 18 / 13,
-              ),
-            ),
-          ],
+        padding: const EdgeInsets.all(24),
+        child: AppListState(
+          kind: AppListStateKind.empty,
+          title: 'Không có thông báo',
+          description: _activeFilter == _NotifFilter.all
+              ? 'Bạn chưa có thông báo nào.'
+              : _activeFilter == _NotifFilter.unread
+              ? 'Không có thông báo chưa đọc.'
+              : 'Không có thông báo đã đọc.',
+          icon: Icons.notifications_off_outlined,
         ),
       ),
     );
@@ -896,40 +864,16 @@ class _ErrorState extends StatelessWidget {
   final VoidCallback onRetry;
 
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.cloud_off_rounded,
-              color: AppColors.deepBlue,
-              size: 42,
-            ),
-            const SizedBox(height: 14),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.inputText,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: onRetry,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
-              ),
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Thử lại'),
-            ),
-          ],
-        ),
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: AppListState(
+        kind: AppListStateKind.error,
+        title: 'Không tải được thông báo',
+        description: message,
+        actionLabel: 'Thử lại',
+        onAction: onRetry,
       ),
-    );
-  }
+    ),
+  );
 }

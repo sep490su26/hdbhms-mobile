@@ -511,7 +511,7 @@ class _RoomSelector extends StatelessWidget {
                 ),
                 alignment: Alignment.center,
                 child: const Text(
-                  'Äá»•i phÃ²ng',
+                  'Đổi phòng',
                   style: TextStyle(
                     color: AppColors.primary,
                     fontSize: 11,

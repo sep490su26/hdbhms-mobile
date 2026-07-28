@@ -38,7 +38,7 @@ class AppColors {
   static const inputFill = Color(0xFFF4F8FA);
   static const bodyText = Color(0xFF5B6678);
   static const inputText = Color(0xFF101828);
-  static const hintText = Color(0xFF8A94A6);
+  static const hintText = Color(0xFF667085);
   static const border = Color(0xFFDDE7EA);
   static const cardBorder = Color(0xFFE3EAEE);
   static const requirementBackground = Color(0xFFF0F7F4);
@@ -49,7 +49,7 @@ class AppColors {
 
   // Semantic status and supporting surfaces. These retain the existing palette
   // while keeping screen code free of anonymous colour literals.
-  static const successText = Color(0xFF16A34A);
+  static const successText = Color(0xFF15803D);
   static const successSurface = Color(0xFFE7F8F1);
   static const warningText = Color(0xFF92400E);
   static const warningSurface = Color(0xFFFFFBEB);

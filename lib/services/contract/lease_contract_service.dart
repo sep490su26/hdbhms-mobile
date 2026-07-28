@@ -557,17 +557,11 @@ class LeaseContractService {
     } on LeaseContractException {
       rethrow;
     } on TimeoutException {
-      throw const LeaseContractException(
-        'KhÃ´ng káº¿t ná»‘i Ä‘Æ°á»£c mÃ¡y chá»§',
-      );
+      throw const LeaseContractException('Không kết nối được máy chủ');
     } on http.ClientException {
-      throw const LeaseContractException(
-        'KhÃ´ng káº¿t ná»‘i Ä‘Æ°á»£c mÃ¡y chá»§',
-      );
+      throw const LeaseContractException('Không kết nối được máy chủ');
     } on FormatException {
-      throw const LeaseContractException(
-        'KhÃ´ng thá»ƒ gá»­i yÃªu cáº§u. Vui lÃ²ng thá»­ láº¡i.',
-      );
+      throw const LeaseContractException('Không thể gửi yêu cầu. Vui lòng thử lại.');
     } finally {
       if (_client == null) {
         client.close();

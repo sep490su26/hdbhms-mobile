@@ -7,6 +7,8 @@ Future<DateTime?> showAppMonthYearPicker({
   required BuildContext context,
   required DateTime? selectedMonth,
   required String title,
+  DateTime? firstMonth,
+  DateTime? lastMonth,
 }) {
   return showModalBottomSheet<DateTime?>(
     context: context,
@@ -18,8 +20,12 @@ Future<DateTime?> showAppMonthYearPicker({
         top: Radius.circular(AppColors.radiusLg),
       ),
     ),
-    builder: (_) =>
-        _MonthYearPickerSheet(selectedMonth: selectedMonth, title: title),
+    builder: (_) => _MonthYearPickerSheet(
+      selectedMonth: selectedMonth,
+      title: title,
+      firstMonth: firstMonth,
+      lastMonth: lastMonth,
+    ),
   );
 }
 
@@ -27,10 +33,14 @@ class _MonthYearPickerSheet extends StatefulWidget {
   const _MonthYearPickerSheet({
     required this.selectedMonth,
     required this.title,
+    this.firstMonth,
+    this.lastMonth,
   });
 
   final DateTime? selectedMonth;
   final String title;
+  final DateTime? firstMonth;
+  final DateTime? lastMonth;
 
   @override
   State<_MonthYearPickerSheet> createState() => _MonthYearPickerSheetState();
@@ -38,11 +48,35 @@ class _MonthYearPickerSheet extends StatefulWidget {
 
 class _MonthYearPickerSheetState extends State<_MonthYearPickerSheet> {
   late int _year;
+  DateTime? _pendingMonth;
+
+  DateTime get _firstMonth {
+    final month = widget.firstMonth;
+    return month == null ? DateTime(2000, 1) : DateTime(month.year, month.month);
+  }
+
+  DateTime get _lastMonth {
+    final now = DateTime.now();
+    final month = widget.lastMonth;
+    final result = month == null
+        ? DateTime(now.year, now.month)
+        : DateTime(month.year, month.month);
+    return result.isBefore(_firstMonth) ? _firstMonth : result;
+  }
 
   @override
   void initState() {
     super.initState();
-    _year = widget.selectedMonth?.year ?? DateTime.now().year;
+    final selected = widget.selectedMonth;
+    final initial = selected == null
+        ? _lastMonth
+        : DateTime(selected.year, selected.month);
+    _year = initial.isBefore(_firstMonth)
+        ? _firstMonth.year
+        : initial.isAfter(_lastMonth)
+        ? _lastMonth.year
+        : initial.year;
+    _pendingMonth = widget.selectedMonth;
   }
 
   @override
@@ -78,30 +112,51 @@ class _MonthYearPickerSheetState extends State<_MonthYearPickerSheet> {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  widget.title,
-                  style: const TextStyle(
-                    color: AppColors.inputText,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.title,
+                      style: const TextStyle(
+                        color: AppColors.inputText,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Chọn từ ${_formatMonth(_firstMonth)} đến ${_formatMonth(_lastMonth)}',
+                      style: const TextStyle(
+                        color: AppColors.bodyText,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              TextButton.icon(
-                onPressed: () => Navigator.of(context).pop(DateTime(0)),
-                icon: const Icon(Icons.clear_rounded, size: 18),
-                label: const Text('Tất cả'),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
+          const SizedBox(height: 18),
+          Container(
+            height: 52,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceMuted,
+              borderRadius: BorderRadius.circular(AppColors.radiusMd),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
               IconButton(
-                onPressed: () => setState(() => _year -= 1),
+                onPressed: _year > _firstMonth.year
+                    ? () => setState(() => _year -= 1)
+                    : null,
                 tooltip: 'Năm trước',
-                icon: const Icon(Icons.chevron_left_rounded),
+                icon: const Icon(
+                  Icons.chevron_left_rounded,
+                  color: AppColors.deepBlue,
+                ),
               ),
               Text(
                 'Năm $_year',
@@ -112,40 +167,72 @@ class _MonthYearPickerSheetState extends State<_MonthYearPickerSheet> {
                 ),
               ),
               IconButton(
-                onPressed: () => setState(() => _year += 1),
+                onPressed: _year < _lastMonth.year
+                    ? () => setState(() => _year += 1)
+                    : null,
                 tooltip: 'Năm sau',
-                icon: const Icon(Icons.chevron_right_rounded),
+                icon: const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.deepBlue,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          ),
+          const SizedBox(height: 18),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'CHỌN THÁNG',
+              style: TextStyle(
+                color: AppColors.bodyText,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.7,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: months.length,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
+              crossAxisCount: 4,
               mainAxisSpacing: 8,
               crossAxisSpacing: 8,
-              childAspectRatio: 2.2,
+              childAspectRatio: 1.65,
             ),
             itemBuilder: (context, index) {
               final month = index + 1;
               final selected =
-                  widget.selectedMonth?.year == _year &&
-                  widget.selectedMonth?.month == month;
+                  _pendingMonth?.year == _year &&
+                  _pendingMonth?.month == month;
+              final candidate = DateTime(_year, month);
+              final isAvailable =
+                  !candidate.isBefore(_firstMonth) &&
+                  !candidate.isAfter(_lastMonth);
               return Material(
-                color: selected ? AppColors.primary : AppColors.surfaceMuted,
+                color: selected
+                    ? AppColors.primary
+                    : isAvailable
+                    ? AppColors.surfaceMuted
+                    : AppColors.surfaceMuted.withValues(alpha: 0.45),
                 borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 child: InkWell(
-                  onTap: () =>
-                      Navigator.of(context).pop(DateTime(_year, month)),
+                  onTap: isAvailable
+                      ? () => setState(() => _pendingMonth = candidate)
+                      : null,
                   borderRadius: BorderRadius.circular(AppColors.radiusMd),
                   child: Center(
                     child: Text(
                       months[index],
                       style: TextStyle(
-                        color: selected ? Colors.white : AppColors.inputText,
+                        color: selected
+                            ? Colors.white
+                            : isAvailable
+                            ? AppColors.inputText
+                            : AppColors.hintText,
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                       ),
@@ -155,8 +242,45 @@ class _MonthYearPickerSheetState extends State<_MonthYearPickerSheet> {
               );
             },
           ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).pop(DateTime(0)),
+                  icon: const Icon(Icons.clear_rounded, size: 18),
+                  label: const Text('Tất cả'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.deepBlue,
+                    minimumSize: const Size(0, 48),
+                    side: const BorderSide(color: AppColors.cardBorder),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _pendingMonth == null
+                      ? null
+                      : () => Navigator.of(context).pop(_pendingMonth),
+                  icon: const Icon(Icons.check_rounded, size: 18),
+                  label: const Text('Áp dụng'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.deepBlue,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(0, 48),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
+
+  String _formatMonth(DateTime value) =>
+      'tháng ${value.month.toString().padLeft(2, '0')}/${value.year}';
 }

@@ -309,7 +309,6 @@ class _LoginCard extends StatelessWidget {
               controller: idController,
               keyboardType: TextInputType.phone,
               textInputAction: TextInputAction.next,
-              required: true,
               validator: (value) => value == null || value.trim().isEmpty
                   ? 'Vui lòng nhập số điện thoại'
                   : null,
@@ -322,7 +321,6 @@ class _LoginCard extends StatelessWidget {
               controller: passwordController,
               obscureText: true,
               textInputAction: TextInputAction.done,
-              required: true,
               validator: (value) => value == null || value.isEmpty
                   ? 'Vui lòng nhập mật khẩu'
                   : null,

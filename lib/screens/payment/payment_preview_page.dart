@@ -8,6 +8,7 @@ import '../../widgets/app_screen_shell.dart';
 import '../../widgets/app_top_bar.dart';
 import 'bill_detail_screen.dart';
 import 'payment_success_page.dart';
+import 'payment_history_page.dart';
 import 'qr_payment_page.dart';
 import 'qr_receipt_download_page.dart';
 import 'utility_complaint_screen.dart';
@@ -121,6 +122,51 @@ class PaymentPreviewPage extends StatelessWidget {
     ],
   );
 
+  static final List<TenantInvoice> _paidHistoryInvoices = [
+    _paidHistoryInvoice(
+      id: -201,
+      invoiceCode: 'RENT-2025-01',
+      invoiceType: 'RENT',
+      amount: 4200000,
+      month: DateTime(2025, 1, 18),
+    ),
+    _paidHistoryInvoice(
+      id: -202,
+      invoiceCode: 'UTILITY-2025-04',
+      invoiceType: 'UTILITY',
+      amount: 884000,
+      month: DateTime(2025, 4, 12),
+    ),
+    _paidHistoryInvoice(
+      id: -203,
+      invoiceCode: 'RENT-2025-08',
+      invoiceType: 'RENT',
+      amount: 4400000,
+      month: DateTime(2025, 8, 5),
+    ),
+    _paidHistoryInvoice(
+      id: -204,
+      invoiceCode: 'UTILITY-2025-12',
+      invoiceType: 'UTILITY',
+      amount: 965000,
+      month: DateTime(2025, 12, 22),
+    ),
+    _paidHistoryInvoice(
+      id: -205,
+      invoiceCode: 'RENT-2026-03',
+      invoiceType: 'RENT',
+      amount: 4500000,
+      month: DateTime(2026, 3, 9),
+    ),
+    _paidHistoryInvoice(
+      id: -206,
+      invoiceCode: 'UTILITY-2026-07',
+      invoiceType: 'UTILITY',
+      amount: 1037000,
+      month: DateTime(2026, 7, 20),
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -205,6 +251,22 @@ class PaymentPreviewPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
+              const _PreviewSectionTitle('Lịch sử thanh toán'),
+              const SizedBox(height: 8),
+              _PreviewTile(
+                icon: Icons.history_rounded,
+                title: 'Lịch sử thanh toán nhiều kỳ',
+                subtitle: 'Dữ liệu từ 01/2025 đến 07/2026 để thử bộ lọc tháng/năm',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => PaymentHistoryPage(
+                      invoiceService: _invoiceService,
+                      roomCode: 'P.203',
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
               const _PreviewSectionTitle('Mẫu QR tải xuống'),
               const SizedBox(height: 8),
               _PreviewTile(
@@ -273,23 +335,30 @@ class PaymentPreviewPage extends StatelessWidget {
     required int totalAmount,
     required String transferDescription,
     required List<TenantInvoiceLine> lines,
+    String billingPeriod = '2026-06',
+    String status = 'ISSUED',
+    DateTime? issuedAt,
+    DateTime? dueDate,
+    DateTime? paidAt,
+    int? paidAmount,
+    int? remainingAmount,
   }) {
     return TenantInvoice(
       id: id,
       invoiceCode: invoiceCode,
       invoiceType: invoiceType,
-      billingPeriod: '2026-06',
-      status: 'ISSUED',
+      billingPeriod: billingPeriod,
+      status: status,
       roomId: -1,
       roomCode: 'P.203',
       contractId: -1,
       contractCode: 'HD-DEMO-001',
-      dueDate: DateTime(2026, 6, 30),
-      issuedAt: DateTime(2026, 6, 22),
-      paidAt: null,
+      dueDate: dueDate ?? DateTime(2026, 6, 30),
+      issuedAt: issuedAt ?? DateTime(2026, 6, 22),
+      paidAt: paidAt,
       totalAmount: totalAmount,
-      paidAmount: 0,
-      remainingAmount: totalAmount,
+      paidAmount: paidAmount ?? 0,
+      remainingAmount: remainingAmount ?? totalAmount,
       paymentIntentId: null,
       checkoutUrl: '',
       qrCode: 'HDBHMS:$invoiceCode:$totalAmount:$transferDescription',
@@ -304,10 +373,41 @@ class PaymentPreviewPage extends StatelessWidget {
       priceDifferenceSettlementType: null,
     );
   }
+
+  static TenantInvoice _paidHistoryInvoice({
+    required int id,
+    required String invoiceCode,
+    required String invoiceType,
+    required int amount,
+    required DateTime month,
+  }) {
+    final period = '${month.year}-${month.month.toString().padLeft(2, '0')}';
+    return _invoice(
+      id: id,
+      invoiceCode: invoiceCode,
+      invoiceType: invoiceType,
+      totalAmount: amount,
+      transferDescription: 'THANHTOAN $invoiceCode',
+      lines: const [],
+      billingPeriod: period,
+      status: 'PAID',
+      issuedAt: DateTime(month.year, month.month, 1),
+      dueDate: DateTime(month.year, month.month, 25),
+      paidAt: month,
+      paidAmount: amount,
+      remainingAmount: 0,
+    );
+  }
 }
 
 class _PreviewTenantInvoiceService extends TenantInvoiceService {
   const _PreviewTenantInvoiceService();
+
+  @override
+  Future<List<TenantInvoice>> fetchMyInvoices({
+    int? roomId,
+    String? roomCode,
+  }) async => PaymentPreviewPage._paidHistoryInvoices;
 
   @override
   Future<void> submitMeterReadingReview({

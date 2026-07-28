@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
+import 'package:hdbhms_mobile/widgets/app_list_state.dart';
 
 /// Consistent empty, filtered-empty, and retry states used across tenant flows.
 class AppEmptyState extends StatelessWidget {
@@ -32,26 +33,54 @@ class AppEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!compact) {
+      final state = AppListState(
+        kind: AppListStateKind.empty,
+        title: title,
+        description: description ?? 'Nội dung sẽ xuất hiện tại đây khi có dữ liệu.',
+        icon: icon,
+        actionLabel: actionLabel,
+        onAction: onAction,
+      );
+
+      if (!scrollable) {
+        return Center(
+          child: Padding(padding: const EdgeInsets.all(24), child: state),
+        );
+      }
+
+      return RefreshIndicator(
+        color: AppColors.deepBlue,
+        onRefresh: onRefresh ?? () async => onAction?.call(),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(height: topSpacing),
+            Padding(padding: const EdgeInsets.all(24), child: state),
+          ],
+        ),
+      );
+    }
+
     final content = Padding(
-      padding: compact ? EdgeInsets.zero : const EdgeInsets.all(24),
+      padding: EdgeInsets.zero,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: compact ? 44 : 72,
-            height: compact ? 44 : 72,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: iconColor.withValues(alpha: 0.09),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: iconColor, size: compact ? 24 : 36),
+            child: Icon(icon, color: iconColor, size: 24),
           ),
-          SizedBox(height: compact ? 8 : 16),
+          const SizedBox(height: 8),
           Text(
             title,
             textAlign: TextAlign.center,
-            style: (compact ? AppTypography.label : AppTypography.cardTitle)
-                .copyWith(fontWeight: FontWeight.w700),
+            style: AppTypography.label.copyWith(fontWeight: FontWeight.w700),
           ),
           if (description != null) ...[
             const SizedBox(height: 8),
@@ -73,7 +102,7 @@ class AppEmptyState extends StatelessWidget {
       ),
     );
 
-    if (!scrollable) return compact ? content : Center(child: content);
+    if (!scrollable) return content;
 
     return RefreshIndicator(
       color: AppColors.deepBlue,

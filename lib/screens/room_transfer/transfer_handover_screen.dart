@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/widgets/app_date_picker.dart';
 
 import 'package:hdbhms_mobile/models/room_transfer/room_transfer_model.dart';
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
@@ -64,7 +65,7 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
 
   Future<void> _pickDate(bool isOut) async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
+    final picked = await AppDatePicker.show(
       context: context,
       initialDate: isOut ? (_outDate ?? now) : (_inDate ?? now),
       firstDate: DateTime(2020),

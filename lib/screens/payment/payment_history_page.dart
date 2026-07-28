@@ -10,6 +10,7 @@ import '../../widgets/app_screen_shell.dart';
 import '../../widgets/app_top_bar.dart';
 import '../../widgets/app_skeleton.dart';
 import '../../widgets/app_filter_chip.dart';
+import '../../widgets/app_list_state.dart';
 import '../../widgets/app_month_year_picker.dart';
 import '../../widgets/tenant_bottom_navigation.dart';
 import '../maintenance/maintenance_ticket_list_screen.dart';
@@ -128,8 +129,9 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
 
                   _HistoryDateFilterControl(
                     selectedMonth: _selectedPaidMonth,
-                    onTap: _selectPaidDateFilter,
-                    onReload: _reload,
+                    onTap: paidInvoices.isEmpty
+                        ? null
+                        : () => _selectPaidDateFilter(paidInvoices),
                   ),
                   const SizedBox(height: 12),
                   _HistoryTypeFilterBar(
@@ -223,11 +225,27 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
         .toList(growable: false);
   }
 
-  Future<void> _selectPaidDateFilter() async {
+  Future<void> _selectPaidDateFilter(
+    List<TenantInvoice> paidInvoices,
+  ) async {
+    final now = DateTime.now();
+    final lastMonth = DateTime(now.year, now.month);
+    final datedInvoices = paidInvoices
+        .map(_historyDate)
+        .where((date) => date.year >= 2000 && !date.isAfter(now))
+        .toList(growable: false);
+    if (datedInvoices.isEmpty) return;
+    var firstDate = datedInvoices.first;
+    for (final date in datedInvoices.skip(1)) {
+      if (date.isBefore(firstDate)) firstDate = date;
+    }
+    final firstMonth = DateTime(firstDate.year, firstDate.month);
     final selected = await showAppMonthYearPicker(
       context: context,
       selectedMonth: _selectedPaidMonth,
       title: 'Chọn tháng giao dịch',
+      firstMonth: firstMonth,
+      lastMonth: lastMonth,
     );
     if (!mounted || selected == null) return;
     setState(() => _selectedPaidMonth = selected.year == 0 ? null : selected);
@@ -377,12 +395,10 @@ class _HistoryDateFilterControl extends StatelessWidget {
   const _HistoryDateFilterControl({
     required this.selectedMonth,
     required this.onTap,
-    required this.onReload,
   });
 
   final DateTime? selectedMonth;
-  final VoidCallback onTap;
-  final VoidCallback onReload;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -393,8 +409,8 @@ class _HistoryDateFilterControl extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppColors.radiusMd),
         child: Ink(
-          height: 48,
-          padding: const EdgeInsets.only(left: 12, right: 4),
+          height: 52,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
             color: selectedMonth == null
                 ? AppColors.surface
@@ -424,16 +440,19 @@ class _HistoryDateFilterControl extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const Spacer(),
-              Flexible(
-                child: Text(
-                  _monthLabel(selectedMonth),
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.end,
-                  style: const TextStyle(
-                    color: AppColors.deepBlue,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
+              const SizedBox(width: 12),
+              Expanded(
+                child: FittedBox(
+                  alignment: Alignment.centerRight,
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    _monthLabel(selectedMonth),
+                    maxLines: 1,
+                    style: const TextStyle(
+                      color: AppColors.deepBlue,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ),
@@ -441,12 +460,6 @@ class _HistoryDateFilterControl extends StatelessWidget {
                 Icons.keyboard_arrow_down_rounded,
                 color: AppColors.deepBlue,
                 size: 20,
-              ),
-              IconButton(
-                onPressed: onReload,
-                tooltip: 'Tải lại lịch sử thanh toán',
-                icon: const Icon(Icons.refresh_rounded, size: 20),
-                color: AppColors.bodyText,
               ),
             ],
           ),
@@ -866,37 +879,13 @@ class _HistoryError extends StatelessWidget {
   final VoidCallback onRetry;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF0EF),
-        borderRadius: BorderRadius.circular(AppColors.radiusMd),
-        border: Border.all(color: const Color(0xFFFFB5AE)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            message,
-            style: const TextStyle(
-              color: AppColors.dangerText,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextButton.icon(
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh_rounded, size: 16),
-            label: const Text('Thử lại'),
-            style: TextButton.styleFrom(foregroundColor: AppColors.dangerText),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppListState(
+    kind: AppListStateKind.error,
+    title: 'Không tải được lịch sử thanh toán',
+    description: message,
+    actionLabel: 'Thử lại',
+    onAction: onRetry,
+  );
 }
 
 // ── Empty ─────────────────────────────────────────────────────────────────────
@@ -911,7 +900,22 @@ class _HistoryEmpty extends StatelessWidget {
   final VoidCallback onClearFilter;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => AppListState(
+    kind: AppListStateKind.empty,
+    title: hasAnyPaidInvoice
+        ? 'Không có giao dịch phù hợp'
+        : 'Chưa có lịch sử thanh toán',
+    description: hasAnyPaidInvoice
+        ? 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.'
+        : 'Các giao dịch đã thanh toán sẽ xuất hiện ở đây.',
+    icon: Icons.receipt_long_outlined,
+    actionLabel: hasAnyPaidInvoice ? 'Xóa bộ lọc' : null,
+    onAction: hasAnyPaidInvoice ? onClearFilter : null,
+  );
+
+  // Retained temporarily to preserve the previous layout during migration.
+  // ignore: unused_element
+  Widget _buildLegacy(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),

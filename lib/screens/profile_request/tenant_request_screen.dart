@@ -21,6 +21,7 @@ import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart
 import 'package:hdbhms_mobile/screens/room_transfer/room_transfer_detail_screen.dart';
 import 'package:hdbhms_mobile/widgets/app_filter_chip.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
+import 'package:hdbhms_mobile/widgets/app_list_state.dart';
 
 /// Màn "Yêu cầu" – danh sách yêu cầu + filter theo loại
 class TenantRequestScreen extends StatefulWidget {
@@ -56,6 +57,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
   RoomScope _roomScope = const RoomScope();
 
   bool _loadingApi = false;
+  String? _loadError;
 
   @override
   void initState() {
@@ -83,6 +85,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
     setState(() => _loadingApi = true);
     var apiRequests = const <ChangeRequest>[];
     var holderNominations = const <RoomTransferRequest>[];
+    var requestLoadFailed = false;
     final roomScope = await resolveRoomScope(
       roomId: widget.roomId,
       roomCode: widget.roomCode,
@@ -97,6 +100,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
         _holderNominationMap.clear();
         _requests.clear();
         _loadingApi = false;
+        _loadError = null;
       });
       return;
     }
@@ -122,7 +126,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
         // Room-transfer details are optional for rendering other request types.
       }
     } catch (_) {
-      // Keep the screen usable when one request source is temporarily down.
+      requestLoadFailed = true;
     }
 
     try {
@@ -178,6 +182,9 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
         )
         ..insertAll(0, converted);
       _loadingApi = false;
+      _loadError = requestLoadFailed && converted.isEmpty
+          ? 'Không tải được danh sách yêu cầu. Vui lòng thử lại.'
+          : null;
     });
   }
 
@@ -189,7 +196,83 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
       status: _mapRequestStatus(cr.status),
       note: _requestNote(cr),
       createdAt: cr.createdAt ?? DateTime.now(),
+      details: _requestDetails(cr),
     );
+  }
+
+  Map<String, String> _requestDetails(ChangeRequest cr) {
+    final payload = _payloadOf(cr);
+    if (payload.isEmpty) return {};
+
+    final details = <String, String>{};
+
+    String? pick(List<String> keys) {
+      for (final key in keys) {
+        final value = payload[key]?.toString().trim();
+        if (value != null && value.isNotEmpty) return value;
+      }
+      return null;
+    }
+
+    void add(String label, List<String> keys, {String suffix = ''}) {
+      final value = pick(keys);
+      if (value == null) return;
+      details[label] = suffix.isEmpty ? value : '$value $suffix';
+    }
+
+    switch (cr.requestType) {
+      case ChangeRequestType.roomTransfer:
+        add('Phòng hiện tại', ['currentRoom', 'oldRoomCode', 'oldRoomName']);
+        add('Phòng mong muốn', ['targetRoom', 'newRoomCode', 'newRoomName']);
+        add('Ngày chuyển', ['expectedTransferDate', 'requestedTransferDate']);
+        break;
+      case ChangeRequestType.contractRenewal:
+        add('Mã hợp đồng', ['contractCode']);
+        add('Phòng', ['roomCode', 'room']);
+        add('Thời gian gia hạn', ['renewalTermMonths'], suffix: 'tháng');
+        add('Ngày kết thúc mới', ['newEndDate']);
+        break;
+      case ChangeRequestType.contractLiquidation:
+        add('Mã hợp đồng', ['contractCode']);
+        add('Phòng', ['roomCode', 'room']);
+        add('Ngày thanh lý', ['liquidationDate']);
+        final stage = pick(['liquidationStage']);
+        if (stage != null) {
+          details['Bước hiện tại'] = _liquidationStageLabel(stage);
+        }
+        break;
+      case ChangeRequestType.moveOut:
+        add('Phòng', ['roomCode', 'room']);
+        add('Ngày trả phòng dự kiến', ['requestedMoveOutDate']);
+        break;
+      case ChangeRequestType.addCoOccupant:
+        add('Họ và tên', ['fullName', 'name']);
+        add('Số điện thoại', ['phoneNumber', 'phone']);
+        add('Ngày bắt đầu ở', ['moveInDate']);
+        break;
+      case ChangeRequestType.meterReadingCorrection:
+        add('Loại đồng hồ', ['meterType']);
+        add('Phòng', ['roomCode', 'room']);
+        break;
+      case ChangeRequestType.invoiceAdjustment:
+        add('Mã hóa đơn', ['invoiceCode']);
+        add('Số tiền điều chỉnh', ['adjustmentAmount']);
+        break;
+      case ChangeRequestType.rentPriceAdjustment:
+        add('Phòng', ['roomCode', 'room']);
+        add('Giá mới', ['newPrice']);
+        break;
+      case ChangeRequestType.depositRefundRequest:
+        add('Phòng', ['roomCode', 'room']);
+        add('Số tiền cọc', ['depositAmount']);
+        break;
+      case ChangeRequestType.complaint:
+        add('Danh mục', ['category']);
+        add('Mức ưu tiên', ['priority']);
+        break;
+    }
+
+    return details;
   }
 
   String _requestNote(ChangeRequest cr) {
@@ -452,6 +535,14 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
                       ),
                     ),
                   )
+                else if (_loadError != null && _requests.isEmpty)
+                  AppListState(
+                    kind: AppListStateKind.error,
+                    title: 'Không tải được danh sách yêu cầu',
+                    description: _loadError!,
+                    actionLabel: 'Thử lại',
+                    onAction: _loadApiRequests,
+                  )
                 else if (filtered.isEmpty)
                   _buildEmpty()
                 else
@@ -473,51 +564,15 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
   }
 
   Widget _buildEmpty() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 68,
-              height: 68,
-              decoration: BoxDecoration(
-                color: AppColors.primarySurface,
-                borderRadius: BorderRadius.circular(AppColors.radiusLg),
-              ),
-              child: const Icon(
-                Icons.inbox_outlined,
-                color: AppColors.deepBlue,
-                size: 34,
-              ),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'Chưa có yêu cầu nào',
-              style: TextStyle(
-                color: AppColors.inputText,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                height: 20 / 16,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _filterType == null
-                  ? 'Bạn chưa tạo yêu cầu nào.'
-                  : 'Không có yêu cầu phù hợp với bộ lọc hiện tại.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.bodyText,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                height: 18 / 13,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return AppListState(
+      kind: AppListStateKind.empty,
+      title: _filterType == null
+          ? 'Chưa có yêu cầu nào'
+          : 'Không có yêu cầu phù hợp',
+      description: _filterType == null
+          ? 'Các yêu cầu của bạn sẽ hiển thị tại đây.'
+          : 'Thử thay đổi bộ lọc để xem các yêu cầu khác.',
+      icon: Icons.inbox_outlined,
     );
   }
 
@@ -724,8 +779,26 @@ class _RequestCard extends StatelessWidget {
   final TenantRequest request;
   final VoidCallback onTap;
 
+  Color get _accentColor => switch (request.type) {
+    TenantRequestType.renewContract => AppColors.deepBlue,
+    TenantRequestType.terminateContract => AppColors.danger,
+    TenantRequestType.changeRoom => const Color(0xFF0284C7),
+    TenantRequestType.addRoommate => AppColors.successText,
+    TenantRequestType.utilityComplaint => const Color(0xFFEA580C),
+  };
+
+  Color get _accentBg => switch (request.type) {
+    TenantRequestType.renewContract => AppColors.primarySurface,
+    TenantRequestType.terminateContract => const Color(0xFFFFF0F0),
+    TenantRequestType.changeRoom => const Color(0xFFEFF8FF),
+    TenantRequestType.addRoommate => const Color(0xFFF0FFF4),
+    TenantRequestType.utilityComplaint => const Color(0xFFFFF7ED),
+  };
+
   @override
   Widget build(BuildContext context) {
+    final fields = _summaryFields();
+
     return Material(
       color: AppColors.surface,
       borderRadius: BorderRadius.circular(AppColors.radiusMd),
@@ -733,70 +806,99 @@ class _RequestCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppColors.radiusMd),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppColors.radiusMd),
             border: Border.all(
               color: AppColors.cardBorder.withValues(alpha: 0.8),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: _accentColor.withValues(alpha: 0.06),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
-          child: Row(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _RequestIconTile(
+                    icon: _requestIcon(request.type),
+                    color: _accentColor,
+                    background: _accentBg,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          request.type.fullLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.inputText,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            height: 19 / 14,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          request.type.description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.bodyText,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            height: 16 / 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _StatusBadge(status: request.status),
+                ],
+              ),
+              if (fields.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    // Type tag
-                    _TypeTag(type: request.type),
-                    const SizedBox(height: 6),
-                    // Title
-                    Text(
-                      request.type.fullLabel,
-                      style: const TextStyle(
-                        color: AppColors.inputText,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        height: 19 / 14,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    // Time
-                    Text(
-                      _formatTime(request.createdAt),
-                      style: const TextStyle(
-                        color: AppColors.bodyText,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        height: 15 / 11,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    // Note preview
-                    Text(
-                      request.note,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.bodyText,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        height: 16 / 12,
+                    ...fields.map(
+                      (field) => _RequestInfoPill(
+                        label: field.label,
+                        value: field.value,
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              ],
+              const SizedBox(height: 10),
+              Row(
                 children: [
-                  _StatusBadge(status: request.status),
-                  const SizedBox(height: 8),
-                  const Icon(
+                  const Spacer(),
+                  Text(
+                    'Xem chi tiết',
+                    style: TextStyle(
+                      color: _accentColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      height: 16 / 12,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  Icon(
                     Icons.chevron_right_rounded,
-                    color: AppColors.bodyText,
-                    size: 20,
+                    color: _accentColor,
+                    size: 18,
                   ),
                 ],
               ),
@@ -807,11 +909,35 @@ class _RequestCard extends StatelessWidget {
     );
   }
 
-  String _formatTime(DateTime dt) {
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
-    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} $h:$m';
+  List<_RequestSummaryField> _summaryFields() {
+    final createdAt = request.createdAt;
+    final day = createdAt.day.toString().padLeft(2, '0');
+    final month = createdAt.month.toString().padLeft(2, '0');
+    final hour = createdAt.hour.toString().padLeft(2, '0');
+    final minute = createdAt.minute.toString().padLeft(2, '0');
+
+    return [
+      _RequestSummaryField('Ngày gửi', '$day/$month/${createdAt.year}'),
+      _RequestSummaryField('Thời gian gửi', '$hour:$minute'),
+    ];
   }
+}
+
+class _RequestSummaryField {
+  const _RequestSummaryField(this.label, this.value);
+
+  final String label;
+  final String value;
+}
+
+IconData _requestIcon(TenantRequestType type) {
+  return switch (type) {
+    TenantRequestType.renewContract => Icons.autorenew_rounded,
+    TenantRequestType.terminateContract => Icons.cancel_outlined,
+    TenantRequestType.changeRoom => Icons.swap_horiz_rounded,
+    TenantRequestType.addRoommate => Icons.person_add_outlined,
+    TenantRequestType.utilityComplaint => Icons.speed_outlined,
+  };
 }
 
 class _TypeTag extends StatelessWidget {
@@ -819,32 +945,101 @@ class _TypeTag extends StatelessWidget {
 
   final TenantRequestType type;
 
-  IconData get _icon => switch (type) {
-    TenantRequestType.renewContract => Icons.autorenew_rounded,
-    TenantRequestType.terminateContract => Icons.cancel_outlined,
-    TenantRequestType.changeRoom => Icons.swap_horiz_rounded,
-    TenantRequestType.addRoommate => Icons.person_add_outlined,
-    TenantRequestType.utilityComplaint => Icons.speed_outlined,
-  };
-
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(_icon, size: 12, color: AppColors.deepBlue),
-        const SizedBox(width: 4),
-        Text(
-          type.label.toUpperCase(),
-          style: const TextStyle(
-            color: AppColors.deepBlue,
-            fontSize: 10,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.4,
-            height: 14 / 10,
+        Icon(_requestIcon(type), size: 14, color: AppColors.deepBlue),
+        const SizedBox(width: 5),
+        Flexible(
+          child: Text(
+            type.fullLabel,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.deepBlue,
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              height: 15 / 11,
+            ),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _RequestIconTile extends StatelessWidget {
+  const _RequestIconTile({
+    required this.icon,
+    required this.color,
+    required this.background,
+  });
+
+  final IconData icon;
+  final Color color;
+  final Color background;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+      ),
+      child: Icon(icon, color: color, size: 20),
+    );
+  }
+}
+
+class _RequestInfoPill extends StatelessWidget {
+  const _RequestInfoPill({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 128, maxWidth: 156),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.bodyText,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              height: 13 / 10,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.inputText,
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              height: 17 / 13,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

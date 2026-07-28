@@ -935,29 +935,46 @@ class _RoomSectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Text(
-          'Phòng đang thuê',
-          style: TextStyle(
-            color: AppColors.inputText,
-            fontSize: 19,
-            fontWeight: FontWeight.w900,
-            height: 24 / 19,
+        const Expanded(
+          child: Text(
+            'Phòng đang thuê',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: AppColors.inputText,
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+              height: 24 / 19,
+            ),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppColors.space8),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.fromLTRB(10, 7, 11, 7),
           decoration: BoxDecoration(
-            color: AppColors.primaryLight,
-            borderRadius: BorderRadius.circular(AppColors.radiusPill),
+            color: AppColors.primarySurface,
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+            border: Border.all(color: AppColors.primary.withValues(alpha: .18)),
           ),
-          child: Text(
-            '$roomCount phòng',
-            style: const TextStyle(
-              color: AppColors.primary,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.meeting_room_outlined,
+                color: AppColors.primary,
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '$roomCount phòng',
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  height: 16 / 12,
+                ),
+              ),
+            ],
           ),
         ),
       ],

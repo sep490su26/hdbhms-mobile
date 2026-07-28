@@ -83,6 +83,27 @@ class AppTypography {
     leadingDistribution: TextLeadingDistribution.even,
   );
 
+  /// Compact, high-contrast metadata used beside values in cards and forms.
+  /// This deliberately does not change [caption], which remains supporting
+  /// copy in the rest of the app.
+  static const metaLabel = TextStyle(
+    fontFamily: fontFamily,
+    color: AppColors.bodyText,
+    fontSize: 12,
+    fontWeight: FontWeight.w700,
+    height: 16 / 12,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  static const metaValue = TextStyle(
+    fontFamily: fontFamily,
+    color: AppColors.inputText,
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    height: 18 / 13,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
   static const button = TextStyle(
     fontFamily: fontFamily,
     fontSize: 15,
