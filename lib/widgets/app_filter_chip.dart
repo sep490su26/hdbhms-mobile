@@ -12,6 +12,7 @@ class AppFilterChip extends StatelessWidget {
     required this.isActive,
     required this.onTap,
     this.icon,
+    this.expanded = false,
   });
 
   final String label;
@@ -20,10 +21,11 @@ class AppFilterChip extends StatelessWidget {
 
   /// Icon hiển thị bên trái label (tuỳ chọn).
   final IconData? icon;
+  final bool expanded;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    final chip = GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
@@ -76,5 +78,6 @@ class AppFilterChip extends StatelessWidget {
         ),
       ),
     );
+    return expanded ? SizedBox(width: double.infinity, child: chip) : chip;
   }
 }

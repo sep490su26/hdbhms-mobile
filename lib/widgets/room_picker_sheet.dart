@@ -100,8 +100,13 @@ class _RoomPickerSheetState extends State<RoomPickerSheet> {
                   controller: _searchController,
                   onChanged: (_) => setState(() {}),
                   decoration: const InputDecoration(
+                    filled: true,
+                    fillColor: AppColors.inputFill,
                     hintText: 'Tìm theo mã hoặc tên phòng...',
-                    prefixIcon: Icon(Icons.search_rounded),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      color: AppColors.bodyText,
+                    ),
                   ),
                 ),
               ),
@@ -156,8 +161,14 @@ class _RoomPickerSheetState extends State<RoomPickerSheet> {
                         },
                       ),
               ),
-              const Divider(height: 1),
-              Padding(
+              Container(
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(
+                      color: AppColors.cardBorder.withValues(alpha: .52),
+                    ),
+                  ),
+                ),
                 padding: EdgeInsets.fromLTRB(
                   16,
                   12,
@@ -220,7 +231,7 @@ class _RoomOptionCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppColors.radiusSm),
         child: Opacity(
-          opacity: isCurrent ? .58 : 1,
+          opacity: isCurrent ? .72 : 1,
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -244,18 +255,39 @@ class _RoomOptionCard extends StatelessWidget {
                               style: AppTypography.cardTitle,
                             ),
                           ),
-                          Text(
-                            isCurrent ? 'Phòng hiện tại' : room.statusLabel,
-                            style: AppTypography.caption,
+                          _RoomStatusBadge(
+                            label: isCurrent
+                                ? 'Phòng hiện tại'
+                                : room.statusLabel,
+                            muted: isCurrent,
                           ),
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(_metadata(room), style: AppTypography.body),
-                      const SizedBox(height: 4),
                       Text(
-                        '${CurrencyFormatter.vnd(room.listedPrice)} / tháng',
-                        style: AppTypography.label,
+                        _metadata(room),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.caption.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${CurrencyFormatter.vnd(room.listedPrice)} / tháng',
+                              style: AppTypography.metaValue,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Tối đa ${room.maxOccupants} người',
+                            maxLines: 1,
+                            style: AppTypography.metaLabel,
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -280,8 +312,31 @@ String _metadata(AvailableRoom room) => [
   if (room.propertyName.isNotEmpty) room.propertyName,
   if (room.floorName.isNotEmpty) room.floorName,
   if (room.areaM2 != null) '${room.areaM2} m²',
-  if (room.maxOccupants > 0) 'Tối đa ${room.maxOccupants} người',
 ].join(' · ');
+
+class _RoomStatusBadge extends StatelessWidget {
+  const _RoomStatusBadge({required this.label, required this.muted});
+
+  final String label;
+  final bool muted;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+    decoration: BoxDecoration(
+      color: muted ? AppColors.surfaceMuted : AppColors.successSurface,
+      borderRadius: BorderRadius.circular(AppColors.radiusPill),
+    ),
+    child: Text(
+      label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: AppTypography.metaLabel.copyWith(
+        color: muted ? AppColors.bodyText : AppColors.successText,
+      ),
+    ),
+  );
+}
 
 class _EmptyRooms extends StatelessWidget {
   const _EmptyRooms({required this.onClear});

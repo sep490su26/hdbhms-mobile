@@ -7,21 +7,70 @@ import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
 
 class RequestSectionHeader extends StatelessWidget {
-  const RequestSectionHeader({super.key, required this.title, this.subtitle});
+  const RequestSectionHeader({
+    super.key,
+    required this.title,
+    this.subtitle,
+    this.icon = Icons.description_outlined,
+    this.accentColor = AppColors.primary,
+  });
 
   final String title;
   final String? subtitle;
+  final IconData icon;
+  final Color accentColor;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(title, style: AppTypography.sectionTitle),
-      if (subtitle != null) ...[
-        const SizedBox(height: AppColors.space4),
-        Text(subtitle!, style: AppTypography.body),
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppColors.space12),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
+      border: Border.all(color: AppColors.cardBorder),
+      boxShadow: [
+        BoxShadow(
+          color: accentColor.withValues(alpha: .045),
+          blurRadius: 12,
+          offset: const Offset(0, 4),
+        ),
       ],
-    ],
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: accentColor.withValues(alpha: .12),
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
+          ),
+          child: Icon(icon, color: accentColor, size: 22),
+        ),
+        const SizedBox(width: AppColors.space12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: AppTypography.sectionTitle.copyWith(fontSize: 20),
+              ),
+              if (subtitle != null) ...[
+                const SizedBox(height: AppColors.space4),
+                Text(
+                  subtitle!,
+                  style: AppTypography.body.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    ),
   );
 }
 
@@ -33,6 +82,7 @@ class RequestFormSection extends StatelessWidget {
     required this.child,
     this.subtitle,
     this.trailing,
+    this.accentColor = AppColors.primary,
   });
 
   final IconData icon;
@@ -40,6 +90,7 @@ class RequestFormSection extends StatelessWidget {
   final String? subtitle;
   final Widget child;
   final Widget? trailing;
+  final Color accentColor;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -60,20 +111,28 @@ class RequestFormSection extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                color: accentColor.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
               ),
-              child: Icon(icon, color: AppColors.deepBlue, size: 19),
+              child: Icon(icon, color: accentColor, size: 20),
             ),
             const SizedBox(width: AppColors.space12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: AppTypography.cardTitle),
+                  Text(
+                    title,
+                    style: AppTypography.cardTitle.copyWith(fontSize: 15),
+                  ),
                   if (subtitle != null) ...[
                     const SizedBox(height: AppColors.space4),
-                    Text(subtitle!, style: AppTypography.caption),
+                    Text(
+                      subtitle!,
+                      style: AppTypography.caption.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ],
               ),
@@ -86,6 +145,67 @@ class RequestFormSection extends StatelessWidget {
         ),
         const SizedBox(height: AppColors.space16),
         child,
+      ],
+    ),
+  );
+}
+
+class RequestNoticeCard extends StatelessWidget {
+  const RequestNoticeCard({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.accentColor = AppColors.actionCyan,
+    this.surfaceColor = AppColors.infoSurface,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final Color accentColor;
+  final Color surfaceColor;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppColors.space12),
+    decoration: BoxDecoration(
+      color: surfaceColor,
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
+      border: Border.all(color: accentColor.withValues(alpha: .18)),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: accentColor.withValues(alpha: .12),
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
+          ),
+          child: Icon(icon, color: accentColor, size: 19),
+        ),
+        const SizedBox(width: AppColors.space12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: AppTypography.label.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: AppColors.space4),
+              Text(
+                message,
+                style: AppTypography.body.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
       ],
     ),
   );
@@ -168,13 +288,14 @@ class RequestReadOnlyRow extends StatelessWidget {
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: Text(label, style: AppTypography.body)),
+        Expanded(child: Text(label, style: AppTypography.metaLabel)),
         const SizedBox(width: AppColors.space16),
         Flexible(
           child: Text(
             value,
             textAlign: TextAlign.right,
-            style: AppTypography.label.copyWith(
+            maxLines: 2,
+            style: AppTypography.metaValue.copyWith(
               color: valueColor ?? AppColors.inputText,
             ),
           ),
@@ -190,18 +311,21 @@ class RequestContractSummaryCard extends StatelessWidget {
     required this.room,
     required this.contractCode,
     required this.expiry,
+    this.startDate,
     this.monthlyRent,
   });
 
   final String room;
   final String contractCode;
   final String expiry;
+  final String? startDate;
   final String? monthlyRent;
 
   @override
   Widget build(BuildContext context) => RequestFormSection(
     icon: Icons.description_outlined,
     title: 'Hợp đồng hiện tại',
+    accentColor: AppColors.actionBlue,
     child: LayoutBuilder(
       builder: (context, constraints) => Wrap(
         spacing: AppColors.space16,
@@ -210,6 +334,8 @@ class RequestContractSummaryCard extends StatelessWidget {
             [
                   _SummaryMetric(label: 'Phòng hiện tại', value: room),
                   _SummaryMetric(label: 'Mã hợp đồng', value: contractCode),
+                  if (startDate != null)
+                    _SummaryMetric(label: 'Ngày bắt đầu', value: startDate!),
                   _SummaryMetric(label: 'Ngày hết hạn', value: expiry),
                   if (monthlyRent != null)
                     _SummaryMetric(label: 'Giá hiện tại', value: monthlyRent!),
@@ -237,13 +363,13 @@ class _SummaryMetric extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(label, style: AppTypography.caption),
+      Text(label, style: AppTypography.metaLabel),
       const SizedBox(height: AppColors.space4),
       Text(
         value,
         maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: AppTypography.label,
+        overflow: TextOverflow.fade,
+        style: AppTypography.metaValue,
       ),
     ],
   );
@@ -333,22 +459,25 @@ Future<void> showRequestSuccessSheet(
   BuildContext context, {
   required String message,
   required VoidCallback onReturnToContract,
-}) => showModalBottomSheet<void>(
+}) => showDialog<void>(
   context: context,
-  isScrollControlled: true,
-  backgroundColor: Colors.transparent,
-  builder: (_) => RequestSuccessSheet(
-    message: message,
-    onViewRequests: () {
-      Navigator.of(context).pop();
-      Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => const TenantRequestScreen()));
-    },
-    onReturnToContract: () {
-      Navigator.of(context).pop();
-      onReturnToContract();
-    },
+  barrierDismissible: false,
+  barrierColor: AppColors.deepBlue.withValues(alpha: .48),
+  builder: (dialogContext) => PopScope(
+    canPop: false,
+    child: RequestSuccessSheet(
+      message: message,
+      onViewRequests: () {
+        Navigator.of(dialogContext, rootNavigator: true).pop();
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const TenantRequestScreen()),
+        );
+      },
+      onReturnToContract: () {
+        Navigator.of(dialogContext, rootNavigator: true).pop();
+        onReturnToContract();
+      },
+    ),
   ),
 );
 
@@ -429,87 +558,119 @@ class _RequestSuccessSheetState extends State<RequestSuccessSheet>
   }
 
   @override
-  Widget build(BuildContext context) => SafeArea(
-    top: false,
-    child: Container(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppColors.radiusLg),
-        ),
-      ),
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) => Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 44,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(AppColors.radiusPill),
-              ),
-            ),
-            const SizedBox(height: AppColors.space24),
-            ScaleTransition(
-              scale: _circleScale,
-              child: FadeTransition(
-                opacity: _circleScale,
-                child: _SuccessTick(progress: _tickProgress),
-              ),
-            ),
-            const SizedBox(height: AppColors.space16),
-            FadeTransition(
-              opacity: _titleOpacity,
-              child: SlideTransition(
-                position: _titleOffset,
-                child: Text(
-                  'Đã gửi yêu cầu',
-                  style: AppTypography.sectionTitle,
-                ),
-              ),
-            ),
-            const SizedBox(height: AppColors.space8),
-            FadeTransition(
-              opacity: _detailOpacity,
-              child: Text(
-                widget.message,
-                textAlign: TextAlign.center,
-                style: AppTypography.body,
-              ),
-            ),
-            const SizedBox(height: AppColors.space24),
-            FadeTransition(
-              opacity: _actionsOpacity,
-              child: Column(
-                children: [
-                  SizedBox(
-                    width: double.infinity,
-                    child: AppPrimaryGradientButton(
-                      height: 52,
-                      onPressed: widget.onViewRequests,
-                      child: Text(
-                        'Xem các yêu cầu',
-                        style: AppTypography.button.copyWith(
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppColors.space8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: TextButton(
-                      onPressed: widget.onReturnToContract,
-                      child: const Text('Quay lại hợp đồng'),
-                    ),
-                  ),
-                ],
-              ),
+  Widget build(BuildContext context) => Dialog(
+    insetPadding: const EdgeInsets.symmetric(horizontal: 22),
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 356),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppColors.radiusLg),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.deepBlue.withValues(alpha: .2),
+              blurRadius: 28,
+              offset: const Offset(0, 12),
             ),
           ],
+        ),
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, _) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ScaleTransition(
+                scale: _circleScale,
+                child: FadeTransition(
+                  opacity: _circleScale,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      _SuccessRing(
+                        progress: _controller.value,
+                        multiplier: 1.45,
+                      ),
+                      _SuccessRing(
+                        progress: _controller.value,
+                        multiplier: 1.82,
+                      ),
+                      _SuccessTick(progress: _tickProgress),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppColors.space16),
+              FadeTransition(
+                opacity: _titleOpacity,
+                child: SlideTransition(
+                  position: _titleOffset,
+                  child: Text(
+                    'Gửi yêu cầu thành công',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.sectionTitle.copyWith(fontSize: 20),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppColors.space8),
+              FadeTransition(
+                opacity: _detailOpacity,
+                child: Text(
+                  widget.message,
+                  textAlign: TextAlign.center,
+                  style: AppTypography.body.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppColors.space12),
+              FadeTransition(
+                opacity: _detailOpacity,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.successSurface,
+                    borderRadius: BorderRadius.circular(AppColors.radiusPill),
+                  ),
+                  child: Text(
+                    'Chờ quản lý xét duyệt',
+                    style: AppTypography.metaLabel.copyWith(
+                      color: AppColors.successText,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppColors.space24),
+              FadeTransition(
+                opacity: _actionsOpacity,
+                child: Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: AppPrimaryGradientButton(
+                        height: 52,
+                        onPressed: widget.onViewRequests,
+                        child: const Text('Xem các yêu cầu'),
+                      ),
+                    ),
+                    const SizedBox(height: AppColors.space8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: widget.onReturnToContract,
+                        child: const Text('Quay lại hợp đồng'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     ),
@@ -532,6 +693,29 @@ class _SuccessTick extends StatelessWidget {
     ),
     child: CustomPaint(painter: _TickPainter(progress)),
   );
+}
+
+class _SuccessRing extends StatelessWidget {
+  const _SuccessRing({required this.progress, required this.multiplier});
+
+  final double progress;
+  final double multiplier;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = Curves.easeOut.transform((progress / .62).clamp(0, 1));
+    return Opacity(
+      opacity: (1 - value) * .42,
+      child: Container(
+        width: 64 * (1 + (multiplier - 1) * value),
+        height: 64 * (1 + (multiplier - 1) * value),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.success.withValues(alpha: .55)),
+        ),
+      ),
+    );
+  }
 }
 
 class _TickPainter extends CustomPainter {

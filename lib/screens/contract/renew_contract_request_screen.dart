@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:hdbhms_mobile/models/contract/lease_contract_model.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
 import 'package:hdbhms_mobile/widgets/app_filter_chip.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
@@ -122,35 +123,39 @@ class _RenewContractRequestScreenState
                 const RequestSectionHeader(
                   title: 'Gia hạn thời gian thuê',
                   subtitle: 'Kiểm tra thông tin trước khi gửi yêu cầu.',
+                  icon: Icons.autorenew_rounded,
+                  accentColor: AppColors.actionBlue,
                 ),
                 const SizedBox(height: AppColors.space16),
                 RequestContractSummaryCard(
                   room: _roomLabel(widget.contract),
                   contractCode: _dash(widget.contract.contractCode),
                   expiry: _date(widget.contract.endDate),
+                  startDate: _date(widget.contract.startDate),
                 ),
                 const SizedBox(height: AppColors.space16),
                 RequestFormSection(
                   icon: Icons.calendar_month_outlined,
                   title: 'Thời hạn gia hạn',
                   subtitle: 'Chọn nhanh hoặc nhập số tháng phù hợp.',
+                  accentColor: AppColors.actionCyan,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Wrap(
-                        spacing: AppColors.space8,
-                        runSpacing: AppColors.space8,
-                        children: [6, 12, 18, 24]
-                            .map(
-                              (value) => AppFilterChip(
-                                label: '$value tháng',
-                                isActive: _months == value,
-                                onTap: () => setState(
-                                  () => _monthsController.text = '$value',
-                                ),
-                              ),
-                            )
-                            .toList(growable: false),
+                      Row(
+                        children: [
+                          Expanded(child: _termChip(6)),
+                          const SizedBox(width: AppColors.space8),
+                          Expanded(child: _termChip(12)),
+                        ],
+                      ),
+                      const SizedBox(height: AppColors.space8),
+                      Row(
+                        children: [
+                          Expanded(child: _termChip(18)),
+                          const SizedBox(width: AppColors.space8),
+                          Expanded(child: _termChip(24)),
+                        ],
                       ),
                       const SizedBox(height: AppColors.space16),
                       const RequestFieldLabel(
@@ -171,9 +176,27 @@ class _RenewContractRequestScreenState
                               ? 'Thời hạn gia hạn tối thiểu 6 tháng.'
                               : null;
                         },
-                        decoration: const InputDecoration(
-                          hintText: 'Nhập số tháng khác',
-                          helperText: 'Tối thiểu 6 tháng',
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: AppColors.inputFill,
+                          hintText: 'Ví dụ: 9',
+                          suffixText: 'tháng',
+                          helper: Row(
+                            children: [
+                              const Icon(
+                                Icons.info_outline_rounded,
+                                color: AppColors.bodyText,
+                                size: 14,
+                              ),
+                              const SizedBox(width: AppColors.space4),
+                              Text(
+                                'Nhập từ 6 tháng trở lên',
+                                style: AppTypography.caption.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -183,6 +206,7 @@ class _RenewContractRequestScreenState
                 RequestFormSection(
                   icon: Icons.event_available_outlined,
                   title: 'Thời gian dự kiến',
+                  accentColor: AppColors.actionCyan,
                   child: Column(
                     children: [
                       AnimatedSwitcher(
@@ -209,6 +233,7 @@ class _RenewContractRequestScreenState
                 RequestFormSection(
                   icon: Icons.account_balance_wallet_outlined,
                   title: 'Điều khoản tài chính',
+                  accentColor: AppColors.actionViolet,
                   child: Column(
                     children: [
                       RequestReadOnlyRow(
@@ -240,11 +265,14 @@ class _RenewContractRequestScreenState
                 RequestFormSection(
                   icon: Icons.notes_outlined,
                   title: 'Ghi chú',
+                  accentColor: AppColors.actionEmerald,
                   child: TextFormField(
                     controller: _noteController,
                     minLines: 3,
                     maxLines: 5,
                     decoration: const InputDecoration(
+                      filled: true,
+                      fillColor: AppColors.inputFill,
                       hintText: 'Nhập ghi chú cho quản lý...',
                     ),
                   ),
@@ -259,6 +287,13 @@ class _RenewContractRequestScreenState
         ),
       ),
     ),
+  );
+
+  Widget _termChip(int value) => AppFilterChip(
+    label: '$value tháng',
+    isActive: _months == value,
+    expanded: true,
+    onTap: () => setState(() => _monthsController.text = '$value'),
   );
 }
 

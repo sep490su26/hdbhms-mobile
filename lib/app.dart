@@ -49,7 +49,9 @@ class App extends StatelessWidget {
       navigatorKey: App.navigatorKey,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
+      // The mobile UI is currently authored against the light palette. Keep it
+      // stable until dark surfaces are implemented end-to-end.
+      themeMode: ThemeMode.light,
       builder: (context, child) {
         return DefaultTextHeightBehavior(
           textHeightBehavior: const TextHeightBehavior(

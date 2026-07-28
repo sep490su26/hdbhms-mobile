@@ -172,7 +172,7 @@ class _DepositContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(14, 16, 14, 28),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -298,34 +298,6 @@ class _RoomHeroCard extends StatelessWidget {
                 ],
               ),
             ),
-            // Top-right: room code chip
-            if (deposit.room.roomCode.trim().isNotEmpty)
-              Positioned(
-                top: 14,
-                right: 16,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(AppColors.radiusPill),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.18),
-                    ),
-                  ),
-                  child: Text(
-                    '#${deposit.room.roomCode.trim()}',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),

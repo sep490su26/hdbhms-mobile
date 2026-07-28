@@ -111,26 +111,30 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                 const RequestSectionHeader(
                   title: 'Yêu cầu kết thúc hợp đồng',
                   subtitle: 'Quản lý sẽ kiểm tra trước khi xử lý.',
+                  icon: Icons.event_busy_outlined,
+                  accentColor: AppColors.actionRose,
                 ),
                 const SizedBox(height: AppColors.space16),
                 RequestContractSummaryCard(
                   room: _roomLabel(widget.contract),
                   contractCode: _dash(widget.contract.contractCode),
                   expiry: _formatDate(widget.contract.endDate),
+                  startDate: _formatDate(widget.contract.startDate),
                 ),
                 const SizedBox(height: AppColors.space16),
-                RequestFormSection(
+                const RequestNoticeCard(
                   icon: Icons.info_outline_rounded,
                   title: 'Lưu ý trước khi gửi',
-                  child: const Text(
-                    'Sau khi được duyệt, bạn có thể cần bàn giao phòng, hoàn tất hóa đơn cuối kỳ và xác nhận hoàn cọc.',
-                    style: AppTypography.body,
-                  ),
+                  message:
+                      'Sau khi được duyệt, bạn có thể cần bàn giao phòng, hoàn tất hóa đơn cuối kỳ và xác nhận hoàn cọc.',
+                  accentColor: AppColors.actionOrange,
+                  surfaceColor: AppColors.warningSurface,
                 ),
                 const SizedBox(height: AppColors.space16),
                 RequestFormSection(
                   icon: Icons.calendar_today_outlined,
                   title: 'Ngày thanh lý',
+                  accentColor: AppColors.actionCyan,
                   child: FormField<DateTime>(
                     validator: (_) => _liquidationDate == null
                         ? 'Vui lòng chọn ngày thanh lý.'
@@ -145,7 +149,11 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                       borderRadius: BorderRadius.circular(AppColors.radiusSm),
                       child: InputDecorator(
                         isEmpty: _liquidationDate == null,
-                        decoration: InputDecoration(errorText: field.errorText),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: AppColors.inputFill,
+                          errorText: field.errorText,
+                        ),
                         child: Row(
                           children: [
                             Expanded(
@@ -173,11 +181,14 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                 RequestFormSection(
                   icon: Icons.notes_outlined,
                   title: 'Lý do hoặc ghi chú',
+                  accentColor: AppColors.actionEmerald,
                   child: TextFormField(
                     controller: _reasonController,
                     minLines: 3,
                     maxLines: 5,
                     decoration: const InputDecoration(
+                      filled: true,
+                      fillColor: AppColors.inputFill,
                       hintText: 'Nhập lý do hoặc thông tin thêm...',
                     ),
                   ),

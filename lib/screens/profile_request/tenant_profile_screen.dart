@@ -14,16 +14,18 @@ import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/app_action_tile.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
-import 'package:hdbhms_mobile/screens/contract/lease_contract_list_screen.dart';
+import 'package:hdbhms_mobile/screens/contract/contract_hub_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/change_password_page.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
 import 'package:hdbhms_mobile/screens/profile_request/update_profile_screen.dart';
+import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
 
 class TenantProfileScreen extends StatefulWidget {
   const TenantProfileScreen({
@@ -364,8 +366,8 @@ class _UpdateProfileButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 48,
-      child: ElevatedButton.icon(
+      child: AppPrimaryGradientButton(
+        height: 52,
         onPressed: () async {
           final updated = await Navigator.of(context).push<bool>(
             MaterialPageRoute(
@@ -376,22 +378,13 @@ class _UpdateProfileButton extends StatelessWidget {
             await onProfileUpdated();
           }
         },
-        icon: const Icon(Icons.edit_note_rounded, size: 20),
-        label: const Text('Cập nhật hồ sơ'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.72),
-          elevation: 0,
-          minimumSize: const Size(0, 48),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppColors.radiusLg),
-          ),
-          textStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w900,
-            height: 18 / 14,
-          ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.edit_note_rounded, size: 20),
+            SizedBox(width: AppColors.space8),
+            Text('Cập nhật hồ sơ'),
+          ],
         ),
       ),
     );
@@ -405,28 +398,12 @@ class _LogoutButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: OutlinedButton.icon(
-        onPressed: onLogout,
-        icon: const Icon(Icons.logout_rounded, size: 20),
-        label: const Text('Đăng xuất'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.danger,
-          backgroundColor: const Color(0xFFFFF1F2),
-          side: const BorderSide(color: Color(0xFFFCA5A5)),
-          minimumSize: const Size(0, 48),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppColors.radiusLg),
-          ),
-          textStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w900,
-            height: 18 / 14,
-          ),
-        ),
-      ),
+    return _ProfileActionButton(
+      icon: Icons.logout_rounded,
+      label: 'Đăng xuất',
+      accentColor: AppColors.danger,
+      iconSurface: AppColors.dangerSurface,
+      onTap: onLogout,
     );
   }
 }
@@ -438,30 +415,69 @@ class _ChangePasswordButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: OutlinedButton.icon(
-        onPressed: onChangePassword,
-        icon: const Icon(Icons.lock_reset_rounded, size: 20),
-        label: const Text('Đổi mật khẩu'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          backgroundColor: AppColors.primaryLight.withValues(alpha: 0.72),
-          side: BorderSide(color: AppColors.primary.withValues(alpha: 0.24)),
-          minimumSize: const Size(0, 48),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppColors.radiusLg),
-          ),
-          textStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w900,
-            height: 18 / 14,
-          ),
-        ),
-      ),
+    return _ProfileActionButton(
+      icon: Icons.lock_reset_rounded,
+      label: 'Đổi mật khẩu',
+      accentColor: AppColors.primary,
+      iconSurface: AppColors.primarySurface,
+      onTap: onChangePassword,
     );
   }
+}
+
+class _ProfileActionButton extends StatelessWidget {
+  const _ProfileActionButton({
+    required this.icon,
+    required this.label,
+    required this.accentColor,
+    required this.iconSurface,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color accentColor;
+  final Color iconSurface;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: AppColors.surface,
+    borderRadius: BorderRadius.circular(AppColors.radiusSm),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+      child: Container(
+        height: 52,
+        padding: const EdgeInsets.symmetric(horizontal: AppColors.space12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: iconSurface,
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
+              ),
+              child: Icon(icon, size: 18, color: accentColor),
+            ),
+            const SizedBox(width: AppColors.space12),
+            Expanded(
+              child: Text(
+                label,
+                style: AppTypography.button.copyWith(color: accentColor),
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: accentColor, size: 20),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _ProfileSummaryCard extends StatelessWidget {
@@ -542,7 +558,7 @@ class _ContractEntrySection extends StatelessWidget {
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => const LeaseContractListScreen(),
+                builder: (context) => const ContractHubScreen(initialTab: 0),
               ),
             );
           },

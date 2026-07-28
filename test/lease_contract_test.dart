@@ -390,8 +390,7 @@ void main() {
 
     final termField = find.byWidgetPredicate(
       (widget) =>
-          widget is TextField &&
-          widget.decoration?.hintText == 'Nhập số tháng khác',
+          widget is TextField && widget.decoration?.hintText == 'Ví dụ: 9',
     );
     await tester.enterText(termField, '18');
     await tester.tap(find.text('Gửi yêu cầu gia hạn'));
@@ -437,8 +436,7 @@ void main() {
 
     final termField = find.byWidgetPredicate(
       (widget) =>
-          widget is TextField &&
-          widget.decoration?.hintText == 'Nhập số tháng khác',
+          widget is TextField && widget.decoration?.hintText == 'Ví dụ: 9',
     );
     await tester.enterText(termField, '5');
     await tester.tap(find.text('Gửi yêu cầu gia hạn'));

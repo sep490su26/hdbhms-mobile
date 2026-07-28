@@ -311,46 +311,64 @@ class _FilterBar extends StatelessWidget {
           ),
         ),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _FilterChip(
-              icon: Icons.calendar_month_outlined,
-              label: selectedDateRange != null
-                  ? '${_fmtShort(selectedDateRange!.start)} - ${_fmtShort(selectedDateRange!.end)}'
-                  : 'Ngày ký HĐ',
-              isActive: selectedDateRange != null,
-              onTap: onPickDateRange,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _StatusDropdown(
-              selectedStatus: selectedStatus,
-              statusOptions: statusOptions,
-              onChanged: onStatusChanged,
-            ),
-          ),
-          if (hasActiveFilters) ...[
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: onClearFilters,
-              child: Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFD8D5),
-                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final date = _FilterChip(
+            icon: Icons.calendar_month_outlined,
+            label: selectedDateRange != null
+                ? '${_formatDate(selectedDateRange!.start)} - ${_formatDate(selectedDateRange!.end)}'
+                : 'Ngày ký hợp đồng',
+            isActive: selectedDateRange != null,
+            onTap: onPickDateRange,
+          );
+          final status = _StatusDropdown(
+            selectedStatus: selectedStatus,
+            statusOptions: statusOptions,
+            onChanged: onStatusChanged,
+          );
+          final clear = hasActiveFilters
+              ? IconButton(
+                  tooltip: 'Xóa bộ lọc',
+                  onPressed: onClearFilters,
+                  constraints: const BoxConstraints.tightFor(
+                    width: AppColors.minimumTouchTarget,
+                    height: AppColors.minimumTouchTarget,
+                  ),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: AppColors.danger,
+                  ),
+                )
+              : null;
+          if (constraints.maxWidth < 420) {
+            return Column(
+              children: [
+                SizedBox(width: double.infinity, child: date),
+                const SizedBox(height: AppColors.space8),
+                Row(
+                  children: [
+                    Expanded(child: status),
+                    if (clear != null) ...[
+                      const SizedBox(width: AppColors.space8),
+                      clear,
+                    ],
+                  ],
                 ),
-                child: const Icon(
-                  Icons.close_rounded,
-                  color: Color(0xFFB00020),
-                  size: 18,
-                ),
-              ),
-            ),
-          ],
-        ],
+              ],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(child: date),
+              const SizedBox(width: AppColors.space8),
+              Expanded(child: status),
+              if (clear != null) ...[
+                const SizedBox(width: AppColors.space4),
+                clear,
+              ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -374,10 +392,10 @@ class _FilterChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 34,
+        height: AppColors.minimumTouchTarget,
         padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.primarySurface : const Color(0xFFF5F4F8),
+          color: isActive ? AppColors.primarySurface : AppColors.inputFill,
           borderRadius: BorderRadius.circular(AppColors.radiusSm),
           border: Border.all(
             color: isActive
@@ -429,80 +447,111 @@ class _StatusDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     final isActive = selectedStatus != null;
 
-    return Container(
-      height: 34,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: isActive ? AppColors.primarySurface : const Color(0xFFF5F4F8),
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+      child: InkWell(
+        onTap: () => _openSelector(context),
         borderRadius: BorderRadius.circular(AppColors.radiusSm),
-        border: Border.all(
-          color: isActive
-              ? AppColors.deepBlue.withValues(alpha: 0.5)
-              : AppColors.cardBorder.withValues(alpha: 0.6),
-        ),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String?>(
-          value: selectedStatus,
-          isExpanded: true,
-          isDense: true,
-          icon: Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: isActive ? AppColors.deepBlue : AppColors.bodyText,
-            size: 18,
+        child: Container(
+          height: AppColors.minimumTouchTarget,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.primarySurface : AppColors.inputFill,
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
+            border: Border.all(
+              color: isActive
+                  ? AppColors.deepBlue.withValues(alpha: 0.5)
+                  : AppColors.cardBorder.withValues(alpha: 0.6),
+            ),
           ),
-          hint: Row(
+          child: Row(
             children: [
               Icon(
                 Icons.filter_list_rounded,
-                color: AppColors.bodyText,
-                size: 15,
+                color: isActive ? AppColors.deepBlue : AppColors.bodyText,
+                size: 18,
               ),
               const SizedBox(width: 6),
-              Text(
-                'Trạng thái',
-                style: TextStyle(
-                  color: AppColors.bodyText,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  height: 14 / 11,
+              Expanded(
+                child: Text(
+                  selectedStatus == null
+                      ? 'Trạng thái'
+                      : statusOptions[selectedStatus]!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: isActive ? AppColors.deepBlue : AppColors.bodyText,
+                    fontSize: 12,
+                    fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: isActive ? AppColors.deepBlue : AppColors.bodyText,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openSelector(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Trạng thái hợp đồng',
+                style: AppColors.topBarTitleStyle,
+              ),
+              const SizedBox(height: AppColors.space8),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  selectedStatus == null
+                      ? Icons.radio_button_checked_rounded
+                      : Icons.radio_button_off_rounded,
+                  color: selectedStatus == null
+                      ? AppColors.primary
+                      : AppColors.bodyText,
+                ),
+                title: const Text('Tất cả'),
+                onTap: () {
+                  onChanged(null);
+                  Navigator.of(sheetContext).pop();
+                },
+              ),
+              ...statusOptions.entries.map(
+                (entry) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    selectedStatus == entry.key
+                        ? Icons.radio_button_checked_rounded
+                        : Icons.radio_button_off_rounded,
+                    color: selectedStatus == entry.key
+                        ? AppColors.primary
+                        : AppColors.bodyText,
+                  ),
+                  title: Text(entry.value),
+                  onTap: () {
+                    onChanged(entry.key);
+                    Navigator.of(sheetContext).pop();
+                  },
                 ),
               ),
             ],
           ),
-          selectedItemBuilder: (context) {
-            return [
-              for (final entry in statusOptions.entries)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    entry.value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.deepBlue,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      height: 14 / 11,
-                    ),
-                  ),
-                ),
-            ];
-          },
-          items: statusOptions.entries.map((entry) {
-            return DropdownMenuItem<String?>(
-              value: entry.key,
-              child: Text(
-                entry.value,
-                style: const TextStyle(
-                  color: AppColors.inputText,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            );
-          }).toList(),
-          onChanged: onChanged,
         ),
       ),
     );
@@ -526,7 +575,7 @@ class _DepositCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppColors.radiusMd),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+          padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppColors.radiusMd),
             border: Border.all(
@@ -539,12 +588,12 @@ class _DepositCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF8E1),
+                  color: AppColors.warningSurface,
                   borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
                 child: const Icon(
                   Icons.account_balance_wallet_outlined,
-                  color: Color(0xFFE8A100),
+                  color: AppColors.actionOrange,
                   size: 22,
                 ),
               ),
@@ -553,44 +602,42 @@ class _DepositCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      item.contractCode.isEmpty
-                          ? 'HĐ cọc #${item.id}'
-                          : item.contractCode,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.inputText,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        height: 18 / 14,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
                     Row(
                       children: [
-                        Flexible(
-                          child: _InfoChip(
-                            icon: Icons.meeting_room_outlined,
-                            text: item.roomCode.isEmpty ? '--' : item.roomCode,
+                        Expanded(
+                          child: Text(
+                            item.contractCode.isEmpty
+                                ? 'HĐ cọc #${item.id}'
+                                : item.contractCode,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.inputText,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              height: 20 / 15,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Flexible(
-                          child: _InfoChip(
-                            icon: Icons.calendar_today_outlined,
-                            text: item.signedAt != null
-                                ? _formatDate(item.signedAt!)
-                                : '--',
-                          ),
-                        ),
+                        const SizedBox(width: AppColors.space8),
+                        _StatusBadge(status: item.status),
                       ],
+                    ),
+                    const SizedBox(height: 4),
+                    _InfoChip(
+                      icon: Icons.meeting_room_outlined,
+                      text: item.roomCode.isEmpty ? '--' : item.roomCode,
+                    ),
+                    const SizedBox(height: 4),
+                    _InfoChip(
+                      icon: Icons.calendar_today_outlined,
+                      text: item.signedAt != null
+                          ? _formatDate(item.signedAt!)
+                          : '--',
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              _StatusBadge(status: item.status),
               const SizedBox(width: 4),
               const Icon(
                 Icons.chevron_right_rounded,
@@ -618,17 +665,13 @@ class _InfoChip extends StatelessWidget {
       children: [
         Icon(icon, color: AppColors.bodyText, size: 13),
         const SizedBox(width: 4),
-        Flexible(
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.bodyText,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              height: 16 / 12,
-            ),
+        Text(
+          text,
+          style: const TextStyle(
+            color: AppColors.bodyText,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            height: 16 / 12,
           ),
         ),
       ],
@@ -656,7 +699,7 @@ class _StatusBadge extends StatelessWidget {
         style: TextStyle(
           color: textColor,
           fontSize: 10,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w700,
           height: 13 / 10,
         ),
       ),

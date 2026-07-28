@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hdbhms_mobile/widgets/app_date_picker.dart';
 import 'package:hdbhms_mobile/widgets/app_empty_state.dart';
-import 'package:flutter/services.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
@@ -161,44 +159,29 @@ class _ContractHeader extends StatelessWidget {
           ),
           // Nút tiện ích phòng
           if (contractId != null)
-            Tooltip(
-              message: 'Tiện ích phòng',
-              child: InkWell(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        RoomAmenitiesScreen(contractId: contractId),
-                  ),
+            IconButton(
+              tooltip: 'Tiện ích phòng',
+              constraints: const BoxConstraints.tightFor(
+                width: AppColors.minimumTouchTarget,
+                height: AppColors.minimumTouchTarget,
+              ),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) =>
+                      RoomAmenitiesScreen(contractId: contractId),
                 ),
-                borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.deepBlue.withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.weekend_outlined,
-                        color: AppColors.deepBlue,
-                        size: 15,
-                      ),
-                      SizedBox(width: 5),
-                      Text(
-                        'Tiện ích phòng',
-                        style: TextStyle(
-                          color: AppColors.deepBlue,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
+              ),
+              icon: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primarySurface,
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                ),
+                child: const Icon(
+                  Icons.weekend_outlined,
+                  color: AppColors.primary,
+                  size: 20,
                 ),
               ),
             ),
@@ -269,8 +252,6 @@ class _ContractContent extends StatelessWidget {
   }
 }
 
-const Color _kLabelColor = Color(0xFF000666);
-
 class _CreateRequestGrid extends StatelessWidget {
   const _CreateRequestGrid({
     required this.contract,
@@ -337,82 +318,6 @@ class _CreateRequestGrid extends StatelessWidget {
     }
   }
 
-  // ignore: unused_element
-  Future<bool?> _openLifecycleRequestSheet(
-    BuildContext context,
-    TenantRequestType type,
-  ) {
-    return showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _CreateRequestSheet(
-        type: type,
-        onSubmit: (note, liquidationDate, renewalTermMonths) async {
-          await _submitLifecycleRequest(
-            type,
-            note,
-            liquidationDate,
-            renewalTermMonths,
-          );
-        },
-      ),
-    );
-  }
-
-  Future<void> _submitLifecycleRequest(
-    TenantRequestType type,
-    String note,
-    DateTime? liquidationDate,
-    int? renewalTermMonths,
-  ) async {
-    final contractId = contract.id;
-    if (contractId == null) {
-      throw const LeaseContractException('Không xác định được hợp đồng.');
-    }
-
-    if (type == TenantRequestType.terminateContract) {
-      await contractService.submitLiquidationRequest(
-        contractId: contractId,
-        liquidationDate: liquidationDate,
-        reason: note,
-      );
-    } else if (type == TenantRequestType.renewContract) {
-      final endDate = contract.endDate ?? DateTime.now();
-      final newStartDate = DateTime(
-        endDate.year,
-        endDate.month,
-        endDate.day,
-      ).add(const Duration(days: 1));
-      final termMonths = renewalTermMonths ?? 12;
-      final newEndDate = _addMonthsClamped(
-        newStartDate,
-        termMonths,
-      ).subtract(const Duration(days: 1));
-      await contractService.submitRenewalRequest(
-        contractId: contractId,
-        newStartDate: newStartDate,
-        newEndDate: newEndDate,
-        renewalTermMonths: termMonths,
-        monthlyRent: contract.monthlyRent ?? 0,
-        paymentCycleMonths: contract.paymentCycleMonths ?? 1,
-        depositAmount: contract.depositAmount ?? 0,
-        note: note,
-      );
-    }
-    await onChanged();
-  }
-
-  // ignore: unused_element
-  void _openRequestList(BuildContext context, TenantRequestType type) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Đã gửi yêu cầu .')));
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const TenantRequestScreen()));
-  }
-
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -427,12 +332,12 @@ class _CreateRequestGrid extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(7),
                   decoration: BoxDecoration(
-                    color: AppColors.deepBlue.withValues(alpha: 0.08),
+                    color: AppColors.primarySurface,
                     borderRadius: BorderRadius.circular(AppColors.radiusMd),
                   ),
                   child: const Icon(
                     Icons.add_circle_outline_rounded,
-                    color: AppColors.deepBlue,
+                    color: AppColors.primary,
                     size: 18,
                   ),
                 ),
@@ -442,7 +347,7 @@ class _CreateRequestGrid extends StatelessWidget {
                   style: TextStyle(
                     color: AppColors.inputText,
                     fontSize: 15,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                     height: 20 / 15,
                   ),
                 ),
@@ -490,309 +395,6 @@ class _CreateRequestGrid extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _CreateRequestSheet extends StatefulWidget {
-  const _CreateRequestSheet({required this.type, required this.onSubmit});
-
-  final TenantRequestType type;
-  final Future<void> Function(
-    String note,
-    DateTime? liquidationDate,
-    int? renewalTermMonths,
-  )
-  onSubmit;
-
-  @override
-  State<_CreateRequestSheet> createState() => _CreateRequestSheetState();
-}
-
-class _CreateRequestSheetState extends State<_CreateRequestSheet> {
-  final _ctrl = TextEditingController();
-  final _renewalMonthsCtrl = TextEditingController(text: '12');
-  bool _submitting = false;
-  String _error = '';
-  DateTime? _liquidationDate;
-
-  bool get _isLiquidation => widget.type == TenantRequestType.terminateContract;
-  bool get _isRenewal => widget.type == TenantRequestType.renewContract;
-
-  @override
-  void initState() {
-    super.initState();
-    if (_isLiquidation) {
-      _liquidationDate = DateTime.now();
-    }
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    _renewalMonthsCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickLiquidationDate() async {
-    final today = DateTime.now();
-    final initialDate = _liquidationDate ?? today;
-    final picked = await AppDatePicker.show(
-      context: context,
-      initialDate: initialDate.isBefore(today) ? today : initialDate,
-      firstDate: today,
-      lastDate: DateTime(today.year + 2, today.month, today.day),
-    );
-    if (picked != null) {
-      setState(() => _liquidationDate = picked);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Gửi yêu cầu phê duyệt: ${widget.type.fullLabel}',
-              style: const TextStyle(
-                color: _kLabelColor,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Yêu cầu sẽ xuất hiện trong màn Yêu cầu với trạng thái chờ duyệt.',
-              style: TextStyle(
-                color: AppColors.bodyText,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                height: 18 / 12,
-              ),
-            ),
-            const SizedBox(height: 14),
-            if (_isLiquidation) ...[
-              GestureDetector(
-                onTap: _pickLiquidationDate,
-                child: InputDecorator(
-                  decoration: InputDecoration(
-                    labelText: 'Ngày thanh lý',
-                    filled: true,
-                    fillColor: AppColors.surface,
-                    labelStyle: const TextStyle(
-                      color: AppColors.bodyText,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    floatingLabelStyle: const TextStyle(
-                      color: AppColors.deepBlue,
-                      fontWeight: FontWeight.w800,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                      borderSide: const BorderSide(color: AppColors.cardBorder),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                      borderSide: const BorderSide(
-                        color: AppColors.deepBlue,
-                        width: 1.5,
-                      ),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        _liquidationDate == null
-                            ? 'Chọn ngày'
-                            : '${_liquidationDate!.day.toString().padLeft(2, '0')}/'
-                                  '${_liquidationDate!.month.toString().padLeft(2, '0')}/'
-                                  '${_liquidationDate!.year}',
-                        style: const TextStyle(
-                          color: AppColors.inputText,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const Icon(
-                        Icons.calendar_month_outlined,
-                        color: AppColors.deepBlue,
-                        size: 20,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-            ],
-            if (_isRenewal) ...[
-              TextField(
-                controller: _renewalMonthsCtrl,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                style: const TextStyle(
-                  color: AppColors.inputText,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-                decoration: InputDecoration(
-                  labelText: 'Thời hạn gia hạn (tháng)',
-                  hintText: 'Ví dụ: 12',
-                  helperText: 'Tối thiểu 6 tháng',
-                  filled: true,
-                  fillColor: AppColors.surface,
-                  labelStyle: const TextStyle(
-                    color: AppColors.bodyText,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  hintStyle: const TextStyle(color: AppColors.hintText),
-                  helperStyle: const TextStyle(
-                    color: AppColors.bodyText,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                    borderSide: const BorderSide(color: AppColors.cardBorder),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                    borderSide: const BorderSide(
-                      color: AppColors.deepBlue,
-                      width: 1.5,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-            ],
-            TextField(
-              controller: _ctrl,
-              maxLines: 3,
-              style: const TextStyle(
-                color: AppColors.inputText,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Ghi chú / mô tả',
-                filled: true,
-                fillColor: AppColors.surface,
-                hintStyle: const TextStyle(color: AppColors.hintText),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                  borderSide: const BorderSide(color: AppColors.cardBorder),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                  borderSide: const BorderSide(
-                    color: AppColors.deepBlue,
-                    width: 1.5,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            if (_error.isNotEmpty) ...[
-              Text(
-                _error,
-                style: const TextStyle(
-                  color: AppColors.danger,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 10),
-            ],
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _submitting
-                    ? null
-                    : () async {
-                        final renewalTermMonths = _isRenewal
-                            ? int.tryParse(_renewalMonthsCtrl.text.trim())
-                            : null;
-                        if (_isRenewal &&
-                            (renewalTermMonths == null ||
-                                renewalTermMonths < 6)) {
-                          const message = 'Thời hạn gia hạn tối thiểu 6 tháng.';
-                          setState(() => _error = message);
-                          ScaffoldMessenger.of(context)
-                            ..hideCurrentSnackBar()
-                            ..showSnackBar(
-                              const SnackBar(content: Text(message)),
-                            );
-                          return;
-                        }
-                        setState(() {
-                          _submitting = true;
-                          _error = '';
-                        });
-                        try {
-                          await widget.onSubmit(
-                            _ctrl.text.trim(),
-                            _liquidationDate,
-                            renewalTermMonths,
-                          );
-                          if (context.mounted) {
-                            Navigator.of(context).pop(true);
-                          }
-                        } catch (error) {
-                          if (!context.mounted) return;
-                          final message = _messageForRequestSubmitError(error);
-                          setState(() {
-                            _error = message;
-                            _submitting = false;
-                          });
-                          ScaffoldMessenger.of(context)
-                            ..hideCurrentSnackBar()
-                            ..showSnackBar(SnackBar(content: Text(message)));
-                        }
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.deepBlue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                  ),
-                ),
-                child: _submitting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('Gửi yêu cầu phê duyệt'),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -983,34 +585,6 @@ class _RoomHeroCard extends StatelessWidget {
                 ],
               ),
             ),
-            // Top-right: room code chip
-            if (contract.room.roomCode.trim().isNotEmpty)
-              Positioned(
-                top: 14,
-                right: 16,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(AppColors.radiusPill),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.18),
-                    ),
-                  ),
-                  child: Text(
-                    '#${contract.room.roomCode.trim()}',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -1536,15 +1110,6 @@ void _showContractFile(
 
 DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
 
-DateTime _addMonthsClamped(DateTime date, int months) {
-  final monthIndex = date.month + months - 1;
-  final year = date.year + monthIndex ~/ 12;
-  final month = monthIndex % 12 + 1;
-  final lastDay = DateTime(year, month + 1, 0).day;
-  final day = date.day > lastDay ? lastDay : date.day;
-  return DateTime(year, month, day);
-}
-
 String _roomTitle(LeaseRoom room) {
   if (room.roomName.trim().isNotEmpty) {
     return room.roomName.trim();
@@ -1620,11 +1185,4 @@ String _messageForError(Object? error) {
     return error.message;
   }
   return 'Không tải được dữ liệu hợp đồng';
-}
-
-String _messageForRequestSubmitError(Object? error) {
-  if (error is LeaseContractException) {
-    return error.message;
-  }
-  return 'Không thể gửi yêu cầu. Vui lòng thử lại.';
 }

@@ -8,6 +8,7 @@ import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
 import 'package:hdbhms_mobile/widgets/app_date_picker.dart';
+import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 import 'package:hdbhms_mobile/widgets/request_form_widgets.dart';
@@ -218,6 +219,13 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const RequestSectionHeader(
+              title: 'Chọn phòng phù hợp',
+              subtitle: 'So sánh thông tin trước khi gửi yêu cầu chuyển phòng.',
+              icon: Icons.swap_horiz_rounded,
+              accentColor: AppColors.actionCyan,
+            ),
+            const SizedBox(height: AppColors.space16),
             RequestContractSummaryCard(
               room: _roomLabel(contract),
               contractCode: _dash(contract.contractCode),
@@ -230,6 +238,7 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
             RequestFormSection(
               icon: Icons.meeting_room_outlined,
               title: 'Phòng muốn chuyển đến',
+              accentColor: AppColors.actionCyan,
               child: FormField<AvailableRoom>(
                 validator: (_) => _targetRoom == null
                     ? 'Vui lòng chọn phòng muốn chuyển đến.'
@@ -251,9 +260,9 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
                         padding: const EdgeInsets.only(top: 6, left: 12),
                         child: Text(
                           field.errorText!,
-                          style: const TextStyle(
+                          style: AppTypography.caption.copyWith(
                             color: AppColors.danger,
-                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
@@ -269,6 +278,7 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
             RequestFormSection(
               icon: Icons.calendar_today_outlined,
               title: 'Ngày chuyển dự kiến',
+              accentColor: AppColors.actionCyan,
               child: FormField<DateTime>(
                 validator: (_) => _transferDate == null
                     ? 'Vui lòng chọn ngày chuyển dự kiến.'
@@ -282,7 +292,11 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
                         },
                   borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   child: InputDecorator(
-                    decoration: InputDecoration(errorText: field.errorText),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: AppColors.inputFill,
+                      errorText: field.errorText,
+                    ),
                     child: Row(
                       children: [
                         Expanded(
@@ -306,11 +320,14 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
             RequestFormSection(
               icon: Icons.notes_outlined,
               title: 'Lý do chuyển phòng',
+              accentColor: AppColors.actionEmerald,
               child: TextFormField(
                 controller: _reasonController,
                 minLines: 3,
                 maxLines: 5,
                 decoration: const InputDecoration(
+                  filled: true,
+                  fillColor: AppColors.inputFill,
                   hintText: 'Nhập lý do (không bắt buộc)...',
                 ),
               ),
@@ -357,11 +374,24 @@ class _RoomSelector extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(
-                room == null
-                    ? Icons.meeting_room_outlined
-                    : Icons.check_circle_rounded,
-                color: room == null ? AppColors.primary : AppColors.successText,
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color:
+                      (room == null ? AppColors.actionCyan : AppColors.success)
+                          .withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                ),
+                child: Icon(
+                  room == null
+                      ? Icons.meeting_room_outlined
+                      : Icons.check_circle_rounded,
+                  color: room == null
+                      ? AppColors.actionCyan
+                      : AppColors.successText,
+                  size: 22,
+                ),
               ),
               const SizedBox(width: AppColors.space12),
               Expanded(
@@ -372,13 +402,13 @@ class _RoomSelector extends StatelessWidget {
                           Text(
                             loading
                                 ? 'Đang tải phòng...'
-                                : error ?? 'Chọn phòng phù hợp',
+                                : error ?? 'Chọn phòng muốn chuyển đến',
                             style: AppTypography.cardTitle,
                           ),
                           const SizedBox(height: 4),
                           Text(
                             error == null
-                                ? 'Xem giá, tầng và trạng thái'
+                                ? 'Xem giá, tầng, diện tích và tình trạng'
                                 : 'Chạm để thử lại',
                             style: AppTypography.caption,
                           ),
@@ -400,12 +430,36 @@ class _RoomSelector extends StatelessWidget {
                       ),
               ),
               if (room != null)
-                Text(
-                  'Thay đổi',
-                  style: AppTypography.label.copyWith(color: AppColors.primary),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySurface,
+                    borderRadius: BorderRadius.circular(AppColors.radiusPill),
+                  ),
+                  child: Text(
+                    'Thay đổi',
+                    style: AppTypography.metaLabel.copyWith(
+                      color: AppColors.primary,
+                    ),
+                  ),
                 )
               else
-                const Icon(Icons.chevron_right_rounded),
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySurface,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                ),
             ],
           ),
         ),
@@ -433,11 +487,21 @@ class _PriceComparison extends StatelessWidget {
             label: 'Phòng hiện tại',
             value: _roomLabel(contract),
           ),
-          const Divider(),
-          RequestReadOnlyRow(label: 'Phòng mới', value: target.displayName),
-          const Divider(),
+          const SizedBox(height: AppColors.space8),
           RequestReadOnlyRow(
-            label: 'Chênh lệch',
+            label: 'Giá phòng hiện tại',
+            value: '${CurrencyFormatter.vnd(contract.monthlyRent!)} / tháng',
+          ),
+          const SizedBox(height: AppColors.space8),
+          RequestReadOnlyRow(label: 'Phòng mới', value: target.displayName),
+          const SizedBox(height: AppColors.space8),
+          RequestReadOnlyRow(
+            label: 'Giá phòng mới',
+            value: '${CurrencyFormatter.vnd(target.listedPrice)} / tháng',
+          ),
+          const SizedBox(height: AppColors.space8),
+          RequestReadOnlyRow(
+            label: 'Chênh lệch mỗi tháng',
             value: label,
             valueColor: difference > 0
                 ? AppColors.warningText
@@ -468,7 +532,14 @@ class _LoadError extends StatelessWidget {
           const SizedBox(height: 12),
           Text(message, textAlign: TextAlign.center, style: AppTypography.body),
           const SizedBox(height: 16),
-          ElevatedButton(onPressed: onRetry, child: const Text('Thử lại')),
+          AppPrimaryGradientButton(
+            height: 48,
+            onPressed: onRetry,
+            child: Text(
+              'Thử lại',
+              style: AppTypography.button.copyWith(color: Colors.white),
+            ),
+          ),
         ],
       ),
     ),

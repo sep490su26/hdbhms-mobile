@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 
 /// Primary action shared by tenant-facing workflows.
 class AppPrimaryGradientButton extends StatelessWidget {
@@ -62,7 +63,7 @@ class AppPrimaryGradientButton extends StatelessWidget {
               child: IconTheme.merge(
                 data: const IconThemeData(color: Colors.white),
                 child: DefaultTextStyle.merge(
-                  style: const TextStyle(color: Colors.white),
+                  style: AppTypography.button.copyWith(color: Colors.white),
                   child: child,
                 ),
               ),

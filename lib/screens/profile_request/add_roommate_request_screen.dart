@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
-import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 import 'package:hdbhms_mobile/widgets/request_form_widgets.dart';
@@ -98,11 +97,14 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
                   title: 'Thông tin người ở cùng',
                   subtitle:
                       'Dùng để quản lý xét duyệt và cấp tài khoản sau khi được chấp nhận.',
+                  icon: Icons.person_add_alt_1_outlined,
+                  accentColor: AppColors.actionEmerald,
                 ),
                 const SizedBox(height: AppColors.space16),
                 RequestFormSection(
                   icon: Icons.person_add_alt_1_outlined,
                   title: 'Thông tin liên hệ',
+                  accentColor: AppColors.actionEmerald,
                   child: Column(
                     children: [
                       _Field(
@@ -158,33 +160,11 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
                   ),
                 ),
                 const SizedBox(height: AppColors.space16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(AppColors.space12),
-                  decoration: BoxDecoration(
-                    color: AppColors.infoSurface,
-                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: .2),
-                    ),
-                  ),
-                  child: const Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.info_outline_rounded,
-                        color: AppColors.deepBlue,
-                        size: 18,
-                      ),
-                      SizedBox(width: AppColors.space8),
-                      Expanded(
-                        child: Text(
-                          'Giới hạn tối đa 3 người/phòng',
-                          style: AppTypography.body,
-                        ),
-                      ),
-                    ],
-                  ),
+                const RequestNoticeCard(
+                  icon: Icons.groups_2_outlined,
+                  title: 'Giới hạn số người ở',
+                  message: 'Tối đa 3 người/phòng',
+                  accentColor: AppColors.actionCyan,
                 ),
                 if (_submitError != null) ...[
                   const SizedBox(height: AppColors.space16),
@@ -233,7 +213,11 @@ class _Field extends StatelessWidget {
         inputFormatters: inputFormatters,
         textCapitalization: textCapitalization,
         validator: validator,
-        decoration: InputDecoration(hintText: hint),
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: AppColors.inputFill,
+          hintText: hint,
+        ),
       ),
     ],
   );
