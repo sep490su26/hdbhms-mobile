@@ -112,113 +112,79 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                   title: 'Yêu cầu kết thúc hợp đồng',
                   subtitle: 'Quản lý sẽ kiểm tra trước khi xử lý.',
                 ),
-                const SizedBox(height: AppColors.space24),
-                const Text('HỢP ĐỒNG HIỆN TẠI', style: AppTypography.label),
-                const SizedBox(height: AppColors.space8),
+                const SizedBox(height: AppColors.space16),
                 RequestContractSummaryCard(
                   room: _roomLabel(widget.contract),
                   contractCode: _dash(widget.contract.contractCode),
                   expiry: _formatDate(widget.contract.endDate),
                 ),
                 const SizedBox(height: AppColors.space16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(AppColors.space12),
-                  decoration: BoxDecoration(
-                    color: AppColors.warningSurface,
-                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                    border: Border.all(
-                      color: AppColors.warning.withValues(alpha: .28),
+                RequestFormSection(
+                  icon: Icons.info_outline_rounded,
+                  title: 'Lưu ý trước khi gửi',
+                  child: const Text(
+                    'Sau khi được duyệt, bạn có thể cần bàn giao phòng, hoàn tất hóa đơn cuối kỳ và xác nhận hoàn cọc.',
+                    style: AppTypography.body,
+                  ),
+                ),
+                const SizedBox(height: AppColors.space16),
+                RequestFormSection(
+                  icon: Icons.calendar_today_outlined,
+                  title: 'Ngày thanh lý',
+                  child: FormField<DateTime>(
+                    validator: (_) => _liquidationDate == null
+                        ? 'Vui lòng chọn ngày thanh lý.'
+                        : null,
+                    builder: (field) => InkWell(
+                      onTap: _submitting
+                          ? null
+                          : () async {
+                              await _pickDate();
+                              field.didChange(_liquidationDate);
+                            },
+                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                      child: InputDecorator(
+                        isEmpty: _liquidationDate == null,
+                        decoration: InputDecoration(errorText: field.errorText),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _liquidationDate == null
+                                    ? 'Chọn ngày thanh lý'
+                                    : _formatDate(_liquidationDate),
+                                style: _liquidationDate == null
+                                    ? AppTypography.body
+                                    : AppTypography.label,
+                              ),
+                            ),
+                            const Icon(
+                              Icons.calendar_today_outlined,
+                              color: AppColors.bodyText,
+                              size: 20,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                  child: const Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.info_outline_rounded,
-                        color: AppColors.warningText,
-                      ),
-                      SizedBox(width: AppColors.space8),
-                      Expanded(
-                        child: Text(
-                          'Sau khi được duyệt, bạn có thể cần bàn giao phòng, hoàn tất hóa đơn cuối kỳ và xác nhận hoàn cọc.',
-                          style: AppTypography.body,
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
-                const SizedBox(height: AppColors.space24),
-                const Text('NGÀY THANH LÝ *', style: AppTypography.label),
-                const SizedBox(height: AppColors.space8),
-                FormField<DateTime>(
-                  validator: (_) => _liquidationDate == null
-                      ? 'Vui lòng chọn ngày thanh lý.'
-                      : null,
-                  builder: (field) => Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Semantics(
-                        button: true,
-                        label: 'Chọn ngày thanh lý',
-                        child: InkWell(
-                          onTap: _submitting
-                              ? null
-                              : () async {
-                                  await _pickDate();
-                                  field.didChange(_liquidationDate);
-                                },
-                          borderRadius: BorderRadius.circular(
-                            AppColors.radiusSm,
-                          ),
-                          child: InputDecorator(
-                            isEmpty: _liquidationDate == null,
-                            decoration: InputDecoration(
-                              errorText: field.errorText,
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    _liquidationDate == null
-                                        ? 'Chọn ngày thanh lý'
-                                        : _formatDate(_liquidationDate),
-                                    style: _liquidationDate == null
-                                        ? AppTypography.body
-                                        : AppTypography.label,
-                                  ),
-                                ),
-                                const Icon(
-                                  Icons.calendar_today_outlined,
-                                  size: 20,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppColors.space24),
-                const Text('LÝ DO / GHI CHÚ', style: AppTypography.label),
-                const SizedBox(height: AppColors.space8),
-                TextFormField(
-                  controller: _reasonController,
-                  minLines: 3,
-                  maxLines: 5,
-                  decoration: const InputDecoration(
-                    hintText: 'Nhập lý do hoặc thông tin thêm...',
+                const SizedBox(height: AppColors.space16),
+                RequestFormSection(
+                  icon: Icons.notes_outlined,
+                  title: 'Lý do hoặc ghi chú',
+                  child: TextFormField(
+                    controller: _reasonController,
+                    minLines: 3,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      hintText: 'Nhập lý do hoặc thông tin thêm...',
+                    ),
                   ),
                 ),
                 if (_submitError != null) ...[
                   const SizedBox(height: AppColors.space16),
-                  Text(
-                    _submitError!,
-                    style: AppTypography.body.copyWith(
-                      color: AppColors.dangerText,
-                    ),
-                  ),
+                  RequestErrorBanner(message: _submitError!),
                 ],
               ],
             ),
@@ -229,7 +195,8 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
   );
 }
 
-DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
+DateTime _dateOnly(DateTime value) =>
+    DateTime(value.year, value.month, value.day);
 String _formatDate(DateTime? date) => date == null
     ? '--'
     : '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';

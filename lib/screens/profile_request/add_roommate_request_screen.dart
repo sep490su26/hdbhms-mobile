@@ -14,7 +14,6 @@ class AddRoommateRequestScreen extends StatefulWidget {
     required this.contractId,
     this.contractService = const LeaseContractService(),
   });
-
   final int contractId;
   final LeaseContractService contractService;
 
@@ -100,52 +99,63 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
                   subtitle:
                       'Dùng để quản lý xét duyệt và cấp tài khoản sau khi được chấp nhận.',
                 ),
-                const SizedBox(height: AppColors.space24),
-                _Field(
-                  label: 'HỌ VÀ TÊN *',
-                  controller: _nameController,
-                  hint: 'Nhập họ và tên đầy đủ',
-                  textCapitalization: TextCapitalization.words,
-                  validator: (value) => value == null || value.trim().isEmpty
-                      ? 'Vui lòng nhập họ và tên.'
-                      : null,
-                ),
                 const SizedBox(height: AppColors.space16),
-                _Field(
-                  label: 'SỐ ĐIỆN THOẠI *',
-                  controller: _phoneController,
-                  hint: '0xxx xxx xxx',
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [_PhoneFormatter()],
-                  validator: (value) {
-                    final phone = _digits(value ?? '');
-                    return RegExp(r'^0\\d{8,10}$').hasMatch(phone)
-                        ? null
-                        : 'Số điện thoại không hợp lệ.';
-                  },
-                ),
-                const SizedBox(height: AppColors.space16),
-                _Field(
-                  label: 'EMAIL',
-                  controller: _emailController,
-                  hint: 'example@gmail.com',
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    final email = value?.trim() ?? '';
-                    if (email.isEmpty) return null;
-                    return RegExp(
-                          r'^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$',
-                        ).hasMatch(email)
-                        ? null
-                        : 'Email không hợp lệ.';
-                  },
-                ),
-                const SizedBox(height: AppColors.space16),
-                _Field(
-                  label: 'GHI CHÚ',
-                  controller: _noteController,
-                  hint: 'Thông tin thêm (không bắt buộc)',
-                  maxLines: 4,
+                RequestFormSection(
+                  icon: Icons.person_add_alt_1_outlined,
+                  title: 'Thông tin liên hệ',
+                  child: Column(
+                    children: [
+                      _Field(
+                        label: 'Họ và tên',
+                        required: true,
+                        controller: _nameController,
+                        hint: 'Nhập họ và tên đầy đủ',
+                        textCapitalization: TextCapitalization.words,
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                            ? 'Vui lòng nhập họ và tên.'
+                            : null,
+                      ),
+                      const SizedBox(height: AppColors.space16),
+                      _Field(
+                        label: 'Số điện thoại',
+                        required: true,
+                        controller: _phoneController,
+                        hint: '0xxx xxx xxx',
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: [_PhoneFormatter()],
+                        validator: (value) =>
+                            RegExp(
+                              r'^0\d{8,10}$',
+                            ).hasMatch(_digits(value ?? ''))
+                            ? null
+                            : 'Số điện thoại không hợp lệ.',
+                      ),
+                      const SizedBox(height: AppColors.space16),
+                      _Field(
+                        label: 'Email',
+                        controller: _emailController,
+                        hint: 'example@gmail.com',
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          final email = value?.trim() ?? '';
+                          return email.isEmpty ||
+                                  RegExp(
+                                    r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                                  ).hasMatch(email)
+                              ? null
+                              : 'Email không hợp lệ.';
+                        },
+                      ),
+                      const SizedBox(height: AppColors.space16),
+                      _Field(
+                        label: 'Ghi chú',
+                        controller: _noteController,
+                        hint: 'Thông tin thêm (không bắt buộc)',
+                        maxLines: 4,
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: AppColors.space16),
                 Container(
@@ -159,10 +169,12 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
                     ),
                   ),
                   child: const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(
                         Icons.info_outline_rounded,
                         color: AppColors.deepBlue,
+                        size: 18,
                       ),
                       SizedBox(width: AppColors.space8),
                       Expanded(
@@ -176,12 +188,7 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
                 ),
                 if (_submitError != null) ...[
                   const SizedBox(height: AppColors.space16),
-                  Text(
-                    _submitError!,
-                    style: AppTypography.body.copyWith(
-                      color: AppColors.dangerText,
-                    ),
-                  ),
+                  RequestErrorBanner(message: _submitError!),
                 ],
               ],
             ),
@@ -197,27 +204,27 @@ class _Field extends StatelessWidget {
     required this.label,
     required this.controller,
     required this.hint,
+    this.required = false,
     this.keyboardType,
     this.inputFormatters,
     this.validator,
     this.maxLines = 1,
     this.textCapitalization = TextCapitalization.none,
   });
-
   final String label;
   final TextEditingController controller;
   final String hint;
+  final bool required;
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
   final String? Function(String?)? validator;
   final int maxLines;
   final TextCapitalization textCapitalization;
-
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(label, style: AppTypography.label),
+      RequestFieldLabel(label: label, required: required),
       const SizedBox(height: AppColors.space8),
       TextFormField(
         controller: controller,
@@ -232,7 +239,7 @@ class _Field extends StatelessWidget {
   );
 }
 
-String _digits(String value) => value.replaceAll(RegExp(r'\\D'), '');
+String _digits(String value) => value.replaceAll(RegExp(r'\D'), '');
 
 class _PhoneFormatter extends TextInputFormatter {
   @override

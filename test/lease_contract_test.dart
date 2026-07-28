@@ -317,7 +317,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Yêu cầu kết thúc hợp đồng'), findsOneWidget);
-    expect(find.text('NGÀY THANH LÝ *'), findsOneWidget);
+    expect(find.text('Ngày thanh lý'), findsOneWidget);
   });
 
   testWidgets('contract screen shows error when renewal request submit fails', (

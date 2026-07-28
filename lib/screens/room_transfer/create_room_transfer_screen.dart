@@ -12,7 +12,6 @@ import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 import 'package:hdbhms_mobile/widgets/request_form_widgets.dart';
 import 'package:hdbhms_mobile/widgets/room_picker_sheet.dart';
-import 'package:hdbhms_mobile/widgets/section_card.dart';
 
 class CreateRoomTransferScreen extends StatefulWidget {
   const CreateRoomTransferScreen({
@@ -219,8 +218,6 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('HỢP ĐỒNG HIỆN TẠI', style: AppTypography.label),
-            const SizedBox(height: AppColors.space8),
             RequestContractSummaryCard(
               room: _roomLabel(contract),
               contractCode: _dash(contract.contractCode),
@@ -230,96 +227,97 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
                   : '${CurrencyFormatter.vnd(contract.monthlyRent!)} / tháng',
             ),
             const SizedBox(height: AppColors.space24),
-            const Text('PHÒNG MUỐN CHUYỂN ĐẾN *', style: AppTypography.label),
-            const SizedBox(height: AppColors.space8),
-            FormField<AvailableRoom>(
-              validator: (_) => _targetRoom == null
-                  ? 'Vui lòng chọn phòng muốn chuyển đến.'
-                  : null,
-              builder: (field) => Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _RoomSelector(
-                    room: _targetRoom,
-                    loading: _loadingRooms,
-                    error: _roomError,
-                    onTap: () async {
-                      await _openPicker();
-                      field.didChange(_targetRoom);
-                    },
-                  ),
-                  if (field.errorText != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6, left: 12),
-                      child: Text(
-                        field.errorText!,
-                        style: const TextStyle(
-                          color: AppColors.danger,
-                          fontSize: 12,
+            RequestFormSection(
+              icon: Icons.meeting_room_outlined,
+              title: 'Phòng muốn chuyển đến',
+              child: FormField<AvailableRoom>(
+                validator: (_) => _targetRoom == null
+                    ? 'Vui lòng chọn phòng muốn chuyển đến.'
+                    : null,
+                builder: (field) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _RoomSelector(
+                      room: _targetRoom,
+                      loading: _loadingRooms,
+                      error: _roomError,
+                      onTap: () async {
+                        await _openPicker();
+                        field.didChange(_targetRoom);
+                      },
+                    ),
+                    if (field.errorText != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6, left: 12),
+                        child: Text(
+                          field.errorText!,
+                          style: const TextStyle(
+                            color: AppColors.danger,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
             if (_targetRoom != null && contract.monthlyRent != null) ...[
               const SizedBox(height: AppColors.space16),
-              const Text('SO SÁNH CHI PHÍ', style: AppTypography.label),
-              const SizedBox(height: AppColors.space8),
               _PriceComparison(contract: contract, target: _targetRoom!),
             ],
             const SizedBox(height: AppColors.space24),
-            const Text('NGÀY CHUYỂN DỰ KIẾN *', style: AppTypography.label),
-            const SizedBox(height: AppColors.space8),
-            FormField<DateTime>(
-              validator: (_) => _transferDate == null
-                  ? 'Vui lòng chọn ngày chuyển dự kiến.'
-                  : null,
-              builder: (field) => InkWell(
-                onTap: _submitting
-                    ? null
-                    : () async {
-                        await _pickDate();
-                        field.didChange(_transferDate);
-                      },
-                borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                child: InputDecorator(
-                  decoration: InputDecoration(errorText: field.errorText),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _transferDate == null
-                              ? 'Chọn ngày'
-                              : _date(_transferDate),
-                          style: _transferDate == null
-                              ? AppTypography.body
-                              : AppTypography.label,
+            RequestFormSection(
+              icon: Icons.calendar_today_outlined,
+              title: 'Ngày chuyển dự kiến',
+              child: FormField<DateTime>(
+                validator: (_) => _transferDate == null
+                    ? 'Vui lòng chọn ngày chuyển dự kiến.'
+                    : null,
+                builder: (field) => InkWell(
+                  onTap: _submitting
+                      ? null
+                      : () async {
+                          await _pickDate();
+                          field.didChange(_transferDate);
+                        },
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                  child: InputDecorator(
+                    decoration: InputDecoration(errorText: field.errorText),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _transferDate == null
+                                ? 'Chọn ngày'
+                                : _date(_transferDate),
+                            style: _transferDate == null
+                                ? AppTypography.body
+                                : AppTypography.label,
+                          ),
                         ),
-                      ),
-                      const Icon(Icons.calendar_today_outlined, size: 20),
-                    ],
+                        const Icon(Icons.calendar_today_outlined, size: 20),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
             const SizedBox(height: AppColors.space24),
-            const Text('LÝ DO CHUYỂN PHÒNG', style: AppTypography.label),
-            const SizedBox(height: AppColors.space8),
-            TextFormField(
-              controller: _reasonController,
-              minLines: 3,
-              maxLines: 5,
-              decoration: const InputDecoration(
-                hintText: 'Nhập lý do (không bắt buộc)...',
+            RequestFormSection(
+              icon: Icons.notes_outlined,
+              title: 'Lý do chuyển phòng',
+              child: TextFormField(
+                controller: _reasonController,
+                minLines: 3,
+                maxLines: 5,
+                decoration: const InputDecoration(
+                  hintText: 'Nhập lý do (không bắt buộc)...',
+                ),
               ),
             ),
             if (_error != null) ...[
               const SizedBox(height: AppColors.space16),
-              Text(
-                _error!,
-                style: AppTypography.body.copyWith(color: AppColors.dangerText),
-              ),
+              RequestErrorBanner(message: _error!),
             ],
           ],
         ),
@@ -426,7 +424,9 @@ class _PriceComparison extends StatelessWidget {
     final label = difference == 0
         ? 'Không thay đổi'
         : '${difference > 0 ? '+' : '-'}${CurrencyFormatter.vnd(difference.abs())} / tháng';
-    return SectionCard(
+    return RequestFormSection(
+      icon: Icons.compare_arrows_rounded,
+      title: 'So sánh chi phí',
       child: Column(
         children: [
           RequestReadOnlyRow(

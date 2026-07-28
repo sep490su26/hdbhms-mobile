@@ -5,7 +5,6 @@ import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
-import 'package:hdbhms_mobile/widgets/section_card.dart';
 
 class RequestSectionHeader extends StatelessWidget {
   const RequestSectionHeader({super.key, required this.title, this.subtitle});
@@ -23,6 +22,131 @@ class RequestSectionHeader extends StatelessWidget {
         Text(subtitle!, style: AppTypography.body),
       ],
     ],
+  );
+}
+
+class RequestFormSection extends StatelessWidget {
+  const RequestFormSection({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.child,
+    this.subtitle,
+    this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final Widget child;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppColors.space16),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
+      border: Border.all(color: AppColors.cardBorder),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
+              ),
+              child: Icon(icon, color: AppColors.deepBlue, size: 19),
+            ),
+            const SizedBox(width: AppColors.space12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: AppTypography.cardTitle),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: AppColors.space4),
+                    Text(subtitle!, style: AppTypography.caption),
+                  ],
+                ],
+              ),
+            ),
+            if (trailing != null) ...[
+              const SizedBox(width: AppColors.space8),
+              trailing!,
+            ],
+          ],
+        ),
+        const SizedBox(height: AppColors.space16),
+        child,
+      ],
+    ),
+  );
+}
+
+class RequestFieldLabel extends StatelessWidget {
+  const RequestFieldLabel({
+    super.key,
+    required this.label,
+    this.required = false,
+  });
+
+  final String label;
+  final bool required;
+
+  @override
+  Widget build(BuildContext context) => Text.rich(
+    TextSpan(
+      text: label,
+      style: AppTypography.label,
+      children: [
+        if (required)
+          TextSpan(
+            text: ' *',
+            style: AppTypography.label.copyWith(color: AppColors.danger),
+          ),
+      ],
+    ),
+  );
+}
+
+class RequestErrorBanner extends StatelessWidget {
+  const RequestErrorBanner({super.key, required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppColors.space12),
+    decoration: BoxDecoration(
+      color: AppColors.dangerSurface,
+      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(
+          Icons.error_outline_rounded,
+          color: AppColors.dangerText,
+          size: 18,
+        ),
+        const SizedBox(width: AppColors.space8),
+        Expanded(
+          child: Text(
+            message,
+            style: AppTypography.body.copyWith(color: AppColors.dangerText),
+          ),
+        ),
+      ],
+    ),
   );
 }
 
@@ -75,21 +199,53 @@ class RequestContractSummaryCard extends StatelessWidget {
   final String? monthlyRent;
 
   @override
-  Widget build(BuildContext context) => SectionCard(
-    padding: const EdgeInsets.all(AppColors.space16),
-    child: Column(
-      children: [
-        RequestReadOnlyRow(label: 'Phòng hiện tại', value: room),
-        const Divider(),
-        RequestReadOnlyRow(label: 'Mã hợp đồng', value: contractCode),
-        const Divider(),
-        RequestReadOnlyRow(label: 'Ngày hết hạn', value: expiry),
-        if (monthlyRent != null) ...[
-          const Divider(),
-          RequestReadOnlyRow(label: 'Giá hiện tại', value: monthlyRent!),
-        ],
-      ],
+  Widget build(BuildContext context) => RequestFormSection(
+    icon: Icons.description_outlined,
+    title: 'Hợp đồng hiện tại',
+    child: LayoutBuilder(
+      builder: (context, constraints) => Wrap(
+        spacing: AppColors.space16,
+        runSpacing: AppColors.space12,
+        children:
+            [
+                  _SummaryMetric(label: 'Phòng hiện tại', value: room),
+                  _SummaryMetric(label: 'Mã hợp đồng', value: contractCode),
+                  _SummaryMetric(label: 'Ngày hết hạn', value: expiry),
+                  if (monthlyRent != null)
+                    _SummaryMetric(label: 'Giá hiện tại', value: monthlyRent!),
+                ]
+                .map(
+                  (metric) => SizedBox(
+                    width: constraints.maxWidth >= 340
+                        ? (constraints.maxWidth - AppColors.space16) / 2
+                        : constraints.maxWidth,
+                    child: metric,
+                  ),
+                )
+                .toList(growable: false),
+      ),
     ),
+  );
+}
+
+class _SummaryMetric extends StatelessWidget {
+  const _SummaryMetric({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: AppTypography.caption),
+      const SizedBox(height: AppColors.space4),
+      Text(
+        value,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: AppTypography.label,
+      ),
+    ],
   );
 }
 
@@ -107,7 +263,10 @@ class StickyRequestAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    color: AppColors.surface,
+    decoration: const BoxDecoration(
+      color: AppColors.surface,
+      border: Border(top: BorderSide(color: AppColors.cardBorder)),
+    ),
     padding: EdgeInsets.fromLTRB(
       AppColors.space16,
       AppColors.space12,
@@ -158,14 +317,13 @@ class RequestFormScaffold extends StatelessWidget {
         child: SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(
             AppColors.space16,
-            AppColors.space24,
+            AppColors.space16,
             AppColors.space16,
             AppColors.space24 + MediaQuery.viewInsetsOf(context).bottom,
           ),
           child: child,
         ),
       ),
-      const Divider(height: 1),
       action,
     ],
   );
@@ -329,9 +487,15 @@ class _RequestSuccessSheetState extends State<RequestSuccessSheet>
                 children: [
                   SizedBox(
                     width: double.infinity,
-                    child: OutlinedButton(
+                    child: AppPrimaryGradientButton(
+                      height: 52,
                       onPressed: widget.onViewRequests,
-                      child: const Text('Xem các yêu cầu'),
+                      child: Text(
+                        'Xem các yêu cầu',
+                        style: AppTypography.button.copyWith(
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: AppColors.space8),

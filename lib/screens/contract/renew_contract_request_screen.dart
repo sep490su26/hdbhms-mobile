@@ -4,12 +4,11 @@ import 'package:flutter/services.dart';
 import 'package:hdbhms_mobile/models/contract/lease_contract_model.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
-import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
+import 'package:hdbhms_mobile/widgets/app_filter_chip.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 import 'package:hdbhms_mobile/widgets/request_form_widgets.dart';
-import 'package:hdbhms_mobile/widgets/section_card.dart';
 
 class RenewContractRequestScreen extends StatefulWidget {
   const RenewContractRequestScreen({
@@ -45,14 +44,14 @@ class _RenewContractRequestScreenState
 
   DateTime? get _newStartDate {
     final end = widget.contract.endDate;
-    if (end == null) return null;
-    return DateTime(end.year, end.month, end.day).add(const Duration(days: 1));
+    return end == null ? null : DateTime(end.year, end.month, end.day + 1);
   }
 
   DateTime? get _newEndDate {
     final start = _newStartDate;
-    if (start == null || _months < 1) return null;
-    return _addMonthsClamped(start, _months).subtract(const Duration(days: 1));
+    return start == null || _months < 1
+        ? null
+        : _addMonthsClamped(start, _months).subtract(const Duration(days: 1));
   }
 
   Future<void> _submit() async {
@@ -93,7 +92,9 @@ class _RenewContractRequestScreenState
       if (!mounted) return;
       setState(() {
         _submitting = false;
-        _submitError = _errorMessage(error);
+        _submitError = error is LeaseContractException
+            ? error.message
+            : 'Không thể gửi yêu cầu. Vui lòng thử lại.';
       });
     }
   }
@@ -122,53 +123,66 @@ class _RenewContractRequestScreenState
                   title: 'Gia hạn thời gian thuê',
                   subtitle: 'Kiểm tra thông tin trước khi gửi yêu cầu.',
                 ),
-                const SizedBox(height: AppColors.space24),
-                const Text('HỢP ĐỒNG HIỆN TẠI', style: AppTypography.label),
-                const SizedBox(height: AppColors.space8),
+                const SizedBox(height: AppColors.space16),
                 RequestContractSummaryCard(
                   room: _roomLabel(widget.contract),
-                  contractCode: _orDash(widget.contract.contractCode),
+                  contractCode: _dash(widget.contract.contractCode),
                   expiry: _date(widget.contract.endDate),
                 ),
-                const SizedBox(height: AppColors.space24),
-                const Text('THỜI HẠN GIA HẠN *', style: AppTypography.label),
-                const SizedBox(height: AppColors.space8),
-                Wrap(
-                  spacing: AppColors.space8,
-                  runSpacing: AppColors.space8,
-                  children: [6, 12, 18, 24]
-                      .map(
-                        (value) => ChoiceChip(
-                          label: Text('$value tháng'),
-                          selected: _months == value,
-                          onSelected: (_) =>
-                              setState(() => _monthsController.text = '$value'),
+                const SizedBox(height: AppColors.space16),
+                RequestFormSection(
+                  icon: Icons.calendar_month_outlined,
+                  title: 'Thời hạn gia hạn',
+                  subtitle: 'Chọn nhanh hoặc nhập số tháng phù hợp.',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Wrap(
+                        spacing: AppColors.space8,
+                        runSpacing: AppColors.space8,
+                        children: [6, 12, 18, 24]
+                            .map(
+                              (value) => AppFilterChip(
+                                label: '$value tháng',
+                                isActive: _months == value,
+                                onTap: () => setState(
+                                  () => _monthsController.text = '$value',
+                                ),
+                              ),
+                            )
+                            .toList(growable: false),
+                      ),
+                      const SizedBox(height: AppColors.space16),
+                      const RequestFieldLabel(
+                        label: 'Số tháng khác',
+                        required: true,
+                      ),
+                      const SizedBox(height: AppColors.space8),
+                      TextFormField(
+                        controller: _monthsController,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        onChanged: (_) => setState(() {}),
+                        validator: (value) {
+                          final months = int.tryParse(value ?? '');
+                          return months == null || months < 6
+                              ? 'Thời hạn gia hạn tối thiểu 6 tháng.'
+                              : null;
+                        },
+                        decoration: const InputDecoration(
+                          hintText: 'Nhập số tháng khác',
+                          helperText: 'Tối thiểu 6 tháng',
                         ),
-                      )
-                      .toList(growable: false),
-                ),
-                const SizedBox(height: AppColors.space12),
-                TextFormField(
-                  controller: _monthsController,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  onChanged: (_) => setState(() {}),
-                  validator: (value) {
-                    final months = int.tryParse(value ?? '');
-                    if (months == null || months < 6) {
-                      return 'Thời hạn gia hạn tối thiểu 6 tháng.';
-                    }
-                    return null;
-                  },
-                  decoration: const InputDecoration(
-                    hintText: 'Nhập số tháng khác',
-                    helperText: 'Tối thiểu 6 tháng',
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: AppColors.space24),
-                const Text('THỜI GIAN DỰ KIẾN', style: AppTypography.label),
-                const SizedBox(height: AppColors.space8),
-                SectionCard(
+                const SizedBox(height: AppColors.space16),
+                RequestFormSection(
+                  icon: Icons.event_available_outlined,
+                  title: 'Thời gian dự kiến',
                   child: Column(
                     children: [
                       AnimatedSwitcher(
@@ -179,7 +193,7 @@ class _RenewContractRequestScreenState
                           value: _date(_newStartDate),
                         ),
                       ),
-                      const Divider(),
+                      const SizedBox(height: AppColors.space8),
                       AnimatedSwitcher(
                         duration: const Duration(milliseconds: 200),
                         child: RequestReadOnlyRow(
@@ -191,10 +205,10 @@ class _RenewContractRequestScreenState
                     ],
                   ),
                 ),
-                const SizedBox(height: AppColors.space24),
-                const Text('ĐIỀU KHOẢN TÀI CHÍNH', style: AppTypography.label),
-                const SizedBox(height: AppColors.space8),
-                SectionCard(
+                const SizedBox(height: AppColors.space16),
+                RequestFormSection(
+                  icon: Icons.account_balance_wallet_outlined,
+                  title: 'Điều khoản tài chính',
                   child: Column(
                     children: [
                       RequestReadOnlyRow(
@@ -203,14 +217,14 @@ class _RenewContractRequestScreenState
                             ? '--'
                             : '${CurrencyFormatter.vnd(widget.contract.monthlyRent!)} / tháng',
                       ),
-                      const Divider(),
+                      const SizedBox(height: AppColors.space8),
                       RequestReadOnlyRow(
                         label: 'Chu kỳ thanh toán',
                         value: widget.contract.paymentCycleMonths == null
                             ? '--'
                             : '${widget.contract.paymentCycleMonths} tháng',
                       ),
-                      const Divider(),
+                      const SizedBox(height: AppColors.space8),
                       RequestReadOnlyRow(
                         label: 'Tiền cọc',
                         value: widget.contract.depositAmount == null
@@ -222,20 +236,22 @@ class _RenewContractRequestScreenState
                     ],
                   ),
                 ),
-                const SizedBox(height: AppColors.space24),
-                const Text('GHI CHÚ', style: AppTypography.label),
-                const SizedBox(height: AppColors.space8),
-                TextFormField(
-                  controller: _noteController,
-                  minLines: 3,
-                  maxLines: 5,
-                  decoration: const InputDecoration(
-                    hintText: 'Nhập ghi chú cho quản lý...',
+                const SizedBox(height: AppColors.space16),
+                RequestFormSection(
+                  icon: Icons.notes_outlined,
+                  title: 'Ghi chú',
+                  child: TextFormField(
+                    controller: _noteController,
+                    minLines: 3,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      hintText: 'Nhập ghi chú cho quản lý...',
+                    ),
                   ),
                 ),
                 if (_submitError != null) ...[
                   const SizedBox(height: AppColors.space16),
-                  _ErrorBanner(message: _submitError!),
+                  RequestErrorBanner(message: _submitError!),
                 ],
               ],
             ),
@@ -246,41 +262,23 @@ class _RenewContractRequestScreenState
   );
 }
 
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message});
-  final String message;
-  @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(AppColors.space12),
-    decoration: BoxDecoration(
-      color: AppColors.dangerSurface,
-      borderRadius: BorderRadius.circular(AppColors.radiusSm),
-    ),
-    child: Text(
-      message,
-      style: AppTypography.body.copyWith(color: AppColors.dangerText),
-    ),
-  );
-}
-
 DateTime _addMonthsClamped(DateTime date, int months) {
   final monthIndex = date.month - 1 + months;
   final year = date.year + monthIndex ~/ 12;
   final month = monthIndex % 12 + 1;
-  final lastDay = DateTime(year, month + 1, 0).day;
-  return DateTime(year, month, date.day.clamp(1, lastDay));
+  return DateTime(
+    year,
+    month,
+    date.day.clamp(1, DateTime(year, month + 1, 0).day),
+  );
 }
 
 String _date(DateTime? date) => date == null
     ? '--'
     : '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-String _orDash(String value) => value.trim().isEmpty ? '--' : value;
-String _roomLabel(LeaseContract contract) {
-  final room = contract.room;
-  return _orDash(room.roomName.isNotEmpty ? room.roomName : room.roomCode);
-}
-
-String _errorMessage(Object error) => error is LeaseContractException
-    ? error.message
-    : 'Không thể gửi yêu cầu. Vui lòng thử lại.';
+String _dash(String value) => value.trim().isEmpty ? '--' : value;
+String _roomLabel(LeaseContract contract) => _dash(
+  contract.room.roomName.isEmpty
+      ? contract.room.roomCode
+      : contract.room.roomName,
+);

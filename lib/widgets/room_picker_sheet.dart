@@ -4,6 +4,8 @@ import 'package:hdbhms_mobile/models/room_transfer/room_transfer_model.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
+import 'package:hdbhms_mobile/widgets/app_filter_chip.dart';
+import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
 
 class RoomPickerSheet extends StatefulWidget {
   const RoomPickerSheet({
@@ -164,7 +166,8 @@ class _RoomPickerSheetState extends State<RoomPickerSheet> {
                 ),
                 child: SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
+                  child: AppPrimaryGradientButton(
+                    height: 52,
                     onPressed: _selected == null
                         ? null
                         : () => Navigator.of(context).pop(_selected),
@@ -190,11 +193,8 @@ class _FilterChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => ChoiceChip(
-    label: Text(label),
-    selected: selected,
-    onSelected: (_) => onTap(),
-  );
+  Widget build(BuildContext context) =>
+      AppFilterChip(label: label, isActive: selected, onTap: onTap);
 }
 
 class _RoomOptionCard extends StatelessWidget {
