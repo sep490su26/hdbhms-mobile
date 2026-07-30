@@ -498,10 +498,12 @@ class TicketAttachment {
     required this.mimeType,
     required this.phase,
     required this.sortOrder,
+    this.fileId = 0,
     this.name = '',
   });
 
   final int id;
+  final int fileId;
   final String url;
   final String mimeType;
   final TicketAttachmentPhase phase;
@@ -512,15 +514,47 @@ class TicketAttachment {
   bool get isVideo => mimeType.startsWith('video/');
 
   factory TicketAttachment.fromJson(Map<String, dynamic> json) {
-    final fileId = _asInt(json['fileId']);
-    final rawUrl = json['url']?.toString() ?? '';
+    final id = _asInt(json['id']) ?? 0;
+    final fileId =
+        _firstInt(json, [
+          'fileId',
+          'file_id',
+          'fileMetadataId',
+          'file_metadata_id',
+        ]) ??
+        id;
+    final rawUrl = _firstString(json, [
+      'url',
+      'fileUrl',
+      'file_url',
+      'downloadUrl',
+      'download_url',
+    ]);
+    final name = _firstString(json, [
+      'name',
+      'fileName',
+      'file_name',
+      'originalFileName',
+      'original_file_name',
+    ]);
+    final mimeType = _firstString(json, [
+      'mimeType',
+      'mime_type',
+      'contentType',
+      'content_type',
+    ]);
     return TicketAttachment(
-      id: _asInt(json['id']) ?? fileId ?? 0,
+      id: id > 0 ? id : fileId,
+      fileId: fileId,
       url: _resolveFileUrl(rawUrl, fileId),
-      mimeType: json['mimeType']?.toString() ?? 'image/jpeg',
-      phase: TicketAttachmentPhase.fromBackend(json['phase']?.toString() ?? ''),
-      sortOrder: _asInt(json['sortOrder']) ?? 0,
-      name: json['name']?.toString() ?? '',
+      mimeType: mimeType.isEmpty
+          ? _attachmentMimeFallback(name.isEmpty ? rawUrl : name)
+          : mimeType,
+      phase: TicketAttachmentPhase.fromBackend(
+        _firstString(json, ['phase', 'attachmentPhase', 'attachment_phase']),
+      ),
+      sortOrder: _firstInt(json, ['sortOrder', 'sort_order', 'order']) ?? 0,
+      name: name,
     );
   }
 }
@@ -891,6 +925,14 @@ String _firstString(Map<String, dynamic> json, List<String> keys) {
   return '';
 }
 
+int? _firstInt(Map<String, dynamic> json, List<String> keys) {
+  for (final key in keys) {
+    final value = _asInt(json[key]);
+    if (value != null) return value;
+  }
+  return null;
+}
+
 Map<String, dynamic> _asMap(Object? value) {
   if (value is Map<String, dynamic>) return value;
   if (value is Map) {
@@ -929,6 +971,21 @@ String _resolveFileUrl(String rawUrl, int? fileId) {
     return '${ApiConfig.baseUrl}/files/download/$fileId';
   }
   return '';
+}
+
+String _attachmentMimeFallback(String value) {
+  final path = Uri.tryParse(value)?.path ?? value;
+  final extension = path.split('.').last.toLowerCase();
+  return switch (extension) {
+    'jpg' || 'jpeg' => 'image/jpeg',
+    'png' => 'image/png',
+    'gif' => 'image/gif',
+    'webp' => 'image/webp',
+    'mp4' => 'video/mp4',
+    'mov' => 'video/quicktime',
+    'webm' => 'video/webm',
+    _ => 'image/jpeg',
+  };
 }
 
 String _maintenanceActionLabel(String action) {

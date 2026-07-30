@@ -300,7 +300,9 @@ class QrReceiptTemplate extends StatelessWidget {
                         height: 46,
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                          borderRadius: BorderRadius.circular(
+                            AppColors.radiusMd,
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.28),
@@ -348,7 +350,9 @@ class QrReceiptTemplate extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(AppColors.radiusPill),
+                          borderRadius: BorderRadius.circular(
+                            AppColors.radiusPill,
+                          ),
                           border: Border.all(
                             color: Colors.white.withValues(alpha: 0.35),
                           ),
@@ -528,7 +532,9 @@ class QrReceiptTemplate extends StatelessWidget {
                           ),
                           decoration: BoxDecoration(
                             color: AppColors.infoSurface,
-                            borderRadius: BorderRadius.circular(AppColors.radiusPill),
+                            borderRadius: BorderRadius.circular(
+                              AppColors.radiusPill,
+                            ),
                           ),
                           child: const Text(
                             'Mở app ngân hàng hoặc ví điện tử  →  Quét mã QR',
@@ -816,12 +822,45 @@ class _QrUnavailable extends StatelessWidget {
 }
 
 Uint8List? _decodeQrBytes(String value) {
+  final normalized = value.trim();
+  final hasDataImagePrefix = normalized.toLowerCase().startsWith('data:image/');
+  final looksLikeBase64Image =
+      normalized.startsWith('iVBOR') ||
+      normalized.startsWith('/9j/') ||
+      normalized.startsWith('UklGR');
+  if (!hasDataImagePrefix && !looksLikeBase64Image) return null;
+
   try {
-    final normalized = value.contains(',') ? value.split(',').last : value;
-    return base64Decode(normalized);
+    final encoded = hasDataImagePrefix
+        ? normalized.substring(normalized.indexOf(',') + 1)
+        : normalized;
+    final bytes = base64Decode(encoded);
+    return _looksLikeImage(bytes) ? bytes : null;
   } on FormatException {
     return null;
   }
+}
+
+bool _looksLikeImage(Uint8List bytes) {
+  if (bytes.length >= 8 &&
+      bytes[0] == 0x89 &&
+      bytes[1] == 0x50 &&
+      bytes[2] == 0x4E &&
+      bytes[3] == 0x47) {
+    return true;
+  }
+  if (bytes.length >= 3 && bytes[0] == 0xFF && bytes[1] == 0xD8) {
+    return true;
+  }
+  return bytes.length >= 12 &&
+      bytes[0] == 0x52 &&
+      bytes[1] == 0x49 &&
+      bytes[2] == 0x46 &&
+      bytes[3] == 0x46 &&
+      bytes[8] == 0x57 &&
+      bytes[9] == 0x45 &&
+      bytes[10] == 0x42 &&
+      bytes[11] == 0x50;
 }
 
 String _formatAmount(int amount) {

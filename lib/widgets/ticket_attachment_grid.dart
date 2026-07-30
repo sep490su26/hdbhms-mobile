@@ -1,6 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
+import 'package:hdbhms_mobile/services/file_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 class TicketAttachmentGrid extends StatelessWidget {
@@ -8,11 +11,13 @@ class TicketAttachmentGrid extends StatelessWidget {
     super.key,
     required this.attachments,
     required this.emptyText,
+    this.fileService = const FileService(),
     this.onAttachmentError,
   });
 
   final List<TicketAttachment> attachments;
   final String emptyText;
+  final FileService fileService;
   final VoidCallback? onAttachmentError;
 
   @override
@@ -29,6 +34,7 @@ class TicketAttachmentGrid extends StatelessWidget {
         for (var index = 0; index < sorted.length; index++) ...[
           _AttachmentTile(
             attachment: sorted[index],
+            fileService: fileService,
             onAttachmentError: onAttachmentError,
           ),
           if (index < sorted.length - 1) const SizedBox(height: 10),
@@ -41,10 +47,12 @@ class TicketAttachmentGrid extends StatelessWidget {
 class _AttachmentTile extends StatelessWidget {
   const _AttachmentTile({
     required this.attachment,
+    required this.fileService,
     required this.onAttachmentError,
   });
 
   final TicketAttachment attachment;
+  final FileService fileService;
   final VoidCallback? onAttachmentError;
 
   @override
@@ -61,15 +69,13 @@ class _AttachmentTile extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               if (attachment.isImage)
-                Image.network(
-                  attachment.url,
+                _AttachmentImage(
+                  attachment: attachment,
+                  fileService: fileService,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      onAttachmentError?.call();
-                    });
-                    return const _AttachmentPlaceholder();
-                  },
+                  loading: const _AttachmentLoading(),
+                  placeholder: const _AttachmentPlaceholder(),
+                  onAttachmentError: onAttachmentError,
                 )
               else
                 const _VideoPlaceholder(),
@@ -93,6 +99,7 @@ class _AttachmentTile extends StatelessWidget {
       MaterialPageRoute(
         builder: (context) => _AttachmentPreviewScreen(
           attachment: attachment,
+          fileService: fileService,
           onAttachmentError: onAttachmentError,
         ),
       ),
@@ -103,10 +110,12 @@ class _AttachmentTile extends StatelessWidget {
 class _AttachmentPreviewScreen extends StatelessWidget {
   const _AttachmentPreviewScreen({
     required this.attachment,
+    required this.fileService,
     required this.onAttachmentError,
   });
 
   final TicketAttachment attachment;
+  final FileService fileService;
   final VoidCallback? onAttachmentError;
 
   @override
@@ -128,21 +137,83 @@ class _AttachmentPreviewScreen extends StatelessWidget {
               ? InteractiveViewer(
                   minScale: 0.8,
                   maxScale: 4,
-                  child: Image.network(
-                    attachment.url,
+                  child: _AttachmentImage(
+                    attachment: attachment,
+                    fileService: fileService,
                     fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        onAttachmentError?.call();
-                      });
-                      return const _PreviewPlaceholder();
-                    },
+                    loading: const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+                    placeholder: const _PreviewPlaceholder(),
+                    onAttachmentError: onAttachmentError,
                   ),
                 )
               : const _PreviewVideoPlaceholder(),
         ),
       ),
     );
+  }
+}
+
+class _AttachmentImage extends StatelessWidget {
+  const _AttachmentImage({
+    required this.attachment,
+    required this.fileService,
+    required this.fit,
+    required this.loading,
+    required this.placeholder,
+    required this.onAttachmentError,
+  });
+
+  final TicketAttachment attachment;
+  final FileService fileService;
+  final BoxFit fit;
+  final Widget loading;
+  final Widget placeholder;
+  final VoidCallback? onAttachmentError;
+
+  @override
+  Widget build(BuildContext context) {
+    if (attachment.fileId > 0) {
+      return FutureBuilder<Uint8List>(
+        future: fileService.download(attachment.fileId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return loading;
+          }
+          final bytes = snapshot.data;
+          if (snapshot.hasError || bytes == null || bytes.isEmpty) {
+            return _errorPlaceholder();
+          }
+          return Image.memory(
+            bytes,
+            width: double.infinity,
+            height: double.infinity,
+            fit: fit,
+          );
+        },
+      );
+    }
+
+    final url = attachment.url.trim();
+    if (url.isEmpty) {
+      return _errorPlaceholder();
+    }
+
+    return Image.network(
+      url,
+      width: double.infinity,
+      height: double.infinity,
+      fit: fit,
+      errorBuilder: (context, error, stackTrace) => _errorPlaceholder(),
+    );
+  }
+
+  Widget _errorPlaceholder() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      onAttachmentError?.call();
+    });
+    return placeholder;
   }
 }
 
@@ -168,6 +239,27 @@ class _EmptyAttachments extends StatelessWidget {
           color: AppColors.bodyText,
           fontSize: 14,
           fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+class _AttachmentLoading extends StatelessWidget {
+  const _AttachmentLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: Color(0xFFE7E9F0),
+      child: Center(
+        child: SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppColors.deepBlue,
+          ),
         ),
       ),
     );

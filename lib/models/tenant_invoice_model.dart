@@ -134,7 +134,7 @@ class TenantInvoice {
       remainingAmount: _intField(json, ['remainingAmount']),
       paymentIntentId: int.tryParse(_firstString(json, ['paymentIntentId'])),
       checkoutUrl: _firstString(json, ['checkoutUrl', 'checkOutUrl']),
-      qrCode: _firstString(json, ['qrCode']),
+      qrCode: _firstString(json, ['qrCode', 'qrPayload']),
       providerOrderCode: _firstString(json, ['providerOrderCode']),
       paymentLinkId: _firstString(json, ['paymentLinkId']),
       bankBin: _firstString(json, ['bankBin']),

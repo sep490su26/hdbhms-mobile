@@ -98,8 +98,13 @@ class _MaintenanceTicketListScreenState
   Future<void> _openCreateTicket() async {
     final created = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (context) =>
-            CreateMaintenanceTicketScreen(ticketService: widget.ticketService),
+        builder: (context) => CreateMaintenanceTicketScreen(
+          ticketService: widget.ticketService,
+          currentRoomService: widget.currentRoomService,
+          roomId: _activeRoomId,
+          roomCode: _activeRoomCode,
+          notificationInitialUnreadCount: widget.notificationInitialUnreadCount,
+        ),
       ),
     );
     if (created == true && mounted) {
@@ -1171,10 +1176,7 @@ class _ErrorState extends StatelessWidget {
 }
 
 class _StateMessage extends StatelessWidget {
-  const _StateMessage({
-    required this.title,
-    required this.onRetry,
-  });
+  const _StateMessage({required this.title, required this.onRetry});
 
   final String title;
   final VoidCallback onRetry;

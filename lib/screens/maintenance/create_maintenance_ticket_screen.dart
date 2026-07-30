@@ -24,11 +24,17 @@ class CreateMaintenanceTicketScreen extends StatefulWidget {
     this.ticketService = const MaintenanceTicketService(),
     this.currentRoomService = const CurrentRoomService(),
     this.imagePicker,
+    this.roomId,
+    this.roomCode = '',
+    this.notificationInitialUnreadCount,
   });
 
   final MaintenanceTicketService ticketService;
   final CurrentRoomService currentRoomService;
   final ImagePicker? imagePicker;
+  final int? roomId;
+  final String roomCode;
+  final int? notificationInitialUnreadCount;
 
   @override
   State<CreateMaintenanceTicketScreen> createState() =>
@@ -67,6 +73,15 @@ class _CreateMaintenanceTicketScreenState
   }
 
   Future<void> _loadCurrentRoom() async {
+    final selectedRoomId = widget.roomId ?? 0;
+    if (selectedRoomId > 0) {
+      _currentRoom = CurrentRentedRoom(
+        id: selectedRoomId,
+        roomCode: widget.roomCode.trim(),
+      );
+      return;
+    }
+
     try {
       final room = await widget.currentRoomService.getCurrentRentedRoom();
       if (!mounted) {
@@ -232,7 +247,7 @@ class _CreateMaintenanceTicketScreenState
       return;
     }
     final room = _currentRoom;
-    if (room == null) {
+    if (room == null || room.id <= 0) {
       _showSnackBar('Không tìm thấy phòng đang thuê');
       return;
     }
@@ -344,9 +359,10 @@ class _CreateMaintenanceTicketScreenState
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const AppNotificationBell(
+            icon: AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: AppColors.topBarIconSize,
+              initialUnreadCount: widget.notificationInitialUnreadCount,
             ),
             tooltip: 'Thông báo',
           ),
@@ -562,13 +578,25 @@ class _CreateMaintenanceTicketScreenState
         onSupportTap: () {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (context) => const MaintenanceTicketListScreen(),
+              builder: (context) => MaintenanceTicketListScreen(
+                ticketService: widget.ticketService,
+                currentRoomService: widget.currentRoomService,
+                roomId: _activeRoomId,
+                roomCode: _activeRoomCode,
+                notificationInitialUnreadCount:
+                    widget.notificationInitialUnreadCount,
+              ),
             ),
           );
         },
         onBillsTap: () {
           Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const BillSelectionPage()),
+            MaterialPageRoute(
+              builder: (context) => BillSelectionPage(
+                roomId: _activeRoomId,
+                roomCode: _activeRoomCode,
+              ),
+            ),
           );
         },
         onProfileTap: () {
@@ -579,10 +607,25 @@ class _CreateMaintenanceTicketScreenState
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+          MaterialPageRoute(
+            builder: (context) => TenantRequestScreen(
+              roomId: _activeRoomId,
+              roomCode: _activeRoomCode,
+            ),
+          ),
         ),
       ),
     );
+  }
+
+  int? get _activeRoomId {
+    final id = _currentRoom?.id ?? widget.roomId;
+    return (id ?? 0) > 0 ? id : null;
+  }
+
+  String get _activeRoomCode {
+    final code = _currentRoom?.roomCode ?? widget.roomCode;
+    return code.trim();
   }
 }
 
