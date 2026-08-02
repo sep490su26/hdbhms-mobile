@@ -24,9 +24,11 @@ class ActiveRoomItem {
     required this.propertyName,
     this.roomStatus = '',
     this.contractStatus = '',
+    this.tenantIntention = '',
     this.roleInContract = '',
     this.startDate,
     this.endDate,
+    this.expectedVacantDate,
     this.occupantCount = 0,
   });
 
@@ -38,9 +40,11 @@ class ActiveRoomItem {
   final String propertyName;
   final String roomStatus;
   final String contractStatus;
+  final String tenantIntention;
   final String roleInContract;
   final DateTime? startDate;
   final DateTime? endDate;
+  final DateTime? expectedVacantDate;
   final int occupantCount;
 
   factory ActiveRoomItem.fromJson(Map<String, dynamic> json) {
@@ -69,6 +73,10 @@ class ActiveRoomItem {
           json['contractStatus']?.toString() ??
           json['contract_status']?.toString() ??
           '',
+      tenantIntention:
+          json['tenantIntention']?.toString() ??
+          json['tenant_intention']?.toString() ??
+          '',
       roleInContract:
           json['roleInContract']?.toString() ??
           json['role_in_contract']?.toString() ??
@@ -78,6 +86,13 @@ class ActiveRoomItem {
       ),
       endDate: DateTime.tryParse(
         json['endDate']?.toString() ?? json['end_date']?.toString() ?? '',
+      ),
+      expectedVacantDate: DateTime.tryParse(
+        json['expectedVacantDate']?.toString() ??
+            json['expected_vacant_date']?.toString() ??
+            json['expectedMoveOutDate']?.toString() ??
+            json['expected_move_out_date']?.toString() ??
+            '',
       ),
       occupantCount:
           _asInt(json['occupantCount'] ?? json['occupant_count']) ?? 0,
@@ -334,6 +349,59 @@ class LeaseContractService {
     } on FormatException {
       throw const LeaseContractException(
         'Không thể lưu ý định. Vui lòng thử lại.',
+      );
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
+
+  Future<void> submitLiquidationRequest({
+    required int contractId,
+    required DateTime liquidationDate,
+    required String reason,
+    String? liquidationMode,
+    List<int> leavingProfileIds = const [],
+    List<int> stayingProfileIds = const [],
+    int? replacementPrimaryTenantProfileId,
+  }) async {
+    final client = _effectiveClient;
+    final body = <String, dynamic>{
+      'liquidationDate': _dateOnlyString(liquidationDate),
+      'reason': reason.trim(),
+      if (liquidationMode != null && liquidationMode.trim().isNotEmpty)
+        'liquidationMode': liquidationMode.trim(),
+      if (leavingProfileIds.isNotEmpty) 'leavingProfileIds': leavingProfileIds,
+      if (stayingProfileIds.isNotEmpty) 'stayingProfileIds': stayingProfileIds,
+      if (replacementPrimaryTenantProfileId != null)
+        'replacementPrimaryTenantProfileId': replacementPrimaryTenantProfileId,
+    };
+
+    try {
+      final response = await client
+          .post(
+            Uri.parse(
+              '${ApiConfig.baseUrl}/lease-contracts/$contractId/liquidation-requests',
+            ),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(_timeout);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return;
+      }
+      throw LeaseContractException(_messageForError(response));
+    } on LeaseContractException {
+      rethrow;
+    } on TimeoutException {
+      throw const LeaseContractException(
+        'KhÃ´ng káº¿t ná»‘i Ä‘Æ°á»£c mÃ¡y chá»§',
+      );
+    } on http.ClientException {
+      throw const LeaseContractException(
+        'KhÃ´ng káº¿t ná»‘i Ä‘Æ°á»£c mÃ¡y chá»§',
       );
     } finally {
       if (_client == null) {

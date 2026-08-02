@@ -16,10 +16,17 @@ import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart
 
 /// Màn hub "Hợp Đồng" – chứa 2 tab: HĐ thuê + HĐ cọc.
 class ContractHubScreen extends StatefulWidget {
-  const ContractHubScreen({super.key, this.initialTab = 0});
+  const ContractHubScreen({
+    super.key,
+    this.initialTab = 0,
+    this.roomId,
+    this.roomCode,
+  });
 
   /// 0 = HĐ thuê, 1 = HĐ cọc
   final int initialTab;
+  final int? roomId;
+  final String? roomCode;
 
   @override
   State<ContractHubScreen> createState() => _ContractHubScreenState();
@@ -67,7 +74,16 @@ class _ContractHubScreenState extends State<ContractHubScreen>
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
-                  children: const [_LeaseContractTab(), _DepositContractTab()],
+                  children: [
+                    _LeaseContractTab(
+                      roomId: widget.roomId,
+                      roomCode: widget.roomCode,
+                    ),
+                    _DepositContractTab(
+                      roomId: widget.roomId,
+                      roomCode: widget.roomCode,
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -185,20 +201,34 @@ class _ContractHubScreenState extends State<ContractHubScreen>
 
 /// Tab HĐ thuê – nhúng nội dung LeaseContractListScreen ở chế độ embedded.
 class _LeaseContractTab extends StatelessWidget {
-  const _LeaseContractTab();
+  const _LeaseContractTab({this.roomId, this.roomCode});
+
+  final int? roomId;
+  final String? roomCode;
 
   @override
   Widget build(BuildContext context) {
-    return const LeaseContractListScreen(embeddedMode: true);
+    return LeaseContractListScreen(
+      embeddedMode: true,
+      roomId: roomId,
+      roomCode: roomCode,
+    );
   }
 }
 
 /// Tab HĐ cọc – nhúng nội dung DepositContractListScreen ở chế độ embedded.
 class _DepositContractTab extends StatelessWidget {
-  const _DepositContractTab();
+  const _DepositContractTab({this.roomId, this.roomCode});
+
+  final int? roomId;
+  final String? roomCode;
 
   @override
   Widget build(BuildContext context) {
-    return const DepositContractListScreen(embeddedMode: true);
+    return DepositContractListScreen(
+      embeddedMode: true,
+      roomId: roomId,
+      roomCode: roomCode,
+    );
   }
 }

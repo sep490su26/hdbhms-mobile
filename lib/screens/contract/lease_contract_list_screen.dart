@@ -19,9 +19,13 @@ class LeaseContractListScreen extends StatefulWidget {
     super.key,
     this.contractService = const LeaseContractService(),
     this.embeddedMode = false,
+    this.roomId,
+    this.roomCode,
   });
 
   final LeaseContractService contractService;
+  final int? roomId;
+  final String? roomCode;
 
   /// Khi true: không hiển thị header riêng, không có bottom bar (dùng trong ContractHubScreen).
   final bool embeddedMode;
@@ -83,6 +87,28 @@ class _LeaseContractListScreenState extends State<LeaseContractListScreen> {
   bool get _hasActiveFilters =>
       _selectedStatus != null || _selectedDateRange != null;
 
+  bool get _hasRoomFilter =>
+      (widget.roomId != null && widget.roomId! > 0) ||
+      _normalizeRoomCode(widget.roomCode ?? '').isNotEmpty;
+
+  List<ContractListItem> _filterByRoom(List<ContractListItem> list) {
+    if (!_hasRoomFilter) return list;
+    return list.where(_matchesRoom).toList(growable: false);
+  }
+
+  bool _matchesRoom(ContractListItem item) {
+    final roomId = widget.roomId ?? 0;
+    if (roomId > 0 && item.roomId > 0) return item.roomId == roomId;
+
+    final targetRoomCode = _normalizeRoomCode(widget.roomCode ?? '');
+    final itemRoomCode = _normalizeRoomCode(item.roomCode);
+    if (targetRoomCode.isNotEmpty && itemRoomCode.isNotEmpty) {
+      return itemRoomCode == targetRoomCode;
+    }
+
+    return false;
+  }
+
   Future<void> _pickDateRange() async {
     final now = DateTime.now();
     final picked = await showDateRangePicker(
@@ -143,10 +169,12 @@ class _LeaseContractListScreenState extends State<LeaseContractListScreen> {
                 return _EmptyState(onRetry: _retry);
               }
 
-              final filtered = list;
+              final filtered = _filterByRoom(list);
 
               if (filtered.isEmpty) {
-                return _EmptyFilterState(onClear: _clearFilters);
+                return _hasActiveFilters
+                    ? _EmptyFilterState(onClear: _clearFilters)
+                    : _EmptyState(onRetry: _retry);
               }
 
               return RefreshIndicator(
@@ -799,6 +827,16 @@ class _ErrorState extends StatelessWidget {
 
 // ── Helpers ──
 
+String _normalizeRoomCode(String value) {
+  var code = value.trim().toUpperCase();
+  if (code.startsWith('PHÒNG ')) code = code.substring(6).trim();
+  if (code.startsWith('PHONG ')) code = code.substring(6).trim();
+  if (code.startsWith('P') && int.tryParse(code.substring(1)) != null) {
+    code = code.substring(1);
+  }
+  return code;
+}
+
 String _formatDate(DateTime date) {
   return '${date.day.toString().padLeft(2, '0')}/'
       '${date.month.toString().padLeft(2, '0')}/'
@@ -826,12 +864,31 @@ String _fmtShort(DateTime date) {
       const Color(0xFFFFD8D5),
       const Color(0xFFB00020),
     ),
-    'TERMINATED' => (
-      'Đã chấm dứt',
+    'TERMINATION_PENDING' => (
+      'Đang thanh lý',
+      const Color(0xFFFFF3CD),
+      const Color(0xFF856404),
+    ),
+    'LIQUIDATED' => (
+      'Đã thanh lý',
       const Color(0xFFE7E9F0),
       AppColors.bodyText,
     ),
+    'AUTO_TERMINATED' => (
+      'Tự kết thúc',
+      const Color(0xFFE7E9F0),
+      AppColors.bodyText,
+    ),
+    'TRANSFERRED' => (
+      'Đã chuyển phòng',
+      const Color(0xFFEFF1FF),
+      AppColors.deepBlue,
+    ),
+    'CANCELLED' => ('Đã hủy', const Color(0xFFE7E9F0), AppColors.bodyText),
+    'RENEWED' => ('Đã gia hạn', const Color(0xFFEFF1FF), AppColors.deepBlue),
     'DRAFT' => ('Bản nháp', const Color(0xFFE7E9F0), AppColors.bodyText),
+    'CONFIRMED' => ('Đã xác nhận', const Color(0xFFEFF1FF), AppColors.deepBlue),
+    'SIGNED' => ('Đã ký', const Color(0xFFD4F8DE), const Color(0xFF159447)),
     'PENDING_SIGNATURE' => (
       'Chờ ký',
       const Color(0xFFFFF3CD),

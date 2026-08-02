@@ -19,9 +19,13 @@ class DepositContractListScreen extends StatefulWidget {
     super.key,
     this.depositService = const DepositContractService(),
     this.embeddedMode = false,
+    this.roomId,
+    this.roomCode,
   });
 
   final DepositContractService depositService;
+  final int? roomId;
+  final String? roomCode;
 
   /// Khi true: không hiển thị header riêng, không có bottom bar (dùng trong ContractHubScreen).
   final bool embeddedMode;
@@ -83,6 +87,28 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
   bool get _hasActiveFilters =>
       _selectedStatus != null || _selectedDateRange != null;
 
+  bool get _hasRoomFilter =>
+      (widget.roomId != null && widget.roomId! > 0) ||
+      _normalizeRoomCode(widget.roomCode ?? '').isNotEmpty;
+
+  List<ContractListItem> _filterByRoom(List<ContractListItem> list) {
+    if (!_hasRoomFilter) return list;
+    return list.where(_matchesRoom).toList(growable: false);
+  }
+
+  bool _matchesRoom(ContractListItem item) {
+    final roomId = widget.roomId ?? 0;
+    if (roomId > 0 && item.roomId > 0) return item.roomId == roomId;
+
+    final targetRoomCode = _normalizeRoomCode(widget.roomCode ?? '');
+    final itemRoomCode = _normalizeRoomCode(item.roomCode);
+    if (targetRoomCode.isNotEmpty && itemRoomCode.isNotEmpty) {
+      return itemRoomCode == targetRoomCode;
+    }
+
+    return false;
+  }
+
   Future<void> _pickDateRange() async {
     final now = DateTime.now();
     final picked = await showDateRangePicker(
@@ -143,10 +169,12 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
                 return _EmptyState(onRetry: _retry);
               }
 
-              final filtered = list;
+              final filtered = _filterByRoom(list);
 
               if (filtered.isEmpty) {
-                return _EmptyFilterState(onClear: _clearFilters);
+                return _hasActiveFilters
+                    ? _EmptyFilterState(onClear: _clearFilters)
+                    : _EmptyState(onRetry: _retry);
               }
 
               return RefreshIndicator(
@@ -797,6 +825,16 @@ class _ErrorState extends StatelessWidget {
 }
 
 // ── Helpers ──
+
+String _normalizeRoomCode(String value) {
+  var code = value.trim().toUpperCase();
+  if (code.startsWith('PHÒNG ')) code = code.substring(6).trim();
+  if (code.startsWith('PHONG ')) code = code.substring(6).trim();
+  if (code.startsWith('P') && int.tryParse(code.substring(1)) != null) {
+    code = code.substring(1);
+  }
+  return code;
+}
 
 String _formatDate(DateTime date) {
   return '${date.day.toString().padLeft(2, '0')}/'

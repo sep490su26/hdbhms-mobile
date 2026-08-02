@@ -113,6 +113,41 @@ void main() {
     },
   );
 
+  test(
+    'LeaseContractService submits liquidation request with occupant payload',
+    () async {
+      final service = LeaseContractService(
+        client: MockClient((request) async {
+          expect(request.method, 'POST');
+          expect(
+            request.url.path,
+            '/api/v1/lease-contracts/9/liquidation-requests',
+          );
+
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          expect(body['liquidationDate'], '2026-07-30');
+          expect(body['reason'], 'Chuyen phong va nguoi o cung o lai');
+          expect(body['liquidationMode'], 'PRIMARY_LEAVES_CO_OCCUPANT_STAYS');
+          expect(body['leavingProfileIds'], [101]);
+          expect(body['stayingProfileIds'], [202]);
+          expect(body['replacementPrimaryTenantProfileId'], 202);
+
+          return http.Response('{}', 200);
+        }),
+      );
+
+      await service.submitLiquidationRequest(
+        contractId: 9,
+        liquidationDate: DateTime(2026, 7, 30),
+        reason: 'Chuyen phong va nguoi o cung o lai',
+        liquidationMode: 'PRIMARY_LEAVES_CO_OCCUPANT_STAYS',
+        leavingProfileIds: [101],
+        stayingProfileIds: [202],
+        replacementPrimaryTenantProfileId: 202,
+      );
+    },
+  );
+
   testWidgets('contract screen shows expiring warning and room 201 data', (
     tester,
   ) async {
@@ -157,7 +192,7 @@ void main() {
       await tester.tap(find.text('Thanh lý\nhợp đồng'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Hợp đồng còn dưới 1 tháng'), findsOneWidget);
+      expect(find.textContaining('Hợp đồng còn dưới 1 tháng'), findsOneWidget);
       expect(find.text('Tạo yêu cầu hủy'), findsOneWidget);
 
       await tester.tap(find.text('Tạo yêu cầu hủy'));
@@ -165,7 +200,7 @@ void main() {
 
       expect(find.text('Thanh lý hợp đồng'), findsOneWidget);
       expect(find.text('HD-201'), findsOneWidget);
-      expect(find.text('Hợp đồng còn dưới 1 tháng'), findsOneWidget);
+      expect(find.textContaining('Hợp đồng còn dưới 1 tháng'), findsOneWidget);
     },
   );
 

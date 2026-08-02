@@ -142,6 +142,19 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
+    final selectedRoom = _provider.selectedRoom;
+    final selectedRoomCode = selectedRoom?.roomCode.trim() ?? '';
+    final quickActionContractId =
+        selectedRoom != null && selectedRoom.contractId > 0
+        ? selectedRoom.contractId
+        : summary.contract?.id;
+    final quickActionRoomId = selectedRoom != null && selectedRoom.roomId > 0
+        ? selectedRoom.roomId
+        : summary.room?.id;
+    final quickActionRoomCode = selectedRoomCode.isNotEmpty
+        ? selectedRoomCode
+        : summary.room?.roomCode;
+
     return AppScreenShell(
       header: _HomeHeader(
         summary: summary,
@@ -183,7 +196,11 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 17),
               const _SectionHeading('Thao tác nhanh'),
               const SizedBox(height: 17),
-              _QuickActions(contractId: summary.contract?.id),
+              _QuickActions(
+                contractId: quickActionContractId,
+                roomId: quickActionRoomId,
+                roomCode: quickActionRoomCode,
+              ),
             ],
           ),
         ),
@@ -1099,9 +1116,11 @@ class _SectionHeading extends StatelessWidget {
 }
 
 class _QuickActions extends StatelessWidget {
-  const _QuickActions({this.contractId});
+  const _QuickActions({this.contractId, this.roomId, this.roomCode});
 
   final int? contractId;
+  final int? roomId;
+  final String? roomCode;
 
   @override
   Widget build(BuildContext context) {
@@ -1132,7 +1151,8 @@ class _QuickActions extends StatelessWidget {
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => const ContractHubScreen(),
+                builder: (context) =>
+                    ContractHubScreen(roomId: roomId, roomCode: roomCode),
               ),
             );
           },

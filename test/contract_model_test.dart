@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hdbhms_mobile/models/contract/contract_list_item_model.dart';
 import 'package:hdbhms_mobile/models/contract/lease_contract_model.dart';
+import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 
 void main() {
   test('ContractListItem reads camelCase deposit agreement id', () {
@@ -60,6 +61,59 @@ void main() {
       });
 
       expect(lease.contractFileUrl, '/api/v1/tenants/profiles/me/files/11');
+    },
+  );
+
+  test(
+    'LeaseContract reads current tenant and occupants from detail response',
+    () {
+      final lease = LeaseContract.fromJson({
+        'id': 7,
+        'contractCode': 'HD-2026-H101-7',
+        'status': 'ACTIVE',
+        'currentTenantProfileId': 101,
+        'occupants': [
+          {
+            'tenantProfileId': 101,
+            'fullName': 'Nguyen Van A',
+            'phone': '0901',
+            'occupantRole': 'PRIMARY',
+            'status': 'ACTIVE',
+          },
+          {
+            'tenantProfileId': 102,
+            'fullName': 'Tran Thi B',
+            'email': 'b@example.com',
+            'occupantRole': 'CO_OCCUPANT',
+            'status': 'ACTIVE',
+          },
+        ],
+      });
+
+      expect(lease.currentTenantProfileId, 101);
+      expect(lease.occupants.map((item) => item.tenantProfileId), [101, 102]);
+      expect(lease.occupants.first.isPrimary, isTrue);
+      expect(lease.occupants.last.displayName, 'Tran Thi B');
+    },
+  );
+
+  test(
+    'ActiveRoomItem reads liquidation fields from active rooms response',
+    () {
+      final room = ActiveRoomItem.fromJson({
+        'contractId': 403,
+        'roomCode': '403',
+        'roomName': 'Phòng 403',
+        'contractStatus': 'TERMINATION_PENDING',
+        'tenantIntention': 'MOVE_OUT',
+        'expectedVacantDate': '2026-07-31',
+        'endDate': '2026-09-30',
+      });
+
+      expect(room.contractStatus, 'TERMINATION_PENDING');
+      expect(room.tenantIntention, 'MOVE_OUT');
+      expect(room.expectedVacantDate, DateTime(2026, 7, 31));
+      expect(room.endDate, DateTime(2026, 9, 30));
     },
   );
 }

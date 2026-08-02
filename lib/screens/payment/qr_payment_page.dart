@@ -226,7 +226,7 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
                           _PaymentHero(invoice: _invoice, theme: theme),
                           const SizedBox(height: 18),
                           _QrCard(
-                            qrCode: _invoice.qrCode,
+                            qrCode: _invoice.payosQrValue,
                             theme: theme,
                             downloading: _downloadingQr,
                             onDownload: _downloadQr,
@@ -496,12 +496,16 @@ class _QrCard extends StatelessWidget {
               children: [
                 Icon(Icons.bolt_rounded, color: theme.primary, size: 16),
                 const SizedBox(width: 5),
-                Text(
-                  'Tự động đối soát sau khi chuyển khoản',
-                  style: TextStyle(
-                    color: theme.primary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                Flexible(
+                  child: Text(
+                    'Tự động đối soát sau khi chuyển khoản',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: theme.primary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -557,7 +561,7 @@ class _QrImage extends StatelessWidget {
     if (value.isEmpty) {
       return _QrFallback(theme: theme);
     }
-    if (value.startsWith('http://') || value.startsWith('https://')) {
+    if (_looksLikeImageUrl(value)) {
       return Image.network(
         value,
         fit: BoxFit.contain,
@@ -950,14 +954,57 @@ class _PaymentVisualTheme {
 
 Uint8List? _decodeQrBytes(String value) {
   if (value.isEmpty) return null;
+  final normalized = value.trim();
+  final hasDataImagePrefix = normalized.toLowerCase().startsWith('data:image/');
+  final looksLikeBase64Image =
+      normalized.startsWith('iVBOR') ||
+      normalized.startsWith('/9j/') ||
+      normalized.startsWith('UklGR');
+  if (!hasDataImagePrefix && !looksLikeBase64Image) return null;
+
   try {
-    final encoded = value.startsWith('data:image/')
-        ? value.substring(value.indexOf(',') + 1)
-        : value;
-    return base64Decode(encoded);
+    final encoded = hasDataImagePrefix
+        ? normalized.substring(normalized.indexOf(',') + 1)
+        : normalized;
+    final bytes = base64Decode(encoded);
+    return _looksLikeImage(bytes) ? bytes : null;
   } on FormatException {
     return null;
   }
+}
+
+bool _looksLikeImageUrl(String value) {
+  final uri = Uri.tryParse(value.trim());
+  if (uri == null || !uri.hasScheme) return false;
+  final scheme = uri.scheme.toLowerCase();
+  if (scheme != 'http' && scheme != 'https') return false;
+  final path = uri.path.toLowerCase();
+  return path.endsWith('.png') ||
+      path.endsWith('.jpg') ||
+      path.endsWith('.jpeg') ||
+      path.endsWith('.webp');
+}
+
+bool _looksLikeImage(Uint8List bytes) {
+  if (bytes.length >= 8 &&
+      bytes[0] == 0x89 &&
+      bytes[1] == 0x50 &&
+      bytes[2] == 0x4E &&
+      bytes[3] == 0x47) {
+    return true;
+  }
+  if (bytes.length >= 3 && bytes[0] == 0xFF && bytes[1] == 0xD8) {
+    return true;
+  }
+  return bytes.length >= 12 &&
+      bytes[0] == 0x52 &&
+      bytes[1] == 0x49 &&
+      bytes[2] == 0x46 &&
+      bytes[3] == 0x46 &&
+      bytes[8] == 0x57 &&
+      bytes[9] == 0x45 &&
+      bytes[10] == 0x42 &&
+      bytes[11] == 0x50;
 }
 
 Future<void> _copyValue(BuildContext context, String value) async {

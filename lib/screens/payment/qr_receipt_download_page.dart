@@ -81,7 +81,7 @@ Future<bool> downloadQrReceipt(
 
   overlay.insert(entry);
   try {
-    final qrValue = invoice.qrCode.trim();
+  final qrValue = invoice.payosQrValue.trim();
     if (qrValue.startsWith('http://') || qrValue.startsWith('https://')) {
       await precacheImage(NetworkImage(qrValue), context);
     }
@@ -410,7 +410,7 @@ class QrReceiptTemplate extends StatelessWidget {
                                   width: 152,
                                   height: 152,
                                   child: _ReceiptQrImage(
-                                    qrCode: invoice.qrCode,
+                                    qrCode: invoice.payosQrValue,
                                   ),
                                 ),
                               ),
@@ -667,7 +667,7 @@ class _ReceiptQrImage extends StatelessWidget {
     final value = qrCode.trim();
     if (value.isEmpty) return const _QrUnavailable();
 
-    if (value.startsWith('http://') || value.startsWith('https://')) {
+    if (_looksLikeImageUrl(value)) {
       return Image.network(
         value,
         fit: BoxFit.contain,
@@ -715,12 +715,57 @@ class _QrUnavailable extends StatelessWidget {
 }
 
 Uint8List? _decodeQrBytes(String value) {
+  final normalized = value.trim();
+  final hasDataImagePrefix = normalized.toLowerCase().startsWith('data:image/');
+  final looksLikeBase64Image =
+      normalized.startsWith('iVBOR') ||
+      normalized.startsWith('/9j/') ||
+      normalized.startsWith('UklGR');
+  if (!hasDataImagePrefix && !looksLikeBase64Image) return null;
+
   try {
-    final normalized = value.contains(',') ? value.split(',').last : value;
-    return base64Decode(normalized);
+    final encoded = hasDataImagePrefix
+        ? normalized.substring(normalized.indexOf(',') + 1)
+        : normalized;
+    final bytes = base64Decode(encoded);
+    return _looksLikeImage(bytes) ? bytes : null;
   } on FormatException {
     return null;
   }
+}
+
+bool _looksLikeImageUrl(String value) {
+  final uri = Uri.tryParse(value.trim());
+  if (uri == null || !uri.hasScheme) return false;
+  final scheme = uri.scheme.toLowerCase();
+  if (scheme != 'http' && scheme != 'https') return false;
+  final path = uri.path.toLowerCase();
+  return path.endsWith('.png') ||
+      path.endsWith('.jpg') ||
+      path.endsWith('.jpeg') ||
+      path.endsWith('.webp');
+}
+
+bool _looksLikeImage(Uint8List bytes) {
+  if (bytes.length >= 8 &&
+      bytes[0] == 0x89 &&
+      bytes[1] == 0x50 &&
+      bytes[2] == 0x4E &&
+      bytes[3] == 0x47) {
+    return true;
+  }
+  if (bytes.length >= 3 && bytes[0] == 0xFF && bytes[1] == 0xD8) {
+    return true;
+  }
+  return bytes.length >= 12 &&
+      bytes[0] == 0x52 &&
+      bytes[1] == 0x49 &&
+      bytes[2] == 0x46 &&
+      bytes[3] == 0x46 &&
+      bytes[8] == 0x57 &&
+      bytes[9] == 0x45 &&
+      bytes[10] == 0x42 &&
+      bytes[11] == 0x50;
 }
 
 String _formatAmount(int amount) {

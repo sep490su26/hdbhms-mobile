@@ -2,6 +2,7 @@ class ContractListItem {
   const ContractListItem({
     required this.id,
     required this.contractCode,
+    this.roomId = 0,
     required this.roomCode,
     required this.signedAt,
     required this.status,
@@ -9,11 +10,14 @@ class ContractListItem {
 
   final int id;
   final String contractCode;
+  final int roomId;
   final String roomCode;
   final DateTime? signedAt;
   final String status;
 
   factory ContractListItem.fromJson(Map<String, dynamic> json) {
+    final roomJson = _firstMap(json, ['room', 'roomInfo']);
+    final roomCode = _str(json, ['roomCode', 'room_code']);
     return ContractListItem(
       id:
           _asInt(
@@ -24,7 +28,18 @@ class ContractListItem {
           ) ??
           0,
       contractCode: _str(json, ['contractCode', 'depositCode']),
-      roomCode: _str(json, ['roomCode']),
+      roomId:
+          _asInt(
+            json['roomId'] ??
+                json['room_id'] ??
+                roomJson['id'] ??
+                roomJson['roomId'] ??
+                roomJson['room_id'],
+          ) ??
+          0,
+      roomCode: roomCode.isNotEmpty
+          ? roomCode
+          : _str(roomJson, ['roomCode', 'room_code', 'code']),
       signedAt: _date(json, ['confirmedAt', 'signedAt', 'createdAt']),
       status: _str(json, ['signatureStatus', 'status']),
     );

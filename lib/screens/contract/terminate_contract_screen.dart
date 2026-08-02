@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 
+import 'package:hdbhms_mobile/models/contract/lease_contract_model.dart';
+import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
 
 const Color _kLabel = Color(0xFF000666);
+const String _kHolderReplacementLiquidationMode =
+    'PRIMARY_LEAVES_CO_OCCUPANT_STAYS';
 
 DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
 
@@ -20,6 +24,9 @@ class TerminateContractScreen extends StatefulWidget {
     this.contractCode = 'HN/Phòng 123/2026/HDSV/574',
     this.contractExpiry = '30/09/2026',
     this.contractEndDate,
+    this.occupants = const [],
+    this.currentTenantProfileId,
+    this.leaseContractService = const LeaseContractService(),
   });
 
   final int? contractId;
@@ -31,6 +38,9 @@ class TerminateContractScreen extends StatefulWidget {
   final String contractExpiry;
 
   final DateTime? contractEndDate;
+  final List<LeaseContractOccupant> occupants;
+  final int? currentTenantProfileId;
+  final LeaseContractService leaseContractService;
 
   @override
   State<TerminateContractScreen> createState() =>
@@ -43,6 +53,9 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
 
   DateTime? _expectedDate;
   bool _submitting = false;
+  bool _roommatesStay = false;
+  final Set<int> _stayingProfileIds = <int>{};
+  int? _replacementPrimaryTenantProfileId;
 
   DateTime get _expiryDate {
     final contractEndDate = widget.contractEndDate;
@@ -70,6 +83,86 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
   String get _expiryLabel => widget.contractEndDate == null
       ? widget.contractExpiry
       : _formatDate(widget.contractEndDate!);
+
+  List<LeaseContractOccupant> get _activeOccupants => widget.occupants
+      .where(
+        (occupant) => occupant.isActive && occupant.tenantProfileId != null,
+      )
+      .toList(growable: false);
+
+  List<LeaseContractOccupant> get _activeCoOccupants => _activeOccupants
+      .where((occupant) => !occupant.isPrimary)
+      .toList(growable: false);
+
+  int? get _primaryProfileId {
+    final explicit = widget.currentTenantProfileId;
+    if (explicit != null) return explicit;
+    for (final occupant in _activeOccupants) {
+      if (occupant.isPrimary) {
+        return occupant.tenantProfileId;
+      }
+    }
+    return null;
+  }
+
+  List<int> _leavingProfileIds() {
+    final stayingIds = _roommatesStay ? _stayingProfileIds : const <int>{};
+    return _activeOccupants
+        .where((occupant) {
+          final profileId = occupant.tenantProfileId;
+          return profileId != null && !stayingIds.contains(profileId);
+        })
+        .map((occupant) => occupant.tenantProfileId!)
+        .toList(growable: false);
+  }
+
+  void _syncStayingSelection() {
+    final validIds = _activeCoOccupants
+        .map((occupant) => occupant.tenantProfileId)
+        .whereType<int>()
+        .toSet();
+    _stayingProfileIds.removeWhere(
+      (profileId) => !validIds.contains(profileId),
+    );
+    if (_stayingProfileIds.isEmpty) {
+      _replacementPrimaryTenantProfileId = null;
+      return;
+    }
+    if (_replacementPrimaryTenantProfileId == null ||
+        !_stayingProfileIds.contains(_replacementPrimaryTenantProfileId)) {
+      _replacementPrimaryTenantProfileId = _stayingProfileIds.first;
+    }
+  }
+
+  void _toggleStayingProfile(int profileId, bool selected) {
+    setState(() {
+      if (selected) {
+        _stayingProfileIds.add(profileId);
+      } else {
+        _stayingProfileIds.remove(profileId);
+      }
+      _syncStayingSelection();
+    });
+  }
+
+  Widget _buildOccupantSubtitle(LeaseContractOccupant occupant) {
+    final details = <String>[
+      if (occupant.phone.trim().isNotEmpty) occupant.phone.trim(),
+      if (occupant.email.trim().isNotEmpty) occupant.email.trim(),
+    ];
+    if (details.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Text(
+      details.join(' | '),
+      style: const TextStyle(
+        color: AppColors.bodyText,
+        fontSize: 11,
+        fontWeight: FontWeight.w500,
+        height: 1.4,
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -109,11 +202,55 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
       _snack('Vui lòng chọn ngày trả phòng dự kiến');
       return;
     }
+    if (widget.contractId == null) {
+      _snack('Không tìm thấy hợp đồng để gửi yêu cầu');
+      return;
+    }
+    if (_roommatesStay) {
+      if (_activeCoOccupants.isEmpty) {
+        _snack('Không có người ở cùng đang hoạt động');
+        return;
+      }
+      if (_stayingProfileIds.isEmpty) {
+        _snack('Vui lòng chọn ít nhất một người ở lại');
+        return;
+      }
+      if (_replacementPrimaryTenantProfileId == null ||
+          !_stayingProfileIds.contains(_replacementPrimaryTenantProfileId)) {
+        _snack('Vui lòng chọn người đứng tên hợp đồng mới');
+        return;
+      }
+    }
+
     setState(() => _submitting = true);
-    await Future<void>.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
-    setState(() => _submitting = false);
-    _showSuccessDialog();
+    try {
+      await widget.leaseContractService.submitLiquidationRequest(
+        contractId: widget.contractId!,
+        liquidationDate: _expectedDate!,
+        reason: _reasonCtrl.text.trim(),
+        liquidationMode: _roommatesStay
+            ? _kHolderReplacementLiquidationMode
+            : null,
+        leavingProfileIds: _leavingProfileIds(),
+        stayingProfileIds: _roommatesStay
+            ? _stayingProfileIds.toList(growable: false)
+            : const [],
+        replacementPrimaryTenantProfileId: _roommatesStay
+            ? _replacementPrimaryTenantProfileId
+            : null,
+      );
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      _showSuccessDialog();
+    } on LeaseContractException catch (error) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      _snack(error.message);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      _snack('Không gửi được yêu cầu. Vui lòng thử lại.');
+    }
   }
 
   void _snack(String msg) {
@@ -491,6 +628,133 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                   ),
                 ),
               ),
+              if (_activeCoOccupants.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Divider(height: 1, color: Color(0xFFEEECEE)),
+                const SizedBox(height: 12),
+                Row(
+                  children: const [
+                    Icon(Icons.groups_rounded, size: 15, color: _kLabel),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Người ở cùng',
+                        style: TextStyle(
+                          color: _kLabel,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  value: _roommatesStay,
+                  onChanged: _submitting
+                      ? null
+                      : (value) {
+                          setState(() {
+                            _roommatesStay = value;
+                            if (!value) {
+                              _stayingProfileIds.clear();
+                              _replacementPrimaryTenantProfileId = null;
+                            } else {
+                              _syncStayingSelection();
+                            }
+                          });
+                        },
+                  title: const Text(
+                    'Người ở cùng tiếp tục ở lại',
+                    style: TextStyle(
+                      color: AppColors.inputText,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  subtitle: const Text(
+                    'Dùng khi người đứng tên chuyển đi, người khác vẫn ở phòng này.',
+                    style: TextStyle(
+                      color: AppColors.bodyText,
+                      fontSize: 11,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+                if (_roommatesStay) ...[
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Chọn người ở lại',
+                    style: TextStyle(
+                      color: AppColors.bodyText,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  for (final occupant in _activeCoOccupants) ...[
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      value: _stayingProfileIds.contains(
+                        occupant.tenantProfileId,
+                      ),
+                      onChanged: _submitting || occupant.tenantProfileId == null
+                          ? null
+                          : (selected) => _toggleStayingProfile(
+                              occupant.tenantProfileId!,
+                              selected ?? false,
+                            ),
+                      title: Text(
+                        occupant.displayName,
+                        style: const TextStyle(
+                          color: AppColors.inputText,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      subtitle: _buildOccupantSubtitle(occupant),
+                    ),
+                  ],
+                  if (_stayingProfileIds.isNotEmpty) ...[
+                    const Divider(height: 16),
+                    const Text(
+                      'Người đứng tên hợp đồng mới',
+                      style: TextStyle(
+                        color: AppColors.bodyText,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    for (final occupant in _activeCoOccupants.where(
+                      (occupant) =>
+                          _stayingProfileIds.contains(occupant.tenantProfileId),
+                    )) ...[
+                      RadioListTile<int>(
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        value: occupant.tenantProfileId!,
+                        groupValue: _replacementPrimaryTenantProfileId,
+                        onChanged: _submitting
+                            ? null
+                            : (value) => setState(() {
+                                _replacementPrimaryTenantProfileId = value;
+                              }),
+                        title: Text(
+                          occupant.displayName,
+                          style: const TextStyle(
+                            color: AppColors.inputText,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        subtitle: _buildOccupantSubtitle(occupant),
+                      ),
+                    ],
+                  ],
+                ],
+              ],
             ],
           ),
 

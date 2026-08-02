@@ -765,7 +765,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
       }
 
       if (!invoice.canPay ||
-          (invoice.qrCode.isEmpty && invoice.transferDescription.isEmpty)) {
+          (!invoice.hasPayosQr && invoice.transferDescription.isEmpty)) {
         _snack('Hóa đơn chênh lệch chưa sẵn sàng để thanh toán.');
         return;
       }
@@ -824,7 +824,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
       }
 
       if (!invoice.canPay ||
-          (invoice.qrCode.isEmpty && invoice.transferDescription.isEmpty)) {
+          (!invoice.hasPayosQr && invoice.transferDescription.isEmpty)) {
         _snack(
           'H\u00f3a \u0111\u01a1n chuy\u1ec3n ph\u00f2ng ch\u01b0a s\u1eb5n s\u00e0ng \u0111\u1ec3 thanh to\u00e1n.',
         );

@@ -251,7 +251,10 @@ class _ContractContent extends StatelessWidget {
           const SizedBox(height: 12),
           _DocumentSection(contractFileUrl: contract.contractFileUrl),
           const SizedBox(height: 12),
-          _CreateRequestGrid(contract: contract),
+          _CreateRequestGrid(
+            contract: contract,
+            contractService: contractService,
+          ),
         ],
       ),
     );
@@ -261,9 +264,13 @@ class _ContractContent extends StatelessWidget {
 const Color _kLabelColor = Color(0xFF000666);
 
 class _CreateRequestGrid extends StatelessWidget {
-  const _CreateRequestGrid({required this.contract});
+  const _CreateRequestGrid({
+    required this.contract,
+    required this.contractService,
+  });
 
   final LeaseContract contract;
+  final LeaseContractService contractService;
 
   void _openCreateForm(BuildContext context, TenantRequestType type) {
     final contractId = contract.id;
@@ -352,6 +359,9 @@ class _CreateRequestGrid extends StatelessWidget {
           contractCode: contract.contractCode,
           contractEndDate: contract.endDate,
           contractExpiry: _formatDate(contract.endDate),
+          occupants: contract.occupants,
+          currentTenantProfileId: contract.currentTenantProfileId,
+          leaseContractService: contractService,
         ),
       ),
     );
@@ -442,9 +452,9 @@ class _CreateRequestGrid extends StatelessWidget {
 bool _isContractUnderOneMonth(LeaseContract contract) {
   final endDate = contract.endDate;
   if (endDate == null) return false;
-  final remainingDays = _dateOnly(endDate)
-      .difference(_dateOnly(DateTime.now()))
-      .inDays;
+  final remainingDays = _dateOnly(
+    endDate,
+  ).difference(_dateOnly(DateTime.now())).inDays;
   return remainingDays >= 0 && remainingDays < 30;
 }
 
@@ -1704,8 +1714,15 @@ String _statusLabel(String status) {
     'ACTIVE' => 'Đang hiệu lực',
     'EXPIRING_SOON' => 'Sắp hết hạn',
     'EXPIRED' => 'Đã hết hạn',
-    'TERMINATED' => 'Đã chấm dứt',
+    'TERMINATION_PENDING' => 'Đang thanh lý',
+    'LIQUIDATED' => 'Đã thanh lý',
+    'AUTO_TERMINATED' => 'Tự kết thúc',
+    'TRANSFERRED' => 'Đã chuyển phòng',
+    'CANCELLED' => 'Đã hủy',
+    'RENEWED' => 'Đã gia hạn',
     'DRAFT' => 'Bản nháp',
+    'CONFIRMED' => 'Đã xác nhận',
+    'SIGNED' => 'Đã ký',
     'PENDING_SIGNATURE' => 'Chờ ký',
     _ => _display(status),
   };

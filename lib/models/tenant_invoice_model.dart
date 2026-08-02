@@ -80,6 +80,14 @@ class TenantInvoice {
         normalized == 'OVERDUE';
   }
 
+  String get payosQrValue {
+    final value = qrCode.trim();
+    if (value.isNotEmpty) return value;
+    return checkoutUrl.trim();
+  }
+
+  bool get hasPayosQr => payosQrValue.isNotEmpty;
+
   String get title {
     final hasViolation = lines.any((line) => line.lineType == 'VIOLATION_FINE');
     if (hasViolation) {

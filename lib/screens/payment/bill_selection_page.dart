@@ -125,7 +125,7 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
       return;
     }
     if (invoice.canPay &&
-        (invoice.qrCode.isNotEmpty || invoice.transferDescription.isNotEmpty)) {
+        (invoice.hasPayosQr || invoice.transferDescription.isNotEmpty)) {
       Navigator.of(context)
           .push(
             MaterialPageRoute(

@@ -268,6 +268,7 @@ class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
             currentIndex: _imageIndex,
             tenantName: tenantName,
             roomCount: _rooms.length,
+            unreadCount: summary.notificationSummary.unreadCount,
             onProfileTap: _openProfile,
             onPageChanged: (index) => setState(() => _imageIndex = index),
           ),
@@ -313,6 +314,7 @@ class _OverviewHero extends StatelessWidget {
     required this.currentIndex,
     required this.tenantName,
     required this.roomCount,
+    required this.unreadCount,
     required this.onProfileTap,
     required this.onPageChanged,
   });
@@ -322,6 +324,7 @@ class _OverviewHero extends StatelessWidget {
   final int currentIndex;
   final String tenantName;
   final int roomCount;
+  final int unreadCount;
   final VoidCallback onProfileTap;
   final ValueChanged<int> onPageChanged;
 
@@ -371,7 +374,10 @@ class _OverviewHero extends StatelessWidget {
                 top: 14,
                 left: 14,
                 right: 14,
-                child: _HeroTopBar(onProfileTap: onProfileTap),
+                child: _HeroTopBar(
+                  unreadCount: unreadCount,
+                  onProfileTap: onProfileTap,
+                ),
               ),
               Positioned(
                 left: 16,
@@ -399,8 +405,9 @@ class _OverviewHero extends StatelessWidget {
 }
 
 class _HeroTopBar extends StatelessWidget {
-  const _HeroTopBar({required this.onProfileTap});
+  const _HeroTopBar({required this.unreadCount, required this.onProfileTap});
 
+  final int unreadCount;
   final VoidCallback onProfileTap;
 
   @override
@@ -415,7 +422,11 @@ class _HeroTopBar extends StatelessWidget {
           ),
           constraints: const BoxConstraints.tightFor(width: 40, height: 40),
           padding: EdgeInsets.zero,
-          icon: const AppNotificationBell(color: Colors.white, size: 23),
+          icon: AppNotificationBell(
+            color: Colors.white,
+            size: 23,
+            initialUnreadCount: unreadCount,
+          ),
           tooltip: 'Thông báo',
         ),
         const SizedBox(width: 6),
@@ -735,6 +746,9 @@ class _RoomOverviewCard extends StatelessWidget {
     final status = _statusLabel(
       room.contractStatus.isNotEmpty ? room.contractStatus : room.roomStatus,
     );
+    final expectedVacantDate = _shouldShowExpectedVacantDate(room)
+        ? room.expectedVacantDate
+        : null;
 
     return Material(
       color: AppColors.surface,
@@ -813,7 +827,13 @@ class _RoomOverviewCard extends StatelessWidget {
                       spacing: 12,
                       runSpacing: 6,
                       children: [
-                        if (room.endDate != null)
+                        if (expectedVacantDate != null)
+                          _RoomMeta(
+                            icon: Icons.event_available_outlined,
+                            text:
+                                'Dự kiến trả: ${_formatShortDate(expectedVacantDate)}',
+                          )
+                        else if (room.endDate != null)
                           _RoomMeta(
                             icon: Icons.event_outlined,
                             text: 'Hết hạn: ${_formatShortDate(room.endDate!)}',
@@ -892,7 +912,8 @@ class _RoomStatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = switch (label) {
       'Sắp hết hạn' => AppColors.warning,
-      'Hết hạn' => AppColors.danger,
+      'Đang thanh lý' => AppColors.warning,
+      'Hết hạn' || 'Đã hủy' || 'Đã thanh lý' => AppColors.danger,
       'Đang thuê' => AppColors.success,
       _ => AppColors.bodyText,
     };
@@ -1073,6 +1094,16 @@ String _statusLabel(String rawStatus) {
     'ACTIVE' || 'OCCUPIED' || 'RENTED' => 'Đang thuê',
     'EXPIRING_SOON' => 'Sắp hết hạn',
     'EXPIRED' => 'Hết hạn',
+    'TERMINATION_PENDING' => 'Đang thanh lý',
+    'LIQUIDATED' => 'Đã thanh lý',
+    'AUTO_TERMINATED' => 'Tự kết thúc',
+    'TRANSFERRED' => 'Đã chuyển phòng',
+    'CANCELLED' => 'Đã hủy',
+    'DRAFT' => 'Bản nháp',
+    'PENDING_SIGNATURE' => 'Chờ ký',
+    'CONFIRMED' => 'Đã xác nhận',
+    'SIGNED' => 'Đã ký',
+    'RENEWED' => 'Đã gia hạn',
     'DEPOSITED' || 'HELD' => 'Đã cọc',
     'MAINTENANCE' => 'Bảo trì',
     'VACANT' => 'Còn trống',
@@ -1086,6 +1117,15 @@ String _roleLabel(String rawRole) {
     'CO_OCCUPANT' => 'Người ở cùng',
     _ => rawRole.trim(),
   };
+}
+
+bool _shouldShowExpectedVacantDate(ActiveRoomItem room) {
+  final status = room.contractStatus.trim().toUpperCase();
+  final intention = room.tenantIntention.trim().toUpperCase();
+  return room.expectedVacantDate != null &&
+      (status == 'TERMINATION_PENDING' ||
+          intention == 'MOVE_OUT' ||
+          intention == 'NOT_RENEWING');
 }
 
 String _formatShortDate(DateTime date) {

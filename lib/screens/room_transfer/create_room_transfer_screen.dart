@@ -39,6 +39,7 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
   String? _errorMessage;
 
   List<AvailableRoom> _availableRooms = [];
+  Set<int> _selectedTransferredProfileIds = {};
 
   @override
   void initState() {
@@ -65,11 +66,19 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
         contract = await widget.contractService.getContractById(id);
       } else {
         // Fallback: get the active contract
-        contract = await widget.contractService.getMyActiveContract();
+        final activeContract = await widget.contractService
+            .getMyActiveContract();
+        final activeContractId = activeContract.id;
+        contract = activeContractId == null
+            ? activeContract
+            : await widget.contractService.getContractById(activeContractId);
       }
       if (!mounted) return;
       setState(() {
         _currentContract = contract;
+        _selectedTransferredProfileIds = _initialTransferredProfileIds(
+          contract,
+        );
         _loadingContract = false;
       });
       // Now load available rooms using the property from the contract
@@ -156,6 +165,13 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
       return;
     }
 
+    if (_selectedTargetRoom!.maxOccupants > 0 &&
+        _selectedTransferredProfileIds.length >
+            _selectedTargetRoom!.maxOccupants) {
+      _snack('So nguoi chuyen vuot qua suc chua phong dich.');
+      return;
+    }
+
     setState(() => _submitting = true);
 
     try {
@@ -163,6 +179,9 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
         sourceContractId: _currentContract!.id ?? 0,
         targetRoomId: _selectedTargetRoom!.id,
         requestedTransferDate: _selectedDate!,
+        transferredTenantProfileIds: _selectedTransferredProfileIds.isEmpty
+            ? null
+            : _selectedTransferredProfileIds.toList(growable: false),
         reason: _reasonCtrl.text.trim().isNotEmpty
             ? _reasonCtrl.text.trim()
             : null,
@@ -205,6 +224,29 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
+
+  Set<int> _initialTransferredProfileIds(LeaseContract contract) {
+    final currentId = contract.currentTenantProfileId;
+    if (currentId != null) {
+      return {currentId};
+    }
+    if (contract.isPrimary) {
+      for (final occupant in contract.occupants) {
+        final profileId = occupant.tenantProfileId;
+        if (occupant.isPrimary && profileId != null) {
+          return {profileId};
+        }
+      }
+    }
+    return {};
+  }
+
+  List<LeaseContractOccupant> get _transferableOccupants {
+    final occupants = _currentContract?.occupants ?? const [];
+    return occupants
+        .where((item) => item.isActive && item.tenantProfileId != null)
+        .toList(growable: false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -285,6 +327,35 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
                     _currentContract?.room.roomCode ??
                     '--',
               ),
+              if (_transferableOccupants.length > 1) ...[
+                const SizedBox(height: 8),
+                const Divider(height: 1, color: Color(0xFFEEECEE)),
+                const SizedBox(height: 8),
+                const Text(
+                  'Nguoi chuyen cung',
+                  style: TextStyle(
+                    color: AppColors.bodyText,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                _OccupantTransferPicker(
+                  occupants: _transferableOccupants,
+                  currentTenantProfileId:
+                      _currentContract?.currentTenantProfileId,
+                  selectedProfileIds: _selectedTransferredProfileIds,
+                  onChanged: (profileId, selected) {
+                    setState(() {
+                      if (selected) {
+                        _selectedTransferredProfileIds.add(profileId);
+                      } else {
+                        _selectedTransferredProfileIds.remove(profileId);
+                      }
+                    });
+                  },
+                ),
+              ],
             ],
           ),
 
@@ -409,6 +480,66 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
 }
 
 // ── Sub-widgets ──────────────────────────────────────────────────────────────
+
+class _OccupantTransferPicker extends StatelessWidget {
+  const _OccupantTransferPicker({
+    required this.occupants,
+    required this.currentTenantProfileId,
+    required this.selectedProfileIds,
+    required this.onChanged,
+  });
+
+  final List<LeaseContractOccupant> occupants;
+  final int? currentTenantProfileId;
+  final Set<int> selectedProfileIds;
+  final void Function(int profileId, bool selected) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (var i = 0; i < occupants.length; i++) ...[
+          if (i > 0) const Divider(height: 1, color: Color(0xFFEEECEE)),
+          _buildTile(occupants[i]),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildTile(LeaseContractOccupant occupant) {
+    final profileId = occupant.tenantProfileId!;
+    final isCurrent = profileId == currentTenantProfileId;
+    final selected = selectedProfileIds.contains(profileId) || isCurrent;
+    final subtitleParts = [
+      if (occupant.isPrimary) 'Chu hop dong' else 'Nguoi o cung',
+      if (isCurrent) 'Ban',
+      if (occupant.phone.trim().isNotEmpty) occupant.phone.trim(),
+    ];
+
+    return CheckboxListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      controlAffinity: ListTileControlAffinity.leading,
+      value: selected,
+      onChanged: isCurrent
+          ? null
+          : (value) => onChanged(profileId, value ?? false),
+      activeColor: AppColors.deepBlue,
+      title: Text(
+        occupant.displayName,
+        style: const TextStyle(
+          color: AppColors.inputText,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      subtitle: Text(
+        subtitleParts.join(' - '),
+        style: const TextStyle(color: AppColors.bodyText, fontSize: 11),
+      ),
+    );
+  }
+}
 
 class _SectionCard extends StatelessWidget {
   const _SectionCard({

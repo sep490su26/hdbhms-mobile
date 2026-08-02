@@ -16,6 +16,8 @@ class LeaseContract {
     this.tenantIntention = '',
     this.expectedVacantDate,
     this.roleInContract = '',
+    this.currentTenantProfileId,
+    this.occupants = const [],
     this.isPrimary = false,
     this.canRecordIntention = false,
     this.canRenew = false,
@@ -39,6 +41,8 @@ class LeaseContract {
   final String tenantIntention;
   final DateTime? expectedVacantDate;
   final String roleInContract;
+  final int? currentTenantProfileId;
+  final List<LeaseContractOccupant> occupants;
   final bool isPrimary;
   final bool canRecordIntention;
   final bool canRenew;
@@ -54,43 +58,135 @@ class LeaseContract {
     final roomJson = _firstMap(json, const ['room', 'roomInfo', 'rentalRoom']);
 
     return LeaseContract(
-      id: _asInt(json['id'] ?? json['contractId']),
-      contractCode: _firstString(json, const ['contractCode']),
-      status: _firstString(json, const ['status', 'contractStatus']),
+      id: _asInt(json['id'] ?? json['contractId'] ?? json['contract_id']),
+      contractCode: _firstString(json, const ['contractCode', 'contract_code']),
+      status: _firstString(json, const [
+        'status',
+        'contractStatus',
+        'contract_status',
+      ]),
       room: LeaseRoom.fromJson(roomJson.isEmpty ? json : roomJson),
-      monthlyRent: _firstDouble(json, const ['monthlyRent', 'rentAmount']),
+      monthlyRent: _firstDouble(json, const [
+        'monthlyRent',
+        'monthly_rent',
+        'rentAmount',
+        'rent_amount',
+      ]),
       paymentCycleMonths: _asInt(
-        json['paymentCycleMonths'] ?? json['paymentCycle'],
+        json['paymentCycleMonths'] ??
+            json['payment_cycle_months'] ??
+            json['paymentCycle'] ??
+            json['payment_cycle'],
       ),
-      startDate: _firstDate(json, const ['startDate']),
-      endDate: _firstDate(json, const ['endDate']),
+      startDate: _firstDate(json, const ['startDate', 'start_date']),
+      endDate: _firstDate(json, const ['endDate', 'end_date']),
       rentStartDate: _firstDate(json, const [
         'rentStartDate',
+        'rent_start_date',
         'billingStartDate',
+        'billing_start_date',
       ]),
-      depositAmount: _firstDouble(json, const ['depositAmount', 'deposit']),
+      depositAmount: _firstDouble(json, const [
+        'depositAmount',
+        'deposit_amount',
+        'deposit',
+      ]),
       terms: _parseTerms(json),
       serviceFees: _parseServiceFees(json),
       contractFileUrl: _firstString(json, const [
         'contractFileDownloadUrl',
+        'contract_file_download_url',
         'contractFileUrl',
+        'contract_file_url',
         'signedFileDownloadUrl',
+        'signed_file_download_url',
         'fileUrl',
+        'file_url',
         'documentUrl',
+        'document_url',
       ]),
-      tenantIntention: _firstString(json, const ['tenantIntention']),
+      tenantIntention: _firstString(json, const [
+        'tenantIntention',
+        'tenant_intention',
+      ]),
       expectedVacantDate: _firstDate(json, const [
         'expectedVacantDate',
+        'expected_vacant_date',
         'expectedMoveOutDate',
+        'expected_move_out_date',
       ]),
-      roleInContract: _firstString(json, const ['roleInContract']),
-      isPrimary: _firstBool(json, const ['isPrimary']),
-      canRecordIntention: _firstBool(json, const ['canRecordIntention']),
-      canRenew: _firstBool(json, const ['canRenew']),
+      roleInContract: _firstString(json, const [
+        'roleInContract',
+        'role_in_contract',
+      ]),
+      currentTenantProfileId: _asInt(
+        json['currentTenantProfileId'] ?? json['current_tenant_profile_id'],
+      ),
+      occupants: _parseOccupants(json),
+      isPrimary: _firstBool(json, const ['isPrimary', 'is_primary']),
+      canRecordIntention: _firstBool(json, const [
+        'canRecordIntention',
+        'can_record_intention',
+      ]),
+      canRenew: _firstBool(json, const ['canRenew', 'can_renew']),
       canRenewBlockedReason: _firstString(json, const [
         'canRenewBlockedReason',
+        'can_renew_blocked_reason',
       ]),
-      signedAt: _firstDate(json, const ['signedAt', 'confirmedAt']),
+      signedAt: _firstDate(json, const [
+        'signedAt',
+        'signed_at',
+        'confirmedAt',
+        'confirmed_at',
+      ]),
+    );
+  }
+}
+
+class LeaseContractOccupant {
+  const LeaseContractOccupant({
+    required this.tenantProfileId,
+    required this.fullName,
+    required this.phone,
+    required this.email,
+    required this.occupantRole,
+    required this.status,
+  });
+
+  final int? tenantProfileId;
+  final String fullName;
+  final String phone;
+  final String email;
+  final String occupantRole;
+  final String status;
+
+  bool get isActive => status.trim().toUpperCase() == 'ACTIVE';
+  bool get isPrimary => occupantRole.trim().toUpperCase() == 'PRIMARY';
+
+  String get displayName {
+    final name = fullName.trim();
+    if (name.isNotEmpty) return name;
+    final contact = phone.trim().isNotEmpty ? phone.trim() : email.trim();
+    return contact.isNotEmpty ? contact : 'Nguoi o cung';
+  }
+
+  factory LeaseContractOccupant.fromJson(Map<String, dynamic> json) {
+    return LeaseContractOccupant(
+      tenantProfileId: _asInt(
+        json['tenantProfileId'] ??
+            json['tenant_profile_id'] ??
+            json['profileId'] ??
+            json['profile_id'],
+      ),
+      fullName: _firstString(json, const ['fullName', 'full_name', 'name']),
+      phone: _firstString(json, const ['phone']),
+      email: _firstString(json, const ['email']),
+      occupantRole: _firstString(json, const [
+        'occupantRole',
+        'occupant_role',
+        'role',
+      ]),
+      status: _firstString(json, const ['status']),
     );
   }
 }
@@ -110,13 +206,22 @@ class LeaseRoom {
 
   factory LeaseRoom.fromJson(Map<String, dynamic> json) {
     return LeaseRoom(
-      roomCode: _firstString(json, const ['roomCode', 'code']),
-      roomName: _firstString(json, const ['roomName', 'name']),
-      area: _firstDouble(json, const ['area', 'areaM2', 'roomArea']),
+      roomCode: _firstString(json, const ['roomCode', 'room_code', 'code']),
+      roomName: _firstString(json, const ['roomName', 'room_name', 'name']),
+      area: _firstDouble(json, const [
+        'area',
+        'areaM2',
+        'area_m2',
+        'roomArea',
+        'room_area',
+      ]),
       imageUrl: _firstString(json, const [
         'imageUrl',
+        'image_url',
         'roomImageUrl',
+        'room_image_url',
         'thumbnailUrl',
+        'thumbnail_url',
       ]),
     );
   }
@@ -133,6 +238,7 @@ class LeaseServiceFee {
       name: _firstString(json, const [
         'name',
         'serviceName',
+        'service_name',
         'label',
       ], fallback: 'Phí dịch vụ'),
       amount: _firstDouble(json, const [
@@ -140,6 +246,7 @@ class LeaseServiceFee {
         'fee',
         'price',
         'monthlyAmount',
+        'monthly_amount',
       ]),
     );
   }
@@ -177,11 +284,18 @@ List<String> _parseTerms(Map<String, dynamic> json) {
 List<LeaseServiceFee> _parseServiceFees(Map<String, dynamic> json) {
   final serviceFeeTotal = _firstDouble(json, const [
     'serviceFee',
+    'service_fee',
     'fixedServiceFee',
+    'fixed_service_fee',
     'serviceFeeAmount',
+    'service_fee_amount',
   ]);
   final values =
-      json['serviceFees'] ?? json['fees'] ?? json['expectedServiceFees'];
+      json['serviceFees'] ??
+      json['service_fees'] ??
+      json['fees'] ??
+      json['expectedServiceFees'] ??
+      json['expected_service_fees'];
 
   final fees = <LeaseServiceFee>[
     if (serviceFeeTotal != null)
@@ -196,6 +310,24 @@ List<LeaseServiceFee> _parseServiceFees(Map<String, dynamic> json) {
     }
   }
   return fees;
+}
+
+List<LeaseContractOccupant> _parseOccupants(Map<String, dynamic> json) {
+  final values =
+      json['occupants'] ??
+      json['contractOccupants'] ??
+      json['contract_occupants'];
+  if (values is! List) {
+    return const [];
+  }
+  return values
+      .whereType<Map>()
+      .map(
+        (item) =>
+            LeaseContractOccupant.fromJson(Map<String, dynamic>.from(item)),
+      )
+      .where((item) => item.tenantProfileId != null)
+      .toList(growable: false);
 }
 
 Map<String, dynamic> _firstMap(Map<String, dynamic> json, List<String> keys) {
