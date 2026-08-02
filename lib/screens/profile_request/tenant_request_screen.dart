@@ -651,16 +651,12 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
 
   bool _transferMatchesRoom(RoomTransferRequest transfer, RoomScope scope) {
     final roomId = scope.roomId;
-    if ((roomId ?? 0) > 0 &&
-        (transfer.oldRoomId == roomId || transfer.targetRoomId == roomId)) {
+    if ((roomId ?? 0) > 0 && transfer.oldRoomId == roomId) {
       return true;
     }
     final roomCode = scope.roomCode.trim().toLowerCase();
     if (roomCode.isEmpty) return false;
-    return [
-      transfer.oldRoomCode,
-      transfer.targetRoomCode,
-    ].any((code) => code.trim().toLowerCase() == roomCode);
+    return transfer.oldRoomCode.trim().toLowerCase() == roomCode;
   }
 
   Future<List<ChangeRequest>> _filterTransferRequestsByRoom(

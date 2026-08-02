@@ -194,6 +194,14 @@ class ChangeRequestService {
     required String roomCode,
   }) {
     final payload = _payloadMap(request.requestPayload);
+    if (request.requestType == ChangeRequestType.roomTransfer) {
+      return _roomTransferMatchesSourceRoom(
+        payload,
+        roomId: roomId,
+        roomCode: roomCode,
+      );
+    }
+
     final ids = <int?>[
       _asInt(payload['roomId'] ?? payload['room_id']),
       _asInt(payload['currentRoomId'] ?? payload['current_room_id']),
@@ -224,6 +232,40 @@ class ChangeRequestService {
             'room_code',
             'code',
           ]),
+        ].map((value) => value.trim().toLowerCase()).where((value) {
+          return value.isNotEmpty && value != 'null';
+        });
+    return codes.any((value) => value == roomCode || value.contains(roomCode));
+  }
+
+  bool _roomTransferMatchesSourceRoom(
+    Map<String, dynamic> payload, {
+    int? roomId,
+    required String roomCode,
+  }) {
+    final ids = <int?>[
+      _asInt(payload['roomId'] ?? payload['room_id']),
+      _asInt(payload['currentRoomId'] ?? payload['current_room_id']),
+      _asInt(payload['sourceRoomId'] ?? payload['source_room_id']),
+      _asInt(payload['oldRoomId'] ?? payload['old_room_id']),
+      _nestedInt(payload['room'], ['id', 'roomId', 'room_id']),
+      _nestedInt(payload['oldRoom'], ['id', 'roomId', 'room_id']),
+    ].whereType<int>();
+    if ((roomId ?? 0) > 0 && ids.contains(roomId)) return true;
+
+    if (roomCode.isEmpty) return false;
+    final codes =
+        <String>[
+          payload['roomCode']?.toString() ?? '',
+          payload['room_code']?.toString() ?? '',
+          payload['currentRoomCode']?.toString() ?? '',
+          payload['sourceRoomCode']?.toString() ?? '',
+          payload['source_room_code']?.toString() ?? '',
+          payload['oldRoomCode']?.toString() ?? '',
+          payload['old_room_code']?.toString() ?? '',
+          payload['room']?.toString() ?? '',
+          _nestedString(payload['room'], ['roomCode', 'room_code', 'code']),
+          _nestedString(payload['oldRoom'], ['roomCode', 'room_code', 'code']),
         ].map((value) => value.trim().toLowerCase()).where((value) {
           return value.isNotEmpty && value != 'null';
         });

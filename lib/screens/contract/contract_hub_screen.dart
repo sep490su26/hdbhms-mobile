@@ -97,13 +97,21 @@ class _ContractHubScreenState extends State<ContractHubScreen>
             Navigator.of(context).popUntil((route) => route.isFirst),
         onBillsTap: () {
           Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const BillSelectionPage()),
+            MaterialPageRoute(
+              builder: (context) => BillSelectionPage(
+                roomId: widget.roomId,
+                roomCode: widget.roomCode ?? '',
+              ),
+            ),
           );
         },
         onSupportTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => const MaintenanceTicketListScreen(),
+              builder: (context) => MaintenanceTicketListScreen(
+                roomId: widget.roomId,
+                roomCode: widget.roomCode ?? '',
+              ),
             ),
           );
         },
@@ -115,7 +123,12 @@ class _ContractHubScreenState extends State<ContractHubScreen>
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+          MaterialPageRoute(
+            builder: (context) => TenantRequestScreen(
+              roomId: widget.roomId,
+              roomCode: widget.roomCode ?? '',
+            ),
+          ),
         ),
       ),
     );

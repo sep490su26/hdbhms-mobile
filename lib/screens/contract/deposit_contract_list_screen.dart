@@ -224,7 +224,10 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
         onSupportTap: () {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (context) => const MaintenanceTicketListScreen(),
+              builder: (context) => MaintenanceTicketListScreen(
+                roomId: widget.roomId,
+                roomCode: widget.roomCode ?? '',
+              ),
             ),
           );
         },
@@ -236,7 +239,12 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+          MaterialPageRoute(
+            builder: (context) => TenantRequestScreen(
+              roomId: widget.roomId,
+              roomCode: widget.roomCode ?? '',
+            ),
+          ),
         ),
       ),
     );

@@ -142,6 +142,26 @@ class _EmptyRoomTransferService extends RoomTransferService {
   }
 }
 
+class _FakeRoomTransferService extends RoomTransferService {
+  const _FakeRoomTransferService(this.transfers);
+
+  final Map<int, RoomTransferRequest> transfers;
+
+  @override
+  Future<RoomTransferRequest> getTransferRequest(int requestId) async {
+    final transfer = transfers[requestId];
+    if (transfer == null) {
+      throw const RoomTransferException('Not found');
+    }
+    return transfer;
+  }
+
+  @override
+  Future<List<RoomTransferRequest>> fetchPendingHolderNominations() async {
+    return const [];
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -563,6 +583,34 @@ void main() {
     await tester.pump(const Duration(seconds: 16));
   });
 
+  testWidgets('request screen filters room transfers by selected source room', (
+    tester,
+  ) async {
+    final requests = [
+      _transferChangeRequest(501),
+      _transferChangeRequest(502),
+      _transferChangeRequest(503),
+    ];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TenantRequestScreen(
+          changeRequestService: _FakeChangeRequestService(requests),
+          roomTransferService: _FakeRoomTransferService({
+            501: _transferRequest(id: 501, oldRoomId: 403, targetRoomId: 503),
+            502: _transferRequest(id: 502, oldRoomId: 503, targetRoomId: 505),
+            503: _transferRequest(id: 503, oldRoomId: 503, targetRoomId: 403),
+          }),
+          roomId: 403,
+          roomCode: '403',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Xem chi tiết'), findsOneWidget);
+  });
+
   testWidgets('contract screen shows error when renewal request submit fails', (
     tester,
   ) async {
@@ -740,6 +788,45 @@ void main() {
     );
     expect(find.text('Thử lại'), findsOneWidget);
   });
+}
+
+ChangeRequest _transferChangeRequest(int transferId) {
+  return ChangeRequest(
+    id: transferId,
+    requestCode: 'TR-$transferId',
+    requestType: ChangeRequestType.roomTransfer,
+    title: 'Transfer $transferId',
+    description: 'Transfer $transferId',
+    status: ChangeRequestStatus.pending,
+    requesterId: 1,
+    targetId: transferId,
+    createdAt: DateTime(2026, 8, 1, 9),
+    requestPayload: jsonEncode({'transferRequestId': transferId}),
+  );
+}
+
+RoomTransferRequest _transferRequest({
+  required int id,
+  required int oldRoomId,
+  required int targetRoomId,
+}) {
+  return RoomTransferRequest(
+    id: id,
+    requestCode: 'TR-$id',
+    requesterId: 1,
+    oldContractId: oldRoomId,
+    oldRoomId: oldRoomId,
+    targetRoomId: targetRoomId,
+    transferringTenantProfileIds: const [],
+    transferringTenantNames: const {},
+    sourceHolderCandidateProfileIds: const [],
+    sourceHolderCandidateNames: const {},
+    targetTransferType: TargetTransferType.newContract,
+    requestedTransferDate: DateTime(2026, 8, 15),
+    status: TransferRequestStatus.requested,
+    oldRoomCode: oldRoomId.toString(),
+    targetRoomCode: targetRoomId.toString(),
+  );
 }
 
 LeaseContract _contract({

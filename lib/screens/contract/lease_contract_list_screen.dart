@@ -225,7 +225,10 @@ class _LeaseContractListScreenState extends State<LeaseContractListScreen> {
         onSupportTap: () {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (context) => const MaintenanceTicketListScreen(),
+              builder: (context) => MaintenanceTicketListScreen(
+                roomId: widget.roomId,
+                roomCode: widget.roomCode ?? '',
+              ),
             ),
           );
         },
@@ -237,7 +240,12 @@ class _LeaseContractListScreenState extends State<LeaseContractListScreen> {
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+          MaterialPageRoute(
+            builder: (context) => TenantRequestScreen(
+              roomId: widget.roomId,
+              roomCode: widget.roomCode ?? '',
+            ),
+          ),
         ),
       ),
     );

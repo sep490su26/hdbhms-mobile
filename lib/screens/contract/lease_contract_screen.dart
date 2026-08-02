@@ -40,6 +40,8 @@ class LeaseContractScreen extends StatefulWidget {
 
 class _LeaseContractScreenState extends State<LeaseContractScreen> {
   late Future<LeaseContract> _contractFuture;
+  int? _roomId;
+  String _roomCode = '';
 
   @override
   void initState() {
@@ -47,12 +49,28 @@ class _LeaseContractScreenState extends State<LeaseContractScreen> {
     _contractFuture = _loadContract();
   }
 
-  Future<LeaseContract> _loadContract() {
+  Future<LeaseContract> _loadContract() async {
     final id = widget.contractId;
-    if (id != null) {
-      return widget.contractService.getContractById(id);
+    final contract = id != null
+        ? await widget.contractService.getContractById(id)
+        : await widget.contractService.getMyActiveContract();
+    _syncRoomScope(contract);
+    return contract;
+  }
+
+  void _syncRoomScope(LeaseContract contract) {
+    final nextRoomId = contract.room.id;
+    final nextRoomCode = contract.room.roomCode.trim();
+    if (_roomId == nextRoomId && _roomCode == nextRoomCode) return;
+    if (!mounted) {
+      _roomId = nextRoomId;
+      _roomCode = nextRoomCode;
+      return;
     }
-    return widget.contractService.getMyActiveContract();
+    setState(() {
+      _roomId = nextRoomId;
+      _roomCode = nextRoomCode;
+    });
   }
 
   void _retry() {
@@ -117,7 +135,10 @@ class _LeaseContractScreenState extends State<LeaseContractScreen> {
           },
         ),
       ),
-      bottomNavigationBar: const _ContractBottomNavigation(),
+      bottomNavigationBar: _ContractBottomNavigation(
+        roomId: _roomId,
+        roomCode: _roomCode,
+      ),
     );
   }
 }
@@ -1172,7 +1193,10 @@ class _StateMessage extends StatelessWidget {
 }
 
 class _ContractBottomNavigation extends StatelessWidget {
-  const _ContractBottomNavigation();
+  const _ContractBottomNavigation({this.roomId, this.roomCode = ''});
+
+  final int? roomId;
+  final String roomCode;
 
   @override
   Widget build(BuildContext context) {
@@ -1182,13 +1206,17 @@ class _ContractBottomNavigation extends StatelessWidget {
       onSupportTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => const MaintenanceTicketListScreen(),
+            builder: (context) =>
+                MaintenanceTicketListScreen(roomId: roomId, roomCode: roomCode),
           ),
         );
       },
       onBillsTap: () {
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const BillSelectionPage()),
+          MaterialPageRoute(
+            builder: (context) =>
+                BillSelectionPage(roomId: roomId, roomCode: roomCode),
+          ),
         );
       },
       onProfileTap: () {
@@ -1197,7 +1225,10 @@ class _ContractBottomNavigation extends StatelessWidget {
         );
       },
       onRequestsTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+        MaterialPageRoute(
+          builder: (context) =>
+              TenantRequestScreen(roomId: roomId, roomCode: roomCode),
+        ),
       ),
     );
   }

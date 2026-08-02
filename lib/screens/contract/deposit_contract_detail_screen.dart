@@ -34,6 +34,7 @@ class DepositContractDetailScreen extends StatefulWidget {
 class _DepositContractDetailScreenState
     extends State<DepositContractDetailScreen> {
   late Future<DepositContract> _depositFuture;
+  String _roomCode = '';
 
   @override
   void initState() {
@@ -41,8 +42,22 @@ class _DepositContractDetailScreenState
     _depositFuture = _load();
   }
 
-  Future<DepositContract> _load() {
-    return widget.depositService.getDepositById(widget.depositId);
+  Future<DepositContract> _load() async {
+    final deposit = await widget.depositService.getDepositById(
+      widget.depositId,
+    );
+    _syncRoomScope(deposit);
+    return deposit;
+  }
+
+  void _syncRoomScope(DepositContract deposit) {
+    final nextRoomCode = deposit.room.roomCode.trim();
+    if (_roomCode == nextRoomCode) return;
+    if (!mounted) {
+      _roomCode = nextRoomCode;
+      return;
+    }
+    setState(() => _roomCode = nextRoomCode);
   }
 
   void _retry() {
@@ -99,7 +114,7 @@ class _DepositContractDetailScreenState
           ),
         ),
       ),
-      bottomNavigationBar: const _DepositBottomNavigation(),
+      bottomNavigationBar: _DepositBottomNavigation(roomCode: _roomCode),
     );
   }
 
@@ -741,7 +756,9 @@ String _resolveResourceUrl(String value) {
 // ── Bottom Navigation ──
 
 class _DepositBottomNavigation extends StatelessWidget {
-  const _DepositBottomNavigation();
+  const _DepositBottomNavigation({this.roomCode = ''});
+
+  final String roomCode;
 
   @override
   Widget build(BuildContext context) {
@@ -751,13 +768,16 @@ class _DepositBottomNavigation extends StatelessWidget {
       onSupportTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => const MaintenanceTicketListScreen(),
+            builder: (context) =>
+                MaintenanceTicketListScreen(roomCode: roomCode),
           ),
         );
       },
       onBillsTap: () {
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const BillSelectionPage()),
+          MaterialPageRoute(
+            builder: (context) => BillSelectionPage(roomCode: roomCode),
+          ),
         );
       },
       onProfileTap: () {
@@ -766,7 +786,9 @@ class _DepositBottomNavigation extends StatelessWidget {
         );
       },
       onRequestsTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+        MaterialPageRoute(
+          builder: (context) => TenantRequestScreen(roomCode: roomCode),
+        ),
       ),
     );
   }
