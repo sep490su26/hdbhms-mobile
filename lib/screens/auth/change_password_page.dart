@@ -26,6 +26,7 @@ class ChangePasswordPage extends StatefulWidget {
 }
 
 class _ChangePasswordPageState extends State<ChangePasswordPage> {
+  final _formKey = GlobalKey<FormState>();
   late final TextEditingController _passwordController;
   late final TextEditingController _confirmPasswordController;
   bool _isLoading = false;
@@ -45,6 +46,10 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   }
 
   Future<void> _handleChangePassword() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      _showMessage('Vui lòng kiểm tra các trường bắt buộc');
+      return;
+    }
     final newPassword = _passwordController.text;
     final confirmPassword = _confirmPasswordController.text;
     final validationMessage = _validate(newPassword, confirmPassword);
@@ -161,6 +166,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                             const _ChangePasswordIntro(),
                             const SizedBox(height: 32),
                             _ChangePasswordFormCard(
+                              formKey: _formKey,
                               passwordController: _passwordController,
                               confirmPasswordController:
                                   _confirmPasswordController,
@@ -242,12 +248,14 @@ class _ChangePasswordIntro extends StatelessWidget {
 
 class _ChangePasswordFormCard extends StatelessWidget {
   const _ChangePasswordFormCard({
+    required this.formKey,
     required this.passwordController,
     required this.confirmPasswordController,
     required this.isLoading,
     required this.onSubmit,
   });
 
+  final GlobalKey<FormState> formKey;
   final TextEditingController passwordController;
   final TextEditingController confirmPasswordController;
   final bool isLoading;
@@ -260,7 +268,7 @@ class _ChangePasswordFormCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(22, 24, 22, 26),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
         border: Border.all(color: AppColors.cardBorder),
         boxShadow: [
           BoxShadow(
@@ -270,60 +278,85 @@ class _ChangePasswordFormCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AuthTextField(
-            label: 'Mật khẩu mới',
-            hintText: 'Nhập mật khẩu mới',
-            controller: passwordController,
-            obscureText: true,
-            textInputAction: TextInputAction.next,
-            hintColor: AppColors.hintText,
-            contentPadding: const EdgeInsets.fromLTRB(17, 18, 48, 18),
-            uppercaseLabel: false,
-          ),
-          const SizedBox(height: 24),
-          AuthTextField(
-            label: 'Xác nhận mật khẩu',
-            hintText: 'Nhập lại mật khẩu mới',
-            controller: confirmPasswordController,
-            obscureText: true,
-            textInputAction: TextInputAction.done,
-            hintColor: AppColors.hintText,
-            contentPadding: const EdgeInsets.fromLTRB(17, 18, 48, 18),
-            uppercaseLabel: false,
-          ),
-          const SizedBox(height: 24),
-          _PasswordRequirements(passwordController: passwordController),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: isLoading ? null : onSubmit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shadowColor: Colors.black.withValues(alpha: 0.05),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: isLoading
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text('ĐỔI MẬT KHẨU', style: AppTypography.button),
+      child: Form(
+        key: formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AuthTextField(
+              label: 'Mật khẩu mới',
+              hintText: 'Nhập mật khẩu mới',
+              controller: passwordController,
+              obscureText: true,
+              textInputAction: TextInputAction.next,
+              hintColor: AppColors.hintText,
+              contentPadding: const EdgeInsets.fromLTRB(17, 18, 48, 18),
+              uppercaseLabel: false,
+              required: true,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Vui lòng nhập mật khẩu mới';
+                }
+                if (value.length < 8) {
+                  return 'Mật khẩu mới phải có ít nhất 8 ký tự';
+                }
+                if (!RegExp(r'\d').hasMatch(value)) {
+                  return 'Mật khẩu mới phải có ít nhất một chữ số';
+                }
+                return null;
+              },
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            AuthTextField(
+              label: 'Xác nhận mật khẩu',
+              hintText: 'Nhập lại mật khẩu mới',
+              controller: confirmPasswordController,
+              obscureText: true,
+              textInputAction: TextInputAction.done,
+              hintColor: AppColors.hintText,
+              contentPadding: const EdgeInsets.fromLTRB(17, 18, 48, 18),
+              uppercaseLabel: false,
+              required: true,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Vui lòng xác nhận mật khẩu mới';
+                }
+                return value != passwordController.text
+                    ? 'Xác nhận mật khẩu không khớp'
+                    : null;
+              },
+            ),
+            const SizedBox(height: 24),
+            _PasswordRequirements(passwordController: passwordController),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: isLoading ? null : onSubmit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shadowColor: Colors.black.withValues(alpha: 0.05),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppColors.radiusLg),
+                  ),
+                ),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('ĐỔI MẬT KHẨU', style: AppTypography.button),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -348,7 +381,7 @@ class _PasswordRequirements extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.requirementBackground,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

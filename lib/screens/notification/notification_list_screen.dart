@@ -1,12 +1,16 @@
 // ignore_for_file: curly_braces_in_flow_control_structures
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 import '../../models/notification/notification_model.dart';
 import '../../services/notification/notification_service.dart';
-import '../../theme/app_colors.dart';
 import '../../widgets/app_screen_shell.dart';
 import '../../widgets/app_skeleton.dart';
+import '../../widgets/app_list_state.dart';
+import '../../widgets/app_top_bar.dart';
 
 /// Màn danh sách thông báo với filter Tất cả / Chưa đọc / Đã đọc.
 class NotificationListScreen extends StatefulWidget {
@@ -24,6 +28,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
   bool _isLoading = true;
   bool _hasMore = true;
   bool _isLoadingMore = false;
+  bool _didChangeReadState = false;
   String? _errorMessage;
 
   @override
@@ -99,35 +104,70 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
   int get _unreadCount => _items.where((n) => !n.isRead).length;
 
   Future<void> _markAllRead() async {
-    try {
-      await _notificationService.markAllAsRead();
-    } catch (_) {}
+    final hadUnread = _items.any((item) => !item.isRead);
+    if (!hadUnread) return;
 
+    final previousItems = List<NotificationItem>.from(_items);
     setState(() {
       for (var i = 0; i < _items.length; i++) {
         _items[i] = _items[i].copyWith(isRead: true);
       }
     });
+
+    try {
+      await _notificationService.markAllAsRead();
+      _didChangeReadState = true;
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _items = previousItems;
+      });
+      _showReadError();
+    }
   }
 
   Future<void> _markRead(String id) async {
     final idx = _items.indexWhere((n) => n.id == id);
-    if (idx != -1 && !_items[idx].isRead) {
-      try {
-        await _notificationService.markAsRead(id);
-      } catch (_) {}
+    if (idx == -1 || _items[idx].isRead) return;
 
-      setState(() {
-        _items[idx] = _items[idx].copyWith(isRead: true);
-      });
+    final previousItem = _items[idx];
+    setState(() {
+      _items[idx] = previousItem.copyWith(isRead: true);
+    });
+
+    try {
+      await _notificationService.markAsRead(id);
+      _didChangeReadState = true;
+    } catch (_) {
+      if (!mounted) return;
+      final rollbackIdx = _items.indexWhere((n) => n.id == id);
+      if (rollbackIdx != -1) {
+        setState(() {
+          _items[rollbackIdx] = previousItem;
+        });
+      }
+      _showReadError();
     }
   }
 
+  void _showReadError() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Không thể cập nhật trạng thái đã đọc.')),
+    );
+  }
+
+  void _closeScreen() {
+    Navigator.of(context).pop(_didChangeReadState);
+  }
+
   void _openDetail(NotificationItem item) {
-    _markRead(item.id);
+    final detailItem = item.isRead ? item : item.copyWith(isRead: true);
+    if (!item.isRead) {
+      unawaited(_markRead(item.id));
+    }
     showDialog<void>(
       context: context,
-      builder: (ctx) => _NotificationDetailDialog(item: item),
+      builder: (ctx) => _NotificationDetailDialog(item: detailItem),
     );
   }
 
@@ -197,9 +237,10 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  // ignore: unused_element
+  Widget _buildLegacyHeader() {
     return Container(
-      height: 54,
+      height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -212,7 +253,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => Navigator.of(context).maybePop(),
+            onPressed: _closeScreen,
             icon: const Icon(
               Icons.arrow_back_rounded,
               color: AppColors.deepBlue,
@@ -221,15 +262,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
             tooltip: 'Trở về',
           ),
           const Expanded(
-            child: Text(
-              'Thông báo',
-              style: TextStyle(
-                color: AppColors.deepBlue,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                height: 20 / 16,
-              ),
-            ),
+            child: Text('Thông báo', style: AppColors.topBarTitleStyle),
           ),
           if (_unreadCount > 0)
             Tooltip(
@@ -239,8 +272,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.deepBlue,
                   padding: const EdgeInsets.symmetric(horizontal: 8),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  minimumSize: const Size(44, 44),
                 ),
                 icon: const Icon(Icons.done_all_rounded, size: 18),
                 label: const Text(
@@ -254,52 +286,33 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
     );
   }
 
+  Widget _buildHeader() {
+    return AppTopBar(
+      title: 'Thông báo',
+      onBack: _closeScreen,
+      trailing: _unreadCount == 0
+          ? null
+          : IconButton(
+              onPressed: _markAllRead,
+              icon: const Icon(Icons.done_all_rounded),
+              tooltip: 'Đánh dấu tất cả là đã đọc',
+            ),
+    );
+  }
+
   Widget _buildEmpty() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 68,
-              height: 68,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF1FF),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Icon(
-                Icons.notifications_off_outlined,
-                color: AppColors.deepBlue,
-                size: 34,
-              ),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'Không có thông báo',
-              style: TextStyle(
-                color: AppColors.inputText,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                height: 20 / 16,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _activeFilter == _NotifFilter.all
-                  ? 'Bạn chưa có thông báo nào.'
-                  : _activeFilter == _NotifFilter.unread
-                  ? 'Không có thông báo chưa đọc.'
-                  : 'Không có thông báo đã đọc.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.bodyText,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                height: 18 / 13,
-              ),
-            ),
-          ],
+        padding: const EdgeInsets.all(24),
+        child: AppListState(
+          kind: AppListStateKind.empty,
+          title: 'Không có thông báo',
+          description: _activeFilter == _NotifFilter.all
+              ? 'Bạn chưa có thông báo nào.'
+              : _activeFilter == _NotifFilter.unread
+              ? 'Không có thông báo chưa đọc.'
+              : 'Không có thông báo đã đọc.',
+          icon: Icons.notifications_off_outlined,
         ),
       ),
     );
@@ -408,15 +421,29 @@ class _FilterChip extends StatelessWidget {
         alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
-          color: isActive
-              ? AppColors.deepBlue.withValues(alpha: 0.10)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(999),
+          gradient: isActive
+              ? const LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [AppColors.deepBlue, AppColors.primary],
+                )
+              : null,
+          color: isActive ? null : AppColors.surface,
+          borderRadius: BorderRadius.circular(AppColors.radiusPill),
           border: Border.all(
             color: isActive
-                ? AppColors.deepBlue
+                ? Colors.white.withValues(alpha: 0.2)
                 : AppColors.cardBorder.withValues(alpha: 0.8),
           ),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.18),
+                    blurRadius: 14,
+                    offset: const Offset(0, 7),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -424,7 +451,7 @@ class _FilterChip extends StatelessWidget {
             Icon(
               icon,
               size: 14,
-              color: isActive ? AppColors.deepBlue : AppColors.bodyText,
+              color: isActive ? Colors.white : AppColors.bodyText,
             ),
             const SizedBox(width: 5),
             Flexible(
@@ -434,7 +461,7 @@ class _FilterChip extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: isActive ? AppColors.deepBlue : AppColors.bodyText,
+                  color: isActive ? Colors.white : AppColors.bodyText,
                   fontSize: 12,
                   fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
                   height: 16 / 12,
@@ -462,13 +489,13 @@ class _NotificationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.surface,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
             border: Border.all(
               color: item.isRead
                   ? AppColors.cardBorder.withValues(alpha: 0.7)
@@ -631,7 +658,7 @@ class _StatusBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
         color: AppColors.deepBlue.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
       ),
       child: const Text(
         'Chưa đọc',
@@ -663,7 +690,7 @@ class _NotificationDetailDialog extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppColors.radiusLg),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -678,8 +705,8 @@ class _NotificationDetailDialog extends StatelessWidget {
                     width: 38,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEFF1FF),
-                      borderRadius: BorderRadius.circular(10),
+                      color: AppColors.primarySurface,
+                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
                     ),
                     child: const Icon(
                       Icons.notifications_rounded,
@@ -793,7 +820,7 @@ class _NotificationDetailDialog extends StatelessWidget {
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
                     ),
                   ),
                   child: const Text(
@@ -837,40 +864,16 @@ class _ErrorState extends StatelessWidget {
   final VoidCallback onRetry;
 
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.cloud_off_rounded,
-              color: AppColors.deepBlue,
-              size: 42,
-            ),
-            const SizedBox(height: 14),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.inputText,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: onRetry,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
-              ),
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Thử lại'),
-            ),
-          ],
-        ),
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: AppListState(
+        kind: AppListStateKind.error,
+        title: 'Không tải được thông báo',
+        description: message,
+        actionLabel: 'Thử lại',
+        onAction: onRetry,
       ),
-    );
-  }
+    ),
+  );
 }

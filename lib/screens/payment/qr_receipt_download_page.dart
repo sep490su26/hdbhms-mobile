@@ -5,11 +5,112 @@ import 'dart:ui' as ui;
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:flutter/rendering.dart';
 import 'package:gal/gal.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
+import '../../theme/app_typography.dart';
+import '../../widgets/app_primary_gradient_button.dart';
+import '../../widgets/app_screen_shell.dart';
+import '../../widgets/app_top_bar.dart';
+
+class QrReceiptPreviewPage extends StatefulWidget {
+  const QrReceiptPreviewPage({super.key, required this.invoice});
+
+  final TenantInvoice invoice;
+
+  @override
+  State<QrReceiptPreviewPage> createState() => _QrReceiptPreviewPageState();
+}
+
+class _QrReceiptPreviewPageState extends State<QrReceiptPreviewPage> {
+  bool _saving = false;
+
+  Future<void> _download() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      final saved = await downloadQrReceipt(context, widget.invoice);
+      if (!mounted || !saved) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã lưu ảnh QR thanh toán.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không thể lưu ảnh QR. Vui lòng thử lại.'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: AppScreenShell(
+          contentDecoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFFE8F0FF), AppColors.background],
+              stops: [0, 0.32],
+            ),
+          ),
+          header: AppTopBar(
+            title: 'Mẫu QR thanh toán',
+            onBack: () => Navigator.of(context).maybePop(),
+          ),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(14, 18, 14, 24),
+            children: [
+              const Text('Ảnh QR để tải', style: AppTypography.pageTitle),
+              const SizedBox(height: 6),
+              const Text(
+                'Ảnh này giữ nguyên đầy đủ thông tin chuyển khoản để bạn lưu hoặc gửi đi.',
+                style: AppTypography.body,
+              ),
+              const SizedBox(height: 18),
+              Center(
+                child: FittedBox(
+                  child: QrReceiptTemplate(invoice: widget.invoice),
+                ),
+              ),
+              const SizedBox(height: 20),
+              AppPrimaryGradientButton(
+                onPressed: _saving ? null : _download,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_saving)
+                      const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    else
+                      const Icon(Icons.download_rounded, size: 20),
+                    const SizedBox(width: 8),
+                    Text(_saving ? 'Đang tạo ảnh...' : 'Tải ảnh QR'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 Future<bool> downloadQrReceipt(
   BuildContext context,
@@ -46,7 +147,7 @@ Future<bool> downloadQrReceipt(
                   ),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(AppColors.radiusLg),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.16),
@@ -81,7 +182,7 @@ Future<bool> downloadQrReceipt(
 
   overlay.insert(entry);
   try {
-  final qrValue = invoice.payosQrValue.trim();
+    final qrValue = invoice.qrCode.trim();
     if (qrValue.startsWith('http://') || qrValue.startsWith('https://')) {
       await precacheImage(NetworkImage(qrValue), context);
     }
@@ -141,10 +242,10 @@ class QrReceiptTemplate extends StatelessWidget {
 
   final TenantInvoice invoice;
 
-  static const _primary = Color(0xFF1D4ED8);
-  static const _ink = Color(0xFF0F172A);
-  static const _surface = Color(0xFFF1F5FA);
-  static const _border = Color(0xFFE2E8F0);
+  static const _primary = AppColors.primary;
+  static const _ink = AppColors.inputText;
+  static const _surface = AppColors.inputFill;
+  static const _border = AppColors.cardBorder;
 
   @override
   Widget build(BuildContext context) {
@@ -199,7 +300,9 @@ class QrReceiptTemplate extends StatelessWidget {
                         height: 46,
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(
+                            AppColors.radiusMd,
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.28),
@@ -247,7 +350,9 @@ class QrReceiptTemplate extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(
+                            AppColors.radiusPill,
+                          ),
                           border: Border.all(
                             color: Colors.white.withValues(alpha: 0.35),
                           ),
@@ -328,10 +433,10 @@ class QrReceiptTemplate extends StatelessWidget {
                       colors: [
                         Color(0xFF1D4ED8),
                         Color(0xFF6366F1),
-                        Color(0xFF8B5CF6),
+                        AppColors.accentViolet,
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(AppColors.radiusLg),
                     boxShadow: [
                       BoxShadow(
                         color: const Color(0xFF1D4ED8).withValues(alpha: 0.22),
@@ -345,7 +450,7 @@ class QrReceiptTemplate extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(AppColors.radiusLg),
                     ),
                     child: Column(
                       children: [
@@ -410,7 +515,7 @@ class QrReceiptTemplate extends StatelessWidget {
                                   width: 152,
                                   height: 152,
                                   child: _ReceiptQrImage(
-                                    qrCode: invoice.payosQrValue,
+                                    qrCode: invoice.qrCode,
                                   ),
                                 ),
                               ),
@@ -426,8 +531,10 @@ class QrReceiptTemplate extends StatelessWidget {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFEFF6FF),
-                            borderRadius: BorderRadius.circular(999),
+                            color: AppColors.infoSurface,
+                            borderRadius: BorderRadius.circular(
+                              AppColors.radiusPill,
+                            ),
                           ),
                           child: const Text(
                             'Mở app ngân hàng hoặc ví điện tử  →  Quét mã QR',
@@ -450,7 +557,7 @@ class QrReceiptTemplate extends StatelessWidget {
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(AppColors.radiusLg),
                     border: Border.all(color: _border),
                     boxShadow: [
                       BoxShadow(
@@ -485,8 +592,8 @@ class QrReceiptTemplate extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFEF9EC),
-                    borderRadius: BorderRadius.circular(13),
-                    border: Border.all(color: const Color(0xFFF59E0B)),
+                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                    border: Border.all(color: AppColors.warning),
                   ),
                   child: const Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -501,7 +608,7 @@ class QrReceiptTemplate extends StatelessWidget {
                         child: Text(
                           'Sau khi chuyển khoản thành công, hệ thống sẽ tự động xác nhận.',
                           style: TextStyle(
-                            color: Color(0xFF92400E),
+                            color: AppColors.warningText,
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             height: 1.45,
@@ -523,7 +630,7 @@ class QrReceiptTemplate extends StatelessWidget {
                       height: 18,
                       decoration: BoxDecoration(
                         color: _primary,
-                        borderRadius: BorderRadius.circular(5),
+                        borderRadius: BorderRadius.circular(AppColors.radiusSm),
                       ),
                       child: const Icon(
                         Icons.apartment_rounded,

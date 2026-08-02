@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
@@ -23,7 +23,7 @@ class TicketStatusBadge extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: colors.background,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
       ),
       child: Text(
         status.label,

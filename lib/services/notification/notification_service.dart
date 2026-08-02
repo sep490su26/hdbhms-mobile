@@ -29,11 +29,49 @@ class NotificationService {
   const NotificationService({http.Client? client}) : _client = client;
 
   final http.Client? _client;
+  static final StreamController<void> _readEvents =
+      StreamController<void>.broadcast();
+
+  static Stream<void> get readEvents => _readEvents.stream;
 
   http.Client get _effectiveClient =>
       _client ?? AuthenticatedClient(inner: http.Client());
 
   static const _timeout = Duration(seconds: 15);
+
+  Future<int> getUnreadCount() async {
+    final client = _effectiveClient;
+    try {
+      final response = await client
+          .get(
+            Uri.parse('${ApiConfig.baseUrl}/notifications/unread-count'),
+            headers: {'X-Client-Type': 'mobile'},
+          )
+          .timeout(_timeout);
+
+      if (_isSuccess(response)) {
+        final body = jsonDecode(utf8.decode(response.bodyBytes));
+        final data = body is Map<String, dynamic> ? body['data'] : null;
+        return int.tryParse(data?.toString() ?? '') ?? 0;
+      }
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        throw const NotificationForbiddenException();
+      }
+      throw NotificationException(_messageForError(response));
+    } on NotificationException {
+      rethrow;
+    } on TimeoutException {
+      throw const NotificationException('Không kết nối được máy chủ');
+    } on http.ClientException {
+      throw const NotificationException('Không kết nối được máy chủ');
+    } on FormatException {
+      throw const NotificationException('Dữ liệu không hợp lệ');
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
 
   Future<NotificationScrollResponse> getNotifications({
     int limit = 20,
@@ -52,7 +90,7 @@ class NotificationService {
           .get(uri, headers: {'X-Client-Type': 'mobile'})
           .timeout(_timeout);
 
-      if (response.statusCode == 200) {
+      if (_isSuccess(response)) {
         final body = jsonDecode(utf8.decode(response.bodyBytes));
         if (body is Map<String, dynamic> && body.containsKey('data')) {
           final data = body['data'] as Map<String, dynamic>;
@@ -95,7 +133,10 @@ class NotificationService {
           )
           .timeout(_timeout);
 
-      if (response.statusCode == 200) return;
+      if (_isSuccess(response)) {
+        _notifyReadChanged();
+        return;
+      }
       if (response.statusCode == 401 || response.statusCode == 403) {
         throw const NotificationForbiddenException();
       }
@@ -123,7 +164,10 @@ class NotificationService {
           )
           .timeout(_timeout);
 
-      if (response.statusCode == 200) return;
+      if (_isSuccess(response)) {
+        _notifyReadChanged();
+        return;
+      }
       if (response.statusCode == 401 || response.statusCode == 403) {
         throw const NotificationForbiddenException();
       }
@@ -158,7 +202,10 @@ class NotificationService {
           .post(uri, headers: {'X-Client-Type': 'mobile'})
           .timeout(_timeout);
 
-      if (response.statusCode == 200) return;
+      if (_isSuccess(response)) {
+        _notifyReadChanged();
+        return;
+      }
       if (response.statusCode == 401 || response.statusCode == 403) {
         throw const NotificationForbiddenException();
       }
@@ -166,13 +213,9 @@ class NotificationService {
     } on NotificationException {
       rethrow;
     } on TimeoutException {
-      throw const NotificationException(
-        'KhÃ´ng káº¿t ná»‘i Ä‘Æ°á»£c mÃ¡y chá»§',
-      );
+      throw const NotificationException('Không kết nối được máy chủ');
     } on http.ClientException {
-      throw const NotificationException(
-        'KhÃ´ng káº¿t ná»‘i Ä‘Æ°á»£c mÃ¡y chá»§',
-      );
+      throw const NotificationException('Không kết nối được máy chủ');
     } finally {
       if (_client == null) {
         client.close();
@@ -186,6 +229,15 @@ class NotificationService {
       return body['message']?.toString() ?? 'Lỗi không xác định';
     } catch (_) {
       return 'Lỗi không xác định';
+    }
+  }
+
+  bool _isSuccess(http.Response response) =>
+      response.statusCode >= 200 && response.statusCode < 300;
+
+  static void _notifyReadChanged() {
+    if (!_readEvents.isClosed) {
+      _readEvents.add(null);
     }
   }
 }

@@ -18,13 +18,13 @@ class SectionCard extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: AppColors.cardBorder),
         boxShadow: [
           BoxShadow(
             color: AppColors.inputText.withValues(alpha: 0.06),
-            blurRadius: 28,
-            offset: const Offset(0, 14),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
       ),

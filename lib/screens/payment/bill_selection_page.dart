@@ -1,41 +1,52 @@
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 import '../../models/payment/tenant_invoice_model.dart';
+import '../../services/home/current_room_service.dart';
 import '../../services/payment/tenant_invoice_service.dart';
-import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
-import '../../widgets/app_action_tile.dart';
+import '../../utils/room_scope.dart';
 import '../../widgets/tenant_bottom_navigation.dart';
 import '../../widgets/app_screen_shell.dart';
 import '../../widgets/app_notification_bell.dart';
+import '../../widgets/app_top_bar.dart';
 import '../maintenance/maintenance_ticket_list_screen.dart';
 import '../notification/notification_list_screen.dart';
 import '../profile_request/tenant_profile_screen.dart';
 import '../profile_request/tenant_request_screen.dart';
+import 'bill_detail_screen.dart';
 import 'payment_history_page.dart';
 import 'qr_payment_page.dart';
 import 'utility_complaint_screen.dart';
 import '../../widgets/app_filter_chip.dart';
+import '../../widgets/app_list_state.dart';
 
 class BillSelectionPage extends StatefulWidget {
   const BillSelectionPage({
     super.key,
     this.invoiceService = const TenantInvoiceService(),
+    this.currentRoomService = const CurrentRoomService(),
+    this.roomId,
+    this.roomCode = '',
   });
 
   final TenantInvoiceService invoiceService;
+  final CurrentRoomService currentRoomService;
+  final int? roomId;
+  final String roomCode;
 
   @override
   State<BillSelectionPage> createState() => _BillSelectionPageState();
 }
 
 class _BillSelectionPageState extends State<BillSelectionPage> {
-  _BillFilter _activeFilter = _BillFilter.all;
+  _BillStatusFilter _activeStatusFilter = _BillStatusFilter.all;
+  _BillTypeFilter _activeTypeFilter = _BillTypeFilter.all;
   late Future<List<TenantInvoice>> _invoicesFuture;
 
   @override
   void initState() {
     super.initState();
-    _invoicesFuture = widget.invoiceService.fetchMyInvoices();
+    _invoicesFuture = _loadInvoices();
   }
 
   @override
@@ -44,17 +55,19 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: AppScreenShell(
-          header: const _BillHeader(),
+          header: _BillHeader(onOpenHistory: _openPaymentHistory),
           child: ListView(
             padding: const EdgeInsets.fromLTRB(14, 22, 14, 18),
             children: [
               const Text('Tất cả hoá đơn', style: AppTypography.pageTitle),
               const SizedBox(height: 14),
               _BillFilterBar(
-                active: _activeFilter,
-                onChanged: (filter) {
-                  setState(() => _activeFilter = filter);
-                },
+                activeStatus: _activeStatusFilter,
+                activeType: _activeTypeFilter,
+                onStatusChanged: (filter) =>
+                    setState(() => _activeStatusFilter = filter),
+                onTypeChanged: (filter) =>
+                    setState(() => _activeTypeFilter = filter),
               ),
               const SizedBox(height: 18),
               FutureBuilder<List<TenantInvoice>>(
@@ -91,7 +104,10 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
         onSupportTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => const MaintenanceTicketListScreen(),
+              builder: (context) => MaintenanceTicketListScreen(
+                roomId: widget.roomId,
+                roomCode: widget.roomCode,
+              ),
             ),
           );
         },
@@ -103,7 +119,12 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+          MaterialPageRoute(
+            builder: (context) => TenantRequestScreen(
+              roomId: widget.roomId,
+              roomCode: widget.roomCode,
+            ),
+          ),
         ),
       ),
     );
@@ -111,11 +132,56 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
 
   void _reloadInvoices() {
     setState(() {
-      _invoicesFuture = widget.invoiceService.fetchMyInvoices();
+      _invoicesFuture = _loadInvoices();
     });
   }
 
-  void _openPayment(BuildContext context, TenantInvoice invoice) {
+  Future<List<TenantInvoice>> _loadInvoices() async {
+    final scope = await resolveRoomScope(
+      roomId: widget.roomId,
+      roomCode: widget.roomCode,
+      currentRoomService: widget.currentRoomService,
+    );
+    if (!scope.hasRoom) return const [];
+    return widget.invoiceService.fetchMyInvoices(
+      roomId: scope.roomId,
+      roomCode: scope.roomCode,
+    );
+  }
+
+  void _openPaymentHistory() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => PaymentHistoryPage(
+          invoiceService: widget.invoiceService,
+          currentRoomService: widget.currentRoomService,
+          roomId: widget.roomId,
+          roomCode: widget.roomCode,
+        ),
+      ),
+    );
+  }
+
+  void _openInvoicePreviewFlow(BuildContext context, TenantInvoice invoice) {
+    final isUtility = invoice.invoiceType.toUpperCase() == 'UTILITY';
+    final canOpenQr =
+        invoice.canPay &&
+        (invoice.qrCode.isNotEmpty || invoice.transferDescription.isNotEmpty);
+
+    if (isUtility || !canOpenQr) {
+      Navigator.of(context)
+          .push(
+            MaterialPageRoute(
+              builder: (context) => BillDetailScreen(
+                invoice: invoice,
+                invoiceService: widget.invoiceService,
+              ),
+            ),
+          )
+          .then((_) => _reloadInvoices());
+      return;
+    }
+
     if (invoice.hasOpenMeterReadingReview) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -182,13 +248,17 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
     BuildContext context,
     List<TenantInvoice> invoices,
   ) {
+    final typeFilteredInvoices = invoices
+        .where((invoice) => _matchesTypeFilter(invoice, _activeTypeFilter))
+        .toList(growable: false);
+
     final pendingBills = _withSpacing(
-      invoices
+      typeFilteredInvoices
           .where((invoice) => !invoice.isPaid)
           .map(
             (invoice) => _PendingBillCard(
               invoice: invoice,
-              onTap: () => _openPayment(context, invoice),
+              onTap: () => _openInvoicePreviewFlow(context, invoice),
               onComplain: () => _openMeterReadingReview(context, invoice),
             ),
           )
@@ -197,22 +267,16 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
     );
 
     final paidBills = _withSpacing(
-      invoices
+      typeFilteredInvoices
           .where((invoice) => invoice.isPaid)
-          .map((invoice) => _PaidBillCard(invoice: invoice))
+          .map(
+            (invoice) => _PaidBillCard(
+              invoice: invoice,
+              onTap: () => _openInvoicePreviewFlow(context, invoice),
+            ),
+          )
           .toList(),
       12,
-    );
-
-    final historyButton = _ViewHistoryButton(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) =>
-                PaymentHistoryPage(invoiceService: widget.invoiceService),
-          ),
-        );
-      },
     );
 
     if (invoices.isEmpty) {
@@ -224,8 +288,17 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
       ];
     }
 
-    return switch (_activeFilter) {
-      _BillFilter.all => [
+    if (typeFilteredInvoices.isEmpty) {
+      return [
+        _BillEmptyState(
+          title: 'Không có hóa đơn ${_typeFilterEmptyLabel(_activeTypeFilter)}',
+          message: 'Thử chọn loại hóa đơn khác để xem các khoản đang có.',
+        ),
+      ];
+    }
+
+    return switch (_activeStatusFilter) {
+      _BillStatusFilter.all => [
         if (pendingBills.isNotEmpty) ...pendingBills,
         if (paidBills.isNotEmpty) ...[
           const SizedBox(height: 28),
@@ -233,10 +306,8 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
           const SizedBox(height: 22),
           ...paidBills,
         ],
-        const SizedBox(height: 18),
-        historyButton,
       ],
-      _BillFilter.unpaid =>
+      _BillStatusFilter.unpaid =>
         pendingBills.isEmpty
             ? const [
                 _BillEmptyState(
@@ -245,20 +316,31 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
                 ),
               ]
             : pendingBills,
-      _BillFilter.paid =>
-        paidBills.isEmpty
-            ? const [
-                _BillEmptyState(
-                  title: 'Chưa có lịch sử thanh toán',
-                  message: 'Các hóa đơn đã thanh toán sẽ được lưu ở đây.',
-                ),
-              ]
-            : [...paidBills, const SizedBox(height: 18), historyButton],
     };
   }
 }
 
-enum _BillFilter { all, unpaid, paid }
+enum _BillStatusFilter { all, unpaid }
+
+enum _BillTypeFilter { all, rent, utility, other }
+
+bool _matchesTypeFilter(TenantInvoice invoice, _BillTypeFilter filter) {
+  return switch (filter) {
+    _BillTypeFilter.all => true,
+    _BillTypeFilter.rent => invoice.isRentType,
+    _BillTypeFilter.utility => invoice.isUtilityType,
+    _BillTypeFilter.other => invoice.isOtherType,
+  };
+}
+
+String _typeFilterEmptyLabel(_BillTypeFilter filter) {
+  return switch (filter) {
+    _BillTypeFilter.all => '',
+    _BillTypeFilter.rent => 'tiền phòng',
+    _BillTypeFilter.utility => 'điện nước & dịch vụ',
+    _BillTypeFilter.other => 'khác',
+  };
+}
 
 List<Widget> _withSpacing(List<Widget> widgets, double spacing) {
   if (widgets.isEmpty) return const [];
@@ -287,14 +369,51 @@ String _formatDate(DateTime? value) {
   return '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
 }
 
-String _lineLabel(TenantInvoiceLine line) {
-  if (line.lineType == 'VIOLATION_FINE') {
-    return 'Phạt vi phạm nội quy: ${_formatAmount(line.amount)}';
+IconData _invoiceTypeIcon(TenantInvoice invoice) {
+  if (invoice.isRentType) return Icons.apartment_rounded;
+  if (invoice.isUtilityType) return Icons.bolt_rounded;
+  return Icons.more_horiz_rounded;
+}
+
+Color _invoiceTypeColor(TenantInvoice invoice) {
+  if (invoice.isRentType) return AppColors.deepBlue;
+  if (invoice.isUtilityType) return const Color(0xFF0EA5E9);
+  return const Color(0xFF64748B);
+}
+
+class _InvoiceTypePill extends StatelessWidget {
+  const _InvoiceTypePill({required this.invoice});
+
+  final TenantInvoice invoice;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _invoiceTypeColor(invoice);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_invoiceTypeIcon(invoice), size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            invoice.invoiceTypeLabel,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              height: 14 / 10,
+            ),
+          ),
+        ],
+      ),
+    );
   }
-  if (line.lineType == 'MAINTENANCE_COMPENSATION') {
-    return 'Bồi thường bảo trì: ${_formatAmount(line.amount)}';
-  }
-  return '${line.description}: ${_formatAmount(line.amount)}';
 }
 
 class _BillLoadingState extends StatelessWidget {
@@ -316,32 +435,13 @@ class _BillErrorState extends StatelessWidget {
   final VoidCallback onRetry;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF0EF),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFFB5AE)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            message,
-            style: const TextStyle(
-              color: Color(0xFFB42318),
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextButton(onPressed: onRetry, child: const Text('Thử lại')),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppListState(
+    kind: AppListStateKind.error,
+    title: 'Không tải được hóa đơn',
+    description: message,
+    actionLabel: 'Thử lại',
+    onAction: onRetry,
+  );
 }
 
 class _BillEmptyState extends StatelessWidget {
@@ -351,111 +451,142 @@ class _BillEmptyState extends StatelessWidget {
   final String message;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.receipt_long_outlined,
-              color: AppColors.deepBlue,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  textAlign: TextAlign.left,
-                  style: const TextStyle(
-                    color: AppColors.inputText,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                    height: 18 / 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  message,
-                  textAlign: TextAlign.left,
-                  style: const TextStyle(
-                    color: AppColors.bodyText,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    height: 18 / 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppListState(
+    kind: AppListStateKind.empty,
+    title: title,
+    description: message,
+    icon: Icons.receipt_long_outlined,
+  );
 }
 
 class _BillFilterBar extends StatelessWidget {
-  const _BillFilterBar({required this.active, required this.onChanged});
+  const _BillFilterBar({
+    required this.activeStatus,
+    required this.activeType,
+    required this.onStatusChanged,
+    required this.onTypeChanged,
+  });
 
-  final _BillFilter active;
-  final ValueChanged<_BillFilter> onChanged;
+  final _BillStatusFilter activeStatus;
+  final _BillTypeFilter activeType;
+  final ValueChanged<_BillStatusFilter> onStatusChanged;
+  final ValueChanged<_BillTypeFilter> onTypeChanged;
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          AppFilterChip(
-            label: 'Tất cả',
-            icon: Icons.list_rounded,
-            isActive: active == _BillFilter.all,
-            onTap: () => onChanged(_BillFilter.all),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              AppFilterChip(
+                label: 'Tất cả',
+                icon: Icons.list_rounded,
+                isActive: activeStatus == _BillStatusFilter.all,
+                onTap: () => onStatusChanged(_BillStatusFilter.all),
+              ),
+              const SizedBox(width: 8),
+              AppFilterChip(
+                label: 'Chưa thanh toán',
+                icon: Icons.pending_actions_rounded,
+                isActive: activeStatus == _BillStatusFilter.unpaid,
+                onTap: () => onStatusChanged(_BillStatusFilter.unpaid),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          AppFilterChip(
-            label: 'Chưa thanh toán',
-            icon: Icons.pending_actions_rounded,
-            isActive: active == _BillFilter.unpaid,
-            onTap: () => onChanged(_BillFilter.unpaid),
+        ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              AppFilterChip(
+                label: 'Mọi loại',
+                icon: Icons.category_outlined,
+                isActive: activeType == _BillTypeFilter.all,
+                onTap: () => onTypeChanged(_BillTypeFilter.all),
+              ),
+              const SizedBox(width: 8),
+              AppFilterChip(
+                label: 'Tiền phòng',
+                icon: Icons.apartment_rounded,
+                isActive: activeType == _BillTypeFilter.rent,
+                onTap: () => onTypeChanged(_BillTypeFilter.rent),
+              ),
+              const SizedBox(width: 8),
+              AppFilterChip(
+                label: 'Điện nước & DV',
+                icon: Icons.bolt_rounded,
+                isActive: activeType == _BillTypeFilter.utility,
+                onTap: () => onTypeChanged(_BillTypeFilter.utility),
+              ),
+              const SizedBox(width: 8),
+              AppFilterChip(
+                label: 'Khác',
+                icon: Icons.more_horiz_rounded,
+                isActive: activeType == _BillTypeFilter.other,
+                onTap: () => onTypeChanged(_BillTypeFilter.other),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          AppFilterChip(
-            label: 'Đã thanh toán',
-            icon: Icons.task_alt_rounded,
-            isActive: active == _BillFilter.paid,
-            onTap: () => onChanged(_BillFilter.paid),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
 class _BillHeader extends StatelessWidget {
-  const _BillHeader();
+  const _BillHeader({required this.onOpenHistory});
+
+  final VoidCallback onOpenHistory;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTopBar(
+      title: 'Hóa đơn',
+      pageIcon: Icons.receipt_long_outlined,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            onPressed: onOpenHistory,
+            constraints: const BoxConstraints.tightFor(
+              width: AppColors.minimumTouchTarget,
+              height: AppColors.minimumTouchTarget,
+            ),
+            icon: const Icon(
+              Icons.history_rounded,
+              color: AppColors.topBarIconColor,
+            ),
+            tooltip: 'Lịch sử thanh toán',
+          ),
+          IconButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const NotificationListScreen(),
+              ),
+            ),
+            icon: const AppNotificationBell(),
+            tooltip: 'Thông báo',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ignore: unused_element
+class _LegacyBillHeader extends StatelessWidget {
+  const _LegacyBillHeader({required this.onOpenHistory});
+
+  final VoidCallback onOpenHistory;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 54,
+      height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 15, 0),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -468,7 +599,8 @@ class _BillHeader extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => Navigator.of(context).maybePop(),
+            onPressed: () =>
+                Navigator.of(context).popUntil((route) => route.isFirst),
             icon: const Icon(
               Icons.arrow_back_rounded,
               color: AppColors.deepBlue,
@@ -477,15 +609,18 @@ class _BillHeader extends StatelessWidget {
             tooltip: 'Trở về',
           ),
           const Expanded(
-            child: Text(
-              'Hóa đơn',
-              style: TextStyle(
-                color: AppColors.deepBlue,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                height: 20 / 16,
-              ),
+            child: Text('Hóa đơn', style: AppColors.topBarTitleStyle),
+          ),
+          IconButton(
+            onPressed: onOpenHistory,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+            icon: const Icon(
+              Icons.history_rounded,
+              color: AppColors.topBarIconColor,
+              size: AppColors.topBarIconSize,
             ),
+            tooltip: 'Lịch sử thanh toán',
           ),
           IconButton(
             onPressed: () => Navigator.of(context).push(
@@ -494,10 +629,10 @@ class _BillHeader extends StatelessWidget {
               ),
             ),
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            constraints: const BoxConstraints.tightFor(width: 44, height: 44),
             icon: const AppNotificationBell(
-              color: AppColors.inputText,
-              size: 24,
+              color: AppColors.topBarIconColor,
+              size: AppColors.topBarIconSize,
             ),
             tooltip: 'Thông báo',
           ),
@@ -524,11 +659,11 @@ class _PendingBillCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
         child: Ink(
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppColors.radiusLg),
             border: Border.all(color: AppColors.cardBorder),
             boxShadow: [
               BoxShadow(
@@ -593,7 +728,10 @@ class _PendingBillCard extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Row(
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(
@@ -602,12 +740,14 @@ class _PendingBillCard extends StatelessWidget {
                                 ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFFFD6D6),
-                                  borderRadius: BorderRadius.circular(999),
+                                  borderRadius: BorderRadius.circular(
+                                    AppColors.radiusPill,
+                                  ),
                                 ),
                                 child: const Text(
                                   'CHỜ THANH TOÁN',
                                   style: TextStyle(
-                                    color: Color(0xFFDC2626),
+                                    color: AppColors.danger,
                                     fontSize: 10,
                                     fontWeight: FontWeight.w900,
                                     height: 14 / 10,
@@ -615,17 +755,15 @@ class _PendingBillCard extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              const Spacer(),
-                              Flexible(
-                                child: Text(
-                                  'Hạn: ${_formatDate(invoice.dueDate)}',
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: AppColors.bodyText,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                    height: 15 / 11,
-                                  ),
+                              _InvoiceTypePill(invoice: invoice),
+                              Text(
+                                'Hạn: ${_formatDate(invoice.dueDate)}',
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: AppColors.bodyText,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  height: 15 / 11,
                                 ),
                               ),
                             ],
@@ -652,20 +790,6 @@ class _PendingBillCard extends StatelessWidget {
                               ),
                             ],
                           ),
-                          if (invoice.lines.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              invoice.lines.take(2).map(_lineLabel).join('\n'),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.bodyText,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                height: 15 / 11,
-                              ),
-                            ),
-                          ],
                           if (invoice.utilityMeterLines.isNotEmpty) ...[
                             const SizedBox(height: 12),
                             if (invoice.hasOpenMeterReadingReview)
@@ -699,7 +823,7 @@ class _ReviewStatusChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: const Color(0xFFFFF7ED),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
         border: Border.all(color: const Color(0xFFFED7AA)),
       ),
       child: const Row(
@@ -735,13 +859,13 @@ class _ComplaintButton extends StatelessWidget {
           gradient: LinearGradient(
             colors: [const Color(0xFFFFF7ED), const Color(0xFFFEF3C7)],
           ),
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(AppColors.radiusPill),
           border: Border.all(
             color: const Color(0xFFFBBF24).withValues(alpha: 0.6),
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+              color: AppColors.warning.withValues(alpha: 0.15),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -759,7 +883,7 @@ class _ComplaintButton extends StatelessWidget {
             Text(
               'Khiếu nại điện nước',
               style: TextStyle(
-                color: Color(0xFF92400E),
+                color: AppColors.warningText,
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
               ),
@@ -805,124 +929,115 @@ class _PaidDivider extends StatelessWidget {
 }
 
 class _PaidBillCard extends StatelessWidget {
-  const _PaidBillCard({required this.invoice});
+  const _PaidBillCard({required this.invoice, required this.onTap});
 
   final TenantInvoice invoice;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 86),
-      padding: const EdgeInsets.fromLTRB(22, 16, 18, 15),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FCFA),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.success.withValues(alpha: 0.18)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.deepBlue.withValues(alpha: 0.035),
-            blurRadius: 14,
-            offset: const Offset(0, 7),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.check_circle_outline, color: AppColors.success),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        invoice.title,
-                        style: const TextStyle(
-                          color: AppColors.inputText,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          height: 20 / 15,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _formatAmount(invoice.totalAmount),
-                      style: const TextStyle(
-                        color: AppColors.inputText,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        height: 20 / 15,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 7),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF8096FF),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: const Text(
-                        'ĐÃ THANH TOÁN',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
-                          height: 12 / 9,
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-                    Flexible(
-                      child: Text(
-                        invoice.issuedAt == null
-                            ? 'Đã thanh toán'
-                            : 'Ngày: ${_formatDate(invoice.issuedAt)}',
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.bodyText,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          height: 15 / 11,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ViewHistoryButton extends StatelessWidget {
-  const _ViewHistoryButton({required this.onTap});
-
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return AppActionRowButton(
-      icon: Icons.history_rounded,
-      title: 'Xem toàn bộ lịch sử thanh toán',
-      subtitle: 'Các hóa đơn đã thanh toán và biên nhận',
-      accentColor: AppColors.actionCyan,
+    return GestureDetector(
       onTap: onTap,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 86),
+        padding: const EdgeInsets.fromLTRB(22, 16, 18, 15),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FCFA),
+          borderRadius: BorderRadius.circular(AppColors.radiusLg),
+          border: Border.all(color: AppColors.success.withValues(alpha: 0.18)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.deepBlue.withValues(alpha: 0.035),
+              blurRadius: 14,
+              offset: const Offset(0, 7),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.check_circle_outline, color: AppColors.success),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          invoice.title,
+                          style: const TextStyle(
+                            color: AppColors.inputText,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            height: 20 / 15,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _formatAmount(invoice.totalAmount),
+                        style: const TextStyle(
+                          color: AppColors.inputText,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          height: 20 / 15,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 7),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF8096FF),
+                          borderRadius: BorderRadius.circular(
+                            AppColors.radiusPill,
+                          ),
+                        ),
+                        child: const Text(
+                          'ĐÃ THANH TOÁN',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            height: 12 / 9,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _InvoiceTypePill(invoice: invoice),
+                      const Spacer(),
+                      Flexible(
+                        child: Text(
+                          invoice.issuedAt == null
+                              ? 'Đã thanh toán'
+                              : 'Ngày: ${_formatDate(invoice.issuedAt)}',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.bodyText,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            height: 15 / 11,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

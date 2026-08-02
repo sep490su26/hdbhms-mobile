@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/widgets/app_empty_state.dart';
 
 import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/contract/handover_item_model.dart';
@@ -207,7 +208,7 @@ class _AmenitiesContent extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: AppColors.deepBlue.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(AppColors.radiusLg),
                 ),
                 child: Text(
                   '$totalCount mục',
@@ -249,9 +250,13 @@ class _SummaryCard extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF061827), AppColors.deepBlue, Color(0xFF1A4A8A)],
+          colors: [
+            AppColors.heroGradientStart,
+            AppColors.deepBlue,
+            Color(0xFF1A4A8A),
+          ],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
         boxShadow: [
           BoxShadow(
             color: AppColors.deepBlue.withValues(alpha: 0.28),
@@ -268,7 +273,7 @@ class _SummaryCard extends StatelessWidget {
             height: 54,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AppColors.radiusLg),
               border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
             ),
             child: const Icon(
@@ -318,12 +323,12 @@ class _SummaryCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 // Progress bar
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(AppColors.radiusPill),
                   child: LinearProgressIndicator(
                     value: ratio,
                     backgroundColor: Colors.white.withValues(alpha: 0.2),
                     valueColor: const AlwaysStoppedAnimation<Color>(
-                      Color(0xFF10B981),
+                      AppColors.success,
                     ),
                     minHeight: 5,
                   ),
@@ -353,7 +358,7 @@ class _AmenityCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
         border: Border.all(color: AppColors.cardBorder),
         boxShadow: [
           BoxShadow(
@@ -378,7 +383,7 @@ class _AmenityCard extends StatelessWidget {
                   height: 28,
                   decoration: BoxDecoration(
                     color: AppColors.deepBlue.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   ),
                   alignment: Alignment.center,
                   child: Text(
@@ -439,8 +444,8 @@ class _AmenityCard extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF6FAF9),
-                  borderRadius: BorderRadius.circular(8),
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   border: Border.all(color: AppColors.cardBorder),
                 ),
                 child: Row(
@@ -497,7 +502,7 @@ class _AssetMetaChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Row(
@@ -545,7 +550,7 @@ class _ConditionChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -582,7 +587,7 @@ class _EvidenceThumbnail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
       child: Material(
         color: const Color(0xFFE7E9F0),
         child: InkWell(
@@ -623,7 +628,7 @@ class _AmenitiesLoadingState extends StatelessWidget {
           height: 100,
           decoration: BoxDecoration(
             color: const Color(0xFFE3E8EF),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(AppColors.radiusLg),
           ),
         ),
         const SizedBox(height: 20),
@@ -643,7 +648,7 @@ class _LoadingCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(
@@ -656,7 +661,7 @@ class _LoadingCard extends StatelessWidget {
                 height: 28,
                 decoration: BoxDecoration(
                   color: const Color(0xFFE7E9F0),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
               ),
               const SizedBox(width: 10),
@@ -674,7 +679,7 @@ class _LoadingCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           ClipRRect(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
             child: const AspectRatio(
               aspectRatio: 16 / 9,
               child: ColoredBox(color: Color(0xFFE7E9F0)),
@@ -689,18 +694,17 @@ class _LoadingCard extends StatelessWidget {
 class _AmenitiesEmptyState extends StatelessWidget {
   const _AmenitiesEmptyState({required this.onRetry});
   final VoidCallback onRetry;
-
   @override
-  Widget build(BuildContext context) {
-    return _StateMessage(
-      icon: Icons.weekend_outlined,
-      iconColor: AppColors.deepBlue,
-      title: 'Phòng chưa có thông tin tiện ích',
-      subtitle: 'Danh sách đồ dùng bàn giao sẽ hiển thị tại đây',
-      buttonLabel: 'Thử lại',
-      onRetry: onRetry,
-    );
-  }
+  Widget build(BuildContext context) => AppEmptyState(
+    icon: Icons.weekend_outlined,
+    title: 'Ph\u00F2ng ch\u01B0a c\u00F3 th\u00F4ng tin ti\u1EC7n \u00EDch',
+    description:
+        'Danh s\u00E1ch \u0111\u1ED3 d\u00F9ng b\u00E0n giao s\u1EBD hi\u1EC3n th\u1ECB t\u1EA1i \u0111\u00E2y',
+    actionLabel: 'Th\u1EED l\u1EA1i',
+    onAction: onRetry,
+    scrollable: true,
+    onRefresh: () async => onRetry(),
+  );
 }
 
 class _AmenitiesErrorState extends StatelessWidget {
@@ -793,7 +797,7 @@ class _StateMessage extends StatelessWidget {
                   vertical: 12,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 ),
                 elevation: 0,
               ),
@@ -815,7 +819,7 @@ class _OfflineBanner extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
       decoration: BoxDecoration(
         color: const Color(0xFFFFF1CC),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: const Color(0xFFE0A100)),
       ),
       child: const Row(
@@ -848,7 +852,7 @@ class _NoImagePlaceholder extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 22),
       decoration: BoxDecoration(
         color: const Color(0xFFF1F3F9),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
       ),
       child: const Column(
         mainAxisSize: MainAxisSize.min,
@@ -903,7 +907,7 @@ class _SkeletonLine extends StatelessWidget {
         height: height,
         decoration: BoxDecoration(
           color: const Color(0xFFE7E9F0),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
         ),
       ),
     );
@@ -943,7 +947,7 @@ String _assetCategoryLabel(String value) {
     'FURNITURE' => 'Nội thất',
     'SANITARY' || 'BATHROOM' || 'TOILET' => 'Vệ sinh',
     'OTHER' => 'Khác',
-    _ => value.trim(),
+    _ => 'Khác',
   };
 }
 

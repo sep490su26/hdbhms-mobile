@@ -22,6 +22,7 @@ class ActiveRoomItem {
     required this.roomCode,
     required this.roomName,
     required this.propertyName,
+    this.propertyId = 0,
     this.roomStatus = '',
     this.contractStatus = '',
     this.tenantIntention = '',
@@ -37,6 +38,7 @@ class ActiveRoomItem {
   final int roomId;
   final String roomCode;
   final String roomName;
+  final int propertyId;
   final String propertyName;
   final String roomStatus;
   final String contractStatus;
@@ -59,6 +61,7 @@ class ActiveRoomItem {
           json['roomCode']?.toString() ?? json['room_code']?.toString() ?? '',
       roomName:
           json['roomName']?.toString() ?? json['room_name']?.toString() ?? '',
+      propertyId: _asInt(json['propertyId'] ?? json['property_id']) ?? 0,
       propertyName:
           json['propertyName']?.toString() ??
           json['property_name']?.toString() ??
@@ -107,11 +110,58 @@ class ActiveRoomItem {
     return 'Phòng';
   }
 
+  String get roomIdentityKey {
+    if (roomId > 0) return 'room:$roomId';
+    final code = roomCode.trim().toLowerCase();
+    final propertyKey = propertyId > 0
+        ? propertyId.toString()
+        : propertyName.trim().toLowerCase();
+    if (code.isNotEmpty) return 'code:$propertyKey:$code';
+    return 'contract:$contractId';
+  }
+
+  bool get isCurrentRentalContext => _rentalContextStatusRank(this) < 90;
+
   static int? _asInt(Object? value) {
     if (value is int) return value;
     if (value is num) return value.toInt();
     return int.tryParse(value?.toString() ?? '');
   }
+}
+
+List<ActiveRoomItem> dedupeActiveRoomsByRoom(Iterable<ActiveRoomItem> rooms) {
+  final byRoom = <String, ActiveRoomItem>{};
+  for (final room in rooms) {
+    if (!room.isCurrentRentalContext) continue;
+    final key = room.roomIdentityKey;
+    final existing = byRoom[key];
+    if (existing == null ||
+        (existing.contractId <= 0 && room.contractId > 0) ||
+        _isNewerActiveRoom(room, existing)) {
+      byRoom[key] = room;
+    }
+  }
+  return byRoom.values.toList(growable: false);
+}
+
+bool _isNewerActiveRoom(ActiveRoomItem next, ActiveRoomItem current) {
+  final nextRank = _rentalContextStatusRank(next);
+  final currentRank = _rentalContextStatusRank(current);
+  if (nextRank != currentRank) return nextRank < currentRank;
+  final nextStart = next.startDate;
+  final currentStart = current.startDate;
+  if (nextStart == null || currentStart == null) return false;
+  return nextStart.isAfter(currentStart);
+}
+
+int _rentalContextStatusRank(ActiveRoomItem room) {
+  return switch (room.contractStatus.trim().toUpperCase()) {
+    'ACTIVE' => 0,
+    'EXPIRING_SOON' => 1,
+    'TERMINATION_PENDING' => 2,
+    '' => 10,
+    _ => 90,
+  };
 }
 
 class LeaseContractNotFoundException extends LeaseContractException {
@@ -251,10 +301,9 @@ class LeaseContractService {
           listData = body['data'];
         }
         final List<dynamic> list = listData is List ? listData : [];
-        return list
-            .whereType<Map<String, dynamic>>()
-            .map(ActiveRoomItem.fromJson)
-            .toList(growable: false);
+        return dedupeActiveRoomsByRoom(
+          list.whereType<Map<String, dynamic>>().map(ActiveRoomItem.fromJson),
+        );
       }
       if (response.statusCode == 401 || response.statusCode == 403) {
         throw const LeaseContractForbiddenException();
@@ -357,10 +406,51 @@ class LeaseContractService {
     }
   }
 
+  Future<LeaseContract> recordOccupantIntention({
+    required int contractId,
+    required String intention,
+    String note = '',
+  }) async {
+    final client = _effectiveClient;
+    try {
+      final response = await client
+          .post(
+            Uri.parse(
+              '${ApiConfig.baseUrl}/lease-contracts/$contractId/occupant-intention',
+            ),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'intention': intention,
+              'note': note.trim().isEmpty ? null : note.trim(),
+            }),
+          )
+          .timeout(_timeout);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return getContractById(contractId);
+      }
+      throw LeaseContractException(_messageForLifecycleRequestError(response));
+    } on LeaseContractException {
+      rethrow;
+    } on TimeoutException {
+      throw const LeaseContractException('Không kết nối được máy chủ');
+    } on http.ClientException {
+      throw const LeaseContractException('Không kết nối được máy chủ');
+    } on FormatException {
+      throw const LeaseContractException(
+        'Không thể lưu ý định. Vui lòng thử lại.',
+      );
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
+
   Future<void> submitLiquidationRequest({
     required int contractId,
-    required DateTime liquidationDate,
-    required String reason,
+    DateTime? liquidationDate,
+    String reason = '',
     String? liquidationMode,
     List<int> leavingProfileIds = const [],
     List<int> stayingProfileIds = const [],
@@ -368,16 +458,19 @@ class LeaseContractService {
   }) async {
     final client = _effectiveClient;
     final body = <String, dynamic>{
-      'liquidationDate': _dateOnlyString(liquidationDate),
-      'reason': reason.trim(),
+      'liquidationDate': liquidationDate == null
+          ? null
+          : _dateOnlyString(liquidationDate),
+      'reason': reason.trim().isEmpty ? null : reason.trim(),
       if (liquidationMode != null && liquidationMode.trim().isNotEmpty)
         'liquidationMode': liquidationMode.trim(),
       if (leavingProfileIds.isNotEmpty) 'leavingProfileIds': leavingProfileIds,
       if (stayingProfileIds.isNotEmpty) 'stayingProfileIds': stayingProfileIds,
-      if (replacementPrimaryTenantProfileId != null)
-        'replacementPrimaryTenantProfileId': replacementPrimaryTenantProfileId,
     };
-
+    if (replacementPrimaryTenantProfileId != null) {
+      body['replacementPrimaryTenantProfileId'] =
+          replacementPrimaryTenantProfileId;
+    }
     try {
       final response = await client
           .post(
@@ -392,16 +485,112 @@ class LeaseContractService {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return;
       }
-      throw LeaseContractException(_messageForError(response));
+      throw LeaseContractException(_messageForLifecycleRequestError(response));
     } on LeaseContractException {
       rethrow;
     } on TimeoutException {
-      throw const LeaseContractException(
-        'KhÃ´ng káº¿t ná»‘i Ä‘Æ°á»£c mÃ¡y chá»§',
-      );
+      throw const LeaseContractException('Không kết nối được máy chủ');
     } on http.ClientException {
+      throw const LeaseContractException('Không kết nối được máy chủ');
+    } on FormatException {
       throw const LeaseContractException(
-        'KhÃ´ng káº¿t ná»‘i Ä‘Æ°á»£c mÃ¡y chá»§',
+        'Không thể gửi yêu cầu. Vui lòng thử lại.',
+      );
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
+
+  Future<void> submitRenewalRequest({
+    required int contractId,
+    required DateTime newStartDate,
+    required DateTime newEndDate,
+    required int renewalTermMonths,
+    required num monthlyRent,
+    required int paymentCycleMonths,
+    required num depositAmount,
+    String note = '',
+  }) async {
+    final client = _effectiveClient;
+    try {
+      final response = await client
+          .post(
+            Uri.parse(
+              '${ApiConfig.baseUrl}/lease-contracts/$contractId/renewal-requests',
+            ),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'newStartDate': _dateOnlyString(newStartDate),
+              'newEndDate': _dateOnlyString(newEndDate),
+              'renewalTermMonths': renewalTermMonths,
+              'monthlyRent': monthlyRent.round(),
+              'paymentCycleMonths': paymentCycleMonths,
+              'depositAmount': depositAmount.round(),
+              'note': note.trim().isEmpty ? null : note.trim(),
+            }),
+          )
+          .timeout(_timeout);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return;
+      }
+      throw LeaseContractException(_messageForLifecycleRequestError(response));
+    } on LeaseContractException {
+      rethrow;
+    } on TimeoutException {
+      throw const LeaseContractException('Không kết nối được máy chủ');
+    } on http.ClientException {
+      throw const LeaseContractException('Không kết nối được máy chủ');
+    } on FormatException {
+      throw const LeaseContractException(
+        'Không thể gửi yêu cầu. Vui lòng thử lại.',
+      );
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
+
+  Future<void> submitAddCoOccupantRequest({
+    required int contractId,
+    required String fullName,
+    required String phone,
+    String email = '',
+    String note = '',
+  }) async {
+    final client = _effectiveClient;
+    try {
+      final response = await client
+          .post(
+            Uri.parse(
+              '${ApiConfig.baseUrl}/lease-contracts/$contractId/co-occupant-requests',
+            ),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'fullName': fullName.trim(),
+              'phone': phone.trim(),
+              'email': email.trim().isEmpty ? null : email.trim(),
+              'note': note.trim().isEmpty ? null : note.trim(),
+            }),
+          )
+          .timeout(_timeout);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return;
+      }
+      throw LeaseContractException(_messageForLifecycleRequestError(response));
+    } on LeaseContractException {
+      rethrow;
+    } on TimeoutException {
+      throw const LeaseContractException('Không kết nối được máy chủ');
+    } on http.ClientException {
+      throw const LeaseContractException('Không kết nối được máy chủ');
+    } on FormatException {
+      throw const LeaseContractException(
+        'Không thể gửi yêu cầu. Vui lòng thử lại.',
       );
     } finally {
       if (_client == null) {
@@ -475,12 +664,26 @@ class LeaseContractService {
     return 'Không thể lưu ý định. Vui lòng thử lại.';
   }
 
+  String _messageForLifecycleRequestError(http.Response response) {
+    final raw = _messageForError(response);
+    if (response.statusCode == 409 || raw.contains('dang cho duyet')) {
+      return 'Hợp đồng đã có yêu cầu đang chờ duyệt.';
+    }
+    if (response.statusCode == 403) {
+      return 'Bạn không có quyền gửi yêu cầu cho hợp đồng này.';
+    }
+    if (raw.trim().isNotEmpty && !raw.contains('Không tải')) {
+      return raw;
+    }
+    return 'Không thể gửi yêu cầu. Vui lòng thử lại.';
+  }
+
   Map<String, dynamic> _decodeBody(String body) {
     final decoded = jsonDecode(body);
     if (decoded is Map<String, dynamic>) {
       return decoded;
     }
-    throw const FormatException('Invalid response body');
+    throw const FormatException('Dữ liệu phản hồi không hợp lệ');
   }
 
   List<dynamic> _extractListPayload(dynamic body) {

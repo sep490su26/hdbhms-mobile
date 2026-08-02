@@ -4,6 +4,7 @@ import 'package:hdbhms_mobile/models/room_transfer/room_transfer_model.dart';
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
+import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 
 /// Screen for nominating a replacement holder for the source room.
 /// The nominating tenant selects one remaining occupant from the old contract.
@@ -96,7 +97,9 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
   Future<void> _submit() async {
     final profileId = _selectedProfileId;
     if (profileId == null || profileId <= 0) {
-      _snack('Vui lòng chọn người ở lại phòng cũ làm holder mới.');
+      _snack(
+        'Vui lòng chọn người ở lại phòng cũ làm người đứng tên hợp đồng mới.',
+      );
       return;
     }
 
@@ -148,17 +151,19 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
         icon: const Icon(
           Icons.check_circle,
-          color: Color(0xFF16A34A),
+          color: AppColors.successText,
           size: 48,
         ),
         title: const Text(
           'Đề cử thành công',
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
-        content: const Text('Đã đề cử holder mới cho phòng cũ.'),
+        content: const Text(
+          'Đã đề cử người đứng tên hợp đồng mới cho phòng cũ.',
+        ),
         actions: [
           ElevatedButton(
             onPressed: () {
@@ -170,7 +175,7 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
               ),
             ),
             child: const Text('Đã hiểu'),
@@ -192,7 +197,8 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  // ignore: unused_element
+  Widget _buildLegacyHeader() {
     return Container(
       height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
@@ -223,6 +229,13 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return AppTopBar(
+      title: 'Đề cử chủ hợp đồng',
+      onBack: () => Navigator.of(context).maybePop(),
     );
   }
 
@@ -269,7 +282,7 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
           icon: Icons.person_outline_rounded,
           children: [
             const Text(
-              'Chọn người ở lại phòng cũ sẽ trở thành holder mới sau khi bạn chuyển phòng.',
+              'Chọn người ở lại phòng cũ sẽ trở thành người đứng tên hợp đồng mới sau khi bạn chuyển phòng.',
               style: TextStyle(
                 color: AppColors.bodyText,
                 fontSize: 12.5,
@@ -283,14 +296,14 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFFBEB),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFF59E0B)),
+                  color: AppColors.warningSurface,
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                  border: Border.all(color: AppColors.warning),
                 ),
                 child: const Text(
-                  'Không tìm thấy người ở lại phòng cũ phù hợp để đề cử làm holder mới.',
+                  'Không tìm thấy người ở lại phòng cũ phù hợp để đề cử làm người đứng tên hợp đồng mới.',
                   style: TextStyle(
-                    color: Color(0xFF92400E),
+                    color: AppColors.warningText,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     height: 1.4,
@@ -301,7 +314,7 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
               DropdownButtonFormField<int>(
                 initialValue: _selectedProfileId,
                 decoration: const InputDecoration(
-                  labelText: 'Holder mới của phòng cũ',
+                  labelText: 'Người đứng tên hợp đồng mới của phòng cũ',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.all(Radius.circular(10)),
                     borderSide: BorderSide(color: AppColors.border),
@@ -348,7 +361,7 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
                 alpha: 0.5,
               ),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
               ),
               elevation: 0,
             ),
@@ -375,8 +388,8 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFFEFF1FF),
-              borderRadius: BorderRadius.circular(10),
+              color: AppColors.primarySurface,
+              borderRadius: BorderRadius.circular(AppColors.radiusMd),
             ),
             child: Row(
               children: [
@@ -405,10 +418,10 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
             child: OutlinedButton(
               onPressed: _submitting ? null : _acceptNomination,
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF16A34A),
-                side: const BorderSide(color: Color(0xFF16A34A)),
+                foregroundColor: AppColors.successText,
+                side: const BorderSide(color: AppColors.successText),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 ),
               ),
               child: const Text(
@@ -442,7 +455,7 @@ class _SectionCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(

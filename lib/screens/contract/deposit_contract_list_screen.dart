@@ -1,6 +1,8 @@
 // ignore_for_file: unused_element
 
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/widgets/app_date_picker.dart';
+import 'package:hdbhms_mobile/widgets/app_empty_state.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
 import 'package:hdbhms_mobile/models/contract/contract_list_item_model.dart';
@@ -9,6 +11,7 @@ import 'package:hdbhms_mobile/services/contract/deposit_contract_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
+import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 import 'package:hdbhms_mobile/screens/contract/deposit_contract_detail_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
@@ -111,7 +114,7 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
 
   Future<void> _pickDateRange() async {
     final now = DateTime.now();
-    final picked = await showDateRangePicker(
+    final picked = await AppDatePicker.showRange(
       context: context,
       firstDate: DateTime(2020),
       lastDate: now,
@@ -239,7 +242,7 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildLegacyHeader() {
     return Container(
       height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 13, 0),
@@ -267,6 +270,13 @@ class _DepositContractListScreenState extends State<DepositContractListScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return AppTopBar(
+      title: 'Hợp đồng cọc',
+      onBack: () => Navigator.of(context).maybePop(),
     );
   }
 
@@ -329,46 +339,64 @@ class _FilterBar extends StatelessWidget {
           ),
         ),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _FilterChip(
-              icon: Icons.calendar_month_outlined,
-              label: selectedDateRange != null
-                  ? '${_fmtShort(selectedDateRange!.start)} - ${_fmtShort(selectedDateRange!.end)}'
-                  : 'Ngày ký HĐ',
-              isActive: selectedDateRange != null,
-              onTap: onPickDateRange,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _StatusDropdown(
-              selectedStatus: selectedStatus,
-              statusOptions: statusOptions,
-              onChanged: onStatusChanged,
-            ),
-          ),
-          if (hasActiveFilters) ...[
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: onClearFilters,
-              child: Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFD8D5),
-                  borderRadius: BorderRadius.circular(8),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final date = _FilterChip(
+            icon: Icons.calendar_month_outlined,
+            label: selectedDateRange != null
+                ? '${_formatDate(selectedDateRange!.start)} - ${_formatDate(selectedDateRange!.end)}'
+                : 'Ngày ký hợp đồng',
+            isActive: selectedDateRange != null,
+            onTap: onPickDateRange,
+          );
+          final status = _StatusDropdown(
+            selectedStatus: selectedStatus,
+            statusOptions: statusOptions,
+            onChanged: onStatusChanged,
+          );
+          final clear = hasActiveFilters
+              ? IconButton(
+                  tooltip: 'Xóa bộ lọc',
+                  onPressed: onClearFilters,
+                  constraints: const BoxConstraints.tightFor(
+                    width: AppColors.minimumTouchTarget,
+                    height: AppColors.minimumTouchTarget,
+                  ),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: AppColors.danger,
+                  ),
+                )
+              : null;
+          if (constraints.maxWidth < 420) {
+            return Column(
+              children: [
+                SizedBox(width: double.infinity, child: date),
+                const SizedBox(height: AppColors.space8),
+                Row(
+                  children: [
+                    Expanded(child: status),
+                    if (clear != null) ...[
+                      const SizedBox(width: AppColors.space8),
+                      clear,
+                    ],
+                  ],
                 ),
-                child: const Icon(
-                  Icons.close_rounded,
-                  color: Color(0xFFB00020),
-                  size: 18,
-                ),
-              ),
-            ),
-          ],
-        ],
+              ],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(child: date),
+              const SizedBox(width: AppColors.space8),
+              Expanded(child: status),
+              if (clear != null) ...[
+                const SizedBox(width: AppColors.space4),
+                clear,
+              ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -392,11 +420,11 @@ class _FilterChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 34,
+        height: AppColors.minimumTouchTarget,
         padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFFEFF1FF) : const Color(0xFFF5F4F8),
-          borderRadius: BorderRadius.circular(8),
+          color: isActive ? AppColors.primarySurface : AppColors.inputFill,
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
           border: Border.all(
             color: isActive
                 ? AppColors.deepBlue.withValues(alpha: 0.5)
@@ -447,80 +475,111 @@ class _StatusDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     final isActive = selectedStatus != null;
 
-    return Container(
-      height: 34,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: isActive ? const Color(0xFFEFF1FF) : const Color(0xFFF5F4F8),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isActive
-              ? AppColors.deepBlue.withValues(alpha: 0.5)
-              : AppColors.cardBorder.withValues(alpha: 0.6),
-        ),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String?>(
-          value: selectedStatus,
-          isExpanded: true,
-          isDense: true,
-          icon: Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: isActive ? AppColors.deepBlue : AppColors.bodyText,
-            size: 18,
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+      child: InkWell(
+        onTap: () => _openSelector(context),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+        child: Container(
+          height: AppColors.minimumTouchTarget,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.primarySurface : AppColors.inputFill,
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
+            border: Border.all(
+              color: isActive
+                  ? AppColors.deepBlue.withValues(alpha: 0.5)
+                  : AppColors.cardBorder.withValues(alpha: 0.6),
+            ),
           ),
-          hint: Row(
+          child: Row(
             children: [
               Icon(
                 Icons.filter_list_rounded,
-                color: AppColors.bodyText,
-                size: 15,
+                color: isActive ? AppColors.deepBlue : AppColors.bodyText,
+                size: 18,
               ),
               const SizedBox(width: 6),
-              Text(
-                'Trạng thái',
-                style: TextStyle(
-                  color: AppColors.bodyText,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  height: 14 / 11,
+              Expanded(
+                child: Text(
+                  selectedStatus == null
+                      ? 'Trạng thái'
+                      : statusOptions[selectedStatus]!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: isActive ? AppColors.deepBlue : AppColors.bodyText,
+                    fontSize: 12,
+                    fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: isActive ? AppColors.deepBlue : AppColors.bodyText,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openSelector(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Trạng thái hợp đồng',
+                style: AppColors.topBarTitleStyle,
+              ),
+              const SizedBox(height: AppColors.space8),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  selectedStatus == null
+                      ? Icons.radio_button_checked_rounded
+                      : Icons.radio_button_off_rounded,
+                  color: selectedStatus == null
+                      ? AppColors.primary
+                      : AppColors.bodyText,
+                ),
+                title: const Text('Tất cả'),
+                onTap: () {
+                  onChanged(null);
+                  Navigator.of(sheetContext).pop();
+                },
+              ),
+              ...statusOptions.entries.map(
+                (entry) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    selectedStatus == entry.key
+                        ? Icons.radio_button_checked_rounded
+                        : Icons.radio_button_off_rounded,
+                    color: selectedStatus == entry.key
+                        ? AppColors.primary
+                        : AppColors.bodyText,
+                  ),
+                  title: Text(entry.value),
+                  onTap: () {
+                    onChanged(entry.key);
+                    Navigator.of(sheetContext).pop();
+                  },
                 ),
               ),
             ],
           ),
-          selectedItemBuilder: (context) {
-            return [
-              for (final entry in statusOptions.entries)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    entry.value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.deepBlue,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      height: 14 / 11,
-                    ),
-                  ),
-                ),
-            ];
-          },
-          items: statusOptions.entries.map((entry) {
-            return DropdownMenuItem<String?>(
-              value: entry.key,
-              child: Text(
-                entry.value,
-                style: const TextStyle(
-                  color: AppColors.inputText,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            );
-          }).toList(),
-          onChanged: onChanged,
         ),
       ),
     );
@@ -539,14 +598,14 @@ class _DepositCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.surface,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+          padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
             border: Border.all(
               color: AppColors.cardBorder.withValues(alpha: 0.6),
             ),
@@ -557,12 +616,12 @@ class _DepositCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF8E1),
-                  borderRadius: BorderRadius.circular(8),
+                  color: AppColors.warningSurface,
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
                 child: const Icon(
                   Icons.account_balance_wallet_outlined,
-                  color: Color(0xFFE8A100),
+                  color: AppColors.actionOrange,
                   size: 22,
                 ),
               ),
@@ -571,44 +630,42 @@ class _DepositCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      item.contractCode.isEmpty
-                          ? 'HĐ cọc #${item.id}'
-                          : item.contractCode,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.inputText,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        height: 18 / 14,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
                     Row(
                       children: [
-                        Flexible(
-                          child: _InfoChip(
-                            icon: Icons.meeting_room_outlined,
-                            text: item.roomCode.isEmpty ? '--' : item.roomCode,
+                        Expanded(
+                          child: Text(
+                            item.contractCode.isEmpty
+                                ? 'HĐ cọc #${item.id}'
+                                : item.contractCode,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.inputText,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              height: 20 / 15,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Flexible(
-                          child: _InfoChip(
-                            icon: Icons.calendar_today_outlined,
-                            text: item.signedAt != null
-                                ? _formatDate(item.signedAt!)
-                                : '--',
-                          ),
-                        ),
+                        const SizedBox(width: AppColors.space8),
+                        _StatusBadge(status: item.status),
                       ],
+                    ),
+                    const SizedBox(height: 4),
+                    _InfoChip(
+                      icon: Icons.meeting_room_outlined,
+                      text: item.roomCode.isEmpty ? '--' : item.roomCode,
+                    ),
+                    const SizedBox(height: 4),
+                    _InfoChip(
+                      icon: Icons.calendar_today_outlined,
+                      text: item.signedAt != null
+                          ? _formatDate(item.signedAt!)
+                          : '--',
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              _StatusBadge(status: item.status),
               const SizedBox(width: 4),
               const Icon(
                 Icons.chevron_right_rounded,
@@ -636,17 +693,13 @@ class _InfoChip extends StatelessWidget {
       children: [
         Icon(icon, color: AppColors.bodyText, size: 13),
         const SizedBox(width: 4),
-        Flexible(
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.bodyText,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              height: 16 / 12,
-            ),
+        Text(
+          text,
+          style: const TextStyle(
+            color: AppColors.bodyText,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            height: 16 / 12,
           ),
         ),
       ],
@@ -667,14 +720,14 @@ class _StatusBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
       ),
       child: Text(
         label,
         style: TextStyle(
           color: textColor,
           fontSize: 10,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w700,
           height: 13 / 10,
         ),
       ),
@@ -686,96 +739,31 @@ class _StatusBadge extends StatelessWidget {
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.onRetry});
-
   final VoidCallback onRetry;
-
   @override
-  Widget build(BuildContext context) {
-    return RefreshIndicator(
-      color: AppColors.deepBlue,
-      onRefresh: () async => onRetry(),
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
-        children: [
-          const SizedBox(height: 120),
-          const Icon(
-            Icons.account_balance_wallet_outlined,
-            color: AppColors.deepBlue,
-            size: 46,
-          ),
-          const SizedBox(height: 14),
-          const Text(
-            'Bạn chưa có hợp đồng cọc nào',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.inputText,
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
-              height: 20 / 15,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Center(
-            child: ElevatedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Thử lại'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppEmptyState(
+    icon: Icons.account_balance_wallet_outlined,
+    title:
+        'B\u1EA1n ch\u01B0a c\u00F3 h\u1EE3p \u0111\u1ED3ng c\u1ECDc n\u00E0o',
+    actionLabel: 'Th\u1EED l\u1EA1i',
+    onAction: onRetry,
+    scrollable: true,
+    onRefresh: () async => onRetry(),
+    topSpacing: 120,
+  );
 }
 
 class _EmptyFilterState extends StatelessWidget {
   const _EmptyFilterState({required this.onClear});
-
   final VoidCallback onClear;
-
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.filter_list_off_rounded,
-              color: AppColors.deepBlue,
-              size: 42,
-            ),
-            const SizedBox(height: 14),
-            const Text(
-              'Không có HĐ cọc phù hợp với bộ lọc',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.inputText,
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 18),
-            ElevatedButton.icon(
-              onPressed: onClear,
-              icon: const Icon(Icons.clear_all_rounded),
-              label: const Text('Xóa bộ lọc'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppEmptyState(
+    icon: Icons.filter_list_off_rounded,
+    title:
+        'Kh\u00F4ng c\u00F3 H\u0110 c\u1ECDc ph\u00F9 h\u1EE3p v\u1EDBi b\u1ED9 l\u1ECDc',
+    actionLabel: 'X\u00F3a b\u1ED9 l\u1ECDc',
+    onAction: onClear,
+  );
 }
 
 class _ErrorState extends StatelessWidget {
@@ -869,7 +857,7 @@ String _fmtShort(DateTime date) {
       const Color(0xFFD4F8DE),
       const Color(0xFF159447),
     ),
-    'EXTENDED' => ('Đã gia hạn', const Color(0xFFEFF1FF), AppColors.deepBlue),
+    'EXTENDED' => ('Đã gia hạn', AppColors.primarySurface, AppColors.deepBlue),
     'REFUNDED' => ('Đã hoàn tiền', const Color(0xFFE7E9F0), AppColors.bodyText),
     'FORFEITED' => (
       'Đã mất cọc',

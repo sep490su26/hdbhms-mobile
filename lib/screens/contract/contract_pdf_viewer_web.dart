@@ -7,20 +7,32 @@ import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/services/authenticated_client.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/utils/document_filename.dart';
 
 Widget buildPlatformPdfViewer({
   required BuildContext context,
   required String pdfUrl,
   required String title,
+  String? suggestedFilename,
 }) {
-  return WebPdfViewer(pdfUrl: pdfUrl, title: title);
+  return WebPdfViewer(
+    pdfUrl: pdfUrl,
+    title: title,
+    suggestedFilename: suggestedFilename,
+  );
 }
 
 class WebPdfViewer extends StatefulWidget {
   final String pdfUrl;
   final String title;
+  final String? suggestedFilename;
 
-  const WebPdfViewer({super.key, required this.pdfUrl, required this.title});
+  const WebPdfViewer({
+    super.key,
+    required this.pdfUrl,
+    required this.title,
+    this.suggestedFilename,
+  });
 
   @override
   State<WebPdfViewer> createState() => _WebPdfViewerState();
@@ -83,7 +95,12 @@ class _WebPdfViewerState extends State<WebPdfViewer> {
     try {
       final anchor = html.AnchorElement(href: href)
         ..target = '_blank'
-        ..download = '${widget.title.replaceAll(' ', '_')}.pdf';
+        ..download = sanitizeDownloadFilename(
+          widget.suggestedFilename?.trim().isNotEmpty == true
+              ? widget.suggestedFilename!
+              : '${widget.title.replaceAll(' ', '_')}.pdf',
+          'tai-lieu.pdf',
+        );
       anchor.click();
     } finally {
       if (mounted) {
@@ -221,7 +238,7 @@ class _ErrorState extends StatelessWidget {
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
               ),
             ),

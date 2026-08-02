@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
+import '../../services/payment/tenant_invoice_service.dart';
+import '../../widgets/app_top_bar.dart';
 import '../home/home_screen.dart';
 import 'payment_history_page.dart';
 
@@ -8,11 +11,13 @@ class PaymentSuccessPage extends StatefulWidget {
   const PaymentSuccessPage({
     super.key,
     this.invoice,
+    this.invoiceService = const TenantInvoiceService(),
     this.transactionCode = '#TXN-882910',
     this.completedAt,
   });
 
   final TenantInvoice? invoice;
+  final TenantInvoiceService invoiceService;
   final String transactionCode;
   final DateTime? completedAt;
 
@@ -111,7 +116,12 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
                 constraints: const BoxConstraints(maxWidth: 430),
                 child: CustomScrollView(
                   slivers: [
-                    SliverToBoxAdapter(child: _SuccessHeader(theme: theme)),
+                    SliverToBoxAdapter(
+                      child: AppTopBar(
+                        title: 'Thanh toán thành công',
+                        onBack: () => Navigator.of(context).maybePop(),
+                      ),
+                    ),
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
                       sliver: SliverList.list(
@@ -134,7 +144,11 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
                                   const SizedBox(height: 16),
                                   _ConfirmationNote(theme: theme),
                                   const SizedBox(height: 20),
-                                  _SuccessActions(theme: theme),
+                                  _SuccessActions(
+                                    theme: theme,
+                                    invoiceService: widget.invoiceService,
+                                    invoice: widget.invoice,
+                                  ),
                                 ],
                               ),
                             ),
@@ -153,6 +167,7 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
   }
 }
 
+// ignore: unused_element
 class _SuccessHeader extends StatelessWidget {
   const _SuccessHeader({required this.theme});
 
@@ -201,7 +216,7 @@ class _SuccessHeader extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(AppColors.radiusPill),
               border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
             ),
             child: Row(
@@ -246,71 +261,89 @@ class _AnimatedSuccessHero extends StatelessWidget {
     return Column(
       children: [
         SizedBox(
-          width: 126,
-          height: 126,
+          width: double.infinity,
+          height: 166,
           child: Stack(
             alignment: Alignment.center,
             children: [
-              FadeTransition(
-                opacity: haloOpacity,
-                child: ScaleTransition(
-                  scale: haloScale,
-                  child: Container(
-                    width: 94,
-                    height: 94,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: theme.accent,
-                    ),
-                  ),
-                ),
+              Positioned(
+                top: 58,
+                left: 10,
+                right: 10,
+                child: _SuccessHeroBackdrop(theme: theme),
               ),
-              ScaleTransition(
-                scale: badgeScale,
-                child: Container(
-                  width: 92,
-                  height: 92,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [theme.accent, theme.accentEnd],
-                    ),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.54),
-                      width: 2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: theme.accent.withValues(alpha: 0.42),
-                        blurRadius: 32,
-                        offset: const Offset(0, 12),
+              Positioned(
+                top: 0,
+                child: SizedBox(
+                  width: 126,
+                  height: 126,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      FadeTransition(
+                        opacity: haloOpacity,
+                        child: ScaleTransition(
+                          scale: haloScale,
+                          child: Container(
+                            width: 94,
+                            height: 94,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: theme.accent,
+                            ),
+                          ),
+                        ),
+                      ),
+                      ScaleTransition(
+                        scale: badgeScale,
+                        child: Container(
+                          width: 92,
+                          height: 92,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [theme.accent, theme.accentEnd],
+                            ),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.54),
+                              width: 2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: theme.accent.withValues(alpha: 0.42),
+                                blurRadius: 32,
+                                offset: const Offset(0, 12),
+                              ),
+                            ],
+                          ),
+                          child: AnimatedBuilder(
+                            animation: checkProgress,
+                            builder: (context, child) {
+                              return CustomPaint(
+                                painter: _CheckPainter(
+                                  progress: checkProgress.value,
+                                  color: theme.checkColor,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                       ),
                     ],
-                  ),
-                  child: AnimatedBuilder(
-                    animation: checkProgress,
-                    builder: (context, child) {
-                      return CustomPaint(
-                        painter: _CheckPainter(
-                          progress: checkProgress.value,
-                          color: theme.checkColor,
-                        ),
-                      );
-                    },
                   ),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 2),
         const Text(
           'Thanh toán thành công!',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.white,
+            color: AppColors.darkBlue,
             fontSize: 28,
             fontWeight: FontWeight.w900,
             letterSpacing: -0.5,
@@ -321,12 +354,40 @@ class _AnimatedSuccessHero extends StatelessWidget {
           'Cảm ơn bạn. Khoản thanh toán đã được hệ thống xác nhận.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.76),
+            color: AppColors.bodyText,
             fontSize: 13,
             height: 1.5,
           ),
         ),
       ],
+    );
+  }
+}
+
+class _SuccessHeroBackdrop extends StatelessWidget {
+  const _SuccessHeroBackdrop({required this.theme});
+
+  final _SuccessTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 108,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            theme.accent.withValues(alpha: 0.18),
+            theme.accent.withValues(alpha: 0.045),
+          ],
+        ),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(64),
+          bottom: Radius.circular(28),
+        ),
+        border: Border.all(color: theme.accent.withValues(alpha: 0.14)),
+      ),
     );
   }
 }
@@ -396,7 +457,7 @@ class _TransactionCard extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   color: theme.softAccent,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 ),
                 child: Icon(theme.icon, color: theme.primary, size: 23),
               ),
@@ -432,7 +493,7 @@ class _TransactionCard extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: theme.softAccent,
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(AppColors.radiusPill),
                 ),
                 child: Text(
                   'ĐÃ THANH TOÁN',
@@ -452,7 +513,7 @@ class _TransactionCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 20),
             decoration: BoxDecoration(
               color: theme.softSurface,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(AppColors.radiusLg),
             ),
             child: Column(
               children: [
@@ -579,7 +640,7 @@ class _PaidItem extends StatelessWidget {
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
         color: theme.softSurface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
         border: Border.all(color: theme.primary.withValues(alpha: 0.08)),
       ),
       child: Row(
@@ -589,7 +650,7 @@ class _PaidItem extends StatelessWidget {
             height: 40,
             decoration: BoxDecoration(
               color: theme.softAccent,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppColors.radiusMd),
             ),
             child: Icon(item.icon, color: theme.primary, size: 21),
           ),
@@ -649,9 +710,9 @@ class _ConfirmationNote extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+        border: Border.all(color: AppColors.cardBorder),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -662,7 +723,7 @@ class _ConfirmationNote extends StatelessWidget {
             child: Text(
               'Thông báo xác nhận đã được gửi đến chủ trọ và quản lý. Bạn có thể xem lại giao dịch trong lịch sử thanh toán.',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.82),
+                color: AppColors.bodyText,
                 fontSize: 12,
                 height: 1.5,
               ),
@@ -675,9 +736,15 @@ class _ConfirmationNote extends StatelessWidget {
 }
 
 class _SuccessActions extends StatelessWidget {
-  const _SuccessActions({required this.theme});
+  const _SuccessActions({
+    required this.theme,
+    required this.invoiceService,
+    required this.invoice,
+  });
 
   final _SuccessTheme theme;
+  final TenantInvoiceService invoiceService;
+  final TenantInvoice? invoice;
 
   @override
   Widget build(BuildContext context) {
@@ -686,27 +753,41 @@ class _SuccessActions extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           height: 56,
-          child: FilledButton.icon(
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const PaymentHistoryPage(),
-                ),
-              );
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: theme.accent,
-              foregroundColor: theme.checkColor,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [AppColors.deepBlue, AppColors.primary],
               ),
-              textStyle: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-              ),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
             ),
-            icon: const Icon(Icons.history_rounded),
-            label: const Text('Xem lịch sử thanh toán'),
+            child: FilledButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => PaymentHistoryPage(
+                      invoiceService: invoiceService,
+                      roomId: invoice?.roomId,
+                      roomCode: invoice?.roomCode ?? '',
+                    ),
+                  ),
+                );
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              icon: const Icon(Icons.history_rounded),
+              label: const Text('Xem lịch sử thanh toán'),
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -721,10 +802,10 @@ class _SuccessActions extends StatelessWidget {
               );
             },
             style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white,
-              side: BorderSide(color: Colors.white.withValues(alpha: 0.42)),
+              foregroundColor: AppColors.primary,
+              side: const BorderSide(color: AppColors.cardBorder),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
               ),
               textStyle: const TextStyle(
                 fontSize: 14,
@@ -751,14 +832,14 @@ class _LightCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFFDFEFF).withValues(alpha: 0.97),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+        border: Border.all(color: AppColors.cardBorder),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF071426).withValues(alpha: 0.2),
-            blurRadius: 30,
-            offset: const Offset(0, 14),
+            color: AppColors.deepBlue.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -777,29 +858,17 @@ class _SuccessBackground extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [theme.background, theme.backgroundEnd],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [theme.accent.withValues(alpha: 0.10), theme.background],
+          stops: [0, 0.3],
         ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            top: -100,
-            right: -80,
-            child: _GlowOrb(color: theme.accent, size: 240),
-          ),
-          Positioned(
-            top: 390,
-            left: -110,
-            child: _GlowOrb(color: theme.secondary, size: 260),
-          ),
-        ],
       ),
     );
   }
 }
 
+// ignore: unused_element
 class _GlowOrb extends StatelessWidget {
   const _GlowOrb({required this.color, required this.size});
 
@@ -960,32 +1029,32 @@ class _SuccessTheme {
     if (isRent) {
       return const _SuccessTheme(
         icon: Icons.apartment_rounded,
-        background: Color(0xFF081426),
-        backgroundEnd: Color(0xFF172A4B),
-        primary: Color(0xFF173B6C),
-        secondary: Color(0xFF8B5CF6),
-        accent: Color(0xFFFBBF24),
-        accentEnd: Color(0xFFFDE68A),
-        checkColor: Color(0xFF352100),
-        ink: Color(0xFF10233F),
-        mutedInk: Color(0xFF607089),
-        softAccent: Color(0xFFFFF6D8),
-        softSurface: Color(0xFFF5F7FB),
+        background: AppColors.background,
+        backgroundEnd: AppColors.background,
+        primary: AppColors.primary,
+        secondary: AppColors.accent,
+        accent: AppColors.success,
+        accentEnd: AppColors.success,
+        checkColor: Colors.white,
+        ink: AppColors.inputText,
+        mutedInk: AppColors.bodyText,
+        softAccent: AppColors.successSurface,
+        softSurface: AppColors.inputFill,
       );
     }
     return const _SuccessTheme(
       icon: Icons.bolt_rounded,
-      background: Color(0xFF073B4C),
-      backgroundEnd: Color(0xFF075E63),
-      primary: Color(0xFF087F8C),
-      secondary: Color(0xFF22D3EE),
-      accent: Color(0xFF5EEAD4),
-      accentEnd: Color(0xFFA7F3D0),
-      checkColor: Color(0xFF073B4C),
-      ink: Color(0xFF103A43),
-      mutedInk: Color(0xFF5F747A),
-      softAccent: Color(0xFFDDFBF6),
-      softSurface: Color(0xFFF1F9F8),
+      background: AppColors.background,
+      backgroundEnd: AppColors.background,
+      primary: AppColors.primary,
+      secondary: AppColors.accent,
+      accent: AppColors.success,
+      accentEnd: AppColors.success,
+      checkColor: Colors.white,
+      ink: AppColors.inputText,
+      mutedInk: AppColors.bodyText,
+      softAccent: AppColors.successSurface,
+      softSurface: AppColors.inputFill,
     );
   }
 }

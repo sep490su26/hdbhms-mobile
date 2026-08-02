@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/payment/tenant_invoice_service.dart';
-import '../../theme/app_colors.dart';
 import 'qr_payment_page.dart';
 import 'utility_complaint_screen.dart';
 
@@ -30,10 +30,10 @@ class BillDetailScreen extends StatelessWidget {
   };
 
   static const _lineColors = <String, Color>{
-    'ELECTRICITY': Color(0xFFF59E0B),
+    'ELECTRICITY': AppColors.warning,
     'WATER': Color(0xFF0EA5E9),
     'RENT': Color(0xFF6366F1),
-    'SERVICE': Color(0xFF10B981),
+    'SERVICE': AppColors.success,
     'VIOLATION_FINE': Color(0xFFEF4444),
     'MAINTENANCE_COMPENSATION': Color(0xFFF97316),
   };
@@ -91,20 +91,21 @@ class BillDetailScreen extends StatelessWidget {
     _ => type,
   };
 
-  bool get _isUtility => invoice.invoiceType == 'UTILITY';
+  bool get _isUtility => invoice.isUtilityType;
   bool get _hasComplainableLines => invoice.reviewableUtilityLines.isNotEmpty;
-  bool get _canPay => invoice.canPay;
+  bool get _canPay => invoice.canPay && !invoice.hasOpenMeterReadingReview;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFB),
+      backgroundColor: AppColors.background,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF1A3A5C), Color(0xFF2563EB)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFE8F0FF), AppColors.background],
+            stops: [0, 0.28],
           ),
         ),
         child: SafeArea(
@@ -115,12 +116,7 @@ class BillDetailScreen extends StatelessWidget {
               const SizedBox(height: 12),
               Expanded(
                 child: Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF8FAFB),
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
-                  ),
+                  decoration: const BoxDecoration(color: Colors.transparent),
                   child: SingleChildScrollView(
                     padding: EdgeInsets.fromLTRB(
                       16,
@@ -135,6 +131,8 @@ class BillDetailScreen extends StatelessWidget {
                         const SizedBox(height: 16),
                         _buildLineBreakdown(),
                         const SizedBox(height: 16),
+                        if (!_isUtility) _buildRentContextCard(),
+                        if (!_isUtility) const SizedBox(height: 16),
                         if (_isUtility) _buildComplaintSection(context),
                         if (_isUtility) const SizedBox(height: 16),
                         _buildActions(context),
@@ -160,8 +158,8 @@ class BillDetailScreen extends StatelessWidget {
           IconButton(
             onPressed: () => Navigator.of(context).maybePop(),
             style: IconButton.styleFrom(
-              backgroundColor: Colors.white.withValues(alpha: 0.18),
-              foregroundColor: Colors.white,
+              backgroundColor: AppColors.surfaceMuted,
+              foregroundColor: AppColors.topBarIconColor,
             ),
             icon: const Icon(Icons.arrow_back_rounded),
             tooltip: 'Quay lại',
@@ -174,7 +172,7 @@ class BillDetailScreen extends StatelessWidget {
                 Text(
                   'Chi tiết hóa đơn',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.darkBlue,
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
                     height: 1.2,
@@ -183,7 +181,7 @@ class BillDetailScreen extends StatelessWidget {
                 Text(
                   'Xem chi tiết và thanh toán',
                   style: TextStyle(
-                    color: Colors.white70,
+                    color: AppColors.bodyText,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -207,9 +205,9 @@ class BillDetailScreen extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF0B1F3A), Color(0xFF2563EB)],
+          colors: [AppColors.deepBlue, AppColors.primary],
         ),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: const Color(0x1FFFFFFF)),
       ),
       child: Row(
@@ -219,7 +217,7 @@ class BillDetailScreen extends StatelessWidget {
             height: 46,
             decoration: BoxDecoration(
               color: const Color(0xFFFBBF24),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
               boxShadow: [
                 BoxShadow(
                   color: const Color(0xFFFBBF24).withValues(alpha: 0.4),
@@ -228,8 +226,8 @@ class BillDetailScreen extends StatelessWidget {
                 ),
               ],
             ),
-            child: const Icon(
-              Icons.receipt_long_rounded,
+            child: Icon(
+              _isUtility ? Icons.bolt_rounded : Icons.apartment_rounded,
               color: Color(0xFF451A03),
               size: 24,
             ),
@@ -248,7 +246,9 @@ class BillDetailScreen extends StatelessWidget {
                     height: 1.3,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 6),
+                _InvoiceTypeBadge(invoice: invoice),
+                const SizedBox(height: 6),
                 Text(
                   invoice.invoiceCode.isEmpty
                       ? 'Phòng ${invoice.roomCode}'
@@ -279,9 +279,9 @@ class BillDetailScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: isPending
-                      ? const Color(0xFFFF6B6B).withValues(alpha: 0.25)
-                      : const Color(0xFF10B981).withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(999),
+                      ? AppColors.accentWarm.withValues(alpha: 0.25)
+                      : AppColors.success.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(AppColors.radiusPill),
                 ),
                 child: Text(
                   isPending ? 'Chờ thanh toán' : 'Đã thanh toán',
@@ -312,7 +312,7 @@ class BillDetailScreen extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: const Color(0xFFE8EDF2)),
         boxShadow: [
           BoxShadow(
@@ -333,8 +333,8 @@ class BillDetailScreen extends StatelessWidget {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
-                    borderRadius: BorderRadius.circular(10),
+                    color: AppColors.infoSurface,
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   ),
                   child: const Icon(
                     Icons.list_alt_rounded,
@@ -387,7 +387,7 @@ class BillDetailScreen extends StatelessWidget {
                             height: 36,
                             decoration: BoxDecoration(
                               color: color.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(11),
+                              borderRadius: BorderRadius.circular(AppColors.radiusMd),
                             ),
                             child: Icon(icon, color: color, size: 19),
                           ),
@@ -440,7 +440,7 @@ class BillDetailScreen extends StatelessWidget {
                           padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                           decoration: BoxDecoration(
                             color: color.withValues(alpha: 0.06),
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(AppColors.radiusSm),
                             border: Border.all(
                               color: color.withValues(alpha: 0.18),
                             ),
@@ -527,9 +527,9 @@ class BillDetailScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFFEFF6FF), Color(0xFFF0FDF4)],
+                colors: [AppColors.infoSurface, Color(0xFFF0FDF4)],
               ),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
             ),
             child: Row(
               children: [
@@ -612,12 +612,12 @@ class BillDetailScreen extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: openComplaint,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFFBEB),
-            borderRadius: BorderRadius.circular(16),
+            color: AppColors.warningSurface,
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
             border: Border.all(color: const Color(0xFFFDE68A)),
           ),
           child: Column(
@@ -631,11 +631,11 @@ class BillDetailScreen extends StatelessWidget {
                     height: 44,
                     decoration: BoxDecoration(
                       color: const Color(0xFFFBBF24).withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
                     ),
                     child: const Icon(
                       Icons.report_problem_outlined,
-                      color: Color(0xFFF59E0B),
+                      color: AppColors.warning,
                       size: 22,
                     ),
                   ),
@@ -647,7 +647,7 @@ class BillDetailScreen extends StatelessWidget {
                         Text(
                           'Chỉ số không chính xác?',
                           style: TextStyle(
-                            color: Color(0xFF92400E),
+                            color: AppColors.warningText,
                             fontSize: 14,
                             fontWeight: FontWeight.w900,
                             height: 18 / 14,
@@ -673,11 +673,15 @@ class BillDetailScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF59E0B),
-                  borderRadius: BorderRadius.circular(12),
+                  gradient: const LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [AppColors.deepBlue, AppColors.primary],
+                  ),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFF59E0B).withValues(alpha: 0.24),
+                      color: AppColors.warning.withValues(alpha: 0.24),
                       blurRadius: 16,
                       offset: const Offset(0, 8),
                     ),
@@ -718,13 +722,78 @@ class BillDetailScreen extends StatelessWidget {
 
   // ── Actions ──────────────────────────────────────────────────
 
+  Widget _buildRentContextCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                ),
+                child: const Icon(
+                  Icons.key_outlined,
+                  color: AppColors.primary,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Thông tin kỳ thuê',
+                style: TextStyle(
+                  color: AppColors.inputText,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _RentContextRow(label: 'Phòng', value: invoice.roomCode),
+          const SizedBox(height: 10),
+          _RentContextRow(label: 'Kỳ hóa đơn', value: invoice.billingPeriod),
+          const SizedBox(height: 10),
+          _RentContextRow(
+            label: 'Hạn thanh toán',
+            value: _formatDate(invoice.dueDate),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _formatDate(DateTime? value) {
+    if (value == null) return 'Chưa cập nhật';
+    return '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+  }
+
   Widget _buildActions(BuildContext context) {
     return Column(
       children: [
         if (_canPay)
-          SizedBox(
+          Container(
             width: double.infinity,
             height: 54,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [AppColors.deepBlue, AppColors.primary],
+              ),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
+            ),
             child: FilledButton.icon(
               onPressed: () => Navigator.of(context).pushReplacement(
                 MaterialPageRoute(
@@ -735,10 +804,10 @@ class BillDetailScreen extends StatelessWidget {
                 ),
               ),
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
+                backgroundColor: Colors.transparent,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
                 textStyle: const TextStyle(
                   fontSize: 15,
@@ -756,6 +825,79 @@ class BillDetailScreen extends StatelessWidget {
 
 // ── Review status card ────────────────────────────────────────────────────────
 
+class _RentContextRow extends StatelessWidget {
+  const _RentContextRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.bodyText,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Text(
+          value.isEmpty ? 'Chưa cập nhật' : value,
+          style: const TextStyle(
+            color: AppColors.inputText,
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+IconData _invoiceTypeIcon(TenantInvoice invoice) {
+  if (invoice.isRentType) return Icons.apartment_rounded;
+  if (invoice.isUtilityType) return Icons.bolt_rounded;
+  return Icons.more_horiz_rounded;
+}
+
+class _InvoiceTypeBadge extends StatelessWidget {
+  const _InvoiceTypeBadge({required this.invoice});
+
+  final TenantInvoice invoice;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_invoiceTypeIcon(invoice), color: Colors.white, size: 13),
+          const SizedBox(width: 5),
+          Text(
+            invoice.invoiceTypeLabel,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              height: 14 / 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ReviewStatusCard extends StatelessWidget {
   const _ReviewStatusCard({required this.line});
   final TenantInvoiceLine line;
@@ -763,14 +905,14 @@ class _ReviewStatusCard extends StatelessWidget {
   static (Color, Color, String, IconData) _statusInfo(String status) =>
       switch (status.toUpperCase()) {
         'PENDING' => (
-          const Color(0xFFFFFBEB),
-          const Color(0xFFF59E0B),
+          AppColors.warningSurface,
+          AppColors.warning,
           'Đang xem xét',
           Icons.hourglass_top_rounded,
         ),
         'APPROVED' => (
           const Color(0xFFF0FDF4),
-          const Color(0xFF10B981),
+          AppColors.success,
           'Được chấp thuận',
           Icons.check_circle_outline_rounded,
         ),
@@ -799,14 +941,14 @@ class _ReviewStatusCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           Icon(
             isElec ? Icons.bolt_rounded : Icons.water_drop_rounded,
-            color: isElec ? const Color(0xFFF59E0B) : const Color(0xFF0EA5E9),
+            color: isElec ? AppColors.warning : const Color(0xFF0EA5E9),
             size: 18,
           ),
           const SizedBox(width: 10),
@@ -824,7 +966,7 @@ class _ReviewStatusCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(AppColors.radiusPill),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -867,7 +1009,7 @@ class _MeterValueChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(

@@ -4,9 +4,10 @@ import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
 import 'package:hdbhms_mobile/services/maintenance/maintenance_ticket_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
-import 'package:hdbhms_mobile/widgets/star_rating_input.dart';
+import '../../widgets/star_rating_input.dart';
 import 'package:hdbhms_mobile/widgets/ticket_attachment_grid.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
+import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
 
 class MaintenanceTicketReviewScreen extends StatefulWidget {
   const MaintenanceTicketReviewScreen({
@@ -167,19 +168,17 @@ class _MaintenanceTicketReviewScreenState
         return AlertDialog(
           title: const Text('Chưa có ảnh sau sửa'),
           content: const Text(
-            'Quản lý chưa upload ảnh sau sửa, bạn có chắc muốn xác nhận?',
+            'Quản lý chưa tải lên ảnh sau sửa, bạn có chắc muốn xác nhận?',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
               child: const Text('Hủy'),
             ),
-            FilledButton(
+            AppPrimaryGradientButton(
               onPressed: () => Navigator.of(context).pop(true),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-              ),
+              height: 40,
+              borderRadius: 12,
               child: const Text('Vẫn xác nhận'),
             ),
           ],
@@ -197,12 +196,10 @@ class _MaintenanceTicketReviewScreenState
           title: const Text('Thành công'),
           content: const Text('Đã xác nhận hoàn tất và gửi đánh giá'),
           actions: [
-            FilledButton(
+            AppPrimaryGradientButton(
               onPressed: () => Navigator.of(context).pop(),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-              ),
+              height: 40,
+              borderRadius: 12,
               child: const Text('Đóng'),
             ),
           ],
@@ -357,7 +354,7 @@ class _WorkDetailCard extends StatelessWidget {
           else
             TicketAttachmentGrid(
               attachments: detail.afterAttachments,
-              emptyText: 'Quản lý chưa upload ảnh sau sửa',
+              emptyText: 'Quản lý chưa tải lên ảnh sau sửa',
             ),
         ],
       ),
@@ -430,15 +427,15 @@ class _ReviewFormCard extends StatelessWidget {
               fillColor: const Color(0xFFF3F3F5),
               counterText: '',
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 borderSide: const BorderSide(color: AppColors.cardBorder),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 borderSide: const BorderSide(color: AppColors.cardBorder),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 borderSide: const BorderSide(color: AppColors.deepBlue),
               ),
             ),
@@ -446,11 +443,14 @@ class _ReviewFormCard extends StatelessWidget {
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
-            height: 56,
-            child: ElevatedButton.icon(
+            child: AppPrimaryGradientButton(
               onPressed: isSubmitting ? null : onSubmit,
-              icon: isSubmitting
-                  ? const SizedBox(
+              height: 56,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isSubmitting)
+                    const SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
@@ -458,27 +458,22 @@ class _ReviewFormCard extends StatelessWidget {
                         strokeWidth: 2.2,
                       ),
                     )
-                  : const Icon(Icons.send_rounded, size: 18),
-              label: Text(
-                isSubmitting ? 'Đang gửi...' : 'Gửi xác nhận & Đánh giá',
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
-                  height: 19 / 15,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                disabledBackgroundColor: AppColors.primary.withValues(
-                  alpha: 0.58,
-                ),
-                foregroundColor: Colors.white,
-                disabledForegroundColor: Colors.white,
-                elevation: 0,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                  else
+                    const Icon(
+                      Icons.send_rounded,
+                      size: 18,
+                      color: Colors.white,
+                    ),
+                  const SizedBox(width: 8),
+                  Text(
+                    isSubmitting ? 'Đang gửi...' : 'Gửi xác nhận & Đánh giá',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      height: 19 / 15,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -528,7 +523,7 @@ class _SectionCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(22, 22, 22, 24),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: const Color(0xFFE9E7EA)),
         boxShadow: [
           BoxShadow(
@@ -565,7 +560,7 @@ class _SummaryBox extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
       decoration: BoxDecoration(
         color: const Color(0xFFF3F1F2),
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -647,7 +642,7 @@ class _MissingAfterPhotoWarning extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       decoration: BoxDecoration(
         color: const Color(0xFFFFF3D6),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: const Color(0xFFF4C76B)),
       ),
       child: const Row(
@@ -656,9 +651,9 @@ class _MissingAfterPhotoWarning extends StatelessWidget {
           SizedBox(width: 9),
           Expanded(
             child: Text(
-              'Quản lý chưa upload ảnh sau sửa',
+              'Quản lý chưa tải lên ảnh sau sửa',
               style: TextStyle(
-                color: Color(0xFF92400E),
+                color: AppColors.warningText,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 height: 18 / 13,
@@ -712,17 +707,16 @@ class _ErrorState extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            ElevatedButton.icon(
+            AppPrimaryGradientButton(
               onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Thử lại'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+              height: 44,
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.refresh_rounded, color: Colors.white, size: 18),
+                  SizedBox(width: 7),
+                  Text('Thử lại'),
+                ],
               ),
             ),
           ],

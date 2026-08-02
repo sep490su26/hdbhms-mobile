@@ -224,6 +224,7 @@ class RoomTransferRequest {
     this.newContractId,
     this.oldRoomPrice,
     this.newRoomPrice,
+    this.priceDifferenceAmount,
     this.priceDifferenceToPay,
     this.reason = '',
     this.reservedSlots,
@@ -239,6 +240,15 @@ class RoomTransferRequest {
     this.transferOutHandoverRequired = false,
     this.transferInHandoverRequired = false,
     this.roomHandoverRequired = false,
+    this.debtSummary,
+    this.violationSummary,
+    this.transferCountThisYear,
+    this.eligibilityCheckedAt,
+    this.eligibleAtCreation,
+    this.eligibilitySnapshot = const {},
+    this.violationSnapshot = const {},
+    this.transferHistorySnapshot = const {},
+    this.eligibilityWarnings = const [],
     this.allowedActions = const [],
     this.blockingReasons = const [],
   });
@@ -267,6 +277,7 @@ class RoomTransferRequest {
   final int? newContractId;
   final int? oldRoomPrice;
   final int? newRoomPrice;
+  final int? priceDifferenceAmount;
   final int? priceDifferenceToPay;
   final String reason;
   final int? reservedSlots;
@@ -282,6 +293,15 @@ class RoomTransferRequest {
   final bool transferOutHandoverRequired;
   final bool transferInHandoverRequired;
   final bool roomHandoverRequired;
+  final RoomTransferDebtSummary? debtSummary;
+  final RoomTransferViolationSummary? violationSummary;
+  final int? transferCountThisYear;
+  final DateTime? eligibilityCheckedAt;
+  final bool? eligibleAtCreation;
+  final Map<String, dynamic> eligibilitySnapshot;
+  final Map<String, dynamic> violationSnapshot;
+  final Map<String, dynamic> transferHistorySnapshot;
+  final List<String> eligibilityWarnings;
   final List<String> allowedActions;
   final List<String> blockingReasons;
 
@@ -382,6 +402,7 @@ class RoomTransferRequest {
       newContractId: _asInt(json['newContractId']),
       oldRoomPrice: _asInt(json['oldRoomPrice']),
       newRoomPrice: _asInt(json['newRoomPrice']),
+      priceDifferenceAmount: _asInt(json['priceDifferenceAmount']),
       priceDifferenceToPay: _asInt(json['priceDifferenceToPay']),
       reason: _str(json, 'reason'),
       reservedSlots: _asInt(json['reservedSlots']),
@@ -411,8 +432,77 @@ class RoomTransferRequest {
       roomHandoverRequired:
           _asBool(json['roomHandoverRequired']) ??
           _asBool(json['sourceRoomWillBeEmptyAfterTransfer']) == true,
+      debtSummary: RoomTransferDebtSummary.fromJson(json['debtSummary']),
+      violationSummary: RoomTransferViolationSummary.fromJson(
+        json['violationSummary'],
+      ),
+      transferCountThisYear: _asInt(json['transferCountThisYear']),
+      eligibilityCheckedAt: _parseDateTime(_str(json, 'eligibilityCheckedAt')),
+      eligibleAtCreation: _asBool(json['eligibleAtCreation']),
+      eligibilitySnapshot: _parseStringDynamicMap(json['eligibilitySnapshot']),
+      violationSnapshot: _parseStringDynamicMap(json['violationSnapshot']),
+      transferHistorySnapshot: _parseStringDynamicMap(
+        json['transferHistorySnapshot'],
+      ),
+      eligibilityWarnings: _parseStringList(json['eligibilityWarnings']),
       allowedActions: _parseStringList(json['allowedActions']),
       blockingReasons: _parseStringList(json['blockingReasons']),
+    );
+  }
+}
+
+class RoomTransferDebtSummary {
+  const RoomTransferDebtSummary({
+    this.rentDebtAmount = 0,
+    this.utilityDebtAmount = 0,
+    this.otherDebtAmount = 0,
+    this.rentDebtMonths = 0,
+    this.utilityDebtMonths = 0,
+    this.totalDebtAmount = 0,
+    this.debtLimitAmount,
+    this.overLimit = false,
+  });
+
+  final int rentDebtAmount;
+  final int utilityDebtAmount;
+  final int otherDebtAmount;
+  final int rentDebtMonths;
+  final int utilityDebtMonths;
+  final int totalDebtAmount;
+  final int? debtLimitAmount;
+  final bool overLimit;
+
+  static RoomTransferDebtSummary? fromJson(Object? raw) {
+    final json = _parseStringDynamicMap(raw);
+    if (json.isEmpty) return null;
+    return RoomTransferDebtSummary(
+      rentDebtAmount: _asInt(json['rentDebtAmount']) ?? 0,
+      utilityDebtAmount: _asInt(json['utilityDebtAmount']) ?? 0,
+      otherDebtAmount: _asInt(json['otherDebtAmount']) ?? 0,
+      rentDebtMonths: _asInt(json['rentDebtMonths']) ?? 0,
+      utilityDebtMonths: _asInt(json['utilityDebtMonths']) ?? 0,
+      totalDebtAmount: _asInt(json['totalDebtAmount']) ?? 0,
+      debtLimitAmount: _asInt(json['debtLimitAmount']),
+      overLimit: _asBool(json['overLimit']) ?? false,
+    );
+  }
+}
+
+class RoomTransferViolationSummary {
+  const RoomTransferViolationSummary({
+    this.totalCount = 0,
+    this.latestDescriptions = const [],
+  });
+
+  final int totalCount;
+  final List<String> latestDescriptions;
+
+  static RoomTransferViolationSummary? fromJson(Object? raw) {
+    final json = _parseStringDynamicMap(raw);
+    if (json.isEmpty) return null;
+    return RoomTransferViolationSummary(
+      totalCount: _asInt(json['totalCount']) ?? 0,
+      latestDescriptions: _parseStringList(json['latestDescriptions']),
     );
   }
 }
@@ -447,11 +537,27 @@ class AvailableRoom {
     return 'Phòng $roomCode';
   }
 
+  String get statusLabel {
+    return switch (currentStatus) {
+      'VACANT' => 'Còn trống',
+      'SOON_VACANT' => 'Sắp trống',
+      'OCCUPIED' => 'Đang có người ở - cần người đứng tên duyệt',
+      'RESERVED_FOR_TRANSFER' => 'Đang giữ chỗ chuyển phòng',
+      'RESERVED' => 'Đã đặt chỗ',
+      'ON_HOLD' => 'Đang giữ chỗ',
+      'MAINTENANCE' => 'Bảo trì',
+      'DRAFT' => 'Nháp',
+      _ => currentStatus,
+    };
+  }
+
   factory AvailableRoom.fromJson(Map<String, dynamic> json) {
     return AvailableRoom(
       id: _asInt(json['id']) ?? 0,
       roomCode: _str(json, 'roomCode'),
-      roomName: _str(json, 'roomName'),
+      roomName: _str(json, 'roomName').isNotEmpty
+          ? _str(json, 'roomName')
+          : _str(json, 'name'),
       propertyName: _str(json, 'propertyName'),
       floorName: _str(json, 'floorName'),
       currentStatus: _str(json, 'currentStatus'),
@@ -513,6 +619,23 @@ Map<int, String> _parseIntStringMap(Object? raw) {
       final decoded = jsonDecode(raw);
       if (decoded is Map) {
         return _parseIntStringMap(decoded);
+      }
+    } catch (_) {
+      // ignore
+    }
+  }
+  return const {};
+}
+
+Map<String, dynamic> _parseStringDynamicMap(Object? raw) {
+  if (raw is Map) {
+    return raw.map((key, value) => MapEntry(key.toString(), value));
+  }
+  if (raw is String && raw.trim().isNotEmpty) {
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) {
+        return _parseStringDynamicMap(decoded);
       }
     } catch (_) {
       // ignore

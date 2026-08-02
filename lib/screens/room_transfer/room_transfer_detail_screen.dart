@@ -15,6 +15,7 @@ import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.da
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
+import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 
 /// Detail screen for a room-transfer change request.
 /// Shows the change-request info, and if the linked transfer request is
@@ -348,11 +349,11 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
       return;
     }
 
-    final diff = transfer.priceDifferenceToPay ?? 0;
-    SettlementType? selectedSettlement = SettlementType.addToNextInvoice;
+    final rentDifference = _rentDifference(transfer);
+    SettlementType? selectedSettlement = SettlementType.noDifference;
 
-    if (diff > 0) {
-      selectedSettlement = await _showSettlementTypeDialog(diff);
+    if (rentDifference != 0) {
+      selectedSettlement = await _showSettlementTypeDialog(rentDifference);
       if (selectedSettlement == null) return;
       if (!mounted) return;
     }
@@ -387,9 +388,28 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     }
   }
 
+  int _rentDifference(RoomTransferRequest transfer) {
+    return transfer.priceDifferenceAmount ?? transfer.priceDifferenceToPay ?? 0;
+  }
+
   bool _requiresHolderSelectionForConfirmation(RoomTransferRequest transfer) {
-    return transfer.targetTransferType == TargetTransferType.newContract &&
-        transfer.transferringTenantProfileIds.isNotEmpty;
+    if (transfer.targetTransferType != TargetTransferType.newContract) {
+      return false;
+    }
+    if (transfer.canConfirmTenantTransfer) {
+      return false;
+    }
+    if (transfer.canNominateSourceHolder) {
+      return true;
+    }
+    if (transfer.sourceRoomWillBeEmptyAfterTransfer == true) {
+      return false;
+    }
+    final remainingOccupants = transfer.remainingOccupantCountAfterTransfer;
+    if (remainingOccupants != null && remainingOccupants <= 0) {
+      return false;
+    }
+    return transfer.sourceHolderCandidateProfileIds.any((id) => id > 0);
   }
 
   bool _canNominateSourceHolder(RoomTransferRequest transfer) {
@@ -482,6 +502,9 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
   }
 
   bool _isImmediateDifferencePaymentPending(RoomTransferRequest transfer) {
+    if ((transfer.priceDifferenceToPay ?? 0) <= 0) {
+      return false;
+    }
     if (transfer.canPayTransferDifference) return true;
     return transfer.priceDifferenceSettlementType.trim().toUpperCase() ==
         SettlementType.tenantPayMore.backendValue;
@@ -511,13 +534,13 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
       if (!mounted) return;
       await _tryLoadTransfer();
       if (!mounted) return;
-      _snack('Đã lưu holder mới cho phòng cũ.');
+      _snack('Đã lưu người đứng tên hợp đồng mới cho phòng cũ.');
     } on RoomTransferException catch (e) {
       if (!mounted) return;
       _snack(e.message);
     } catch (_) {
       if (!mounted) return;
-      _snack('Không thể lưu holder mới. Vui lòng thử lại.');
+      _snack('Không thể lưu người đứng tên hợp đồng mới. Vui lòng thử lại.');
     } finally {
       if (mounted) setState(() => _actionInProgress = false);
     }
@@ -658,8 +681,8 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     if (options.isEmpty) {
       _snack(
         _currentTenantProfileId != null
-            ? 'Không còn người ở cùng nào khác để chọn làm holder hợp đồng mới.'
-            : 'Không tìm thấy tenant phù hợp để chọn làm holder hợp đồng mới.',
+            ? 'Không còn người ở cùng nào khác để chọn làm người đứng tên hợp đồng mới.'
+            : 'Không tìm thấy người thuê phù hợp để chọn làm người đứng tên hợp đồng mới.',
       );
       return null;
     }
@@ -673,10 +696,10 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
           builder: (context, setDialogState) {
             return AlertDialog(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(AppColors.radiusLg),
               ),
               title: const Text(
-                'Chọn holder hợp đồng mới',
+                'Chọn người đứng tên hợp đồng mới',
                 style: TextStyle(fontWeight: FontWeight.w800),
               ),
               content: Column(
@@ -684,7 +707,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Vui lòng chọn người ở lại phòng cũ sẽ trở thành holder mới sau khi bạn chuyển phòng.',
+                    'Vui lòng chọn người ở lại phòng cũ sẽ trở thành người đứng tên hợp đồng mới sau khi bạn chuyển phòng.',
                     style: TextStyle(
                       fontSize: 13.5,
                       height: 1.45,
@@ -889,10 +912,15 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
   }
 
   Future<SettlementType?> _showSettlementTypeDialog(int difference) {
-    final formattedDiff = _formatCurrency(difference);
+    final isPositive = difference > 0;
+    final formattedDiff = _formatCurrency(difference.abs());
+    final choices = isPositive
+        ? const [SettlementType.tenantPayMore, SettlementType.addToNextInvoice]
+        : const [SettlementType.creditNextContract];
     return showModalBottomSheet<SettlementType>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -910,43 +938,54 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                     height: 4,
                     decoration: BoxDecoration(
                       color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
+                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Chọn phương thức thanh toán',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Text(
+                  isPositive
+                      ? 'Chọn phương thức thanh toán'
+                      : 'Chọn phương thức xử lý chênh lệch',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.inputText,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Phòng mới có giá cao hơn, chênh lệch cần trả: $formattedDiff.',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                  isPositive
+                      ? 'Phòng mới có giá cao hơn, chênh lệch cần trả: $formattedDiff.'
+                      : 'Phòng mới có giá thấp hơn, chênh lệch cần xử lý: $formattedDiff.',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.bodyText,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 20),
-                _SettlementChoiceTile(
-                  icon: Icons.payment,
-                  title: _settlementTitle(SettlementType.tenantPayMore),
-                  subtitle: _settlementSubtitle(SettlementType.tenantPayMore),
-                  onTap: () =>
-                      Navigator.of(ctx).pop(SettlementType.tenantPayMore),
-                ),
-                const SizedBox(height: 12),
-                _SettlementChoiceTile(
-                  icon: Icons.schedule,
-                  title: _settlementTitle(SettlementType.addToNextInvoice),
-                  subtitle: _settlementSubtitle(
-                    SettlementType.addToNextInvoice,
+                for (final choice in choices) ...[
+                  _SettlementChoiceTile(
+                    icon: _settlementIcon(choice),
+                    title: _settlementTitle(choice),
+                    subtitle: _settlementSubtitle(choice),
+                    onTap: () => Navigator.of(ctx).pop(choice),
                   ),
-                  onTap: () =>
-                      Navigator.of(ctx).pop(SettlementType.addToNextInvoice),
-                ),
+                  const SizedBox(height: 12),
+                ],
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: TextButton(
                     onPressed: () => Navigator.of(ctx).pop(),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.deepBlue,
+                      textStyle: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                     child: const Text('Đóng'),
                   ),
                 ),
@@ -956,6 +995,21 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
         );
       },
     );
+  }
+
+  IconData _settlementIcon(SettlementType type) {
+    switch (type) {
+      case SettlementType.tenantPayMore:
+        return Icons.payment;
+      case SettlementType.addToNextInvoice:
+        return Icons.schedule;
+      case SettlementType.refundNow:
+        return Icons.account_balance_wallet_outlined;
+      case SettlementType.creditNextContract:
+        return Icons.receipt_long_outlined;
+      case SettlementType.noDifference:
+        return Icons.check_circle_outline;
+    }
   }
 
   String _settlementTitle(SettlementType type) {
@@ -1093,9 +1147,9 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
   Future<void> _acceptHolderNomination() async {
     if (_transfer == null) return;
     final confirmed = await _confirmDialog(
-      title: 'Xác nhận holder mới',
+      title: 'Xác nhận người đứng tên hợp đồng mới',
       content:
-          'Bạn có chắc muốn trở thành holder mới của phòng cũ cho yêu cầu chuyển phòng này?',
+          'Bạn có chắc muốn trở thành người đứng tên hợp đồng mới của phòng cũ cho yêu cầu chuyển phòng này?',
       confirmLabel: 'Xác nhận',
       isDestructive: false,
     );
@@ -1105,7 +1159,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     try {
       await widget.transferService.acceptHolderNomination(_transfer!.id);
       if (!mounted) return;
-      _snack('Đã xác nhận trở thành holder mới.');
+      _snack('Đã xác nhận trở thành người đứng tên hợp đồng mới.');
       Navigator.of(context).pop(true);
     } on RoomTransferException catch (e) {
       if (!mounted) return;
@@ -1121,8 +1175,9 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
   Future<void> _rejectHolderNomination() async {
     if (_transfer == null) return;
     final confirmed = await _confirmDialog(
-      title: 'Từ chối holder mới',
-      content: 'Bạn có chắc muốn từ chối đề cử holder mới này?',
+      title: 'Từ chối người đứng tên hợp đồng mới',
+      content:
+          'Bạn có chắc muốn từ chối đề cử người đứng tên hợp đồng mới này?',
       confirmLabel: 'Từ chối',
       isDestructive: true,
     );
@@ -1132,7 +1187,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     try {
       await widget.transferService.rejectHolderNomination(_transfer!.id);
       if (!mounted) return;
-      _snack('Đã từ chối đề cử holder mới.');
+      _snack('Đã từ chối đề cử người đứng tên hợp đồng mới.');
       Navigator.of(context).pop(true);
     } on RoomTransferException catch (e) {
       if (!mounted) return;
@@ -1176,7 +1231,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
         content: Text(content),
         actions: [
@@ -1188,12 +1243,12 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
             onPressed: () => Navigator.of(ctx).pop(true),
             style: ElevatedButton.styleFrom(
               backgroundColor: isDestructive
-                  ? const Color(0xFFDC2626)
+                  ? AppColors.danger
                   : AppColors.deepBlue,
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
               ),
             ),
             child: Text(confirmLabel),
@@ -1224,7 +1279,8 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
 
   String _formatMoney(num? value) {
     if (value == null) return '—';
-    final normalized = value.round().toString();
+    final amount = value.round();
+    final normalized = amount.abs().toString();
     final buffer = StringBuffer();
     for (var i = 0; i < normalized.length; i++) {
       final remaining = normalized.length - i;
@@ -1233,7 +1289,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
         buffer.write('.');
       }
     }
-    return '${buffer.toString()} đ';
+    return '${amount < 0 ? '-' : ''}${buffer.toString()} đ';
   }
 
   bool _canViewFullTransferFlow(RoomTransferRequest transfer) {
@@ -1245,6 +1301,10 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
   }
 
   bool _canViewTransferFinancials(RoomTransferRequest transfer) {
+    return _isCurrentTenantTransferring(transfer);
+  }
+
+  bool _canViewTransferEligibility(RoomTransferRequest transfer) {
     return _isCurrentTenantTransferring(transfer);
   }
 
@@ -1299,91 +1359,236 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     return result;
   }
 
-  List<Widget> _transferInfoRows(RoomTransferRequest transfer) {
+  String _formatEligibilityResult(bool? value) {
+    if (value == true) return 'Đủ điều kiện';
+    if (value == false) return 'Không đủ điều kiện';
+    return 'Chưa có dữ liệu';
+  }
+
+  Widget _messagePanel({
+    required String title,
+    required List<String> items,
+    required Color borderColor,
+    required Color backgroundColor,
+    required Color textColor,
+  }) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 6),
+          ...items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(top: 3),
+              child: Text(
+                '• $item',
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  height: 1.35,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _transferEligibilityChildren(RoomTransferRequest transfer) {
+    final debt = transfer.debtSummary;
+    final violation = transfer.violationSummary;
     final rows = <Widget>[
-      _InfoRow(label: 'Mã yêu cầu', value: transfer.requestCode),
       _InfoRow(
-        label: 'Phòng cũ',
-        value: transfer.oldRoomName.isNotEmpty
-            ? transfer.oldRoomName
-            : (transfer.oldRoomCode.isNotEmpty
-                  ? transfer.oldRoomCode
-                  : '#${transfer.oldRoomId}'),
+        label: 'Kết quả lúc tạo',
+        value: _formatEligibilityResult(transfer.eligibleAtCreation),
+        valueColor: transfer.eligibleAtCreation == false
+            ? AppColors.danger
+            : transfer.eligibleAtCreation == true
+            ? AppColors.successText
+            : null,
+      ),
+      _InfoRow(
+        label: 'Kiểm tra lúc',
+        value: _formatDateTime(transfer.eligibilityCheckedAt),
+      ),
+      _InfoRow(
+        label: 'Tổng nợ',
+        value: _formatMoney(debt?.totalDebtAmount ?? 0),
+        valueColor: debt?.overLimit == true ? AppColors.danger : null,
+      ),
+      _InfoRow(
+        label: 'Nợ thuê / điện nước',
+        value:
+            '${_formatMoney(debt?.rentDebtAmount ?? 0)} / ${_formatMoney(debt?.utilityDebtAmount ?? 0)}',
+      ),
+      _InfoRow(
+        label: 'Vi phạm',
+        value: '${violation?.totalCount ?? 0} ghi nhận',
+        valueColor: (violation?.totalCount ?? 0) > 0
+            ? const Color(0xFFD97706)
+            : null,
+      ),
+      _InfoRow(
+        label: 'Chuyển trong năm',
+        value: '${transfer.transferCountThisYear ?? 0} lần',
       ),
     ];
 
-    if (_canViewDestinationInfo(transfer)) {
-      rows.add(
-        _InfoRow(
-          label: 'Phòng chuyển đến',
-          value: transfer.targetRoomName.isNotEmpty
-              ? transfer.targetRoomName
-              : (transfer.targetRoomCode.isNotEmpty
-                    ? transfer.targetRoomCode
-                    : '#${transfer.targetRoomId}'),
-        ),
-      );
-    } else {
-      rows.add(
-        _InfoRow(
-          label: 'Người chuyển đi',
-          value: _formatProfileNames(transfer.transferringTenantNames),
-        ),
-      );
-    }
+    final children = <Widget>[..._withInfoDividers(rows)];
 
-    if (_canViewTransferFinancials(transfer)) {
-      rows.addAll([
-        _InfoRow(
-          label: 'Giá phòng cũ',
-          value: _formatMoney(transfer.oldRoomPrice),
-        ),
-        _InfoRow(
-          label: 'Giá phòng mới',
-          value: _formatMoney(transfer.newRoomPrice),
-        ),
-        _InfoRow(
-          label: 'Chênh lệch cần trả',
-          value: _formatMoney(transfer.priceDifferenceToPay),
-          valueColor: AppColors.primary,
+    if ((violation?.latestDescriptions ?? const []).isNotEmpty) {
+      children.addAll([
+        const SizedBox(height: 12),
+        _messagePanel(
+          title: 'Vi phạm gần nhất',
+          items: violation!.latestDescriptions.take(3).toList(growable: false),
+          borderColor: const Color(0xFFFDE68A),
+          backgroundColor: AppColors.warningSurface,
+          textColor: AppColors.warningText,
         ),
       ]);
     }
 
-    if (_canViewFullTransferFlow(transfer)) {
+    return children;
+  }
+
+  List<Widget> _transferInfoRows(RoomTransferRequest transfer) {
+    String roomLabel(String code, String name, int id) {
+      final codeText = code.trim();
+      final nameText = name.trim();
+      if (codeText.isNotEmpty && nameText.isNotEmpty) {
+        return '$codeText - $nameText';
+      }
+      if (codeText.isNotEmpty) return codeText;
+      if (nameText.isNotEmpty) return nameText;
+      return '#$id';
+    }
+
+    bool hasValue(String value) {
+      final normalized = value.trim();
+      return normalized.isNotEmpty && normalized != '—';
+    }
+
+    void addRow(
+      List<Widget> target, {
+      required String label,
+      required String value,
+      Color? valueColor,
+    }) {
+      if (!hasValue(value)) return;
+      target.add(_InfoRow(label: label, value: value, valueColor: valueColor));
+    }
+
+    final rows = <Widget>[
+      _InfoRow(label: 'Mã yêu cầu', value: transfer.requestCode),
+    ];
+
+    rows.add(
+      _InfoRow(
+        label: 'Phòng cũ',
+        value: roomLabel(
+          transfer.oldRoomCode,
+          transfer.oldRoomName,
+          transfer.oldRoomId,
+        ),
+      ),
+    );
+
+    if (_canViewDestinationInfo(transfer)) {
       rows.add(
         _InfoRow(
-          label: 'Hình thức chuyển phòng',
-          value: transfer.targetTransferType.label,
+          label: 'Phòng đến',
+          value: roomLabel(
+            transfer.targetRoomCode,
+            transfer.targetRoomName,
+            transfer.targetRoomId,
+          ),
         ),
       );
+    }
+
+    addRow(
+      rows,
+      label: 'Người chuyển',
+      value: _formatProfileNames(transfer.transferringTenantNames),
+    );
+
+    final nominatedHolderId = transfer.nominatedHolderProfileId;
+    if (nominatedHolderId != null && nominatedHolderId > 0) {
+      final holderName = transfer.sourceHolderCandidateNames[nominatedHolderId]
+          ?.trim();
+      addRow(
+        rows,
+        label: 'Người ở lại đứng tên',
+        value: holderName == null || holderName.isEmpty
+            ? 'Đã chọn'
+            : holderName,
+      );
+    }
+
+    if (_canViewTransferFinancials(transfer)) {
+      rows.add(
+        _InfoRow(
+          label: 'Chênh lệch',
+          value: _formatMoney(
+            transfer.priceDifferenceAmount ?? transfer.priceDifferenceToPay,
+          ),
+          valueColor: AppColors.primary,
+        ),
+      );
+      addRow(rows, label: 'Cách xử lý', value: transfer.paymentBranchLabel);
+    }
+
+    if (_canViewFullTransferFlow(transfer)) {
+      final remainingCount = transfer.remainingOccupantCountAfterTransfer;
+      final hasRemainingHolder =
+          nominatedHolderId != null && nominatedHolderId > 0;
+      final afterTransfer = hasRemainingHolder
+          ? 'Phòng cũ còn người ở'
+          : remainingCount != null && remainingCount > 0
+          ? 'Phòng cũ còn $remainingCount người'
+          : transfer.sourceRoomWillBeEmptyAfterTransfer == null
+          ? ''
+          : transfer.sourceRoomWillBeEmptyAfterTransfer == true
+          ? 'Phòng cũ trống'
+          : 'Phòng cũ còn người ở';
+      addRow(rows, label: 'Sau chuyển', value: afterTransfer);
     }
 
     rows.addAll([
       _InfoRow(
-        label: 'Ngày chuyển dự kiến',
+        label: 'Ngày chuyển',
         value: _formatDate(transfer.requestedTransferDate),
       ),
       _InfoRow(
-        label: 'Trạng thái chuyển phòng',
+        label: 'Trạng thái',
         value: _displayTransferStatusLabel(transfer),
       ),
     ]);
 
-    if ((transfer.oldRoomFinalInvoiceId ?? 0) > 0) {
-      rows.add(
-        _InfoRow(
-          label: 'Hóa đơn điện/nước chuyển phòng',
-          value: '#${transfer.oldRoomFinalInvoiceId}',
-          valueColor: AppColors.primary,
-        ),
-      );
-    }
-
     return _withInfoDividers(rows);
   }
 
-  Widget _buildHeader() {
+  // ignore: unused_element
+  Widget _buildLegacyHeader() {
     return Container(
       height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
@@ -1414,6 +1619,13 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return AppTopBar(
+      title: 'Chi tiết chuyển phòng',
+      onBack: () => Navigator.of(context).maybePop(),
     );
   }
 
@@ -1551,17 +1763,26 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
           ),
         ],
 
+        if (_transfer != null && _canViewTransferEligibility(_transfer!)) ...[
+          const SizedBox(height: 14),
+          _SectionCard(
+            title: 'Điều kiện chuyển phòng',
+            icon: Icons.rule_folder_outlined,
+            children: _transferEligibilityChildren(_transfer!),
+          ),
+        ],
+
         if (_transfer != null && _canEditConfirmationHolder(_transfer!)) ...[
           const SizedBox(height: 14),
           _SectionCard(
-            title: 'Holder hợp đồng mới',
+            title: 'Người đứng tên hợp đồng mới',
             icon: Icons.person_outline_rounded,
             children: [
               Text(
                 _transfer!.nominatedHolderProfileId != null &&
                         _transfer!.nominatedHolderProfileId! > 0
-                    ? 'Holder đã chọn hiện tại: ${_selectedHolderDisplayName(_transfer!) ?? 'Tenant #${_transfer!.nominatedHolderProfileId}'}. Sau bước này bạn mới xác nhận yêu cầu và chọn phương thức thanh toán.'
-                    : 'Bạn cần chọn holder trước. Sau khi chọn xong, mới được xác nhận yêu cầu và chọn phương thức thanh toán.',
+                    ? 'Người đứng tên hợp đồng đã chọn: ${_selectedHolderDisplayName(_transfer!) ?? 'Người thuê #${_transfer!.nominatedHolderProfileId}'}. Sau bước này bạn mới xác nhận yêu cầu và chọn phương thức thanh toán.'
+                    : 'Bạn cần chọn người đứng tên hợp đồng trước. Sau khi chọn xong, mới được xác nhận yêu cầu và chọn phương thức thanh toán.',
                 style: const TextStyle(
                   color: AppColors.bodyText,
                   fontSize: 13,
@@ -1574,8 +1795,8 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                 label:
                     _transfer!.nominatedHolderProfileId != null &&
                         _transfer!.nominatedHolderProfileId! > 0
-                    ? 'Đổi holder hợp đồng mới'
-                    : 'Chọn holder hợp đồng mới',
+                    ? 'Đổi người đứng tên hợp đồng mới'
+                    : 'Chọn người đứng tên hợp đồng mới',
                 icon: Icons.person_search_outlined,
                 color: AppColors.deepBlue,
                 busy: _actionInProgress,
@@ -1649,7 +1870,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
         _ActionButton(
           label: 'Hủy yêu cầu chuyển phòng',
           icon: Icons.cancel_outlined,
-          color: const Color(0xFFDC2626),
+          color: AppColors.danger,
           busy: busy,
           onTap: _cancelTransfer,
         ),
@@ -1671,7 +1892,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
             _ActionButton(
               label: 'Xác nhận yêu cầu',
               icon: Icons.check_circle_outline,
-              color: const Color(0xFF16A34A),
+              color: AppColors.successText,
               busy: busy,
               enabled: _canConfirmTenantTransfer(_transfer!),
               onTap: _confirmTenantSettlement,
@@ -1682,7 +1903,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
             _ActionButton(
               label: 'Từ chối yêu cầu',
               icon: Icons.cancel_outlined,
-              color: const Color(0xFFDC2626),
+              color: AppColors.danger,
               busy: busy,
               onTap: _rejectContract,
             ),
@@ -1712,8 +1933,8 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(12),
+                color: AppColors.infoSurface,
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 border: Border.all(color: const Color(0xFFBFDBFE)),
               ),
               child: Row(
@@ -1727,7 +1948,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Sau khi quản lý duyệt, nếu requester đang là holder thì cần đề cử holder mới của phòng cũ trước khi hệ thống đi tiếp sang các bước hợp đồng.',
+                      'Sau khi quản lý duyệt, nếu người gửi yêu cầu đang là người đứng tên hợp đồng thì cần đề cử người đứng tên hợp đồng mới của phòng cũ trước khi hệ thống đi tiếp sang các bước hợp đồng.',
                       style: TextStyle(
                         color: AppColors.deepBlue,
                         fontSize: 13.5,
@@ -1743,7 +1964,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
           actions.add(const SizedBox(height: 10));
           actions.add(
             _ActionButton(
-              label: 'Đề cử holder mới',
+              label: 'Đề cử người đứng tên hợp đồng mới',
               icon: Icons.person_outline_rounded,
               color: AppColors.deepBlue,
               busy: busy,
@@ -1761,9 +1982,9 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFFBEB),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFF59E0B)),
+                  color: AppColors.warningSurface,
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                  border: Border.all(color: AppColors.warning),
                 ),
                 child: const Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1776,9 +1997,9 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Bạn được đề cử làm holder mới của phòng cũ. Vui lòng xác nhận để yêu cầu chuyển phòng tiếp tục.',
+                        'Bạn được đề cử làm người đứng tên hợp đồng mới của phòng cũ. Vui lòng xác nhận để yêu cầu chuyển phòng tiếp tục.',
                         style: TextStyle(
-                          color: Color(0xFF92400E),
+                          color: AppColors.warningText,
                           fontSize: 13.5,
                           fontWeight: FontWeight.w600,
                           height: 1.45,
@@ -1792,9 +2013,9 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
             actions.add(const SizedBox(height: 10));
             actions.add(
               _ActionButton(
-                label: 'Xác nhận làm holder mới',
+                label: 'Xác nhận làm người đứng tên hợp đồng mới',
                 icon: Icons.how_to_reg_outlined,
-                color: const Color(0xFF16A34A),
+                color: AppColors.successText,
                 busy: busy,
                 onTap: _acceptHolderNomination,
               ),
@@ -1804,7 +2025,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
               _ActionButton(
                 label: 'Từ chối đề cử',
                 icon: Icons.cancel_outlined,
-                color: const Color(0xFFDC2626),
+                color: AppColors.danger,
                 busy: busy,
                 onTap: _rejectHolderNomination,
               ),
@@ -1818,9 +2039,9 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFFBEB),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFF59E0B)),
+                  color: AppColors.warningSurface,
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                  border: Border.all(color: AppColors.warning),
                 ),
                 child: const Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1833,9 +2054,9 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Đã đề cử holder mới cho phòng cũ. Hệ thống đang chờ người được đề cử phản hồi trước khi đi tiếp.',
+                        'Đã đề cử người đứng tên hợp đồng mới cho phòng cũ. Hệ thống đang chờ người được đề cử phản hồi trước khi đi tiếp.',
                         style: TextStyle(
-                          color: Color(0xFF92400E),
+                          color: AppColors.warningText,
                           fontSize: 13.5,
                           fontWeight: FontWeight.w600,
                           height: 1.45,
@@ -1873,8 +2094,8 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(12),
+                color: AppColors.infoSurface,
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 border: Border.all(color: const Color(0xFFBFDBFE)),
               ),
               child: Row(
@@ -1936,7 +2157,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
               foregroundColor: AppColors.deepBlue,
               side: const BorderSide(color: AppColors.deepBlue),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
               ),
             ),
             child: const Text(
@@ -1957,9 +2178,9 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFFBEB),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFF59E0B)),
+          color: AppColors.warningSurface,
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+          border: Border.all(color: AppColors.warning),
         ),
         child: const Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1974,7 +2195,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
               child: Text(
                 'Bạn đã chọn thanh toán ngay. Yêu cầu chỉ được xác nhận sau khi hóa đơn chênh lệch thanh toán thành công.',
                 style: TextStyle(
-                  color: Color(0xFF92400E),
+                  color: AppColors.warningText,
                   fontSize: 13.5,
                   fontWeight: FontWeight.w600,
                   height: 1.45,
@@ -2019,25 +2240,25 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
         TransferRequestStatus.waitingPayment => const Color(0xFFD97706),
         TransferRequestStatus.waitingSigning => AppColors.deepBlue,
         TransferRequestStatus.waitingContractSigning => AppColors.deepBlue,
-        TransferRequestStatus.waitingTransferDate => const Color(0xFF2563EB),
-        TransferRequestStatus.readyForHandover => const Color(0xFF2563EB),
-        TransferRequestStatus.waitingExecution => const Color(0xFF2563EB),
-        TransferRequestStatus.executed => const Color(0xFF16A34A),
-        TransferRequestStatus.completed => const Color(0xFF16A34A),
-        TransferRequestStatus.rejected => const Color(0xFFDC2626),
-        TransferRequestStatus.cancelled => const Color(0xFF6B7280),
-        TransferRequestStatus.expired => const Color(0xFF6B7280),
+        TransferRequestStatus.waitingTransferDate => AppColors.primary,
+        TransferRequestStatus.readyForHandover => AppColors.primary,
+        TransferRequestStatus.waitingExecution => AppColors.primary,
+        TransferRequestStatus.executed => AppColors.successText,
+        TransferRequestStatus.completed => AppColors.successText,
+        TransferRequestStatus.rejected => AppColors.danger,
+        TransferRequestStatus.cancelled => AppColors.neutral,
+        TransferRequestStatus.expired => AppColors.neutral,
       };
     }
 
     return switch (_req.status) {
       ChangeRequestStatus.pending => const Color(0xFFD97706),
       ChangeRequestStatus.underReview => AppColors.deepBlue,
-      ChangeRequestStatus.approved => const Color(0xFF16A34A),
-      ChangeRequestStatus.rejected => const Color(0xFFDC2626),
-      ChangeRequestStatus.processing => const Color(0xFF2563EB),
-      ChangeRequestStatus.completed => const Color(0xFF16A34A),
-      ChangeRequestStatus.cancelled => const Color(0xFF6B7280),
+      ChangeRequestStatus.approved => AppColors.successText,
+      ChangeRequestStatus.rejected => AppColors.danger,
+      ChangeRequestStatus.processing => AppColors.primary,
+      ChangeRequestStatus.completed => AppColors.successText,
+      ChangeRequestStatus.cancelled => AppColors.neutral,
     };
   }
 
@@ -2046,6 +2267,13 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     return '${dt.day.toString().padLeft(2, '0')}/'
         '${dt.month.toString().padLeft(2, '0')}/'
         '${dt.year}';
+  }
+
+  String _formatDateTime(DateTime? dt) {
+    if (dt == null) return '--';
+    return '${_formatDate(dt)} '
+        '${dt.hour.toString().padLeft(2, '0')}:'
+        '${dt.minute.toString().padLeft(2, '0')}';
   }
 }
 
@@ -2127,39 +2355,39 @@ class _StatusBanner extends StatelessWidget {
         TransferRequestStatus.waitingPayment => const Color(0xFFD97706),
         TransferRequestStatus.waitingSigning => AppColors.deepBlue,
         TransferRequestStatus.waitingContractSigning => AppColors.deepBlue,
-        TransferRequestStatus.waitingTransferDate => const Color(0xFF2563EB),
-        TransferRequestStatus.readyForHandover => const Color(0xFF2563EB),
-        TransferRequestStatus.waitingExecution => const Color(0xFF2563EB),
-        TransferRequestStatus.executed => const Color(0xFF16A34A),
-        TransferRequestStatus.completed => const Color(0xFF16A34A),
-        TransferRequestStatus.rejected => const Color(0xFFDC2626),
-        TransferRequestStatus.cancelled => const Color(0xFF6B7280),
-        TransferRequestStatus.expired => const Color(0xFF6B7280),
+        TransferRequestStatus.waitingTransferDate => AppColors.primary,
+        TransferRequestStatus.readyForHandover => AppColors.primary,
+        TransferRequestStatus.waitingExecution => AppColors.primary,
+        TransferRequestStatus.executed => AppColors.successText,
+        TransferRequestStatus.completed => AppColors.successText,
+        TransferRequestStatus.rejected => AppColors.danger,
+        TransferRequestStatus.cancelled => AppColors.neutral,
+        TransferRequestStatus.expired => AppColors.neutral,
       };
     }
 
     return switch (requestStatus) {
       ChangeRequestStatus.pending => const Color(0xFFD97706),
       ChangeRequestStatus.underReview => AppColors.deepBlue,
-      ChangeRequestStatus.approved => const Color(0xFF16A34A),
-      ChangeRequestStatus.rejected => const Color(0xFFDC2626),
-      ChangeRequestStatus.processing => const Color(0xFF2563EB),
-      ChangeRequestStatus.completed => const Color(0xFF16A34A),
-      ChangeRequestStatus.cancelled => const Color(0xFF6B7280),
+      ChangeRequestStatus.approved => AppColors.successText,
+      ChangeRequestStatus.rejected => AppColors.danger,
+      ChangeRequestStatus.processing => AppColors.primary,
+      ChangeRequestStatus.completed => AppColors.successText,
+      ChangeRequestStatus.cancelled => AppColors.neutral,
     };
   }
 
   Color get _bg {
-    if (neutral) return const Color(0xFFEFF1FF);
+    if (neutral) return AppColors.primarySurface;
     final status = transferStatus;
     if (status != null) {
       return switch (status) {
         TransferRequestStatus.requested => const Color(0xFFFFF7ED),
         TransferRequestStatus.waitingManagerApproval => const Color(0xFFFFF7ED),
-        TransferRequestStatus.managerApproved => const Color(0xFFEFF1FF),
+        TransferRequestStatus.managerApproved => AppColors.primarySurface,
         TransferRequestStatus.waitingHolderResponse => const Color(0xFFFFF7ED),
         TransferRequestStatus.waitingApproval => const Color(0xFFFFF7ED),
-        TransferRequestStatus.waitingNewContract => const Color(0xFFEFF1FF),
+        TransferRequestStatus.waitingNewContract => AppColors.primarySurface,
         TransferRequestStatus.waitingTargetHolderApproval => const Color(
           0xFFFFF7ED,
         ),
@@ -2170,11 +2398,11 @@ class _StatusBanner extends StatelessWidget {
           0xFFEFF1FF,
         ),
         TransferRequestStatus.waitingPayment => const Color(0xFFFFF7ED),
-        TransferRequestStatus.waitingSigning => const Color(0xFFEFF1FF),
-        TransferRequestStatus.waitingContractSigning => const Color(0xFFEFF1FF),
-        TransferRequestStatus.waitingTransferDate => const Color(0xFFEFF6FF),
-        TransferRequestStatus.readyForHandover => const Color(0xFFEFF6FF),
-        TransferRequestStatus.waitingExecution => const Color(0xFFEFF6FF),
+        TransferRequestStatus.waitingSigning => AppColors.primarySurface,
+        TransferRequestStatus.waitingContractSigning => AppColors.primarySurface,
+        TransferRequestStatus.waitingTransferDate => AppColors.infoSurface,
+        TransferRequestStatus.readyForHandover => AppColors.infoSurface,
+        TransferRequestStatus.waitingExecution => AppColors.infoSurface,
         TransferRequestStatus.executed => const Color(0xFFD4F8DE),
         TransferRequestStatus.completed => const Color(0xFFD4F8DE),
         TransferRequestStatus.rejected => const Color(0xFFFFE4E4),
@@ -2185,10 +2413,10 @@ class _StatusBanner extends StatelessWidget {
 
     return switch (requestStatus) {
       ChangeRequestStatus.pending => const Color(0xFFFFF7ED),
-      ChangeRequestStatus.underReview => const Color(0xFFEFF1FF),
+      ChangeRequestStatus.underReview => AppColors.primarySurface,
       ChangeRequestStatus.approved => const Color(0xFFD4F8DE),
       ChangeRequestStatus.rejected => const Color(0xFFFFE4E4),
-      ChangeRequestStatus.processing => const Color(0xFFEFF1FF),
+      ChangeRequestStatus.processing => AppColors.primarySurface,
       ChangeRequestStatus.completed => const Color(0xFFD4F8DE),
       ChangeRequestStatus.cancelled => const Color(0xFFF5F5F5),
     };
@@ -2203,7 +2431,7 @@ class _StatusBanner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: _bg,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
       ),
       child: Row(
         children: [
@@ -2247,31 +2475,31 @@ class _StatusBanner extends StatelessWidget {
         TransferRequestStatus.waitingManagerApproval =>
           'Yêu cầu đang chờ quản lý phê duyệt.',
         TransferRequestStatus.managerApproved =>
-          'Quản lý đã duyệt. Nếu requester đang là holder thì cần đề cử holder mới trước khi đi tiếp.',
+          'Quản lý đã duyệt, chờ bước tiếp theo.',
         TransferRequestStatus.waitingHolderResponse =>
-          'Đang chờ holder mới của phòng cũ phản hồi đề cử.',
+          'Đang chờ người đứng tên hợp đồng mới của phòng cũ phản hồi đề cử.',
         TransferRequestStatus.waitingApproval =>
           'Yêu cầu đang chờ quản lý phê duyệt.',
         TransferRequestStatus.waitingNewContract =>
-          'Đang chờ đề cử holder mới hoặc tạo hợp đồng mới cho yêu cầu chuyển phòng.',
+          'Chờ chọn người đứng tên hoặc tạo hợp đồng mới.',
         TransferRequestStatus.waitingTargetHolderApproval =>
           'Đang chờ chủ phòng đích phê duyệt yêu cầu chuyển vào.',
         TransferRequestStatus.waitingTenantConfirmation =>
-          'Đang chờ người thuê xác nhận yêu cầu chuyển phòng và phương án thanh toán.',
+          'Chờ người thuê xác nhận phương án chuyển phòng.',
         TransferRequestStatus.waitingContractConfirmation =>
-          'Hệ thống đang chuẩn bị hợp đồng để quản lý xử lý bước ký trực tiếp.',
+          'Chờ quản lý xác nhận hợp đồng.',
         TransferRequestStatus.waitingPayment =>
-          'Yêu cầu chưa được xác nhận. Vui lòng thanh toán hóa đơn chênh lệch để hoàn tất xác nhận yêu cầu.',
+          'Cần thanh toán hóa đơn chênh lệch.',
         TransferRequestStatus.waitingSigning =>
-          'Quản lý đang xử lý ký trực tiếp với khách và tải bản hợp đồng đã ký lên hệ thống.',
+          'Chờ quản lý upload hợp đồng đã ký.',
         TransferRequestStatus.waitingContractSigning =>
-          'Quản lý đang xử lý ký trực tiếp với khách và tải bản hợp đồng đã ký lên hệ thống.',
+          'Chờ quản lý upload hợp đồng đã ký.',
         TransferRequestStatus.waitingTransferDate =>
-          'Hồ sơ đã sẵn sàng. Ngày chuyển chỉ là ngày dự kiến; quản lý có thể bắt đầu phiên chuyển phòng khi hai bên đã có mặt.',
+          'Hồ sơ đã sẵn sàng, chờ ngày chuyển.',
         TransferRequestStatus.readyForHandover =>
-          'Hồ sơ đã sẵn sàng cho phiên chuyển phòng: checkout phòng cũ, check-in phòng mới và execute.',
+          'Chờ bàn giao phòng cũ và nhận phòng mới.',
         TransferRequestStatus.waitingExecution =>
-          'Phiên chuyển phòng đang diễn ra. Quản lý hoàn tất check-in phòng mới rồi execute giao dịch.',
+          'Phiên chuyển phòng đang diễn ra.',
         TransferRequestStatus.executed =>
           'Việc chuyển phòng đã được thực hiện thành công.',
         TransferRequestStatus.completed => 'Yêu cầu chuyển phòng đã hoàn tất.',
@@ -2312,7 +2540,7 @@ class _SectionCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(
@@ -2424,7 +2652,7 @@ class _ActionButton extends StatelessWidget {
           disabledForegroundColor: Colors.white.withValues(alpha: 0.8),
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
           ),
         ),
       ),
@@ -2445,7 +2673,7 @@ class _TransferLoadingCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Row(
@@ -2487,7 +2715,7 @@ class _TransferLoadStateCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(
@@ -2535,7 +2763,7 @@ class _TransferLoadStateCard extends StatelessWidget {
                 foregroundColor: AppColors.deepBlue,
                 side: const BorderSide(color: AppColors.deepBlue),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 ),
               ),
             ),
@@ -2559,8 +2787,8 @@ class _TransferActionLoadingCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFF1FF),
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.primarySurface,
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: const Color(0xFFD7DCFF)),
       ),
       child: Row(
@@ -2610,9 +2838,9 @@ class _TargetHolderApprovalCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFBEB),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFF59E0B), width: 1.5),
+        color: AppColors.warningSurface,
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        border: Border.all(color: AppColors.warning, width: 1.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2629,7 +2857,7 @@ class _TargetHolderApprovalCard extends StatelessWidget {
                 child: Text(
                   'Yêu cầu chuyển vào phòng bạn',
                   style: TextStyle(
-                    color: Color(0xFF92400E),
+                    color: AppColors.warningText,
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                   ),
@@ -2641,7 +2869,7 @@ class _TargetHolderApprovalCard extends StatelessWidget {
           const Text(
             'Một người dùng đang yêu cầu chuyển vào phòng của bạn. Vui lòng xem xét và phê duyệt hoặc từ chối yêu cầu này.',
             style: TextStyle(
-              color: Color(0xFF92400E),
+              color: AppColors.warningText,
               fontSize: 13,
               fontWeight: FontWeight.w500,
               height: 1.5,
@@ -2654,7 +2882,7 @@ class _TargetHolderApprovalCard extends StatelessWidget {
                 child: _ApprovalButton(
                   label: 'Từ chối',
                   icon: Icons.close_outlined,
-                  color: const Color(0xFFDC2626),
+                  color: AppColors.danger,
                   busy: busy,
                   onTap: onReject,
                 ),
@@ -2664,7 +2892,7 @@ class _TargetHolderApprovalCard extends StatelessWidget {
                 child: _ApprovalButton(
                   label: 'Đồng ý',
                   icon: Icons.check_outlined,
-                  color: const Color(0xFF16A34A),
+                  color: AppColors.successText,
                   busy: busy,
                   onTap: onApprove,
                 ),
@@ -2718,7 +2946,7 @@ class _ApprovalButton extends StatelessWidget {
           disabledBackgroundColor: color.withValues(alpha: 0.5),
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
           ),
         ),
       ),
@@ -2775,7 +3003,7 @@ class _StatusTimeline extends StatelessWidget {
             TransferRequestStatus.managerApproved,
             TransferRequestStatus.waitingNewContract,
           ],
-          label: 'Chọn holder phòng cũ',
+          label: 'Chọn người đứng tên hợp đồng của phòng cũ',
           icon: Icons.person_outline_rounded,
         ),
       );
@@ -2783,7 +3011,7 @@ class _StatusTimeline extends StatelessWidget {
         _TimelineStep(
           status: TransferRequestStatus.waitingHolderResponse,
           aliases: const [TransferRequestStatus.waitingHolderResponse],
-          label: 'Chờ holder phòng cũ phản hồi',
+          label: 'Chờ người đứng tên hợp đồng của phòng cũ phản hồi',
           icon: Icons.schedule_outlined,
         ),
       );
@@ -2937,7 +3165,7 @@ class _StatusTimeline extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(
@@ -2987,10 +3215,10 @@ class _StatusTimeline extends StatelessWidget {
                   height: 32,
                   decoration: BoxDecoration(
                     color: isCompleted
-                        ? const Color(0xFF16A34A)
+                        ? AppColors.successText
                         : isCurrent
                         ? AppColors.deepBlue
-                        : const Color(0xFFE5E7EB),
+                        : AppColors.neutralBorder,
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -3006,8 +3234,8 @@ class _StatusTimeline extends StatelessWidget {
                     width: 2,
                     height: 24,
                     color: isCompleted
-                        ? const Color(0xFF16A34A)
-                        : const Color(0xFFE5E7EB),
+                        ? AppColors.successText
+                        : AppColors.neutralBorder,
                   ),
               ],
             ),
@@ -3019,7 +3247,7 @@ class _StatusTimeline extends StatelessWidget {
                   step.label,
                   style: TextStyle(
                     color: isCompleted
-                        ? const Color(0xFF16A34A)
+                        ? AppColors.successText
                         : isCurrent
                         ? AppColors.deepBlue
                         : AppColors.bodyText,
@@ -3073,12 +3301,12 @@ class _SettlementChoiceTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             border: Border.all(color: const Color(0xFFD1D5DB)),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
           ),
           child: Row(
             children: [
@@ -3086,8 +3314,8 @@ class _SettlementChoiceTile extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEFF1FF),
-                  borderRadius: BorderRadius.circular(10),
+                  color: AppColors.primarySurface,
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 ),
                 child: Icon(icon, color: AppColors.deepBlue, size: 22),
               ),
@@ -3101,7 +3329,7 @@ class _SettlementChoiceTile extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF111827),
+                        color: AppColors.neutralStrong,
                       ),
                     ),
                     const SizedBox(height: 2),

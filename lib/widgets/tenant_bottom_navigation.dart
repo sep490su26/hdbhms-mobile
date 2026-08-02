@@ -31,10 +31,10 @@ class TenantBottomNavigation extends StatelessWidget {
         child: Container(
           height: 76,
           margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-          padding: const EdgeInsets.fromLTRB(7, 7, 7, 7),
+          padding: const EdgeInsets.all(7),
           decoration: BoxDecoration(
             color: AppColors.surface.withValues(alpha: 0.98),
-            borderRadius: BorderRadius.circular(26),
+            borderRadius: BorderRadius.circular(AppColors.radiusLg),
             border: Border.all(color: Colors.white.withValues(alpha: 0.72)),
             boxShadow: [
               BoxShadow(
@@ -113,56 +113,62 @@ class _BottomNavItem extends StatelessWidget {
       button: true,
       selected: isSelected,
       label: label,
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: SizedBox(
-          width: 62,
-          height: 60,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOutCubic,
-            decoration: BoxDecoration(
-              gradient: isSelected
-                  ? const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [AppColors.deepBlue, AppColors.primary],
-                    )
-                  : null,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.25),
-                        blurRadius: 16,
-                        offset: const Offset(0, 8),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  color: isSelected ? Colors.white : color,
-                  size: isSelected ? 22 : 21,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppColors.radiusLg),
+          child: SizedBox(
+            width: 62,
+            height: 60,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              decoration: BoxDecoration(
+                gradient: isSelected
+                    ? const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [AppColors.deepBlue, AppColors.primary],
+                      )
+                    : null,
+                borderRadius: BorderRadius.circular(AppColors.radiusLg),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.25),
+                          blurRadius: 16,
+                          offset: const Offset(0, 8),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    icon,
                     color: isSelected ? Colors.white : color,
-                    fontSize: 10,
-                    fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
-                    height: 13 / 10,
+                    size: isSelected ? 22 : 21,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : color,
+                      fontSize: 10,
+                      fontWeight: isSelected
+                          ? FontWeight.w900
+                          : FontWeight.w700,
+                      height: 13 / 10,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

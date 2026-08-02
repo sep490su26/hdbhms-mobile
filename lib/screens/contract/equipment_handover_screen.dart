@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/widgets/app_empty_state.dart';
 
 import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/contract/handover_item_model.dart';
@@ -210,7 +211,7 @@ class _EvidenceThumbnail extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: const Color(0xFFE7E9F0),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppColors.radiusSm),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => Navigator.of(context).push(
@@ -246,7 +247,7 @@ class _AssetMetaChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
         color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Row(
@@ -298,7 +299,7 @@ class _ConditionBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
       ),
       child: Text(
         _conditionLabel(normalized),
@@ -323,7 +324,7 @@ class _OfflineBanner extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
       decoration: BoxDecoration(
         color: const Color(0xFFFFF1CC),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: const Color(0xFFE0A100)),
       ),
       child: const Row(
@@ -356,7 +357,7 @@ class _NoImagePlaceholder extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 26, 14, 26),
       decoration: BoxDecoration(
         color: const Color(0xFFE7E9F0),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
       ),
       child: const Column(
         mainAxisSize: MainAxisSize.min,
@@ -410,7 +411,7 @@ class _LoadingCard extends StatelessWidget {
           const _SkeletonLine(widthFactor: 0.45, height: 14),
           const SizedBox(height: 14),
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
             child: const AspectRatio(
               aspectRatio: 16 / 9,
               child: ColoredBox(color: Color(0xFFE7E9F0)),
@@ -436,7 +437,7 @@ class _SkeletonLine extends StatelessWidget {
         height: height,
         decoration: BoxDecoration(
           color: const Color(0xFFE7E9F0),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
         ),
       ),
     );
@@ -459,18 +460,17 @@ class _ImageSkeleton extends StatelessWidget {
 
 class _HandoverEmptyState extends StatelessWidget {
   const _HandoverEmptyState({required this.onRetry});
-
   final VoidCallback onRetry;
-
   @override
-  Widget build(BuildContext context) {
-    return _StateMessage(
-      icon: Icons.inventory_2_outlined,
-      title: 'Chưa có thông tin thiết bị bàn giao',
-      buttonLabel: 'Thử lại',
-      onRetry: onRetry,
-    );
-  }
+  Widget build(BuildContext context) => AppEmptyState(
+    icon: Icons.inventory_2_outlined,
+    title: 'Ch\u01B0a c\u00F3 th\u00F4ng tin thi\u1EBFt b\u1ECB b\u00E0n giao',
+    actionLabel: 'Th\u1EED l\u1EA1i',
+    onAction: onRetry,
+    scrollable: true,
+    onRefresh: () async => onRetry(),
+    topSpacing: 120,
+  );
 }
 
 class _HandoverErrorState extends StatelessWidget {
@@ -582,7 +582,7 @@ String _conditionLabel(String status) {
     'ATTENTION' => 'Cần lưu ý',
     'BROKEN' => 'Hỏng',
     'MISSING' => 'Thiếu',
-    _ => status.isEmpty ? 'Chưa cập nhật' : status,
+    _ => 'Chưa cập nhật',
   };
 }
 
@@ -594,7 +594,7 @@ String _assetCategoryLabel(String value) {
     'FURNITURE' => 'Nội thất',
     'SANITARY' || 'BATHROOM' || 'TOILET' => 'Vệ sinh',
     'OTHER' => 'Khác',
-    _ => value.trim(),
+    _ => 'Khác',
   };
 }
 

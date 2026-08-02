@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// Mirror of backend RequestType enum.
 enum ChangeRequestType {
   meterReadingCorrection,
@@ -5,6 +7,8 @@ enum ChangeRequestType {
   rentPriceAdjustment,
   depositRefundRequest,
   roomTransfer,
+  contractRenewal,
+  contractLiquidation,
   moveOut,
   addCoOccupant,
   complaint;
@@ -21,6 +25,10 @@ enum ChangeRequestType {
         return ChangeRequestType.depositRefundRequest;
       case 'ROOM_TRANSFER':
         return ChangeRequestType.roomTransfer;
+      case 'CONTRACT_RENEWAL':
+        return ChangeRequestType.contractRenewal;
+      case 'CONTRACT_LIQUIDATION':
+        return ChangeRequestType.contractLiquidation;
       case 'MOVE_OUT':
         return ChangeRequestType.moveOut;
       case 'ADD_CO_OCCUPANT':
@@ -44,6 +52,10 @@ enum ChangeRequestType {
         return 'DEPOSIT_REFUND_REQUEST';
       case ChangeRequestType.roomTransfer:
         return 'ROOM_TRANSFER';
+      case ChangeRequestType.contractRenewal:
+        return 'CONTRACT_RENEWAL';
+      case ChangeRequestType.contractLiquidation:
+        return 'CONTRACT_LIQUIDATION';
       case ChangeRequestType.moveOut:
         return 'MOVE_OUT';
       case ChangeRequestType.addCoOccupant:
@@ -65,6 +77,10 @@ enum ChangeRequestType {
         return 'Hoàn tiền cọc';
       case ChangeRequestType.roomTransfer:
         return 'Chuyển phòng';
+      case ChangeRequestType.contractRenewal:
+        return 'Gia hạn hợp đồng';
+      case ChangeRequestType.contractLiquidation:
+        return 'Thanh lý hợp đồng';
       case ChangeRequestType.moveOut:
         return 'Trả phòng';
       case ChangeRequestType.addCoOccupant:
@@ -194,7 +210,7 @@ class ChangeRequest {
       resolutionNote: json['resolutionNote']?.toString(),
       createdAt: _parseDateTime(json['createdAt']?.toString() ?? ''),
       resolvedAt: _parseDateTime(json['resolvedAt']?.toString() ?? ''),
-      requestPayload: json['requestPayload']?.toString(),
+      requestPayload: _payloadString(json['requestPayload']),
     );
   }
 }
@@ -210,6 +226,12 @@ int? _asInt(Object? value) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   return int.tryParse(value?.toString() ?? '');
+}
+
+String? _payloadString(Object? value) {
+  if (value == null) return null;
+  if (value is String) return value;
+  return jsonEncode(value);
 }
 
 DateTime? _parseDateTime(String value) {

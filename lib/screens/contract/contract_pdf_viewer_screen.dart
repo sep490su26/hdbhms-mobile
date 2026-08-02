@@ -13,18 +13,28 @@ class ContractPdfViewerScreen extends StatelessWidget {
   const ContractPdfViewerScreen({
     super.key,
     required this.pdfUrl,
+    this.suggestedFilename,
     this.title = 'Tài liệu hợp đồng',
   });
 
   final String pdfUrl;
   final String title;
+  final String? suggestedFilename;
 
   @override
   Widget build(BuildContext context) {
+    final displayTitle = suggestedFilename?.trim().isNotEmpty == true
+        ? suggestedFilename!.replaceAll(
+            RegExp(r'\.pdf$', caseSensitive: false),
+            '',
+          )
+        : title;
+
     return buildPlatformPdfViewer(
       context: context,
       pdfUrl: pdfUrl,
-      title: title,
+      title: displayTitle,
+      suggestedFilename: suggestedFilename,
     );
   }
 }

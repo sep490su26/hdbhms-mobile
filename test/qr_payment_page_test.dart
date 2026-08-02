@@ -5,7 +5,7 @@ import 'package:hdbhms_mobile/screens/payment/qr_payment_page.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 void main() {
-  testWidgets('renders PayOS QR payload when provided', (tester) async {
+  testWidgets('renders VietQR payload as a generated QR code', (tester) async {
     const invoice = TenantInvoice(
       id: null,
       invoiceCode: 'SEED-INV-503-TRANSFER-OUT-ISSUED',
@@ -23,7 +23,7 @@ void main() {
       paidAmount: 0,
       remainingAmount: 480000,
       paymentIntentId: null,
-      checkoutUrl: 'https://pay.payos.vn/web/order-503',
+      checkoutUrl: '',
       qrCode: '0002010102123857',
       providerOrderCode: '',
       paymentLinkId: '',
@@ -44,6 +44,6 @@ void main() {
 
     expect(invoice.payosQrValue, '0002010102123857');
     expect(find.byType(QrImageView), findsOneWidget);
-    expect(find.text('Ma QR chua san sang'), findsNothing);
+    expect(find.text('Mã QR chưa sẵn sàng'), findsNothing);
   });
 }

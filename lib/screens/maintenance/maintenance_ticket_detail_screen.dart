@@ -9,7 +9,9 @@ import 'package:hdbhms_mobile/widgets/ticket_attachment_grid.dart';
 import 'package:hdbhms_mobile/widgets/ticket_status_badge.dart';
 import 'package:hdbhms_mobile/widgets/ticket_timeline.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
+import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_review_screen.dart';
+import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 
 class MaintenanceTicketDetailScreen extends StatefulWidget {
@@ -20,6 +22,7 @@ class MaintenanceTicketDetailScreen extends StatefulWidget {
     this.role = TicketUserRole.tenant,
     this.ticketService = const MaintenanceTicketService(),
     this.imagePicker,
+    this.notificationInitialUnreadCount,
   });
 
   final int ticketId;
@@ -27,6 +30,7 @@ class MaintenanceTicketDetailScreen extends StatefulWidget {
   final TicketUserRole role;
   final MaintenanceTicketService ticketService;
   final ImagePicker? imagePicker;
+  final int? notificationInitialUnreadCount;
 
   @override
   State<MaintenanceTicketDetailScreen> createState() =>
@@ -228,12 +232,10 @@ class _MaintenanceTicketDetailScreenState
               onPressed: () => Navigator.of(context).pop(false),
               child: const Text('Hủy'),
             ),
-            FilledButton(
+            AppPrimaryGradientButton(
               onPressed: () => Navigator.of(context).pop(true),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-              ),
+              height: 40,
+              borderRadius: 12,
               child: Text(confirmText),
             ),
           ],
@@ -271,17 +273,15 @@ class _MaintenanceTicketDetailScreenState
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Hủy'),
             ),
-            FilledButton(
+            AppPrimaryGradientButton(
               onPressed: () {
                 if (formKey.currentState?.validate() != true) {
                   return;
                 }
                 Navigator.of(context).pop(controller.text.trim());
               },
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-              ),
+              height: 40,
+              borderRadius: 12,
               child: const Text('Từ chối'),
             ),
           ],
@@ -305,8 +305,15 @@ class _MaintenanceTicketDetailScreenState
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
+        surfaceTintColor: AppColors.surface,
         foregroundColor: AppColors.deepBlue,
+        toolbarHeight: AppColors.topBarHeight,
         elevation: 0,
+        shape: Border(
+          bottom: BorderSide(
+            color: AppColors.cardBorder.withValues(alpha: 0.65),
+          ),
+        ),
         leading: IconButton(
           onPressed: () => Navigator.of(context).maybePop(),
           icon: const Icon(Icons.arrow_back_rounded),
@@ -315,10 +322,15 @@ class _MaintenanceTicketDetailScreenState
         title: const Text('Chi tiết sự cố', style: AppColors.topBarTitleStyle),
         actions: [
           IconButton(
-            onPressed: () {},
-            icon: const AppNotificationBell(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const NotificationListScreen(),
+              ),
+            ),
+            icon: AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: AppColors.topBarIconSize,
+              initialUnreadCount: widget.notificationInitialUnreadCount,
             ),
             tooltip: 'Thông báo',
           ),
@@ -346,51 +358,56 @@ class _MaintenanceTicketDetailScreenState
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          _TicketStatusBanner(detail: detail),
+                          const SizedBox(height: 14),
                           _TicketInfoCard(detail: detail),
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 14),
                           _SectionCard(
                             title: 'Ảnh đính kèm',
+                            icon: Icons.photo_library_outlined,
                             child: TicketAttachmentGrid(
                               attachments: detail.beforeAttachments,
-                              emptyText: 'Không có file đính kèm',
+                              emptyText: 'Không có tệp đính kèm',
                               onAttachmentError: () =>
-                                  _showSnackBar('Không tải được file đính kèm'),
+                                  _showSnackBar('Không tải được tệp đính kèm'),
                             ),
                           ),
                           if (_shouldShowAfterAttachments(detail)) ...[
-                            const SizedBox(height: 18),
+                            const SizedBox(height: 14),
                             _SectionCard(
                               title: 'Ảnh sau sửa chữa',
+                              icon: Icons.photo_camera_back_outlined,
                               child: TicketAttachmentGrid(
                                 attachments: detail.afterAttachments,
                                 emptyText: 'Chưa có ảnh sau sửa chữa',
                                 onAttachmentError: () => _showSnackBar(
-                                  'Không tải được file đính kèm',
+                                  'Không tải được tệp đính kèm',
                                 ),
                               ),
                             ),
                           ],
                           if (_shouldShowRepairInfo(detail)) ...[
-                            const SizedBox(height: 18),
+                            const SizedBox(height: 14),
                             _RepairInfoCard(detail: detail),
                           ],
                           if (_shouldShowBillingInfo(detail)) ...[
-                            const SizedBox(height: 18),
+                            const SizedBox(height: 14),
                             _BillingInfoCard(detail: detail),
                           ],
                           if (_shouldShowReview(detail)) ...[
-                            const SizedBox(height: 18),
+                            const SizedBox(height: 14),
                             _ReviewCard(review: detail.review),
                           ],
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 14),
                           _SectionCard(
                             title: 'Tiến trình xử lý',
+                            icon: Icons.timeline_rounded,
                             child: TicketTimeline(
                               events: detail.events,
                               currentStatus: detail.status,
                             ),
                           ),
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 14),
                           _ActionPanel(
                             role: widget.role,
                             detail: detail,
@@ -413,6 +430,106 @@ class _MaintenanceTicketDetailScreenState
   }
 }
 
+class _TicketStatusBanner extends StatelessWidget {
+  const _TicketStatusBanner({required this.detail});
+
+  final MaintenanceTicketDetail detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final (icon, color, background, message) = switch (detail.status) {
+      TicketStatus.pending => (
+        Icons.schedule_rounded,
+        const Color(0xFFD97706),
+        const Color(0xFFFFF7ED),
+        'Phiếu đã được gửi, đang chờ tiếp nhận.',
+      ),
+      TicketStatus.accepted => (
+        Icons.assignment_turned_in_outlined,
+        AppColors.primary,
+        AppColors.primaryLight,
+        'Yêu cầu đã được tiếp nhận và sẽ sớm được xử lý.',
+      ),
+      TicketStatus.inProgress => (
+        Icons.handyman_outlined,
+        AppColors.primary,
+        AppColors.primaryLight,
+        'Sự cố đang được xử lý.',
+      ),
+      TicketStatus.waitingConfirmation => (
+        Icons.fact_check_outlined,
+        const Color(0xFF7C3AED),
+        const Color(0xFFF1EAFE),
+        'Vui lòng kiểm tra và xác nhận kết quả xử lý.',
+      ),
+      TicketStatus.completed => (
+        Icons.check_circle_outline_rounded,
+        AppColors.success,
+        AppColors.successSurface,
+        'Sự cố đã được xử lý hoàn tất.',
+      ),
+      TicketStatus.rejected => (
+        Icons.cancel_outlined,
+        AppColors.danger,
+        AppColors.dangerSurface,
+        'Phiếu đã bị từ chối.',
+      ),
+      TicketStatus.cancelled => (
+        Icons.do_not_disturb_on_outlined,
+        AppColors.bodyText,
+        AppColors.surfaceMuted,
+        'Phiếu đã được hủy.',
+      ),
+    };
+
+    return Semantics(
+      label: 'Trạng thái phiếu: ${detail.status.label}. $message',
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    detail.ticketStatusLabel.isNotEmpty
+                        ? detail.ticketStatusLabel
+                        : detail.status.label,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      height: 20 / 15,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    message,
+                    style: TextStyle(
+                      color: color.withValues(alpha: 0.78),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      height: 16 / 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _TicketInfoCard extends StatelessWidget {
   const _TicketInfoCard({required this.detail});
 
@@ -422,6 +539,7 @@ class _TicketInfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return _SectionCard(
       title: 'Thông tin sự cố',
+      icon: Icons.report_problem_outlined,
       headerTrailing: TicketStatusBadge(status: detail.status),
       titleSubtitle: detail.ticketCode,
       child: Column(
@@ -432,6 +550,11 @@ class _TicketInfoCard extends StatelessWidget {
           _InfoText(
             label: 'Thời gian tạo',
             value: _formatDateTime(detail.createdAt),
+          ),
+          const SizedBox(height: 18),
+          _InfoText(
+            label: 'Mong muốn xử lý',
+            value: detail.repairRequested ? 'Cần sửa chữa' : 'Chỉ báo sự cố',
           ),
           const SizedBox(height: 18),
           _InfoText(label: 'Mô tả chi tiết', value: detail.description),
@@ -451,6 +574,7 @@ class _RepairInfoCard extends StatelessWidget {
     final repair = detail.repairInfo;
     return _SectionCard(
       title: 'Kết quả xử lý',
+      icon: Icons.handyman_outlined,
       child: Column(
         children: [
           _RepairLine(
@@ -508,6 +632,7 @@ class _BillingInfoCard extends StatelessWidget {
         : 'Không thu khách';
     return _SectionCard(
       title: 'Thanh toán phát sinh',
+      icon: Icons.receipt_long_outlined,
       child: Column(
         children: [
           _RepairLine(
@@ -543,19 +668,30 @@ class _BillingInfoCard extends StatelessWidget {
             const SizedBox(height: 22),
             SizedBox(
               width: double.infinity,
-              child: FilledButton.icon(
+              child: AppPrimaryGradientButton(
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => const BillSelectionPage(),
                   ),
                 ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(46),
+                height: 48,
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.open_in_new_rounded,
+                      size: 18,
+                      color: Colors.white,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Xem hóa đơn / Thanh toán ngay',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
-                icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                label: const Text('Xem hóa đơn / Thanh toán ngay'),
               ),
             ),
           ],
@@ -576,6 +712,7 @@ class _ReviewCard extends StatelessWidget {
     if (data == null) {
       return const _SectionCard(
         title: 'Đánh giá từ cư dân',
+        icon: Icons.star_outline_rounded,
         child: Text(
           'Khách chưa đánh giá',
           style: TextStyle(
@@ -589,6 +726,7 @@ class _ReviewCard extends StatelessWidget {
 
     return _SectionCard(
       title: 'Đánh giá từ cư dân',
+      icon: Icons.star_outline_rounded,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -713,6 +851,7 @@ class _ActionPanel extends StatelessWidget {
 
     return _SectionCard(
       title: '',
+      icon: null,
       child: AbsorbPointer(
         absorbing: isLoading,
         child: Opacity(
@@ -739,11 +878,13 @@ class _SectionCard extends StatelessWidget {
   const _SectionCard({
     required this.title,
     required this.child,
+    this.icon,
     this.headerTrailing,
     this.titleSubtitle,
   });
 
   final String title;
+  final IconData? icon;
   final String? titleSubtitle;
   final Widget? headerTrailing;
   final Widget child;
@@ -753,54 +894,60 @@ class _SectionCard extends StatelessWidget {
     final hasHeader = title.isNotEmpty || headerTrailing != null;
     return Container(
       width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (hasHeader)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 22),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (title.isNotEmpty)
-                          Text(title, style: AppTypography.sectionTitle),
-                        if (titleSubtitle != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            titleSubtitle!,
-                            style: AppTypography.sectionTitle,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  if (headerTrailing != null) ...[
-                    const SizedBox(width: 12),
-                    Flexible(child: headerTrailing!),
-                  ],
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, color: AppColors.deepBlue, size: 20),
+                  const SizedBox(width: 8),
                 ],
-              ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (title.isNotEmpty)
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            color: AppColors.darkBlue,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            height: 20 / 14,
+                          ),
+                        ),
+                      if (titleSubtitle != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          titleSubtitle!,
+                          style: const TextStyle(
+                            color: AppColors.bodyText,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            height: 16 / 12,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (headerTrailing != null) ...[
+                  const SizedBox(width: 12),
+                  Flexible(child: headerTrailing!),
+                ],
+              ],
             ),
-          if (hasHeader) const Divider(height: 1, color: Color(0xFFE3E1E5)),
-          Padding(
-            padding: EdgeInsets.fromLTRB(24, hasHeader ? 24 : 20, 24, 24),
-            child: child,
-          ),
+          if (hasHeader) const SizedBox(height: 14),
+          child,
         ],
       ),
     );
@@ -909,17 +1056,9 @@ class _PrimaryActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 52,
-      child: ElevatedButton(
+      child: AppPrimaryGradientButton(
         onPressed: onTap,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
+        height: 52,
         child: Text(
           label,
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
@@ -947,7 +1086,7 @@ class _SecondaryActionButton extends StatelessWidget {
           backgroundColor: AppColors.primaryLight.withValues(alpha: 0.72),
           side: BorderSide(color: AppColors.primary.withValues(alpha: 0.24)),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppColors.radiusLg),
           ),
         ),
         child: Text(
@@ -1041,17 +1180,16 @@ class _ErrorState extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            ElevatedButton.icon(
+            AppPrimaryGradientButton(
               onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Thử lại'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+              height: 44,
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.refresh_rounded, color: Colors.white, size: 18),
+                  SizedBox(width: 7),
+                  Text('Thử lại'),
+                ],
               ),
             ),
           ],
@@ -1213,6 +1351,18 @@ class _CompleteSheetState extends State<_CompleteSheet> {
             OutlinedButton.icon(
               onPressed: _pickAfterFiles,
               icon: const Icon(Icons.add_photo_alternate_outlined),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.deepBlue,
+                side: const BorderSide(color: AppColors.deepBlue),
+                minimumSize: const Size.fromHeight(44),
+                textStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                ),
+              ),
               label: Text(
                 _selectedFileCount == 0
                     ? 'Thêm ảnh sau sửa chữa'
@@ -1293,9 +1443,34 @@ class _SheetTextField extends StatelessWidget {
       minLines: minLines,
       maxLines: maxLines,
       keyboardType: keyboardType,
+      style: const TextStyle(
+        color: AppColors.inputText,
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+      ),
       decoration: InputDecoration(
         labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        filled: true,
+        fillColor: AppColors.surface,
+        labelStyle: const TextStyle(
+          color: AppColors.bodyText,
+          fontWeight: FontWeight.w600,
+        ),
+        floatingLabelStyle: const TextStyle(
+          color: AppColors.deepBlue,
+          fontWeight: FontWeight.w800,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
+          borderSide: const BorderSide(color: AppColors.cardBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
+          borderSide: const BorderSide(color: AppColors.deepBlue, width: 1.5),
+        ),
       ),
       validator: validator,
     );
@@ -1312,16 +1487,9 @@ class _SheetSubmitButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 50,
-      child: FilledButton(
+      child: AppPrimaryGradientButton(
         onPressed: onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
+        height: 50,
         child: Text(
           label,
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),

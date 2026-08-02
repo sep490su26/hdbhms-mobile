@@ -7,20 +7,32 @@ import 'package:path_provider/path_provider.dart';
 
 import 'package:hdbhms_mobile/services/authenticated_client.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/utils/document_filename.dart';
 
 Widget buildPlatformPdfViewer({
   required BuildContext context,
   required String pdfUrl,
   required String title,
+  String? suggestedFilename,
 }) {
-  return MobilePdfViewer(pdfUrl: pdfUrl, title: title);
+  return MobilePdfViewer(
+    pdfUrl: pdfUrl,
+    title: title,
+    suggestedFilename: suggestedFilename,
+  );
 }
 
 class MobilePdfViewer extends StatefulWidget {
   final String pdfUrl;
   final String title;
+  final String? suggestedFilename;
 
-  const MobilePdfViewer({super.key, required this.pdfUrl, required this.title});
+  const MobilePdfViewer({
+    super.key,
+    required this.pdfUrl,
+    required this.title,
+    this.suggestedFilename,
+  });
 
   @override
   State<MobilePdfViewer> createState() => _MobilePdfViewerState();
@@ -78,11 +90,15 @@ class _MobilePdfViewerState extends State<MobilePdfViewer> {
       final response = await _fetchPdf();
 
       if (response.statusCode != 200) {
-        throw Exception('Không tải được file');
+        throw Exception('Không tải được tệp');
       }
 
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final fileName = 'hop_dong_$timestamp.pdf';
+      final fileName = resolvePdfDownloadFilename(
+        contentDisposition:
+            response.headers['content-disposition'] ??
+            response.headers['Content-Disposition'],
+        suggestedFilename: widget.suggestedFilename,
+      );
 
       // Ưu tiên lưu vào thư mục Downloads hệ thống (Android)
       // để người dùng có thể tìm thấy file qua trình quản lý file.
@@ -103,14 +119,16 @@ class _MobilePdfViewerState extends State<MobilePdfViewer> {
       await file.writeAsBytes(response.bodyBytes);
 
       if (mounted) {
-        final location = Platform.isAndroid ? 'Downloads' : 'tài liệu ứng dụng';
+        final location = Platform.isAndroid
+            ? 'thư mục Tải xuống'
+            : 'tài liệu ứng dụng';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Đã lưu vào $location: $fileName'),
             backgroundColor: const Color(0xFF2E7D32),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
             ),
             duration: const Duration(seconds: 3),
           ),
@@ -126,7 +144,7 @@ class _MobilePdfViewerState extends State<MobilePdfViewer> {
             backgroundColor: const Color(0xFFB00020),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
             ),
             duration: const Duration(seconds: 3),
           ),
@@ -303,7 +321,7 @@ class _MobilePdfViewerState extends State<MobilePdfViewer> {
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
               ),
             ),

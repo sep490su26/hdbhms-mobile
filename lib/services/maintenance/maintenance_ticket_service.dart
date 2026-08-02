@@ -29,6 +29,7 @@ class MaintenanceTicketService {
     String? keyword,
     String? status,
     String? category,
+    int? roomId,
   }) async {
     final query = <String, String>{
       'page': '0',
@@ -49,6 +50,9 @@ class MaintenanceTicketService {
     if (categoryValue != null) {
       query['category'] = categoryValue;
     }
+    if ((roomId ?? 0) > 0) {
+      query['roomId'] = roomId.toString();
+    }
 
     final json = await _getJson(_uri('/maintenance/tickets/my', query));
     final tickets = _extractList(
@@ -67,6 +71,7 @@ class MaintenanceTicketService {
       'category': request.category.key,
       'title': request.title,
       'description': request.description,
+      'repairRequested': request.repairRequested,
       'ticketScope': request.ticketScope.key,
       'scope': request.ticketScope.key,
       'priority': request.priority.key,
@@ -189,7 +194,7 @@ class MaintenanceTicketService {
 
     final path = attachment.path.trim();
     if (path.isEmpty) {
-      throw const MaintenanceTicketException('Không đọc được file đính kèm.');
+      throw const MaintenanceTicketException('Không đọc được tệp đính kèm.');
     }
     return File(path).readAsBytes();
   }

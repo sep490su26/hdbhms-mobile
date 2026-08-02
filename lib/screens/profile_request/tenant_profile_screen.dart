@@ -1,6 +1,8 @@
 import 'dart:typed_data';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/widgets/app_empty_state.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
@@ -12,15 +14,18 @@ import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/app_action_tile.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
+import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
-import 'package:hdbhms_mobile/screens/contract/lease_contract_list_screen.dart';
+import 'package:hdbhms_mobile/screens/contract/contract_hub_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/change_password_page.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
 import 'package:hdbhms_mobile/screens/profile_request/update_profile_screen.dart';
+import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
 
 class TenantProfileScreen extends StatefulWidget {
   const TenantProfileScreen({
@@ -103,7 +108,11 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const _ProfileHeader(),
+            _ProfileHeader(
+              onBack: widget.showBottomNavigation
+                  ? null
+                  : () => Navigator.of(context).maybePop(),
+            ),
             Expanded(
               child: Center(
                 child: ConstrainedBox(
@@ -212,7 +221,34 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
 }
 
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader();
+  const _ProfileHeader({this.onBack});
+
+  final VoidCallback? onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTopBar(
+      title: 'Hồ sơ cá nhân',
+      pageIcon: Icons.person_outline_rounded,
+      onBack: onBack,
+      trailing: IconButton(
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const NotificationListScreen(),
+          ),
+        ),
+        icon: const AppNotificationBell(),
+        tooltip: 'Thông báo',
+      ),
+    );
+  }
+}
+
+// ignore: unused_element
+class _LegacyProfileHeader extends StatelessWidget {
+  const _LegacyProfileHeader({required this.onBack});
+
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -230,7 +266,7 @@ class _ProfileHeader extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => Navigator.of(context).maybePop(),
+            onPressed: onBack,
             icon: const Icon(
               Icons.arrow_back_rounded,
               color: AppColors.deepBlue,
@@ -330,8 +366,8 @@ class _UpdateProfileButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 48,
-      child: ElevatedButton.icon(
+      child: AppPrimaryGradientButton(
+        height: 52,
         onPressed: () async {
           final updated = await Navigator.of(context).push<bool>(
             MaterialPageRoute(
@@ -342,22 +378,13 @@ class _UpdateProfileButton extends StatelessWidget {
             await onProfileUpdated();
           }
         },
-        icon: const Icon(Icons.edit_note_rounded, size: 20),
-        label: const Text('Cập nhật hồ sơ'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.72),
-          elevation: 0,
-          minimumSize: const Size(0, 48),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          textStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w900,
-            height: 18 / 14,
-          ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.edit_note_rounded, size: 20),
+            SizedBox(width: AppColors.space8),
+            Text('Cập nhật hồ sơ'),
+          ],
         ),
       ),
     );
@@ -371,28 +398,12 @@ class _LogoutButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: OutlinedButton.icon(
-        onPressed: onLogout,
-        icon: const Icon(Icons.logout_rounded, size: 20),
-        label: const Text('Đăng xuất'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFFDC2626),
-          backgroundColor: const Color(0xFFFFF1F2),
-          side: const BorderSide(color: Color(0xFFFCA5A5)),
-          minimumSize: const Size(0, 48),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          textStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w900,
-            height: 18 / 14,
-          ),
-        ),
-      ),
+    return _ProfileActionButton(
+      icon: Icons.logout_rounded,
+      label: 'Đăng xuất',
+      accentColor: AppColors.danger,
+      iconSurface: AppColors.dangerSurface,
+      onTap: onLogout,
     );
   }
 }
@@ -404,30 +415,69 @@ class _ChangePasswordButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: OutlinedButton.icon(
-        onPressed: onChangePassword,
-        icon: const Icon(Icons.lock_reset_rounded, size: 20),
-        label: const Text('Đổi mật khẩu'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          backgroundColor: AppColors.primaryLight.withValues(alpha: 0.72),
-          side: BorderSide(color: AppColors.primary.withValues(alpha: 0.24)),
-          minimumSize: const Size(0, 48),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          textStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w900,
-            height: 18 / 14,
-          ),
-        ),
-      ),
+    return _ProfileActionButton(
+      icon: Icons.lock_reset_rounded,
+      label: 'Đổi mật khẩu',
+      accentColor: AppColors.primary,
+      iconSurface: AppColors.primarySurface,
+      onTap: onChangePassword,
     );
   }
+}
+
+class _ProfileActionButton extends StatelessWidget {
+  const _ProfileActionButton({
+    required this.icon,
+    required this.label,
+    required this.accentColor,
+    required this.iconSurface,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color accentColor;
+  final Color iconSurface;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: AppColors.surface,
+    borderRadius: BorderRadius.circular(AppColors.radiusSm),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+      child: Container(
+        height: 52,
+        padding: const EdgeInsets.symmetric(horizontal: AppColors.space12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: iconSurface,
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
+              ),
+              child: Icon(icon, size: 18, color: accentColor),
+            ),
+            const SizedBox(width: AppColors.space12),
+            Expanded(
+              child: Text(
+                label,
+                style: AppTypography.button.copyWith(color: accentColor),
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: accentColor, size: 20),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _ProfileSummaryCard extends StatelessWidget {
@@ -444,7 +494,11 @@ class _ProfileSummaryCard extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF061827), AppColors.deepBlue, AppColors.primary],
+          colors: [
+            AppColors.heroGradientStart,
+            AppColors.deepBlue,
+            AppColors.primary,
+          ],
         ),
       ),
       child: Column(
@@ -471,7 +525,7 @@ class _ProfileSummaryCard extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                profile.status.isEmpty ? 'Chưa cập nhật' : profile.status,
+                _profileStatusLabel(profile.status),
                 style: const TextStyle(
                   color: Colors.white70,
                   fontSize: 13,
@@ -504,7 +558,7 @@ class _ContractEntrySection extends StatelessWidget {
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => const LeaseContractListScreen(),
+                builder: (context) => const ContractHubScreen(initialTab: 0),
               ),
             );
           },
@@ -656,30 +710,176 @@ class _TenantProfileImageState extends State<_TenantProfileImage> {
           return const _LoadingImage();
         }
 
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => _MemoryImagePreviewPage(
-                    imageBytes: snapshot.data!,
-                    title: widget.title,
-                  ),
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(6),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: Image.memory(snapshot.data!, fit: BoxFit.cover),
+        return GestureDetector(
+          onTap: () {
+            showDialog<void>(
+              context: context,
+              barrierColor: Colors.transparent,
+              builder: (dialogContext) => _ImageOverlayDialog(
+                imageBytes: snapshot.data!,
+                title: widget.title,
               ),
+            );
+          },
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Image.memory(snapshot.data!, fit: BoxFit.cover),
             ),
           ),
         );
       },
+    );
+  }
+}
+
+// ── Image Overlay Dialog (backdrop blur) ──────────────────────────────────────
+
+class _ImageOverlayDialog extends StatefulWidget {
+  const _ImageOverlayDialog({required this.imageBytes, required this.title});
+
+  final Uint8List imageBytes;
+  final String title;
+
+  @override
+  State<_ImageOverlayDialog> createState() => _ImageOverlayDialogState();
+}
+
+class _ImageOverlayDialogState extends State<_ImageOverlayDialog>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animCtrl;
+  late final Animation<double> _fadeAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    );
+    _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
+    _animCtrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _animCtrl.dispose();
+    super.dispose();
+  }
+
+  void _close() {
+    _animCtrl.reverse().then((_) {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fadeAnim,
+      child: Material(
+        color: Colors.transparent,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // ── Backdrop blur + dim ──────────────────────────────────────
+            GestureDetector(
+              onTap: _close,
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                child: Container(color: Colors.black.withValues(alpha: 0.72)),
+              ),
+            ),
+
+            // ── Image viewer ──────────────────────────────────────────────
+            SafeArea(
+              child: Column(
+                children: [
+                  // Top bar
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 10, 8, 0),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          onPressed: _close,
+                          icon: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.14),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.close_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints.tightFor(
+                            width: 44,
+                            height: 44,
+                          ),
+                          tooltip: 'Đóng',
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            widget.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Zoomable image
+                  Expanded(
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: InteractiveViewer(
+                          minScale: 0.5,
+                          maxScale: 5,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                              AppColors.radiusMd,
+                            ),
+                            child: Image.memory(
+                              widget.imageBytes,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Hint
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: Text(
+                      'Chụm để phóng to · Chạm ngoài để đóng',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.55),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -694,7 +894,7 @@ class _LoadingImage extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: const Color(0xFFEDECF1),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
           border: Border.all(color: const Color(0xFFDAD8E0)),
         ),
         child: const Center(
@@ -702,35 +902,6 @@ class _LoadingImage extends StatelessWidget {
             color: AppColors.deepBlue,
             strokeWidth: 2,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MemoryImagePreviewPage extends StatelessWidget {
-  const _MemoryImagePreviewPage({
-    required this.imageBytes,
-    required this.title,
-  });
-
-  final Uint8List imageBytes;
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: Text(title),
-      ),
-      body: Center(
-        child: InteractiveViewer(
-          minScale: 0.8,
-          maxScale: 4,
-          child: Image.memory(imageBytes, fit: BoxFit.contain),
         ),
       ),
     );
@@ -748,7 +919,12 @@ class _EmergencyContactsSection extends StatelessWidget {
       icon: Icons.contact_emergency_outlined,
       title: 'Thông tin người thân',
       children: contacts.isEmpty
-          ? const [_EmptyText('Chưa có liên hệ khẩn cấp')]
+          ? const [
+              _EmptyText(
+                'Chưa có liên hệ khẩn cấp',
+                icon: Icons.contact_emergency_outlined,
+              ),
+            ]
           : [
               for (var i = 0; i < contacts.length; i++) ...[
                 if (i > 0) const _InlineDivider(),
@@ -774,7 +950,12 @@ class _VehiclesSection extends StatelessWidget {
       icon: Icons.two_wheeler_rounded,
       title: 'Thông tin xe',
       children: vehicles.isEmpty
-          ? const [_EmptyText('Chưa có phương tiện')]
+          ? const [
+              _EmptyText(
+                'Chưa có phương tiện',
+                icon: Icons.two_wheeler_rounded,
+              ),
+            ]
           : [
               for (var i = 0; i < vehicles.length; i++) ...[
                 if (i > 0) const _InlineDivider(),
@@ -834,7 +1015,7 @@ class _InfoSectionCard extends StatelessWidget {
                 height: 34,
                 decoration: BoxDecoration(
                   color: AppColors.primaryLight,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 ),
                 child: Icon(icon, color: AppColors.deepBlue, size: 19),
               ),
@@ -929,7 +1110,7 @@ class _VehicleImage extends StatelessWidget {
         child: AspectRatio(
           aspectRatio: 16 / 9,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
             child: Image.network(
               imageUrl,
               fit: BoxFit.cover,
@@ -944,33 +1125,26 @@ class _VehicleImage extends StatelessWidget {
 }
 
 class _EmptyImage extends StatelessWidget {
-  const _EmptyImage({this.text = 'Chưa có ảnh phương tiện'});
-
+  const _EmptyImage({
+    this.text = 'Ch\u01B0a c\u00F3 \u1EA3nh ph\u01B0\u01A1ng ti\u1EC7n',
+  });
   final String text;
-
   @override
-  Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 16 / 9,
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFEDECF1),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: const Color(0xFFDAD8E0)),
-        ),
-        child: Center(
-          child: Text(
-            text,
-            style: const TextStyle(
-              color: AppColors.bodyText,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
+  Widget build(BuildContext context) => AspectRatio(
+    aspectRatio: 16 / 9,
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xFFEDECF1),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+        border: Border.all(color: const Color(0xFFDAD8E0)),
       ),
-    );
-  }
+      child: AppEmptyState(
+        icon: Icons.image_not_supported_outlined,
+        title: text,
+        compact: true,
+      ),
+    ),
+  );
 }
 
 class VehicleImagePreviewPage extends StatelessWidget {
@@ -1072,29 +1246,29 @@ class _ProfileErrorState extends StatelessWidget {
 }
 
 class _EmptyText extends StatelessWidget {
-  const _EmptyText(this.text);
+  const _EmptyText(this.text, {this.icon = Icons.info_outline_rounded});
 
   final String text;
+  final IconData icon;
 
   @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        color: AppColors.bodyText,
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
-        height: 18 / 13,
-      ),
-    );
-  }
+  Widget build(BuildContext context) => SizedBox(
+    width: double.infinity,
+    child: AppEmptyState(
+      icon: icon,
+      title: text,
+      description: 'Thông tin này sẽ được hiển thị sau khi được bổ sung.',
+      iconColor: AppColors.bodyText,
+      compact: true,
+    ),
+  );
 }
 
 BoxDecoration _cardDecoration({Gradient? gradient}) {
   return BoxDecoration(
     color: gradient == null ? AppColors.surface : null,
     gradient: gradient,
-    borderRadius: BorderRadius.circular(16),
+    borderRadius: BorderRadius.circular(AppColors.radiusLg),
     border: Border.all(
       color: gradient == null
           ? AppColors.cardBorder
@@ -1115,6 +1289,16 @@ String _display(String? value) {
   return trimmed.isEmpty ? 'Chưa cập nhật' : trimmed;
 }
 
+String _profileStatusLabel(String value) {
+  return switch (value.trim().toUpperCase()) {
+    'ACTIVE' || 'APPROVED' || 'VERIFIED' => 'Đã xác thực',
+    'PENDING' || 'UNDER_REVIEW' => 'Chờ xác thực',
+    'REJECTED' => 'Bị từ chối',
+    'INACTIVE' => 'Chưa kích hoạt',
+    _ => 'Chưa cập nhật',
+  };
+}
+
 String _formatDate(DateTime date) {
   return '${date.day.toString().padLeft(2, '0')}/'
       '${date.month.toString().padLeft(2, '0')}/'
@@ -1126,7 +1310,7 @@ String _vehicleTypeLabel(String value) {
     'MOTORBIKE' => 'Xe máy',
     'CAR' => 'Ô tô',
     'BICYCLE' => 'Xe đạp',
-    _ => _display(value),
+    _ => 'Khác',
   };
 }
 

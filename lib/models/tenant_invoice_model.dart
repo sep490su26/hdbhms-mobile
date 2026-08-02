@@ -88,6 +88,22 @@ class TenantInvoice {
 
   bool get hasPayosQr => payosQrValue.isNotEmpty;
 
+  String get normalizedInvoiceType => invoiceType.trim().toUpperCase();
+
+  bool get isRentType => normalizedInvoiceType == 'RENT';
+
+  bool get isUtilityType => normalizedInvoiceType == 'UTILITY';
+
+  bool get isOtherType => !isRentType && !isUtilityType;
+
+  String get invoiceTypeLabel {
+    return switch (normalizedInvoiceType) {
+      'RENT' => 'Tiền phòng',
+      'UTILITY' => 'Điện nước & dịch vụ',
+      _ => 'Khác',
+    };
+  }
+
   String get title {
     final hasViolation = lines.any((line) => line.lineType == 'VIOLATION_FINE');
     if (hasViolation) {
@@ -99,14 +115,14 @@ class TenantInvoice {
     if (hasMaintenanceCompensation) {
       return 'Bồi thường chi phí bảo trì';
     }
-    if (invoiceType == 'UTILITY') {
-      return 'Hóa đơn Điện & Nước ${_periodLabel(billingPeriod)}';
+    if (isUtilityType) {
+      return 'Hóa đơn điện nước & dịch vụ ${_periodLabel(billingPeriod)}';
     }
-    if (invoiceType == 'RENT') {
+    if (isRentType) {
       return 'Hóa đơn tiền phòng ${_periodLabel(billingPeriod)}';
     }
     final period = _periodLabel(billingPeriod);
-    return period.isEmpty ? 'Hóa đơn phát sinh' : 'Hóa đơn $period';
+    return period.isEmpty ? 'Hóa đơn khác' : 'Hóa đơn khác $period';
   }
 
   factory TenantInvoice.fromJson(Map<String, dynamic> json) {
@@ -126,7 +142,7 @@ class TenantInvoice {
       remainingAmount: _intField(json, ['remainingAmount']),
       paymentIntentId: int.tryParse(_firstString(json, ['paymentIntentId'])),
       checkoutUrl: _firstString(json, ['checkoutUrl', 'checkOutUrl']),
-      qrCode: _firstString(json, ['qrCode']),
+      qrCode: _firstString(json, ['qrCode', 'qrPayload']),
       providerOrderCode: _firstString(json, ['providerOrderCode']),
       paymentLinkId: _firstString(json, ['paymentLinkId']),
       bankBin: _firstString(json, ['bankBin']),

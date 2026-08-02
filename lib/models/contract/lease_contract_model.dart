@@ -20,6 +20,10 @@ class LeaseContract {
     this.occupants = const [],
     this.isPrimary = false,
     this.canRecordIntention = false,
+    this.canRecordOccupantIntention = false,
+    this.occupantIntention = '',
+    this.occupantIntentionNote = '',
+    this.occupantIntentionRecordedAt,
     this.canRenew = false,
     this.canRenewBlockedReason = '',
     this.signedAt,
@@ -45,6 +49,10 @@ class LeaseContract {
   final List<LeaseContractOccupant> occupants;
   final bool isPrimary;
   final bool canRecordIntention;
+  final bool canRecordOccupantIntention;
+  final String occupantIntention;
+  final String occupantIntentionNote;
+  final DateTime? occupantIntentionRecordedAt;
   final bool canRenew;
   final String canRenewBlockedReason;
   final DateTime? signedAt;
@@ -94,12 +102,14 @@ class LeaseContract {
       terms: _parseTerms(json),
       serviceFees: _parseServiceFees(json),
       contractFileUrl: _firstString(json, const [
+        'signedFileDownloadUrl',
+        'signed_file_download_url',
+        'signedFileUrl',
+        'signed_file_url',
         'contractFileDownloadUrl',
         'contract_file_download_url',
         'contractFileUrl',
         'contract_file_url',
-        'signedFileDownloadUrl',
-        'signed_file_download_url',
         'fileUrl',
         'file_url',
         'documentUrl',
@@ -127,6 +137,22 @@ class LeaseContract {
       canRecordIntention: _firstBool(json, const [
         'canRecordIntention',
         'can_record_intention',
+      ]),
+      canRecordOccupantIntention: _firstBool(json, const [
+        'canRecordOccupantIntention',
+        'can_record_occupant_intention',
+      ]),
+      occupantIntention: _firstString(json, const [
+        'occupantIntention',
+        'occupant_intention',
+      ]),
+      occupantIntentionNote: _firstString(json, const [
+        'occupantIntentionNote',
+        'occupant_intention_note',
+      ]),
+      occupantIntentionRecordedAt: _firstDate(json, const [
+        'occupantIntentionRecordedAt',
+        'occupant_intention_recorded_at',
       ]),
       canRenew: _firstBool(json, const ['canRenew', 'can_renew']),
       canRenewBlockedReason: _firstString(json, const [
@@ -167,7 +193,7 @@ class LeaseContractOccupant {
     final name = fullName.trim();
     if (name.isNotEmpty) return name;
     final contact = phone.trim().isNotEmpty ? phone.trim() : email.trim();
-    return contact.isNotEmpty ? contact : 'Nguoi o cung';
+    return contact.isNotEmpty ? contact : 'Người ở cùng';
   }
 
   factory LeaseContractOccupant.fromJson(Map<String, dynamic> json) {
@@ -193,19 +219,28 @@ class LeaseContractOccupant {
 
 class LeaseRoom {
   const LeaseRoom({
+    this.id,
     required this.roomCode,
     required this.roomName,
     required this.area,
     required this.imageUrl,
+    this.propertyId,
+    this.propertyName = '',
+    this.currentStatus = '',
   });
 
+  final int? id;
   final String roomCode;
   final String roomName;
   final double? area;
   final String imageUrl;
+  final int? propertyId;
+  final String propertyName;
+  final String currentStatus;
 
   factory LeaseRoom.fromJson(Map<String, dynamic> json) {
     return LeaseRoom(
+      id: _asInt(json['id'] ?? json['roomId'] ?? json['room_id']),
       roomCode: _firstString(json, const ['roomCode', 'room_code', 'code']),
       roomName: _firstString(json, const ['roomName', 'room_name', 'name']),
       area: _firstDouble(json, const [
@@ -222,6 +257,14 @@ class LeaseRoom {
         'room_image_url',
         'thumbnailUrl',
         'thumbnail_url',
+      ]),
+      propertyId: _asInt(json['propertyId'] ?? json['property_id']),
+      propertyName: _firstString(json, const ['propertyName', 'property_name']),
+      currentStatus: _firstString(json, const [
+        'currentStatus',
+        'current_status',
+        'roomStatus',
+        'room_status',
       ]),
     );
   }

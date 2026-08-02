@@ -7,6 +7,7 @@ import 'package:hdbhms_mobile/models/contract/contract_list_item_model.dart';
 import 'package:hdbhms_mobile/services/contract/deposit_contract_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
+import 'package:hdbhms_mobile/utils/document_filename.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
@@ -171,7 +172,7 @@ class _DepositContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(14, 16, 14, 28),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -179,7 +180,14 @@ class _DepositContent extends StatelessWidget {
           const SizedBox(height: 12),
           _DepositInfoGrid(deposit: deposit),
           const SizedBox(height: 12),
-          _DocumentSection(contractFileUrl: deposit.contractFileUrl),
+          _DocumentSection(
+            contractFileUrl: deposit.contractFileUrl,
+            suggestedFilename: buildDocumentFilename(
+              documentType: 'HDC',
+              roomCode: deposit.room.roomCode,
+              date: deposit.expectedMoveInDate,
+            ),
+          ),
           if (deposit.note.isNotEmpty) ...[
             const SizedBox(height: 12),
             _NoteSection(note: deposit.note),
@@ -204,7 +212,7 @@ class _RoomHeroCard extends StatelessWidget {
     final hasImage = imageUrl.isNotEmpty;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(AppColors.radiusLg),
       child: SizedBox(
         height: 200,
         width: double.infinity,
@@ -273,7 +281,7 @@ class _RoomHeroCard extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: BorderRadius.circular(AppColors.radiusPill),
                       border: Border.all(
                         color: Colors.white.withValues(alpha: 0.25),
                       ),
@@ -290,34 +298,6 @@ class _RoomHeroCard extends StatelessWidget {
                 ],
               ),
             ),
-            // Top-right: room code chip
-            if (deposit.room.roomCode.trim().isNotEmpty)
-              Positioned(
-                top: 14,
-                right: 16,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.18),
-                    ),
-                  ),
-                  child: Text(
-                    '#${deposit.room.roomCode.trim()}',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -337,10 +317,10 @@ class _ModernRoomBannerBg extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF0B1F3A),
-            Color(0xFF12345C),
+            AppColors.deepBlue,
+            AppColors.darkBlue,
             Color(0xFF1A4A8A),
-            Color(0xFF2563EB),
+            AppColors.primary,
           ],
           stops: [0.0, 0.35, 0.65, 1.0],
         ),
@@ -355,7 +335,7 @@ class _ModernRoomBannerBg extends StatelessWidget {
               height: 160,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF2563EB).withValues(alpha: 0.22),
+                color: AppColors.primary.withValues(alpha: 0.22),
               ),
             ),
           ),
@@ -407,7 +387,7 @@ class _StatusBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: const Color(0xFFA7B4FF),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
       ),
       child: Text(
         _statusLabel(status),
@@ -516,9 +496,13 @@ class _InfoGridItem extends StatelessWidget {
 // ── Document Section ──
 
 class _DocumentSection extends StatelessWidget {
-  const _DocumentSection({required this.contractFileUrl});
+  const _DocumentSection({
+    required this.contractFileUrl,
+    required this.suggestedFilename,
+  });
 
   final String contractFileUrl;
+  final String suggestedFilename;
 
   @override
   Widget build(BuildContext context) {
@@ -532,7 +516,7 @@ class _DocumentSection extends StatelessWidget {
               width: double.infinity,
               height: 48,
               child: ElevatedButton.icon(
-                onPressed: () => _showFile(context, url),
+                onPressed: () => _showFile(context, url, suggestedFilename),
                 icon: const Icon(Icons.description_outlined, size: 20),
                 label: const Text('Xem HĐ cọc'),
                 style: ElevatedButton.styleFrom(
@@ -540,7 +524,7 @@ class _DocumentSection extends StatelessWidget {
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   ),
                 ),
               ),
@@ -590,7 +574,7 @@ class _SectionCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: AppColors.cardBorder.withValues(alpha: 0.45)),
       ),
       child: Column(
@@ -690,11 +674,14 @@ class _ErrorState extends StatelessWidget {
 
 // ── Helpers ──
 
-void _showFile(BuildContext context, String url) {
+void _showFile(BuildContext context, String url, String suggestedFilename) {
   Navigator.of(context).push(
     MaterialPageRoute(
-      builder: (context) =>
-          ContractPdfViewerScreen(pdfUrl: url, title: 'Hợp đồng cọc'),
+      builder: (context) => ContractPdfViewerScreen(
+        pdfUrl: url,
+        title: 'Hợp đồng cọc',
+        suggestedFilename: suggestedFilename,
+      ),
     ),
   );
 }
@@ -733,7 +720,7 @@ String _statusLabel(String status) {
     'REFUNDED' => 'Đã hoàn tiền',
     'FORFEITED' => 'Đã mất cọc',
     'CANCELLED' => 'Đã hủy',
-    _ => _display(status),
+    _ => 'Chưa cập nhật',
   };
 }
 

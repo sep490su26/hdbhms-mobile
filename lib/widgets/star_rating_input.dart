@@ -77,7 +77,7 @@ class _RatingOption extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppColors.radiusSm),
       child: SizedBox(
         width: 58,
         child: Column(

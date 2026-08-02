@@ -193,7 +193,7 @@ class MockFileUploadService implements FileUploadService {
       originalFileName: file.name,
       url: 'https://example.com/mock-file.jpg',
       uploaded: true,
-      message: 'Upload successful (Mock)',
+      message: 'Tải lên thành công (mô phỏng)',
     );
   }
 

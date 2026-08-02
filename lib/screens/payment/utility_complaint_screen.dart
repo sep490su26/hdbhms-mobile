@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/payment/tenant_invoice_service.dart';
-import '../../theme/app_colors.dart';
+import '../../widgets/app_top_bar.dart';
 
 /// Màn hình khiếu nại chỉ số điện nước – full-screen thay bottom sheet cũ.
 class UtilityComplaintScreen extends StatefulWidget {
@@ -63,7 +64,10 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
   }
 
   Future<void> _submit() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      _snack('Vui lòng hoàn thành các trường bắt buộc');
+      return;
+    }
     final invoiceId = widget.invoice.id;
     final lineId = _selectedLine.id;
     if (invoiceId == null || lineId == null) {
@@ -103,13 +107,14 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFB),
+      backgroundColor: AppColors.background,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF1A3A5C), Color(0xFF2563EB)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFE8F0FF), AppColors.background],
+            stops: [0, 0.28],
           ),
         ),
         child: SafeArea(
@@ -118,18 +123,17 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
             // ── Light background with small top stripe ───────
             children: [
               // ── App bar ──────────────────────────────────
-              _ComplaintAppBar(submitting: _submitting),
-              const SizedBox(height: 12),
+              AppTopBar(
+                title: 'Khiếu nại điện nước',
+                onBack: _submitting
+                    ? null
+                    : () => Navigator.of(context).maybePop(),
+              ),
 
               // ── Content ──────────────────────────────────
               Expanded(
                 child: Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF8FAFB),
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
-                  ),
+                  decoration: const BoxDecoration(color: Colors.transparent),
                   child: SingleChildScrollView(
                     padding: EdgeInsets.fromLTRB(
                       16,
@@ -141,6 +145,7 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
                         ScrollViewKeyboardDismissBehavior.onDrag,
                     child: Form(
                       key: _formKey,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -165,7 +170,10 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
                                 const SizedBox(height: 16),
 
                                 // Complaint type
-                                const _FieldLabel('Loại khiếu nại'),
+                                const _FieldLabel(
+                                  'Loại khiếu nại',
+                                  required: true,
+                                ),
                                 const SizedBox(height: 6),
                                 DropdownButtonFormField<TenantInvoiceLine>(
                                   initialValue: _selectedLine,
@@ -182,7 +190,7 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
                                                 color:
                                                     line.lineType ==
                                                         'ELECTRICITY'
-                                                    ? const Color(0xFFF59E0B)
+                                                    ? AppColors.warning
                                                     : const Color(0xFF0EA5E9),
                                                 size: 18,
                                               ),
@@ -223,6 +231,7 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
                                 // Detail content
                                 const _FieldLabel(
                                   'Nội dung chi tiết khiếu nại',
+                                  required: true,
                                 ),
                                 const SizedBox(height: 6),
                                 TextFormField(
@@ -279,6 +288,7 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
 // App bar
 // ─────────────────────────────────────────────────────────────
 
+// ignore: unused_element
 class _ComplaintAppBar extends StatelessWidget {
   const _ComplaintAppBar({required this.submitting});
   final bool submitting;
@@ -348,9 +358,9 @@ class _HeroCard extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF0B1F3A), Color(0xFF2563EB)],
+          colors: [AppColors.deepBlue, AppColors.primary],
         ),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: const Color(0x1FFFFFFF)),
       ),
       child: Row(
@@ -360,7 +370,7 @@ class _HeroCard extends StatelessWidget {
             height: 46,
             decoration: BoxDecoration(
               color: const Color(0xFFFBBF24),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
               boxShadow: [
                 BoxShadow(
                   color: const Color(0xFFFBBF24).withValues(alpha: 0.4),
@@ -457,7 +467,7 @@ class _FormCard extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
         border: Border.all(color: AppColors.cardBorder),
         boxShadow: [
           BoxShadow(
@@ -477,18 +487,31 @@ class _FormCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────
 
 class _FieldLabel extends StatelessWidget {
-  const _FieldLabel(this.text);
+  const _FieldLabel(this.text, {this.required = false});
   final String text;
+  final bool required;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        color: AppColors.inputText,
-        fontSize: 13,
-        fontWeight: FontWeight.w800,
-        height: 1.4,
+    return Semantics(
+      label: required ? '$text, bắt buộc' : text,
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(
+            color: AppColors.inputText,
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            height: 1.4,
+          ),
+          children: [
+            TextSpan(text: text),
+            if (required)
+              const TextSpan(
+                text: ' *',
+                style: TextStyle(color: AppColors.danger),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -509,7 +532,7 @@ class _ReadOnlyField extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       decoration: BoxDecoration(
         color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Row(
@@ -556,9 +579,9 @@ class _ReadingSnapshotCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isElec = line.lineType == 'ELECTRICITY';
     final accentColor = isElec
-        ? const Color(0xFFF59E0B)
+        ? AppColors.warning
         : const Color(0xFF0EA5E9);
-    final bgColor = isElec ? const Color(0xFFFFFBEB) : const Color(0xFFEFF6FF);
+    final bgColor = isElec ? AppColors.warningSurface : AppColors.infoSurface;
     final unit = isElec ? 'kWh' : 'm³';
     String withUnit(double? value) {
       if (value == null) return '--';
@@ -570,7 +593,7 @@ class _ReadingSnapshotCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: accentColor.withValues(alpha: 0.25)),
       ),
       child: Column(
@@ -654,7 +677,7 @@ class _SnapshotRow extends StatelessWidget {
           value,
           style: TextStyle(
             color: highlight
-                ? const Color(0xFFDC2626)
+                ? AppColors.danger
                 : bold
                 ? AppColors.inputText
                 : AppColors.inputText,
@@ -680,7 +703,7 @@ class _InfoNote extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFFF0F9FF),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: const Color(0xFFBAE6FD)),
       ),
       child: const Row(
@@ -716,18 +739,24 @@ class _SubmitButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return Container(
       width: double.infinity,
       height: 56,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [AppColors.deepBlue, AppColors.primary],
+        ),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+      ),
       child: FilledButton.icon(
         onPressed: submitting ? null : onPressed,
         style: FilledButton.styleFrom(
-          backgroundColor: AppColors.deepBlue,
-          disabledBackgroundColor: AppColors.deepBlue.withValues(alpha: 0.5),
+          backgroundColor: Colors.transparent,
+          disabledBackgroundColor: Colors.transparent,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusSm)),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
         ),
         icon: submitting
@@ -752,7 +781,7 @@ class _SubmitButton extends StatelessWidget {
 
 InputDecoration _fieldDecoration({String? hintText, IconData? prefixIcon}) {
   final border = OutlineInputBorder(
-    borderRadius: BorderRadius.circular(10),
+    borderRadius: BorderRadius.circular(AppColors.radiusSm),
     borderSide: const BorderSide(color: AppColors.cardBorder),
   );
   return InputDecoration(

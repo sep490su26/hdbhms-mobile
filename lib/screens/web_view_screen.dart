@@ -176,8 +176,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: const Color(0xFFEFF1FF),
-                borderRadius: BorderRadius.circular(16),
+                color: AppColors.primarySurface,
+                borderRadius: BorderRadius.circular(AppColors.radiusLg),
               ),
               child: const Icon(
                 Icons.smartphone_rounded,
@@ -217,7 +217,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
               ),
             ),
@@ -275,7 +275,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
               ),
             ),

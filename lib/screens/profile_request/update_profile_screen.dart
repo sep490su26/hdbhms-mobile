@@ -181,7 +181,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
           content: Text(
             e is TenantProfileException ? e.message : 'Có lỗi xảy ra',
           ),
-          backgroundColor: const Color(0xFFDC2626),
+          backgroundColor: AppColors.danger,
         ),
       );
     } finally {
@@ -321,12 +321,11 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: AppColors.darkBlue,
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(AppColors.radiusPill),
         ),
         child: Text(
           '${_vehicles.length}/$_maxVehicles Xe',
           style: const TextStyle(
-            fontFamily: 'Inter',
             color: Colors.white,
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -361,10 +360,10 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         color: Colors.transparent,
         child: InkWell(
           onTap: _addVehicle,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppColors.radiusMd),
               border: Border.all(color: buttonColor, width: 2),
             ),
             child: Center(
@@ -380,7 +379,6 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                   const Text(
                     'Thêm phương tiện',
                     style: TextStyle(
-                      fontFamily: 'Inter',
                       color: buttonColor,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -425,7 +423,6 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
           label: Text(
             _isLoading ? 'ĐANG LƯU...' : 'LƯU THAY ĐỔI',
             style: const TextStyle(
-              fontFamily: 'Inter',
               fontSize: 16,
               fontWeight: FontWeight.w700,
               height: 24 / 16,
@@ -438,7 +435,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
             disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.72),
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AppColors.radiusLg),
             ),
           ),
         ),
@@ -474,7 +471,7 @@ class _SectionCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 15, 24, 24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         boxShadow: const [
           BoxShadow(
             color: Color.fromRGBO(26, 35, 126, 0.05),
@@ -495,7 +492,6 @@ class _SectionCard extends StatelessWidget {
                 child: Text(
                   title,
                   style: const TextStyle(
-                    fontFamily: 'Inter',
                     color: AppColors.inputText,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -511,7 +507,6 @@ class _SectionCard extends StatelessWidget {
             Text(
               subtitle!,
               style: const TextStyle(
-                fontFamily: 'Inter',
                 color: AppColors.bodyText,
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
@@ -547,7 +542,6 @@ class _EditableField extends StatelessWidget {
         Text(
           label,
           style: const TextStyle(
-            fontFamily: 'Inter',
             color: AppColors.bodyText,
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -560,7 +554,6 @@ class _EditableField extends StatelessWidget {
           controller: controller,
           keyboardType: keyboardType,
           style: const TextStyle(
-            fontFamily: 'Inter',
             color: AppColors.inputText,
             fontSize: 16,
             fontWeight: FontWeight.w500,
@@ -574,15 +567,15 @@ class _EditableField extends StatelessWidget {
               vertical: 14,
             ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
               borderSide: BorderSide.none,
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
               borderSide: BorderSide.none,
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
               borderSide: const BorderSide(
                 color: AppColors.deepBlue,
                 width: 1.5,
@@ -618,7 +611,7 @@ class _VehicleCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: AppColors.cardBorder, width: 1),
       ),
       child: Column(
@@ -634,12 +627,11 @@ class _VehicleCard extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: AppColors.cardBorder.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
                 child: Text(
                   'PHƯƠNG TIỆN ${index + 1}',
                   style: const TextStyle(
-                    fontFamily: 'Inter',
                     color: Color(0xFF000666),
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -654,7 +646,7 @@ class _VehicleCard extends StatelessWidget {
                   onTap: onDelete,
                   child: const Icon(
                     Icons.delete_outline_rounded,
-                    color: Color(0xFFDC2626),
+                    color: AppColors.danger,
                     size: 20,
                   ),
                 ),
@@ -673,7 +665,6 @@ class _VehicleCard extends StatelessWidget {
           const Text(
             'Ảnh phương tiện',
             style: TextStyle(
-              fontFamily: 'Inter',
               color: AppColors.bodyText,
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -705,7 +696,7 @@ class _VehicleImagePicker extends StatelessWidget {
       child: AspectRatio(
         aspectRatio: 16 / 9,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -737,7 +728,6 @@ class _VehicleImagePicker extends StatelessWidget {
                       Text(
                         'Tải ảnh lên',
                         style: TextStyle(
-                          fontFamily: 'Inter',
                           color: AppColors.bodyText,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -758,7 +748,7 @@ class _VehicleImagePicker extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.68),
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
@@ -785,7 +775,7 @@ class _VehicleImagePicker extends StatelessWidget {
                 child: Container(
                   decoration: BoxDecoration(
                     border: Border.all(color: AppColors.cardBorder),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   ),
                 ),
               ),

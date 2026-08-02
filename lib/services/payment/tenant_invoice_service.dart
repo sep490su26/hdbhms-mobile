@@ -20,7 +20,10 @@ class TenantInvoiceService {
   http.Client get _effectiveClient => _client ?? AuthenticatedClient();
   static const _timeout = Duration(seconds: 15);
 
-  Future<List<TenantInvoice>> fetchMyInvoices() async {
+  Future<List<TenantInvoice>> fetchMyInvoices({
+    int? roomId,
+    String? roomCode,
+  }) async {
     final client = _effectiveClient;
     try {
       final response = await client
@@ -30,10 +33,11 @@ class TenantInvoiceService {
         final decoded = _decodeBody(response.body);
         final data = decoded['data'];
         if (data is List) {
-          return data
+          final invoices = data
               .whereType<Map<String, dynamic>>()
               .map(TenantInvoice.fromJson)
               .toList();
+          return _filterByRoom(invoices, roomId: roomId, roomCode: roomCode);
         }
         return const [];
       }
@@ -105,5 +109,23 @@ class TenantInvoiceService {
     final decoded = jsonDecode(body);
     if (decoded is Map<String, dynamic>) return decoded;
     return {};
+  }
+
+  List<TenantInvoice> _filterByRoom(
+    List<TenantInvoice> invoices, {
+    int? roomId,
+    String? roomCode,
+  }) {
+    final normalizedCode = roomCode?.trim().toLowerCase() ?? '';
+    if ((roomId ?? 0) <= 0 && normalizedCode.isEmpty) {
+      return invoices;
+    }
+    return invoices
+        .where((invoice) {
+          if ((roomId ?? 0) > 0 && invoice.roomId == roomId) return true;
+          return normalizedCode.isNotEmpty &&
+              invoice.roomCode.trim().toLowerCase() == normalizedCode;
+        })
+        .toList(growable: false);
   }
 }

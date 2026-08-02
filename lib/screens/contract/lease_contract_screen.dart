@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/widgets/app_empty_state.dart';
 import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
@@ -8,6 +9,7 @@ import 'package:hdbhms_mobile/models/profile_request/tenant_request_model.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
+import 'package:hdbhms_mobile/utils/document_filename.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
@@ -15,8 +17,9 @@ import 'package:hdbhms_mobile/screens/contract/contract_pdf_viewer_screen.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
 import 'package:hdbhms_mobile/screens/profile_request/add_roommate_request_screen.dart';
-import 'package:hdbhms_mobile/screens/contract/terminate_contract_screen.dart';
 import 'package:hdbhms_mobile/screens/room_transfer/create_room_transfer_screen.dart';
+import 'package:hdbhms_mobile/screens/contract/renew_contract_request_screen.dart';
+import 'package:hdbhms_mobile/screens/contract/terminate_contract_screen.dart';
 import 'package:hdbhms_mobile/screens/contract/room_amenities_screen.dart';
 import 'package:hdbhms_mobile/widgets/app_action_tile.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
@@ -156,44 +159,29 @@ class _ContractHeader extends StatelessWidget {
           ),
           // Nút tiện ích phòng
           if (contractId != null)
-            Tooltip(
-              message: 'Tiện ích phòng',
-              child: InkWell(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        RoomAmenitiesScreen(contractId: contractId),
-                  ),
+            IconButton(
+              tooltip: 'Tiện ích phòng',
+              constraints: const BoxConstraints.tightFor(
+                width: AppColors.minimumTouchTarget,
+                height: AppColors.minimumTouchTarget,
+              ),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) =>
+                      RoomAmenitiesScreen(contractId: contractId),
                 ),
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.deepBlue.withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.weekend_outlined,
-                        color: AppColors.deepBlue,
-                        size: 15,
-                      ),
-                      SizedBox(width: 5),
-                      Text(
-                        'Tiện ích phòng',
-                        style: TextStyle(
-                          color: AppColors.deepBlue,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
+              ),
+              icon: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primarySurface,
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                ),
+                child: const Icon(
+                  Icons.weekend_outlined,
+                  color: AppColors.primary,
+                  size: 20,
                 ),
               ),
             ),
@@ -238,22 +226,25 @@ class _ContractContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _ContractWarning(contract: contract),
-          _TenantIntentionCard(
-            contract: contract,
-            contractService: contractService,
-            onChanged: onChanged,
-          ),
           _RoomHeroCard(contract: contract),
           const SizedBox(height: 12),
           _ContractInfoGrid(contract: contract),
           const SizedBox(height: 12),
           _TermsSection(terms: contract.terms),
           const SizedBox(height: 12),
-          _DocumentSection(contractFileUrl: contract.contractFileUrl),
+          _DocumentSection(
+            contractFileUrl: contract.contractFileUrl,
+            suggestedFilename: buildDocumentFilename(
+              documentType: 'HDT',
+              roomCode: contract.room.roomCode,
+              date: contract.startDate,
+            ),
+          ),
           const SizedBox(height: 12),
           _CreateRequestGrid(
             contract: contract,
             contractService: contractService,
+            onChanged: onChanged,
           ),
         ],
       ),
@@ -261,30 +252,74 @@ class _ContractContent extends StatelessWidget {
   }
 }
 
-const Color _kLabelColor = Color(0xFF000666);
-
 class _CreateRequestGrid extends StatelessWidget {
   const _CreateRequestGrid({
     required this.contract,
     required this.contractService,
+    required this.onChanged,
   });
 
   final LeaseContract contract;
   final LeaseContractService contractService;
+  final Future<void> Function() onChanged;
 
-  void _openCreateForm(BuildContext context, TenantRequestType type) {
+  bool get _isCoOccupant =>
+      contract.roleInContract.trim().toUpperCase() == 'CO_OCCUPANT';
+
+  Future<void> _submitOccupantIntention(
+    BuildContext context,
+    String intention,
+  ) async {
+    final contractId = contract.id;
+    if (contractId == null) return;
+
+    try {
+      await contractService.recordOccupantIntention(
+        contractId: contractId,
+        intention: intention,
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Đã lưu ý định của bạn.')));
+      await onChanged();
+    } on LeaseContractException catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+
+  Future<void> _openCreateForm(
+    BuildContext context,
+    TenantRequestType type,
+  ) async {
     final contractId = contract.id;
     if (contractId == null) return;
 
     if (type == TenantRequestType.addRoommate) {
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const AddRoommateRequestScreen()),
+        MaterialPageRoute(
+          builder: (_) => AddRoommateRequestScreen(
+            contractId: contractId,
+            contractService: contractService,
+          ),
+        ),
       );
       return;
     }
 
     if (type == TenantRequestType.terminateContract) {
-      _openTerminateContractFlow(context);
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => TerminateContractScreen(
+            contract: contract,
+            contractService: contractService,
+          ),
+        ),
+      );
+      if (context.mounted) await onChanged();
       return;
     }
 
@@ -298,77 +333,104 @@ class _CreateRequestGrid extends StatelessWidget {
       return;
     }
 
-    // Renew contract & other types: use bottom sheet
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _CreateRequestSheet(
-        type: type,
-        onSubmit: (note) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Đã gửi yêu cầu ${type.fullLabel}.')),
-          );
-        },
-      ),
-    );
-  }
-
-  void _openTerminateContractFlow(BuildContext context) {
-    if (!_isContractUnderOneMonth(contract)) {
-      _openTerminateContractForm(context);
-      return;
+    if (type == TenantRequestType.renewContract) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => RenewContractRequestScreen(
+            contract: contract,
+            contractService: contractService,
+          ),
+        ),
+      );
+      if (context.mounted) await onChanged();
     }
-
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Hợp đồng còn dưới 1 tháng'),
-        content: Text(
-          'Hợp đồng ${contract.contractCode} sắp kết thúc. '
-          'Nếu vẫn muốn hủy/thanh lý, vui lòng tạo yêu cầu '
-          'để quản lý kiểm tra và hướng dẫn thủ tục.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Để sau'),
-          ),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              _openTerminateContractForm(context);
-            },
-            icon: const Icon(Icons.send_rounded, size: 18),
-            label: const Text('Tạo yêu cầu hủy'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.deepBlue,
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _openTerminateContractForm(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => TerminateContractScreen(
-          contractId: contract.id,
-          contractCode: contract.contractCode,
-          contractEndDate: contract.endDate,
-          contractExpiry: _formatDate(contract.endDate),
-          occupants: contract.occupants,
-          currentTenantProfileId: contract.currentTenantProfileId,
-          leaseContractService: contractService,
-        ),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isCoOccupant) {
+      final currentIntention = switch (contract.occupantIntention) {
+        'FOLLOW_PRIMARY_MOVE_OUT' => 'Rời phòng theo người đứng tên',
+        'JOIN_RENEWAL' => 'Tiếp tục ở nếu tái ký',
+        _ => 'Chưa phản hồi',
+      };
+
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: AppColors.deepBlue.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.fact_check_outlined,
+                      color: AppColors.deepBlue,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 9),
+                  const Text(
+                    'Ý định của bạn',
+                    style: TextStyle(
+                      color: AppColors.inputText,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      height: 20 / 15,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              currentIntention,
+              style: const TextStyle(
+                color: AppColors.bodyText,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (contract.canRecordOccupantIntention) ...[
+              const SizedBox(height: 10),
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 1.45,
+                children: [
+                  AppActionTile(
+                    icon: Icons.logout_rounded,
+                    label: 'Rời phòng\ntheo người đứng tên',
+                    accentColor: AppColors.actionRose,
+                    onTap: () => _submitOccupantIntention(
+                      context,
+                      'FOLLOW_PRIMARY_MOVE_OUT',
+                    ),
+                  ),
+                  AppActionTile(
+                    icon: Icons.autorenew_rounded,
+                    label: 'Tiếp tục ở\nnếu tái ký',
+                    accentColor: AppColors.actionBlue,
+                    onTap: () =>
+                        _submitOccupantIntention(context, 'JOIN_RENEWAL'),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -381,12 +443,12 @@ class _CreateRequestGrid extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(7),
                   decoration: BoxDecoration(
-                    color: AppColors.deepBlue.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
+                    color: AppColors.primarySurface,
+                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
                   ),
                   child: const Icon(
                     Icons.add_circle_outline_rounded,
-                    color: AppColors.deepBlue,
+                    color: AppColors.primary,
                     size: 18,
                   ),
                 ),
@@ -396,7 +458,7 @@ class _CreateRequestGrid extends StatelessWidget {
                   style: TextStyle(
                     color: AppColors.inputText,
                     fontSize: 15,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                     height: 20 / 15,
                   ),
                 ),
@@ -413,14 +475,14 @@ class _CreateRequestGrid extends StatelessWidget {
             children: [
               AppActionTile(
                 icon: Icons.autorenew_rounded,
-                label: 'Gia hạn\nhợp đồng',
+                label: 'Gia hạn hợp đồng',
                 accentColor: AppColors.actionBlue,
                 onTap: () =>
                     _openCreateForm(context, TenantRequestType.renewContract),
               ),
               AppActionTile(
                 icon: Icons.cancel_outlined,
-                label: 'Thanh lý\nhợp đồng',
+                label: 'Thanh lý hợp đồng',
                 accentColor: AppColors.actionRose,
                 onTap: () => _openCreateForm(
                   context,
@@ -429,14 +491,14 @@ class _CreateRequestGrid extends StatelessWidget {
               ),
               AppActionTile(
                 icon: Icons.swap_horiz_rounded,
-                label: 'Chuyển\nphòng',
+                label: 'Chuyển phòng',
                 accentColor: AppColors.actionCyan,
                 onTap: () =>
                     _openCreateForm(context, TenantRequestType.changeRoom),
               ),
               AppActionTile(
                 icon: Icons.person_add_outlined,
-                label: 'Thêm\nngười ở',
+                label: 'Thêm người ở cùng',
                 accentColor: AppColors.actionEmerald,
                 onTap: () =>
                     _openCreateForm(context, TenantRequestType.addRoommate),
@@ -444,95 +506,6 @@ class _CreateRequestGrid extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-bool _isContractUnderOneMonth(LeaseContract contract) {
-  final endDate = contract.endDate;
-  if (endDate == null) return false;
-  final remainingDays = _dateOnly(
-    endDate,
-  ).difference(_dateOnly(DateTime.now())).inDays;
-  return remainingDays >= 0 && remainingDays < 30;
-}
-
-class _CreateRequestSheet extends StatefulWidget {
-  const _CreateRequestSheet({required this.type, required this.onSubmit});
-
-  final TenantRequestType type;
-  final void Function(String note) onSubmit;
-
-  @override
-  State<_CreateRequestSheet> createState() => _CreateRequestSheetState();
-}
-
-class _CreateRequestSheetState extends State<_CreateRequestSheet> {
-  final _ctrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Gửi yêu cầu: ${widget.type.fullLabel}',
-              style: const TextStyle(
-                color: _kLabelColor,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: _ctrl,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: 'Ghi chú / mô tả',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  widget.onSubmit(_ctrl.text.trim());
-                  Navigator.of(context).pop();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.deepBlue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text('Gửi yêu cầu'),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -567,7 +540,7 @@ class _ContractWarning extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
         decoration: BoxDecoration(
           color: const Color(0xFFFFD8D5),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
           border: Border.all(color: const Color(0xFFFFA9A3)),
         ),
         child: Row(
@@ -618,366 +591,6 @@ class _ContractWarning extends StatelessWidget {
   }
 }
 
-class _TenantIntentionCard extends StatefulWidget {
-  const _TenantIntentionCard({
-    required this.contract,
-    required this.contractService,
-    required this.onChanged,
-  });
-
-  final LeaseContract contract;
-  final LeaseContractService contractService;
-  final Future<void> Function() onChanged;
-
-  @override
-  State<_TenantIntentionCard> createState() => _TenantIntentionCardState();
-}
-
-class _TenantIntentionCardState extends State<_TenantIntentionCard> {
-  late String _selectedIntention;
-  DateTime? _expectedMoveOutDate;
-  final _reasonController = TextEditingController();
-  String _error = '';
-  bool _submitting = false;
-
-  bool get _requiresMoveOutInfo =>
-      _selectedIntention == 'MOVE_OUT' || _selectedIntention == 'TRANSFER';
-
-  @override
-  void initState() {
-    super.initState();
-    _syncFromContract();
-  }
-
-  @override
-  void didUpdateWidget(covariant _TenantIntentionCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final oldContract = oldWidget.contract;
-    final contract = widget.contract;
-    if (oldContract.id != contract.id ||
-        oldContract.tenantIntention != contract.tenantIntention ||
-        oldContract.expectedVacantDate != contract.expectedVacantDate) {
-      _syncFromContract();
-    }
-  }
-
-  @override
-  void dispose() {
-    _reasonController.dispose();
-    super.dispose();
-  }
-
-  void _syncFromContract() {
-    final current = widget.contract.tenantIntention.trim().toUpperCase();
-    _selectedIntention = _validIntention(current) ? current : 'UNDECIDED';
-    _expectedMoveOutDate = widget.contract.expectedVacantDate;
-    _error = '';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final contract = widget.contract;
-    final showByDate = _isWithinIntentionWindow(contract);
-    final showByBackend =
-        contract.canRecordIntention ||
-        contract.tenantIntention.trim().isNotEmpty;
-    final shouldShow =
-        _activeForIntention(contract.status) && (showByBackend || showByDate);
-    if (!shouldShow) {
-      return const SizedBox.shrink();
-    }
-
-    final isPrimary =
-        contract.isPrimary || contract.roleInContract == 'PRIMARY';
-    final intentionLabel = _tenantIntentionLabel(contract.tenantIntention);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: _SectionCard(
-        title: 'Phản hồi nguyện vọng',
-        icon: Icons.fact_check_outlined,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (intentionLabel.isNotEmpty)
-              _MutedText('Ý định hiện tại: $intentionLabel')
-            else
-              const _MutedText(
-                'Bạn có thể ghi nhận lựa chọn để ban quản lý xử lý trước khi hợp đồng kết thúc.',
-              ),
-            if (contract.expectedVacantDate != null) ...[
-              const SizedBox(height: 8),
-              _MutedText(
-                'Ngày dự kiến trả phòng: ${_formatDate(contract.expectedVacantDate)}',
-              ),
-            ],
-            if (isPrimary) ...[
-              const SizedBox(height: 14),
-              const _FieldLabel('Ý định'),
-              DropdownButtonFormField<String>(
-                initialValue: _selectedIntention,
-                isExpanded: true,
-                decoration: _inputDecoration(),
-                items: _intentionOptions
-                    .map(
-                      (option) => DropdownMenuItem<String>(
-                        value: option.value,
-                        child: Text(option.label),
-                      ),
-                    )
-                    .toList(growable: false),
-                onChanged: _submitting
-                    ? null
-                    : (value) {
-                        setState(() {
-                          _selectedIntention = value ?? 'UNDECIDED';
-                          _error = '';
-                          if (!_requiresMoveOutInfo) {
-                            _expectedMoveOutDate = null;
-                            _reasonController.clear();
-                          }
-                        });
-                      },
-              ),
-              if (_requiresMoveOutInfo) ...[
-                const SizedBox(height: 12),
-                const _FieldLabel('Ngày dự kiến chuyển đi'),
-                InkWell(
-                  onTap: _submitting ? null : _pickMoveOutDate,
-                  borderRadius: BorderRadius.circular(10),
-                  child: InputDecorator(
-                    decoration: _inputDecoration(),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _expectedMoveOutDate == null
-                                ? 'dd/mm/yyyy'
-                                : _formatDate(_expectedMoveOutDate),
-                            style: TextStyle(
-                              color: _expectedMoveOutDate == null
-                                  ? AppColors.hintText
-                                  : AppColors.inputText,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        const Icon(
-                          Icons.calendar_month_rounded,
-                          color: AppColors.inputText,
-                          size: 20,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const _FieldLabel('Lý do'),
-                TextField(
-                  controller: _reasonController,
-                  enabled: !_submitting,
-                  maxLines: 3,
-                  decoration: _inputDecoration(hintText: 'Nhập lý do'),
-                ),
-              ],
-              if (_error.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Text(
-                  _error,
-                  style: const TextStyle(
-                    color: Color(0xFFB00020),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _submitting ? null : () => _submit(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.deepBlue,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: Text(_submitting ? 'Đang lưu...' : 'Lưu ý định'),
-                ),
-              ),
-            ],
-            const SizedBox(height: 4),
-            if (!isPrimary)
-              const _MutedText(
-                'Chỉ người ký chính được ghi nhận ý định hợp đồng.',
-              ),
-            if (isPrimary &&
-                [
-                  'MOVE_OUT',
-                  'TRANSFER',
-                ].contains(contract.tenantIntention.trim().toUpperCase()) &&
-                !contract.canRenew &&
-                contract.canRenewBlockedReason.trim().isNotEmpty) ...[
-              const SizedBox(height: 2),
-              _MutedText(contract.canRenewBlockedReason),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _pickMoveOutDate() async {
-    final today = _dateOnly(DateTime.now());
-    final endDate = widget.contract.endDate == null
-        ? today.add(const Duration(days: 90))
-        : _dateOnly(widget.contract.endDate!);
-    final lastDate = endDate.isBefore(today) ? today : endDate;
-    final initialDate =
-        _expectedMoveOutDate != null &&
-            !_dateOnly(_expectedMoveOutDate!).isBefore(today) &&
-            !_dateOnly(_expectedMoveOutDate!).isAfter(lastDate)
-        ? _dateOnly(_expectedMoveOutDate!)
-        : today;
-
-    final picked = await showDatePicker(
-      context: context,
-      firstDate: today,
-      lastDate: lastDate,
-      initialDate: initialDate,
-    );
-    if (picked == null) {
-      return;
-    }
-    setState(() {
-      _expectedMoveOutDate = picked;
-      _error = '';
-    });
-  }
-
-  Future<void> _submit(BuildContext context) async {
-    final validation = _validate();
-    if (validation != null) {
-      setState(() => _error = validation);
-      return;
-    }
-
-    setState(() {
-      _submitting = true;
-      _error = '';
-    });
-    await _submitIntention(context);
-    if (mounted) {
-      setState(() => _submitting = false);
-    }
-  }
-
-  String? _validate() {
-    if (!_requiresMoveOutInfo) {
-      return null;
-    }
-    final expectedMoveOutDate = _expectedMoveOutDate;
-    if (expectedMoveOutDate == null) {
-      return 'Vui lòng chọn ngày dự kiến chuyển đi.';
-    }
-    final selectedDate = _dateOnly(expectedMoveOutDate);
-    final today = _dateOnly(DateTime.now());
-    if (selectedDate.isBefore(today)) {
-      return 'Ngày dự kiến chuyển đi không được trước ngày hiện tại.';
-    }
-    final endDate = widget.contract.endDate;
-    if (endDate != null && selectedDate.isAfter(_dateOnly(endDate))) {
-      return 'Ngày dự kiến chuyển đi không được sau ngày kết thúc hợp đồng.';
-    }
-    if (_reasonController.text.trim().isEmpty) {
-      return 'Vui lòng nhập lý do.';
-    }
-    return null;
-  }
-
-  Future<void> _submitIntention(BuildContext context) async {
-    final id = widget.contract.id;
-    if (id == null) return;
-    try {
-      final note = _requiresMoveOutInfo
-          ? _reasonController.text.trim()
-          : _noteForIntention(_selectedIntention);
-      await widget.contractService.recordIntention(
-        contractId: id,
-        intention: _selectedIntention,
-        expectedMoveOutDate: _requiresMoveOutInfo ? _expectedMoveOutDate : null,
-        note: note,
-      );
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã lưu ý định hợp đồng.')),
-        );
-      }
-      await widget.onChanged();
-    } on LeaseContractException catch (error) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
-      }
-    }
-  }
-
-  String _noteForIntention(String intention) {
-    return switch (intention) {
-      'RENEW' => 'Khách muốn tái ký / gia hạn.',
-      'TRANSFER' => 'Khách muốn chuyển phòng.',
-      'MOVE_OUT' => 'Khách sẽ chuyển đi / không tái ký.',
-      'UNDECIDED' => 'Khách chưa quyết định.',
-      _ => '',
-    };
-  }
-
-  InputDecoration _inputDecoration({String? hintText}) {
-    return InputDecoration(
-      hintText: hintText,
-      filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppColors.cardBorder),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppColors.cardBorder),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppColors.deepBlue, width: 1.4),
-      ),
-    );
-  }
-}
-
-class _FieldLabel extends StatelessWidget {
-  const _FieldLabel(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: AppColors.inputText,
-          fontSize: 13,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
-    );
-  }
-}
-
 class _RoomHeroCard extends StatelessWidget {
   const _RoomHeroCard({required this.contract});
 
@@ -990,7 +603,7 @@ class _RoomHeroCard extends StatelessWidget {
     final hasImage = imageUrl.isNotEmpty;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(AppColors.radiusLg),
       child: SizedBox(
         height: 200,
         width: double.infinity,
@@ -1062,7 +675,9 @@ class _RoomHeroCard extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(
+                            AppColors.radiusPill,
+                          ),
                           border: Border.all(
                             color: Colors.white.withValues(alpha: 0.25),
                           ),
@@ -1081,34 +696,6 @@ class _RoomHeroCard extends StatelessWidget {
                 ],
               ),
             ),
-            // Top-right: room code chip
-            if (contract.room.roomCode.trim().isNotEmpty)
-              Positioned(
-                top: 14,
-                right: 16,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.18),
-                    ),
-                  ),
-                  child: Text(
-                    '#${contract.room.roomCode.trim()}',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -1129,10 +716,10 @@ class _ModernRoomBannerBg extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF0B1F3A), // deepBlue
-            Color(0xFF12345C), // darkBlue
+            AppColors.deepBlue, // deepBlue
+            AppColors.darkBlue, // darkBlue
             Color(0xFF1A4A8A), // mid
-            Color(0xFF2563EB), // primary
+            AppColors.primary, // primary
           ],
           stops: [0.0, 0.35, 0.65, 1.0],
         ),
@@ -1148,7 +735,7 @@ class _ModernRoomBannerBg extends StatelessWidget {
               height: 160,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF2563EB).withValues(alpha: 0.22),
+                color: AppColors.primary.withValues(alpha: 0.22),
               ),
             ),
           ),
@@ -1201,7 +788,7 @@ class _StatusBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: const Color(0xFFA7B4FF),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
       ),
       child: Text(
         _statusLabel(status),
@@ -1354,7 +941,7 @@ class _TermTile extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
       decoration: BoxDecoration(
         color: const Color(0xFFF1F0F0),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1383,9 +970,13 @@ class _TermTile extends StatelessWidget {
 }
 
 class _DocumentSection extends StatelessWidget {
-  const _DocumentSection({required this.contractFileUrl});
+  const _DocumentSection({
+    required this.contractFileUrl,
+    required this.suggestedFilename,
+  });
 
   final String contractFileUrl;
+  final String suggestedFilename;
 
   @override
   Widget build(BuildContext context) {
@@ -1399,7 +990,8 @@ class _DocumentSection extends StatelessWidget {
               width: double.infinity,
               height: 48,
               child: ElevatedButton.icon(
-                onPressed: () => _showContractFile(context, url),
+                onPressed: () =>
+                    _showContractFile(context, url, suggestedFilename),
                 icon: const Icon(Icons.description_outlined, size: 20),
                 label: const Text('Xem hợp đồng'),
                 style: ElevatedButton.styleFrom(
@@ -1407,7 +999,7 @@ class _DocumentSection extends StatelessWidget {
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   ),
                 ),
               ),
@@ -1430,7 +1022,7 @@ class _SectionCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: AppColors.cardBorder.withValues(alpha: 0.45)),
       ),
       child: Column(
@@ -1495,18 +1087,18 @@ class _ContractLoadingState extends StatelessWidget {
 
 class _ContractEmptyState extends StatelessWidget {
   const _ContractEmptyState({required this.onRetry});
-
   final VoidCallback onRetry;
-
   @override
-  Widget build(BuildContext context) {
-    return _StateMessage(
-      icon: Icons.description_outlined,
-      title: 'Bạn chưa có hợp đồng thuê phòng đang hiệu lực',
-      buttonLabel: 'Thử lại',
-      onRetry: onRetry,
-    );
-  }
+  Widget build(BuildContext context) => AppEmptyState(
+    icon: Icons.description_outlined,
+    title:
+        'B\u1EA1n ch\u01B0a c\u00F3 h\u1EE3p \u0111\u1ED3ng thu\u00EA ph\u00F2ng \u0111ang hi\u1EC7u l\u1EF1c',
+    actionLabel: 'Th\u1EED l\u1EA1i',
+    onAction: onRetry,
+    scrollable: true,
+    onRefresh: () async => onRetry(),
+    topSpacing: 120,
+  );
 }
 
 class _ContractErrorState extends StatelessWidget {
@@ -1611,65 +1203,23 @@ class _ContractBottomNavigation extends StatelessWidget {
   }
 }
 
-void _showContractFile(BuildContext context, String url) {
+void _showContractFile(
+  BuildContext context,
+  String url,
+  String suggestedFilename,
+) {
   Navigator.of(context).push(
     MaterialPageRoute(
-      builder: (context) =>
-          ContractPdfViewerScreen(pdfUrl: url, title: 'Hợp đồng thuê phòng'),
+      builder: (context) => ContractPdfViewerScreen(
+        pdfUrl: url,
+        title: 'Hợp đồng thuê phòng',
+        suggestedFilename: suggestedFilename,
+      ),
     ),
   );
 }
 
 DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
-
-class _IntentionOption {
-  const _IntentionOption(this.value, this.label);
-
-  final String value;
-  final String label;
-}
-
-const _intentionOptions = <_IntentionOption>[
-  _IntentionOption('RENEW', 'Tái ký / Gia hạn'),
-  _IntentionOption('TRANSFER', 'Chuyển phòng'),
-  _IntentionOption('MOVE_OUT', 'Chuyển đi / Không tái ký'),
-  _IntentionOption('UNDECIDED', 'Chưa có ý định'),
-];
-
-bool _activeForIntention(String status) {
-  final normalized = status.trim().toUpperCase();
-  return normalized == 'ACTIVE' || normalized == 'EXPIRING_SOON';
-}
-
-bool _validIntention(String intention) {
-  return const {
-    'RENEW',
-    'TRANSFER',
-    'MOVE_OUT',
-    'UNDECIDED',
-  }.contains(intention);
-}
-
-bool _isWithinIntentionWindow(LeaseContract contract) {
-  final endDate = contract.endDate;
-  if (endDate == null) {
-    return false;
-  }
-  final today = _dateOnly(DateTime.now());
-  final end = _dateOnly(endDate);
-  final remainingDays = end.difference(today).inDays;
-  return remainingDays >= 0 && remainingDays <= 90;
-}
-
-String _tenantIntentionLabel(String intention) {
-  return switch (intention.trim().toUpperCase()) {
-    'RENEW' => 'Muốn tái ký / gia hạn',
-    'MOVE_OUT' => 'Sẽ chuyển đi / Không tái ký',
-    'TRANSFER' => 'Muốn chuyển phòng',
-    'UNDECIDED' => 'Chưa quyết định',
-    _ => '',
-  };
-}
 
 String _roomTitle(LeaseRoom room) {
   if (room.roomName.trim().isNotEmpty) {
@@ -1714,17 +1264,10 @@ String _statusLabel(String status) {
     'ACTIVE' => 'Đang hiệu lực',
     'EXPIRING_SOON' => 'Sắp hết hạn',
     'EXPIRED' => 'Đã hết hạn',
-    'TERMINATION_PENDING' => 'Đang thanh lý',
-    'LIQUIDATED' => 'Đã thanh lý',
-    'AUTO_TERMINATED' => 'Tự kết thúc',
-    'TRANSFERRED' => 'Đã chuyển phòng',
-    'CANCELLED' => 'Đã hủy',
-    'RENEWED' => 'Đã gia hạn',
+    'TERMINATED' => 'Đã chấm dứt',
     'DRAFT' => 'Bản nháp',
-    'CONFIRMED' => 'Đã xác nhận',
-    'SIGNED' => 'Đã ký',
     'PENDING_SIGNATURE' => 'Chờ ký',
-    _ => _display(status),
+    _ => 'Chưa cập nhật',
   };
 }
 

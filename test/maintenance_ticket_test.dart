@@ -1,13 +1,17 @@
 // ignore_for_file: use_null_aware_elements
 
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
+import 'package:hdbhms_mobile/screens/maintenance/create_maintenance_ticket_screen.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_detail_screen.dart';
+import 'package:hdbhms_mobile/services/file_service.dart';
 import 'package:hdbhms_mobile/services/maintenance/maintenance_ticket_service.dart';
+import 'package:hdbhms_mobile/widgets/ticket_attachment_grid.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
@@ -55,13 +59,69 @@ void main() {
     expect(detail.roomCode, '106');
   });
 
+  test('TicketAttachment parses backend file aliases', () {
+    final attachment = TicketAttachment.fromJson({
+      'id': 7,
+      'file_id': 91,
+      'download_url': '/api/v1/files/download/91',
+      'mime_type': 'image/png',
+      'attachment_phase': 'AFTER',
+      'sort_order': 2,
+      'file_name': 'done.png',
+    });
+
+    expect(attachment.id, 7);
+    expect(attachment.fileId, 91);
+    expect(attachment.url, endsWith('/api/v1/files/download/91'));
+    expect(attachment.mimeType, 'image/png');
+    expect(attachment.phase, TicketAttachmentPhase.after);
+    expect(attachment.sortOrder, 2);
+    expect(attachment.name, 'done.png');
+  });
+
+  testWidgets('attachment grid renders downloaded image bytes', (tester) async {
+    final fileService = _FakeFileService(_pngBytes);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TicketAttachmentGrid(
+            attachments: const [
+              TicketAttachment(
+                id: 7,
+                fileId: 91,
+                url: '',
+                mimeType: 'image/png',
+                phase: TicketAttachmentPhase.before,
+                sortOrder: 0,
+              ),
+            ],
+            emptyText: 'empty',
+            fileService: fileService,
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(fileService.downloadedFileId, 91);
+    expect(find.byType(Image), findsOneWidget);
+  });
+
   testWidgets('ticket list screen renders API tickets and search filter', (
     tester,
   ) async {
     final service = _ticketService();
 
     await tester.pumpWidget(
-      MaterialApp(home: MaintenanceTicketListScreen(ticketService: service)),
+      MaterialApp(
+        home: MaintenanceTicketListScreen(
+          ticketService: service,
+          roomId: 106,
+          notificationInitialUnreadCount: 0,
+        ),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -79,17 +139,21 @@ void main() {
     expect(_ticketCodeFinder('SC-0003'), findsNothing);
   });
 
-  testWidgets('ticket list screen can filter by status dropdown', (
-    tester,
-  ) async {
+  testWidgets('ticket list screen can filter by status picker', (tester) async {
     final service = _ticketService();
 
     await tester.pumpWidget(
-      MaterialApp(home: MaintenanceTicketListScreen(ticketService: service)),
+      MaterialApp(
+        home: MaintenanceTicketListScreen(
+          ticketService: service,
+          roomId: 106,
+          notificationInitialUnreadCount: 0,
+        ),
+      ),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.tap(find.byKey(const ValueKey('ticket-status-filter')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Hoàn tất').last);
     await tester.pumpAndSettle();
@@ -101,17 +165,23 @@ void main() {
     expect(_ticketCodeFinder('SC-0003'), findsNothing);
   });
 
-  testWidgets('ticket list screen can filter by category dropdown', (
+  testWidgets('ticket list screen can filter by category picker', (
     tester,
   ) async {
     final service = _ticketService();
 
     await tester.pumpWidget(
-      MaterialApp(home: MaintenanceTicketListScreen(ticketService: service)),
+      MaterialApp(
+        home: MaintenanceTicketListScreen(
+          ticketService: service,
+          roomId: 106,
+          notificationInitialUnreadCount: 0,
+        ),
+      ),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(DropdownButtonFormField<String>).at(1));
+    await tester.tap(find.byKey(const ValueKey('ticket-category-filter')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Nước').last);
     await tester.pumpAndSettle();
@@ -122,6 +192,42 @@ void main() {
     expect(_ticketCodeFinder('SC-0002'), findsNothing);
     expect(_ticketCodeFinder('SC-0003'), findsNothing);
   });
+
+  testWidgets('ticket list passes selected room into create screen', (
+    tester,
+  ) async {
+    final service = MaintenanceTicketService(
+      client: MockClient((request) async {
+        if (request.method == 'GET') {
+          return _jsonResponse(_ticketPage([]));
+        }
+        fail('Unexpected ${request.method} ${request.url}');
+      }),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MaintenanceTicketListScreen(
+          ticketService: service,
+          roomId: 888,
+          roomCode: 'A-888',
+          notificationInitialUnreadCount: 0,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.add_rounded).first);
+    await tester.pumpAndSettle();
+
+    final createScreen = tester.widget<CreateMaintenanceTicketScreen>(
+      find.byType(CreateMaintenanceTicketScreen),
+    );
+    expect(createScreen.roomId, 888);
+    expect(createScreen.roomCode, 'A-888');
+    expect(find.textContaining('A-888'), findsOneWidget);
+  });
+
   testWidgets(
     'completed tenant charge prioritizes pending payment on ticket list',
     (tester) async {
@@ -141,7 +247,13 @@ void main() {
       );
 
       await tester.pumpWidget(
-        MaterialApp(home: MaintenanceTicketListScreen(ticketService: service)),
+        MaterialApp(
+          home: MaintenanceTicketListScreen(
+            ticketService: service,
+            roomId: 106,
+            notificationInitialUnreadCount: 0,
+          ),
+        ),
       );
       await tester.pumpAndSettle();
 
@@ -182,6 +294,7 @@ void main() {
         category: 'RULE_VIOLATION',
         billingStatus: 'PENDING_PAYMENT',
         billingStatusLabel: 'Chờ thanh toán',
+        chargeToTenant: true,
         lineType: 'VIOLATION_FINE',
       ),
     );
@@ -219,6 +332,7 @@ void main() {
         home: MaintenanceTicketDetailScreen(
           ticketId: 1,
           ticketService: service,
+          notificationInitialUnreadCount: 0,
         ),
       ),
     );
@@ -251,6 +365,7 @@ void main() {
         home: MaintenanceTicketDetailScreen(
           ticketId: 1,
           ticketService: service,
+          notificationInitialUnreadCount: 0,
         ),
       ),
     );
@@ -365,4 +480,21 @@ Finder _ticketCodeFinder(String code) {
   return find.byWidgetPredicate(
     (widget) => widget is Text && widget.data == code,
   );
+}
+
+final Uint8List _pngBytes = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
+);
+
+class _FakeFileService extends FileService {
+  _FakeFileService(this.bytes) : super();
+
+  final Uint8List bytes;
+  int? downloadedFileId;
+
+  @override
+  Future<Uint8List> download(int fileId) async {
+    downloadedFileId = fileId;
+    return bytes;
+  }
 }

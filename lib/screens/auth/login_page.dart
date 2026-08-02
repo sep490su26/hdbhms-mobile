@@ -33,6 +33,7 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
   late final TextEditingController _idController;
   late final TextEditingController _passwordController;
   bool _isLoading = false;
@@ -52,6 +53,10 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _handleLogin() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      _showMessage('Vui lòng hoàn thành các trường bắt buộc');
+      return;
+    }
     final id = _idController.text.trim();
     final password = _passwordController.text;
 
@@ -177,6 +182,7 @@ class _LoginPageState extends State<LoginPage> {
                           constraints: const BoxConstraints(maxWidth: 430),
                           child: _LoginCard(
                             height: cardHeight,
+                            formKey: _formKey,
                             idController: _idController,
                             passwordController: _passwordController,
                             isLoading: _isLoading,
@@ -256,6 +262,7 @@ class _HeroSection extends StatelessWidget {
 class _LoginCard extends StatelessWidget {
   const _LoginCard({
     required this.height,
+    required this.formKey,
     required this.idController,
     required this.passwordController,
     required this.isLoading,
@@ -264,6 +271,7 @@ class _LoginCard extends StatelessWidget {
   });
 
   final double height;
+  final GlobalKey<FormState> formKey;
   final TextEditingController idController;
   final TextEditingController passwordController;
   final bool isLoading;
@@ -273,11 +281,11 @@ class _LoginCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: height,
+      constraints: BoxConstraints(minHeight: height),
       padding: const EdgeInsets.fromLTRB(24, 26, 24, 28),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
         border: Border.all(color: Colors.white.withValues(alpha: 0.9)),
         boxShadow: [
           BoxShadow(
@@ -287,108 +295,117 @@ class _LoginCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _Greeting(),
-          const SizedBox(height: 24),
-          AuthTextField(
-            label: 'Số điện thoại',
-            hintText: 'Nhập số điện thoại',
-            icon: Icons.phone_outlined,
-            controller: idController,
-            keyboardType: TextInputType.phone,
-            textInputAction: TextInputAction.next,
-          ),
-          const SizedBox(height: 16),
-          AuthTextField(
-            label: 'Mật khẩu',
-            hintText: 'Nhập mật khẩu',
-            icon: Icons.lock_outline,
-            controller: passwordController,
-            obscureText: true,
-            textInputAction: TextInputAction.done,
-          ),
-          const SizedBox(height: 14),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: isLoading
-                  ? null
-                  : () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => ForgotPasswordPage(
-                            forgotPasswordService: forgotPasswordService,
-                          ),
-                        ),
-                      );
-                    },
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.deepBlue,
-                padding: EdgeInsets.zero,
-                minimumSize: const Size(0, 16),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: const Text(
-                'Quên mật khẩu?',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  height: 16 / 12,
-                  letterSpacing: 0.6,
-                ),
-              ),
+      child: Form(
+        key: formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _Greeting(),
+            const SizedBox(height: 24),
+            AuthTextField(
+              label: 'Số điện thoại',
+              hintText: 'Nhập số điện thoại',
+              icon: Icons.phone_outlined,
+              controller: idController,
+              keyboardType: TextInputType.phone,
+              textInputAction: TextInputAction.next,
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? 'Vui lòng nhập số điện thoại'
+                  : null,
             ),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: isLoading ? null : onLogin,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                disabledBackgroundColor: AppColors.primary.withValues(
-                  alpha: 0.72,
-                ),
-                foregroundColor: Colors.white,
-                disabledForegroundColor: Colors.white,
-                elevation: 0,
-                shadowColor: Colors.black.withValues(alpha: 0.1),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: isLoading
-                  ? const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
+            const SizedBox(height: 16),
+            AuthTextField(
+              label: 'Mật khẩu',
+              hintText: 'Nhập mật khẩu',
+              icon: Icons.lock_outline,
+              controller: passwordController,
+              obscureText: true,
+              textInputAction: TextInputAction.done,
+              validator: (value) => value == null || value.isEmpty
+                  ? 'Vui lòng nhập mật khẩu'
+                  : null,
+            ),
+            const SizedBox(height: 14),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: isLoading
+                    ? null
+                    : () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => ForgotPasswordPage(
+                              forgotPasswordService: forgotPasswordService,
                             ),
                           ),
-                        ),
-                        SizedBox(width: 12),
-                        Text(
-                          'Đang đăng nhập...',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            height: 24 / 16,
-                          ),
-                        ),
-                      ],
-                    )
-                  : const Text('Đăng nhập', style: AppTypography.button),
+                        );
+                      },
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.deepBlue,
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(0, 16),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text(
+                  'Quên mật khẩu?',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    height: 16 / 12,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: isLoading ? null : onLogin,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  disabledBackgroundColor: AppColors.primary.withValues(
+                    alpha: 0.72,
+                  ),
+                  foregroundColor: Colors.white,
+                  disabledForegroundColor: Colors.white,
+                  elevation: 0,
+                  shadowColor: Colors.black.withValues(alpha: 0.1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppColors.radiusLg),
+                  ),
+                ),
+                child: isLoading
+                    ? const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Text(
+                            'Đang đăng nhập...',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              height: 24 / 16,
+                            ),
+                          ),
+                        ],
+                      )
+                    : const Text('Đăng nhập', style: AppTypography.button),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

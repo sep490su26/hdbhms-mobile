@@ -2,10 +2,15 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hdbhms_mobile/models/change_request/change_request_model.dart';
 import 'package:hdbhms_mobile/models/contract/lease_contract_model.dart';
+import 'package:hdbhms_mobile/models/room_transfer/room_transfer_model.dart';
 import 'package:hdbhms_mobile/screens/contract/lease_contract_screen.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
+import 'package:hdbhms_mobile/services/change_request/change_request_service.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
+import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,18 +19,27 @@ class _FakeLeaseContractService extends LeaseContractService {
   const _FakeLeaseContractService({
     this.contract,
     this.error,
-    this.onRecordIntention,
+    this.submitRenewalError,
+    this.onSubmitRenewal,
+    this.onRecordOccupantIntention,
   });
 
   final LeaseContract? contract;
   final Object? error;
+  final Object? submitRenewalError;
   final void Function(
     int contractId,
-    String intention,
-    DateTime? expectedMoveOutDate,
+    DateTime newStartDate,
+    DateTime newEndDate,
+    int renewalTermMonths,
+    num monthlyRent,
+    int paymentCycleMonths,
+    num depositAmount,
     String note,
   )?
-  onRecordIntention;
+  onSubmitRenewal;
+  final void Function(int contractId, String intention, String note)?
+  onRecordOccupantIntention;
 
   @override
   Future<LeaseContract> getMyActiveContract({int? tenantId}) async {
@@ -43,13 +57,131 @@ class _FakeLeaseContractService extends LeaseContractService {
     DateTime? expectedMoveOutDate,
     String note = '',
   }) async {
-    onRecordIntention?.call(contractId, intention, expectedMoveOutDate, note);
     return contract!;
+  }
+
+  @override
+  Future<LeaseContract> recordOccupantIntention({
+    required int contractId,
+    required String intention,
+    String note = '',
+  }) async {
+    onRecordOccupantIntention?.call(contractId, intention, note);
+    return contract!;
+  }
+
+  @override
+  Future<void> submitLiquidationRequest({
+    required int contractId,
+    DateTime? liquidationDate,
+    String reason = '',
+    String? liquidationMode,
+    List<int> leavingProfileIds = const [],
+    List<int> stayingProfileIds = const [],
+    int? replacementPrimaryTenantProfileId,
+  }) async {
+    return;
+  }
+
+  @override
+  Future<void> submitRenewalRequest({
+    required int contractId,
+    required DateTime newStartDate,
+    required DateTime newEndDate,
+    required int renewalTermMonths,
+    required num monthlyRent,
+    required int paymentCycleMonths,
+    required num depositAmount,
+    String note = '',
+  }) async {
+    final error = submitRenewalError;
+    if (error != null) {
+      throw error;
+    }
+    onSubmitRenewal?.call(
+      contractId,
+      newStartDate,
+      newEndDate,
+      renewalTermMonths,
+      monthlyRent,
+      paymentCycleMonths,
+      depositAmount,
+      note,
+    );
+  }
+}
+
+class _FakeChangeRequestService extends ChangeRequestService {
+  const _FakeChangeRequestService(this.requests);
+
+  final List<ChangeRequest> requests;
+
+  @override
+  Future<List<ChangeRequest>> getMyRequests({
+    ChangeRequestType? type,
+    ChangeRequestStatus? status,
+    String? search,
+    int? roomId,
+    String? roomCode,
+    int page = 0,
+    int size = 50,
+  }) async {
+    return requests
+        .where((request) => type == null || request.requestType == type)
+        .where((request) => status == null || request.status == status)
+        .toList(growable: false);
+  }
+}
+
+class _EmptyRoomTransferService extends RoomTransferService {
+  const _EmptyRoomTransferService();
+
+  @override
+  Future<List<RoomTransferRequest>> fetchPendingHolderNominations() async {
+    return const [];
   }
 }
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('dedupe active rooms ignores transferred source contracts', () {
+    final rooms = dedupeActiveRoomsByRoom([
+      ActiveRoomItem(
+        contractId: 18,
+        contractCode: 'HD-101-OLD',
+        roomId: 101,
+        roomCode: '101',
+        roomName: 'Phong 101',
+        propertyName: 'CS1',
+        contractStatus: 'TRANSFERRED',
+        startDate: DateTime(2026, 1),
+      ),
+      ActiveRoomItem(
+        contractId: 24,
+        contractCode: 'HD-101-NEW',
+        roomId: 101,
+        roomCode: '101',
+        roomName: 'Phong 101',
+        propertyName: 'CS1',
+        contractStatus: 'ACTIVE',
+        startDate: DateTime(2026, 7),
+      ),
+      ActiveRoomItem(
+        contractId: 12,
+        contractCode: 'HD-102-EXPIRED',
+        roomId: 102,
+        roomCode: '102',
+        roomName: 'Phong 102',
+        propertyName: 'CS1',
+        contractStatus: 'EXPIRED',
+        startDate: DateTime(2025, 1),
+      ),
+    ]);
+
+    expect(rooms, hasLength(1));
+    expect(rooms.single.contractId, 24);
+  });
 
   test(
     'LeaseContractService loads active contract from current-user endpoint',
@@ -148,6 +280,142 @@ void main() {
     },
   );
 
+  test('LeaseContractService submits add co-occupant request', () async {
+    SharedPreferences.setMockInitialValues({
+      AuthService.accessTokenKey: 'token-123',
+      AuthService.tenantIdKey: 23,
+    });
+
+    final service = LeaseContractService(
+      client: MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(
+          request.url.path,
+          '/api/v1/lease-contracts/9/co-occupant-requests',
+        );
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['fullName'], 'Nguyen Van B');
+        expect(body['phone'], '0912345678');
+        expect(body['email'], 'b@example.com');
+        expect(body['note'], 'O cung tu thang nay');
+
+        return http.Response(
+          jsonEncode({
+            'data': {
+              'id': 99,
+              'requestType': 'ADD_CO_OCCUPANT',
+              'status': 'PENDING',
+            },
+          }),
+          201,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }),
+    );
+
+    await service.submitAddCoOccupantRequest(
+      contractId: 9,
+      fullName: 'Nguyen Van B',
+      phone: '0912345678',
+      email: 'b@example.com',
+      note: 'O cung tu thang nay',
+    );
+  });
+
+  test('LeaseContractService submits liquidation date', () async {
+    SharedPreferences.setMockInitialValues({
+      AuthService.accessTokenKey: 'token-123',
+      AuthService.tenantIdKey: 23,
+    });
+
+    final service = LeaseContractService(
+      client: MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(
+          request.url.path,
+          '/api/v1/lease-contracts/9/liquidation-requests',
+        );
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['liquidationDate'], '2026-08-15');
+        expect(body['reason'], 'Can thanh ly som');
+
+        return http.Response(
+          jsonEncode({
+            'data': {
+              'id': 99,
+              'requestType': 'CONTRACT_LIQUIDATION',
+              'status': 'PENDING',
+            },
+          }),
+          201,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }),
+    );
+
+    await service.submitLiquidationRequest(
+      contractId: 9,
+      liquidationDate: DateTime(2026, 8, 15),
+      reason: ' Can thanh ly som ',
+    );
+  });
+
+  test('LeaseContractService records occupant intention', () async {
+    SharedPreferences.setMockInitialValues({
+      AuthService.accessTokenKey: 'token-123',
+      AuthService.tenantIdKey: 23,
+    });
+
+    var callCount = 0;
+    final service = LeaseContractService(
+      client: MockClient((request) async {
+        callCount++;
+        if (callCount == 1) {
+          expect(request.method, 'POST');
+          expect(
+            request.url.path,
+            '/api/v1/lease-contracts/9/occupant-intention',
+          );
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          expect(body['intention'], 'JOIN_RENEWAL');
+          expect(body['note'], 'O tiep neu hop dong moi duoc ky');
+
+          return http.Response(
+            jsonEncode({
+              'data': {'id': 9},
+            }),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+
+        expect(request.method, 'GET');
+        expect(request.url.path, '/api/v1/lease-contracts/9');
+        return http.Response(
+          jsonEncode({
+            'data': {
+              'id': 9,
+              'contractCode': 'HD-201',
+              'status': 'ACTIVE',
+              'room': {'roomCode': '201', 'name': 'Phòng 201'},
+              'occupantIntention': 'JOIN_RENEWAL',
+            },
+          }),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }),
+    );
+
+    final contract = await service.recordOccupantIntention(
+      contractId: 9,
+      intention: 'JOIN_RENEWAL',
+      note: ' O tiep neu hop dong moi duoc ky ',
+    );
+
+    expect(contract.occupantIntention, 'JOIN_RENEWAL');
+  });
+
   testWidgets('contract screen shows expiring warning and room 201 data', (
     tester,
   ) async {
@@ -172,86 +440,287 @@ void main() {
     expect(find.text('Quản lý tài liệu'), findsOneWidget);
   });
 
-  testWidgets(
-    'contract screen warns before terminate flow when contract has less than one month left',
-    (tester) async {
-      final contract = _contract(
-        endDate: DateTime.now().add(const Duration(days: 20)),
-      );
+  testWidgets('contract screen opens the full-screen liquidation form', (
+    tester,
+  ) async {
+    final contract = _contract(
+      endDate: DateTime.now().add(const Duration(days: 20)),
+    );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: LeaseContractScreen(
-            contractService: _FakeLeaseContractService(contract: contract),
-          ),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LeaseContractScreen(
+          contractService: _FakeLeaseContractService(contract: contract),
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.text('Thanh lý\nhợp đồng'));
-      await tester.tap(find.text('Thanh lý\nhợp đồng'));
-      await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Thanh lý hợp đồng'));
+    await tester.tap(find.text('Thanh lý hợp đồng'));
+    await tester.pumpAndSettle();
 
-      expect(find.textContaining('Hợp đồng còn dưới 1 tháng'), findsOneWidget);
-      expect(find.text('Tạo yêu cầu hủy'), findsOneWidget);
+    expect(find.text('Yêu cầu kết thúc hợp đồng'), findsOneWidget);
+    expect(find.text('Ngày thanh lý'), findsOneWidget);
+  });
 
-      await tester.tap(find.text('Tạo yêu cầu hủy'));
-      await tester.pumpAndSettle();
+  testWidgets('liquidation progress waits at approval for pending request', (
+    tester,
+  ) async {
+    final request = ChangeRequest(
+      id: 44,
+      requestCode: 'CR-44',
+      requestType: ChangeRequestType.contractLiquidation,
+      title: 'Yeu cau thanh ly hop dong HD-TEST',
+      description: 'Can thanh ly som',
+      status: ChangeRequestStatus.pending,
+      requesterId: 1,
+      createdAt: DateTime(2026, 8, 1, 9),
+      requestPayload: jsonEncode({
+        'contractId': 9,
+        'roomId': 201,
+        'roomCode': '201',
+        'liquidationDate': '2026-08-15',
+      }),
+    );
 
-      expect(find.text('Thanh lý hợp đồng'), findsOneWidget);
-      expect(find.text('HD-201'), findsOneWidget);
-      expect(find.textContaining('Hợp đồng còn dưới 1 tháng'), findsOneWidget);
-    },
-  );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TenantRequestScreen(
+          changeRequestService: _FakeChangeRequestService([request]),
+          roomTransferService: const _EmptyRoomTransferService(),
+          roomId: 201,
+          roomCode: '201',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
 
-  testWidgets(
-    'contract screen shows tenant intention dropdown and submits move out reason',
-    (tester) async {
-      String? recordedIntention;
-      DateTime? recordedExpectedMoveOutDate;
-      String? recordedNote;
-      final moveOutDate = DateTime.now().add(const Duration(days: 30));
-      final contract = _contract(
-        endDate: moveOutDate,
-        isPrimary: true,
-        canRecordIntention: true,
-        tenantIntention: 'MOVE_OUT',
-        expectedVacantDate: moveOutDate,
-      );
+    await tester.tap(find.text('Xem chi tiết').first);
+    await tester.pumpAndSettle();
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: LeaseContractScreen(
-            contractService: _FakeLeaseContractService(
-              contract: contract,
-              onRecordIntention:
-                  (contractId, intention, expectedMoveOutDate, note) {
-                    recordedIntention = intention;
-                    recordedExpectedMoveOutDate = expectedMoveOutDate;
-                    recordedNote = note;
-                  },
+    expect(find.text('Ti\u1EBFn tr\u00ECnh thanh l\u00FD'), findsOneWidget);
+    final approvalSubtitle = tester.widget<Text>(
+      find.text('\u0110ang ch\u1EDD quy\u1EBFt \u0111\u1ECBnh'),
+    );
+    expect(approvalSubtitle.style?.fontWeight, FontWeight.w800);
+    final laterSubtitles = tester.widgetList<Text>(
+      find.text('Ch\u01B0a t\u1EDBi b\u01B0\u1EDBc n\u00E0y'),
+    );
+    expect(
+      laterSubtitles.any((text) => text.style?.fontWeight == FontWeight.w800),
+      isFalse,
+    );
+    await tester.pump(const Duration(seconds: 16));
+  });
+
+  testWidgets('liquidation refund confirmation shows tenant action', (
+    tester,
+  ) async {
+    final request = ChangeRequest(
+      id: 45,
+      requestCode: 'CR-45',
+      requestType: ChangeRequestType.contractLiquidation,
+      title: 'Yeu cau thanh ly hop dong HD-TEST',
+      description: 'Can thanh ly som',
+      status: ChangeRequestStatus.processing,
+      requesterId: 1,
+      createdAt: DateTime(2026, 8, 1, 9),
+      requestPayload: jsonEncode({
+        'contractId': 9,
+        'roomId': 201,
+        'roomCode': '201',
+        'liquidationDate': '2026-08-15',
+        'liquidationStage': 'WAITING_PAYMENT',
+        'depositRefundStatus': 'RECORDED_BY_MANAGER',
+        'depositRefundAmount': 2000,
+      }),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TenantRequestScreen(
+          changeRequestService: _FakeChangeRequestService([request]),
+          roomTransferService: const _EmptyRoomTransferService(),
+          roomId: 201,
+          roomCode: '201',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Xem chi tiết').first);
+    await tester.pumpAndSettle();
+
+    final refundSubtitle = tester.widget<Text>(
+      find.text('Ch\u1EDD b\u1EA1n x\u00E1c nh\u1EADn \u00B7 2.000\u0111'),
+    );
+    expect(refundSubtitle.style?.fontWeight, FontWeight.w800);
+    expect(
+      find.text('\u0110\u00E3 nh\u1EADn ti\u1EC1n c\u1ECDc'),
+      findsOneWidget,
+    );
+    await tester.pump(const Duration(seconds: 16));
+  });
+
+  testWidgets('contract screen shows error when renewal request submit fails', (
+    tester,
+  ) async {
+    final contract = _contract(
+      endDate: DateTime.now().add(const Duration(days: 20)),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LeaseContractScreen(
+          contractService: _FakeLeaseContractService(
+            contract: contract,
+            submitRenewalError: const LeaseContractException(
+              'Hợp đồng đã có yêu cầu đang chờ duyệt.',
             ),
           ),
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(find.text('Ý định'), findsOneWidget);
-      expect(find.text('Chuyển đi / Không tái ký'), findsOneWidget);
-      expect(find.text('Ngày dự kiến chuyển đi'), findsOneWidget);
-      expect(find.text('Lý do'), findsOneWidget);
+    await tester.ensureVisible(find.text('Gia hạn hợp đồng'));
+    await tester.tap(find.text('Gia hạn hợp đồng'));
+    await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.text('Lưu ý định'));
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), 'Gia đình chuyển đi');
-      await tester.tap(find.text('Lưu ý định'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.text('Gửi yêu cầu gia hạn'));
+    await tester.pumpAndSettle();
 
-      expect(recordedIntention, 'MOVE_OUT');
-      expect(recordedExpectedMoveOutDate, contract.endDate);
-      expect(recordedNote, 'Gia đình chuyển đi');
-    },
-  );
+    expect(find.text('Hợp đồng đã có yêu cầu đang chờ duyệt.'), findsWidgets);
+  });
+
+  testWidgets('contract screen sends custom extension term months', (
+    tester,
+  ) async {
+    int? submittedMonths;
+    DateTime? submittedStartDate;
+    DateTime? submittedEndDate;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LeaseContractScreen(
+          contractService: _FakeLeaseContractService(
+            contract: _contract(endDate: DateTime(2026, 7, 31)),
+            onSubmitRenewal:
+                (
+                  contractId,
+                  newStartDate,
+                  newEndDate,
+                  renewalTermMonths,
+                  monthlyRent,
+                  paymentCycleMonths,
+                  depositAmount,
+                  note,
+                ) {
+                  submittedMonths = renewalTermMonths;
+                  submittedStartDate = newStartDate;
+                  submittedEndDate = newEndDate;
+                },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Gia hạn hợp đồng'));
+    await tester.tap(find.text('Gia hạn hợp đồng'));
+    await tester.pumpAndSettle();
+
+    final termField = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextField && widget.decoration?.hintText == 'Ví dụ: 9',
+    );
+    await tester.enterText(termField, '18');
+    await tester.tap(find.text('Gửi yêu cầu gia hạn'));
+    await tester.pumpAndSettle();
+
+    expect(submittedMonths, 18);
+    expect(submittedStartDate, DateTime(2026, 8, 1));
+    expect(submittedEndDate, DateTime(2028, 1, 31));
+  });
+
+  testWidgets('contract screen blocks extension term under 6 months', (
+    tester,
+  ) async {
+    int? submittedMonths;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LeaseContractScreen(
+          contractService: _FakeLeaseContractService(
+            contract: _contract(endDate: DateTime(2026, 7, 31)),
+            onSubmitRenewal:
+                (
+                  contractId,
+                  newStartDate,
+                  newEndDate,
+                  renewalTermMonths,
+                  monthlyRent,
+                  paymentCycleMonths,
+                  depositAmount,
+                  note,
+                ) {
+                  submittedMonths = renewalTermMonths;
+                },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Gia hạn hợp đồng'));
+    await tester.tap(find.text('Gia hạn hợp đồng'));
+    await tester.pumpAndSettle();
+
+    final termField = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextField && widget.decoration?.hintText == 'Ví dụ: 9',
+    );
+    await tester.enterText(termField, '5');
+    await tester.tap(find.text('Gửi yêu cầu gia hạn'));
+    await tester.pumpAndSettle();
+
+    expect(submittedMonths, isNull);
+    expect(find.text('Thời hạn gia hạn tối thiểu 6 tháng.'), findsWidgets);
+  });
+
+  testWidgets('co-occupant records intention from contract screen', (
+    tester,
+  ) async {
+    int? submittedContractId;
+    String? submittedIntention;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LeaseContractScreen(
+          contractService: _FakeLeaseContractService(
+            contract: _contract(coOccupantCanRecord: true),
+            onRecordOccupantIntention: (contractId, intention, note) {
+              submittedContractId = contractId;
+              submittedIntention = intention;
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ý định của bạn'), findsOneWidget);
+    expect(find.text('Gia hạn\nhợp đồng'), findsNothing);
+
+    await tester.ensureVisible(find.text('Tiếp tục ở\nnếu tái ký'));
+    await tester.tap(find.text('Tiếp tục ở\nnếu tái ký'));
+    await tester.pumpAndSettle();
+
+    expect(submittedContractId, 9);
+    expect(submittedIntention, 'JOIN_RENEWAL');
+    expect(find.text('Đã lưu ý định của bạn.'), findsOneWidget);
+  });
 
   testWidgets('contract screen shows empty state with retry', (tester) async {
     await tester.pumpWidget(
@@ -276,9 +745,7 @@ void main() {
 LeaseContract _contract({
   DateTime? endDate,
   bool isPrimary = false,
-  bool canRecordIntention = false,
-  String tenantIntention = '',
-  DateTime? expectedVacantDate,
+  bool coOccupantCanRecord = false,
 }) {
   return LeaseContract(
     id: 9,
@@ -301,10 +768,12 @@ LeaseContract _contract({
       LeaseServiceFee(name: 'Phí dịch vụ (cố định)', amount: 50000),
     ],
     contractFileUrl: '',
-    tenantIntention: tenantIntention,
-    expectedVacantDate: expectedVacantDate,
-    roleInContract: isPrimary ? 'PRIMARY' : '',
+    roleInContract: isPrimary
+        ? 'PRIMARY'
+        : coOccupantCanRecord
+        ? 'CO_OCCUPANT'
+        : '',
     isPrimary: isPrimary,
-    canRecordIntention: canRecordIntention,
+    canRecordOccupantIntention: coOccupantCanRecord,
   );
 }

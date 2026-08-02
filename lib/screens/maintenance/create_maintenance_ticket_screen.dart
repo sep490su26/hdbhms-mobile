@@ -11,6 +11,8 @@ import 'package:hdbhms_mobile/services/maintenance/maintenance_ticket_service.da
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
+import 'package:hdbhms_mobile/widgets/app_filter_chip.dart';
+import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
@@ -22,11 +24,17 @@ class CreateMaintenanceTicketScreen extends StatefulWidget {
     this.ticketService = const MaintenanceTicketService(),
     this.currentRoomService = const CurrentRoomService(),
     this.imagePicker,
+    this.roomId,
+    this.roomCode = '',
+    this.notificationInitialUnreadCount,
   });
 
   final MaintenanceTicketService ticketService;
   final CurrentRoomService currentRoomService;
   final ImagePicker? imagePicker;
+  final int? roomId;
+  final String roomCode;
+  final int? notificationInitialUnreadCount;
 
   @override
   State<CreateMaintenanceTicketScreen> createState() =>
@@ -46,6 +54,7 @@ class _CreateMaintenanceTicketScreenState
   CurrentRentedRoom? _currentRoom;
   String? _attachmentError;
   bool _isSubmitting = false;
+  bool _repairRequested = true;
   final List<MaintenanceAttachment> _attachments = [];
 
   ImagePicker get _imagePicker => widget.imagePicker ?? ImagePicker();
@@ -64,6 +73,15 @@ class _CreateMaintenanceTicketScreenState
   }
 
   Future<void> _loadCurrentRoom() async {
+    final selectedRoomId = widget.roomId ?? 0;
+    if (selectedRoomId > 0) {
+      _currentRoom = CurrentRentedRoom(
+        id: selectedRoomId,
+        roomCode: widget.roomCode.trim(),
+      );
+      return;
+    }
+
     try {
       final room = await widget.currentRoomService.getCurrentRentedRoom();
       if (!mounted) {
@@ -102,19 +120,27 @@ class _CreateMaintenanceTicketScreenState
               mainAxisSize: MainAxisSize.min,
               children: [
                 ListTile(
-                  leading: const Icon(
-                    Icons.image_outlined,
-                    color: AppColors.deepBlue,
+                  iconColor: AppColors.deepBlue,
+                  textColor: AppColors.inputText,
+                  titleTextStyle: const TextStyle(
+                    color: AppColors.inputText,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
                   ),
+                  leading: const Icon(Icons.image_outlined),
                   title: const Text('Chọn ảnh'),
                   onTap: () =>
                       Navigator.of(context).pop(_AttachmentSource.image),
                 ),
                 ListTile(
-                  leading: const Icon(
-                    Icons.videocam_outlined,
-                    color: AppColors.deepBlue,
+                  iconColor: AppColors.deepBlue,
+                  textColor: AppColors.inputText,
+                  titleTextStyle: const TextStyle(
+                    color: AppColors.inputText,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
                   ),
+                  leading: const Icon(Icons.videocam_outlined),
                   title: const Text('Chọn video'),
                   onTap: () =>
                       Navigator.of(context).pop(_AttachmentSource.video),
@@ -163,7 +189,7 @@ class _CreateMaintenanceTicketScreenState
       final attachment = await _buildAttachment(file, fallbackType);
       if (attachment == null) {
         setState(() {
-          _attachmentError = 'File không hợp lệ';
+          _attachmentError = 'Tệp không hợp lệ';
         });
         return;
       }
@@ -217,10 +243,11 @@ class _CreateMaintenanceTicketScreenState
 
     final isValid = _formKey.currentState?.validate() ?? false;
     if (!isValid) {
+      _showSnackBar('Vui lòng hoàn thành các trường bắt buộc');
       return;
     }
     final room = _currentRoom;
-    if (room == null) {
+    if (room == null || room.id <= 0) {
       _showSnackBar('Không tìm thấy phòng đang thuê');
       return;
     }
@@ -239,6 +266,7 @@ class _CreateMaintenanceTicketScreenState
             _descriptionController.text,
           ),
           description: _descriptionController.text.trim(),
+          repairRequested: _repairRequested,
           attachments: List.unmodifiable(_attachments),
         ),
       );
@@ -331,9 +359,10 @@ class _CreateMaintenanceTicketScreenState
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const AppNotificationBell(
+            icon: AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: AppColors.topBarIconSize,
+              initialUnreadCount: widget.notificationInitialUnreadCount,
             ),
             tooltip: 'Thông báo',
           ),
@@ -354,97 +383,162 @@ class _CreateMaintenanceTicketScreenState
           header: _buildHeader(),
           child: Form(
             key: _formKey,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
             child: SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(14, 18, 14, 26 + bottomInset),
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const _IntroCard(),
-                  const SizedBox(height: 18),
-                  const _FieldLabel('Danh mục sự cố'),
-                  const SizedBox(height: 6),
-                  DropdownButtonFormField<TicketCategory>(
-                    initialValue: _selectedCategory,
-                    items: TicketCategory.values
-                        .map(
-                          (category) => DropdownMenuItem(
-                            value: category,
-                            child: Text(category.label),
-                          ),
-                        )
-                        .toList(growable: false),
-                    onChanged: _isSubmitting
-                        ? null
-                        : (value) {
-                            setState(() {
-                              _selectedCategory = value;
-                            });
-                          },
-                    validator: (value) =>
-                        value == null ? 'Vui lòng chọn loại sự cố' : null,
-                    decoration: _inputDecoration(hintText: 'Chọn loại sự cố'),
-                    icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                  ),
+                  _IntroCard(room: _currentRoom),
                   const SizedBox(height: 14),
-                  const _FieldLabel('Mô tả chi tiết'),
-                  const SizedBox(height: 6),
-                  TextFormField(
-                    controller: _descriptionController,
-                    enabled: !_isSubmitting,
-                    minLines: 5,
-                    maxLines: 7,
-                    textInputAction: TextInputAction.newline,
-                    validator: (value) => value == null || value.trim().isEmpty
-                        ? 'Vui lòng mô tả vấn đề'
-                        : null,
-                    decoration: _inputDecoration(
-                      hintText:
-                          'Mô tả chi tiết vấn đề (ví dụ: vị trí, âm thanh, mức độ khẩn cấp)...',
+                  _FormSurface(
+                    header: const _FormSectionHeader(
+                      icon: Icons.report_problem_outlined,
+                      title: 'Thông tin sự cố',
+                      subtitle: 'Cho biết vấn đề để quản lý dễ tiếp nhận.',
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  _AttachmentHeader(count: _attachments.length),
-                  const SizedBox(height: 7),
-                  Row(
-                    children: [
-                      for (var index = 0; index < _maxAttachments; index++) ...[
-                        Expanded(
-                          child: _UploadSlot(
-                            attachment: index < _attachments.length
-                                ? _attachments[index]
-                                : null,
-                            enabled: !_isSubmitting,
-                            onTap: _pickAttachment,
-                            onRemove: index < _attachments.length
-                                ? () => _removeAttachment(index)
-                                : null,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const _FieldLabel('Danh mục sự cố', required: true),
+                        const SizedBox(height: 6),
+                        FormField<TicketCategory>(
+                          initialValue: _selectedCategory,
+                          validator: (value) =>
+                              value == null ? 'Vui lòng chọn loại sự cố' : null,
+                          builder: (field) => Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _CategoryChipSelector(
+                                selectedCategory: field.value,
+                                enabled: !_isSubmitting,
+                                onSelected: (category) {
+                                  field.didChange(category);
+                                  setState(() {
+                                    _selectedCategory = category;
+                                  });
+                                },
+                              ),
+                              if (field.hasError) ...[
+                                const SizedBox(height: 7),
+                                Text(
+                                  field.errorText!,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
-                        if (index < _maxAttachments - 1)
-                          const SizedBox(width: 8),
+                        const SizedBox(height: 16),
+                        const _FieldLabel('Mô tả chi tiết', required: true),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: _descriptionController,
+                          enabled: !_isSubmitting,
+                          minLines: 5,
+                          maxLines: 7,
+                          textInputAction: TextInputAction.newline,
+                          style: const TextStyle(
+                            color: AppColors.inputText,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            height: 18 / 13,
+                          ),
+                          validator: (value) =>
+                              value == null || value.trim().isEmpty
+                              ? 'Vui lòng mô tả vấn đề'
+                              : null,
+                          decoration: _inputDecoration(
+                            hintText:
+                                'Mô tả chi tiết vấn đề (ví dụ: vị trí, âm thanh, mức độ khẩn cấp)...',
+                          ),
+                        ),
                       ],
-                    ],
-                  ),
-                  if (_attachmentError != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      _attachmentError!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
                     ),
-                  ],
+                  ),
+                  const SizedBox(height: 12),
+                  _FormSurface(
+                    header: _FormSectionHeader(
+                      icon: Icons.add_photo_alternate_outlined,
+                      title: 'Hình ảnh hoặc video',
+                      subtitle: 'Thêm tối đa 3 tệp để minh họa sự cố.',
+                      trailing: _AttachmentCount(count: _attachments.length),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            for (
+                              var index = 0;
+                              index < _maxAttachments;
+                              index++
+                            ) ...[
+                              Expanded(
+                                child: _UploadSlot(
+                                  attachment: index < _attachments.length
+                                      ? _attachments[index]
+                                      : null,
+                                  enabled: !_isSubmitting,
+                                  onTap: _pickAttachment,
+                                  onRemove: index < _attachments.length
+                                      ? () => _removeAttachment(index)
+                                      : null,
+                                ),
+                              ),
+                              if (index < _maxAttachments - 1)
+                                const SizedBox(width: 8),
+                            ],
+                          ],
+                        ),
+                        if (_attachmentError != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            _attachmentError!,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _FormSurface(
+                    header: const _FormSectionHeader(
+                      icon: Icons.tune_rounded,
+                      title: 'Hướng xử lý mong muốn',
+                      subtitle:
+                          'Chọn cách quản lý nên phản hồi với yêu cầu này.',
+                    ),
+                    child: _RepairIntentSelector(
+                      repairRequested: _repairRequested,
+                      enabled: !_isSubmitting,
+                      onChanged: (value) {
+                        setState(() {
+                          _repairRequested = value;
+                        });
+                      },
+                    ),
+                  ),
                   const SizedBox(height: 32),
                   SizedBox(
                     width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton.icon(
+                    child: AppPrimaryGradientButton(
                       onPressed: _isSubmitting ? null : _submit,
-                      icon: _isSubmitting
-                          ? const SizedBox(
+                      height: 56,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_isSubmitting)
+                            const SizedBox(
                               width: 18,
                               height: 18,
                               child: CircularProgressIndicator(
@@ -452,27 +546,22 @@ class _CreateMaintenanceTicketScreenState
                                 color: Colors.white,
                               ),
                             )
-                          : const Icon(Icons.send_rounded, size: 18),
-                      label: Text(
-                        _isSubmitting ? 'Đang gửi...' : 'GỬI YÊU CẦU',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          height: 18 / 14,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        disabledBackgroundColor: AppColors.primary.withValues(
-                          alpha: 0.58,
-                        ),
-                        foregroundColor: Colors.white,
-                        disabledForegroundColor: Colors.white,
-                        elevation: 0,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
+                          else
+                            const Icon(
+                              Icons.send_rounded,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _isSubmitting ? 'Đang gửi...' : 'GỬI YÊU CẦU',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              height: 18 / 14,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -489,13 +578,25 @@ class _CreateMaintenanceTicketScreenState
         onSupportTap: () {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (context) => const MaintenanceTicketListScreen(),
+              builder: (context) => MaintenanceTicketListScreen(
+                ticketService: widget.ticketService,
+                currentRoomService: widget.currentRoomService,
+                roomId: _activeRoomId,
+                roomCode: _activeRoomCode,
+                notificationInitialUnreadCount:
+                    widget.notificationInitialUnreadCount,
+              ),
             ),
           );
         },
         onBillsTap: () {
           Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const BillSelectionPage()),
+            MaterialPageRoute(
+              builder: (context) => BillSelectionPage(
+                roomId: _activeRoomId,
+                roomCode: _activeRoomCode,
+              ),
+            ),
           );
         },
         onProfileTap: () {
@@ -506,15 +607,32 @@ class _CreateMaintenanceTicketScreenState
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+          MaterialPageRoute(
+            builder: (context) => TenantRequestScreen(
+              roomId: _activeRoomId,
+              roomCode: _activeRoomCode,
+            ),
+          ),
         ),
       ),
     );
   }
+
+  int? get _activeRoomId {
+    final id = _currentRoom?.id ?? widget.roomId;
+    return (id ?? 0) > 0 ? id : null;
+  }
+
+  String get _activeRoomCode {
+    final code = _currentRoom?.roomCode ?? widget.roomCode;
+    return code.trim();
+  }
 }
 
 class _IntroCard extends StatelessWidget {
-  const _IntroCard();
+  const _IntroCard({required this.room});
+
+  final CurrentRentedRoom? room;
 
   @override
   Widget build(BuildContext context) {
@@ -523,7 +641,7 @@ class _IntroCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 22, 24, 22),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: const Color(0xFFEAE8EA)),
         boxShadow: [
           BoxShadow(
@@ -533,7 +651,7 @@ class _IntroCard extends StatelessWidget {
           ),
         ],
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -555,32 +673,321 @@ class _IntroCard extends StatelessWidget {
               height: 18 / 13,
             ),
           ),
+          if (room != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.primarySurface,
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.meeting_room_outlined,
+                    size: 18,
+                    color: AppColors.deepBlue,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'PHÒNG ÁP DỤNG',
+                          style: TextStyle(
+                            color: AppColors.bodyText,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                            height: 13 / 10,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          room!.roomCode.isEmpty
+                              ? 'Phòng đang thuê'
+                              : 'Phòng ${room!.roomCode}',
+                          style: const TextStyle(
+                            color: AppColors.deepBlue,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            height: 17 / 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _AttachmentHeader extends StatelessWidget {
-  const _AttachmentHeader({required this.count});
+class _FormSurface extends StatelessWidget {
+  const _FormSurface({required this.header, required this.child});
+
+  final Widget header;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        border: Border.all(color: AppColors.cardBorder.withValues(alpha: 0.85)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [header, const SizedBox(height: 16), child],
+      ),
+    );
+  }
+}
+
+class _CategoryChipSelector extends StatelessWidget {
+  const _CategoryChipSelector({
+    required this.selectedCategory,
+    required this.enabled,
+    required this.onSelected,
+  });
+
+  final TicketCategory? selectedCategory;
+  final bool enabled;
+  final ValueChanged<TicketCategory> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final category in TicketCategory.values) ...[
+            AppFilterChip(
+              label: category.label,
+              icon: _categoryIcon(category),
+              isActive: selectedCategory == category,
+              onTap: enabled ? () => onSelected(category) : () {},
+            ),
+            if (category != TicketCategory.values.last)
+              const SizedBox(width: 8),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _FormSectionHeader extends StatelessWidget {
+  const _FormSectionHeader({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: AppColors.primarySurface,
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
+          ),
+          child: Icon(icon, color: AppColors.deepBlue, size: 19),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: AppColors.inputText,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  height: 18 / 14,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: AppColors.bodyText,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  height: 15 / 11,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (trailing != null) ...[const SizedBox(width: 8), trailing!],
+      ],
+    );
+  }
+}
+
+class _AttachmentCount extends StatelessWidget {
+  const _AttachmentCount({required this.count});
 
   final int count;
 
   @override
   Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
+      ),
+      child: Text(
+        '$count/3',
+        style: const TextStyle(
+          color: AppColors.deepBlue,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          height: 14 / 11,
+        ),
+      ),
+    );
+  }
+}
+
+class _RepairIntentSelector extends StatelessWidget {
+  const _RepairIntentSelector({
+    required this.repairRequested,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final bool repairRequested;
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
       children: [
-        const Expanded(child: _FieldLabel('Đính kèm ảnh/video (Tối đa 3 ảnh)')),
-        Text(
-          '$count/3',
-          style: const TextStyle(
-            color: AppColors.bodyText,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            height: 15 / 11,
+        Expanded(
+          child: _RepairIntentOption(
+            selected: repairRequested,
+            enabled: enabled,
+            icon: Icons.handyman_outlined,
+            title: 'Cần sửa chữa',
+            subtitle: 'Nhờ quản lý xử lý sự cố',
+            onTap: () => onChanged(true),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _RepairIntentOption(
+            selected: !repairRequested,
+            enabled: enabled,
+            icon: Icons.info_outline_rounded,
+            title: 'Chỉ báo sự cố',
+            subtitle: 'Ghi nhận để quản lý theo dõi',
+            onTap: () => onChanged(false),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _RepairIntentOption extends StatelessWidget {
+  const _RepairIntentOption({
+    required this.selected,
+    required this.enabled,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final bool selected;
+  final bool enabled;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = selected ? AppColors.deepBlue : AppColors.cardBorder;
+    return Material(
+      color: selected
+          ? AppColors.deepBlue.withValues(alpha: 0.07)
+          : AppColors.surface,
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 92),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+            border: Border.all(color: borderColor, width: selected ? 1.5 : 1),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, color: AppColors.deepBlue, size: 20),
+                  const Spacer(),
+                  Icon(
+                    selected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    color: selected ? AppColors.deepBlue : AppColors.bodyText,
+                    size: 18,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: AppColors.inputText,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  height: 16 / 13,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: AppColors.bodyText,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  height: 15 / 11,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -613,7 +1020,7 @@ class _UploadSlot extends StatelessWidget {
               ),
               child: Material(
                 color: AppColors.surface,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
                   onTap: enabled ? onTap : null,
@@ -629,7 +1036,7 @@ class _UploadSlot extends StatelessWidget {
               top: -8,
               right: -7,
               child: Material(
-                color: const Color(0xFF111827),
+                color: AppColors.neutralStrong,
                 shape: const CircleBorder(),
                 child: InkWell(
                   customBorder: const CircleBorder(),
@@ -720,19 +1127,32 @@ class _AttachmentPreview extends StatelessWidget {
 }
 
 class _FieldLabel extends StatelessWidget {
-  const _FieldLabel(this.text);
+  const _FieldLabel(this.text, {this.required = false});
 
   final String text;
+  final bool required;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        color: AppColors.bodyText,
-        fontSize: 12,
-        fontWeight: FontWeight.w800,
-        height: 16 / 12,
+    return Semantics(
+      label: required ? '$text, bắt buộc' : text,
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(
+            color: AppColors.bodyText,
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            height: 16 / 12,
+          ),
+          children: [
+            TextSpan(text: text),
+            if (required)
+              const TextSpan(
+                text: ' *',
+                style: TextStyle(color: AppColors.danger),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -773,12 +1193,29 @@ class _DashedBorderPainter extends CustomPainter {
 
 enum _AttachmentSource { image, video }
 
-InputDecoration _inputDecoration({String? hintText}) {
+InputDecoration _inputDecoration({String? hintText, IconData? prefixIcon}) {
   return InputDecoration(
     hintText: hintText,
+    hintStyle: const TextStyle(
+      color: AppColors.bodyText,
+      fontSize: 13,
+      fontWeight: FontWeight.w600,
+      height: 18 / 13,
+    ),
     filled: true,
     fillColor: AppColors.surface,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+    contentPadding: EdgeInsets.fromLTRB(
+      prefixIcon == null ? 14 : 0,
+      13,
+      14,
+      13,
+    ),
+    prefixIcon: prefixIcon == null
+        ? null
+        : Icon(prefixIcon, color: AppColors.bodyText, size: 20),
+    prefixIconConstraints: prefixIcon == null
+        ? null
+        : const BoxConstraints(minWidth: 46, minHeight: 48),
     border: _fieldBorder,
     enabledBorder: _fieldBorder,
     focusedBorder: _fieldBorder.copyWith(
@@ -788,9 +1225,22 @@ InputDecoration _inputDecoration({String? hintText}) {
 }
 
 final OutlineInputBorder _fieldBorder = OutlineInputBorder(
-  borderRadius: BorderRadius.circular(8),
+  borderRadius: BorderRadius.circular(AppColors.radiusSm),
   borderSide: const BorderSide(color: AppColors.cardBorder),
 );
+
+IconData _categoryIcon(TicketCategory category) {
+  return switch (category) {
+    TicketCategory.equipment => Icons.inventory_2_outlined,
+    TicketCategory.electricity => Icons.bolt_outlined,
+    TicketCategory.water => Icons.water_drop_outlined,
+    TicketCategory.airConditioner => Icons.ac_unit_rounded,
+    TicketCategory.internet => Icons.wifi_rounded,
+    TicketCategory.doorLock => Icons.lock_outline_rounded,
+    TicketCategory.cleaningDrainage => Icons.cleaning_services_outlined,
+    TicketCategory.other => Icons.more_horiz_rounded,
+  };
+}
 
 String _generateTitle(TicketCategory category, String description) {
   final firstLine = description

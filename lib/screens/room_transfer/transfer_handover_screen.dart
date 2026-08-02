@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:hdbhms_mobile/widgets/app_date_picker.dart';
 
 import 'package:hdbhms_mobile/models/room_transfer/room_transfer_model.dart';
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
+import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 
 /// Collects handover data (meter readings + assets) for both old and new rooms,
 /// then calls the execute-transfer endpoint.
@@ -63,7 +65,7 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
 
   Future<void> _pickDate(bool isOut) async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
+    final picked = await AppDatePicker.show(
       context: context,
       initialDate: isOut ? (_outDate ?? now) : (_inDate ?? now),
       firstDate: DateTime(2020),
@@ -144,7 +146,7 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
         title: const Text(
           'Xác nhận thực hiện chuyển phòng',
           style: TextStyle(fontWeight: FontWeight.w800),
@@ -165,7 +167,7 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
               ),
             ),
             child: const Text('Xác nhận'),
@@ -222,7 +224,7 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
           padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(AppColors.radiusLg),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -232,11 +234,11 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
                 height: 64,
                 decoration: BoxDecoration(
                   color: const Color(0xFFF0FFF4),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(AppColors.radiusLg),
                 ),
                 child: const Icon(
                   Icons.check_circle,
-                  color: Color(0xFF16A34A),
+                  color: AppColors.successText,
                   size: 36,
                 ),
               ),
@@ -274,7 +276,7 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
                     backgroundColor: AppColors.deepBlue,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
                     ),
                     elevation: 0,
                   ),
@@ -303,7 +305,8 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  // ignore: unused_element
+  Widget _buildLegacyHeader() {
     return Container(
       height: AppColors.topBarHeight,
       padding: const EdgeInsets.fromLTRB(4, 0, 8, 0),
@@ -337,6 +340,13 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
     );
   }
 
+  Widget _buildHeader() {
+    return AppTopBar(
+      title: 'Bàn giao chuyển phòng',
+      onBack: () => Navigator.of(context).maybePop(),
+    );
+  }
+
   Widget _buildBody() {
     final transfer = widget.transferRequest;
 
@@ -347,8 +357,8 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFFEFF1FF),
-            borderRadius: BorderRadius.circular(10),
+            color: AppColors.primarySurface,
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
           ),
           child: Row(
             children: [
@@ -426,13 +436,13 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
           child: ElevatedButton(
             onPressed: _submitting ? null : _submit,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF16A34A),
+              backgroundColor: AppColors.successText,
               foregroundColor: Colors.white,
               disabledBackgroundColor: const Color(
                 0xFF16A34A,
               ).withValues(alpha: 0.5),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
               ),
               elevation: 0,
             ),
@@ -492,7 +502,7 @@ class _SettlementSection extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(
@@ -567,19 +577,19 @@ class _SettlementOptionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final activeColor = selected ? AppColors.deepBlue : const Color(0xFF9CA3AF);
     final textColor = enabled
-        ? const Color(0xFF111827)
+        ? AppColors.neutralStrong
         : const Color(0xFF9CA3AF);
 
     return InkWell(
       onTap: enabled ? onTap : null,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
           color: selected
               ? AppColors.deepBlue.withValues(alpha: 0.06)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
           border: Border.all(
             color: selected
                 ? AppColors.deepBlue.withValues(alpha: 0.55)
@@ -614,7 +624,7 @@ class _SettlementOptionTile extends StatelessWidget {
                     subtitle,
                     style: TextStyle(
                       color: enabled
-                          ? const Color(0xFF6B7280)
+                          ? AppColors.neutral
                           : const Color(0xFF9CA3AF),
                       fontSize: 12,
                     ),
@@ -660,7 +670,7 @@ class _HandoverSection extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(
@@ -702,13 +712,13 @@ class _HandoverSection extends StatelessWidget {
           const SizedBox(height: 6),
           InkWell(
             onTap: onPickDate,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: AppColors.inputFill,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 border: Border.all(color: AppColors.border),
               ),
               child: Row(
