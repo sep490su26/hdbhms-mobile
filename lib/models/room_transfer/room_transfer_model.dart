@@ -138,9 +138,9 @@ enum TransferRequestStatus {
       case TransferRequestStatus.waitingContractConfirmation:
         return 'Đang chuẩn bị hợp đồng';
       case TransferRequestStatus.waitingSigning:
-        return 'Chờ quản lý xử lý ký';
+        return 'Chờ hoàn tất ký hợp đồng';
       case TransferRequestStatus.waitingContractSigning:
-        return 'Chờ quản lý xử lý ký';
+        return 'Chờ hoàn tất ký hợp đồng';
       case TransferRequestStatus.waitingTransferDate:
         return 'Sẵn sàng chuyển phòng';
       case TransferRequestStatus.readyForHandover:

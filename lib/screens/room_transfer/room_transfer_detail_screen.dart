@@ -1231,7 +1231,9 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        ),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
         content: Text(content),
         actions: [
@@ -2399,7 +2401,8 @@ class _StatusBanner extends StatelessWidget {
         ),
         TransferRequestStatus.waitingPayment => const Color(0xFFFFF7ED),
         TransferRequestStatus.waitingSigning => AppColors.primarySurface,
-        TransferRequestStatus.waitingContractSigning => AppColors.primarySurface,
+        TransferRequestStatus.waitingContractSigning =>
+          AppColors.primarySurface,
         TransferRequestStatus.waitingTransferDate => AppColors.infoSurface,
         TransferRequestStatus.readyForHandover => AppColors.infoSurface,
         TransferRequestStatus.waitingExecution => AppColors.infoSurface,
@@ -2491,9 +2494,9 @@ class _StatusBanner extends StatelessWidget {
         TransferRequestStatus.waitingPayment =>
           'Cần thanh toán hóa đơn chênh lệch.',
         TransferRequestStatus.waitingSigning =>
-          'Chờ quản lý upload hợp đồng đã ký.',
+          'Chờ quản lý xác nhận đủ bộ hợp đồng đã ký.',
         TransferRequestStatus.waitingContractSigning =>
-          'Chờ quản lý upload hợp đồng đã ký.',
+          'Chờ quản lý xác nhận đủ bộ hợp đồng đã ký.',
         TransferRequestStatus.waitingTransferDate =>
           'Hồ sơ đã sẵn sàng, chờ ngày chuyển.',
         TransferRequestStatus.readyForHandover =>
@@ -3048,7 +3051,7 @@ class _StatusTimeline extends StatelessWidget {
           TransferRequestStatus.waitingSigning,
           TransferRequestStatus.waitingContractSigning,
         ],
-        label: 'Quản lý xử lý ký',
+        label: 'Hoàn tất ký',
         icon: Icons.draw_outlined,
       ),
     );
