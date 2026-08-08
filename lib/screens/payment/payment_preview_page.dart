@@ -100,16 +100,11 @@ class PaymentPreviewPage extends StatelessWidget {
       ),
       TenantInvoiceLine(
         id: -105,
-        lineType: 'WATER',
-        description: 'Tiền nước',
-        quantity: 14,
-        unitPrice: 13000,
+        lineType: 'SERVICE',
+        description: 'Phí nước & dịch vụ',
+        quantity: 1,
+        unitPrice: 182000,
         amount: 182000,
-        previousValue: 56,
-        currentValue: 70,
-        usageAmount: 14,
-        canComplain: true,
-        reviewStatus: 'NONE',
       ),
       TenantInvoiceLine(
         id: -107,
@@ -198,7 +193,7 @@ class PaymentPreviewPage extends StatelessWidget {
               const SizedBox(height: 8),
               _PreviewTile(
                 icon: Icons.receipt_long_rounded,
-                title: 'Chi tiết hóa đơn điện nước',
+                title: 'Chi tiết hóa đơn tiền điện & dịch vụ',
                 subtitle: 'Hiển thị chỉ số và quyền khiếu nại',
                 onTap: () =>
                     _openBillDetail(context, _reviewableUtilityInvoice),
@@ -206,7 +201,7 @@ class PaymentPreviewPage extends StatelessWidget {
               const SizedBox(height: 8),
               _PreviewTile(
                 icon: Icons.report_problem_outlined,
-                title: 'Khiếu nại điện nước',
+                title: 'Khiếu nại tiền điện',
                 subtitle: 'Kiểm tra form phản hồi chỉ số',
                 onTap: () => _openComplaint(context, _reviewableUtilityInvoice),
               ),
@@ -222,8 +217,8 @@ class PaymentPreviewPage extends StatelessWidget {
               const SizedBox(height: 8),
               _PreviewTile(
                 icon: Icons.qr_code_rounded,
-                title: 'QR điện nước và dịch vụ',
-                subtitle: 'Hóa đơn điện nước',
+                title: 'QR tiền điện & dịch vụ',
+                subtitle: 'Hóa đơn tiền điện & dịch vụ',
                 onTap: () => _openQr(context, _utilityInvoice),
               ),
               const SizedBox(height: 8),
@@ -241,8 +236,8 @@ class PaymentPreviewPage extends StatelessWidget {
               const SizedBox(height: 8),
               _PreviewTile(
                 icon: Icons.check_circle_outline_rounded,
-                title: 'Thanh toán thành công điện nước',
-                subtitle: 'Trạng thái hoàn tất của hóa đơn điện nước',
+                title: 'Thanh toán thành công tiền điện & dịch vụ',
+                subtitle: 'Trạng thái hoàn tất của hóa đơn tiền điện & dịch vụ',
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) =>
@@ -256,7 +251,8 @@ class PaymentPreviewPage extends StatelessWidget {
               _PreviewTile(
                 icon: Icons.history_rounded,
                 title: 'Lịch sử thanh toán nhiều kỳ',
-                subtitle: 'Dữ liệu từ 01/2025 đến 07/2026 để thử bộ lọc tháng/năm',
+                subtitle:
+                    'Dữ liệu từ 01/2025 đến 07/2026 để thử bộ lọc tháng/năm',
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => PaymentHistoryPage(
@@ -278,7 +274,7 @@ class PaymentPreviewPage extends StatelessWidget {
               const SizedBox(height: 8),
               _PreviewTile(
                 icon: Icons.download_rounded,
-                title: 'Mẫu QR điện nước và dịch vụ',
+                title: 'Mẫu QR tiền điện & dịch vụ',
                 subtitle: 'Xem trước ảnh QR có thể tải về',
                 onTap: () => _openReceiptPreview(context, _utilityInvoice),
               ),

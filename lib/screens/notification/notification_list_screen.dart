@@ -7,6 +7,7 @@ import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 import '../../models/notification/notification_model.dart';
 import '../../services/notification/notification_service.dart';
+import '../../utils/display_formatters.dart';
 import '../../widgets/app_screen_shell.dart';
 import '../../widgets/app_skeleton.dart';
 import '../../widgets/app_list_state.dart';
@@ -841,19 +842,7 @@ class _NotificationDetailDialog extends StatelessWidget {
   }
 
   String _formatDetailTime(DateTime dt) {
-    const days = [
-      'Thứ Hai',
-      'Thứ Ba',
-      'Thứ Tư',
-      'Thứ Năm',
-      'Thứ Sáu',
-      'Thứ Bảy',
-      'Chủ Nhật',
-    ];
-    final dayName = days[dt.weekday - 1];
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
-    return '$dayName, ${dt.day} tháng ${dt.month} ${dt.year} lúc $h:$m';
+    return formatDateTimeVN(dt).replaceFirst(' ', ' • ');
   }
 }
 

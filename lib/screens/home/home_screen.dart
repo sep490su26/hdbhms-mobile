@@ -180,12 +180,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 10),
               const SizedBox(height: 18),
-              const _SectionHeading('Điện & Nước'),
+              const _SectionHeading('Điện năng'),
               const SizedBox(height: 17),
               _UtilitiesSection(
                 utilities: _provider.roomUtilitySummary,
                 electricityTrend: _provider.electricityTrend,
-                waterTrend: _provider.waterTrend,
                 invoiceService: widget.tenantInvoiceService,
               ),
               const SizedBox(height: 17),
@@ -1090,13 +1089,11 @@ class _UtilitiesSection extends StatelessWidget {
   const _UtilitiesSection({
     required this.utilities,
     required this.electricityTrend,
-    required this.waterTrend,
     required this.invoiceService,
   });
 
   final UtilitySummary utilities;
   final UtilityInvoiceTrend? electricityTrend;
-  final UtilityInvoiceTrend? waterTrend;
   final TenantInvoiceService invoiceService;
 
   @override
@@ -1112,17 +1109,6 @@ class _UtilitiesSection extends StatelessWidget {
           icon: Icons.bolt_rounded,
           iconColor: AppColors.warning,
           iconBackground: const Color(0xFFFFF7D6),
-        ),
-        const SizedBox(height: 16),
-        _UtilityCard(
-          usage: utilities.water,
-          trend: waterTrend,
-          invoiceService: invoiceService,
-          title: 'Nước',
-          unit: 'm³',
-          icon: Icons.water_drop_outlined,
-          iconColor: AppColors.accent,
-          iconBackground: const Color(0xFFE5FAF6),
         ),
       ],
     );
@@ -1258,6 +1244,24 @@ class _UtilityCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (activeTrend != null) ...[
+              const SizedBox(height: 14),
+              Container(height: 1, color: AppColors.cardBorder),
+              const SizedBox(height: 10),
+              _ElectricityPeriodMetric(
+                label: 'Tiêu thụ kỳ này',
+                value: activeTrend.currentUsage == null
+                    ? '--'
+                    : '${_formatUsageValue(activeTrend.currentUsage!)} $displayUnit',
+              ),
+              const SizedBox(height: 7),
+              _ElectricityPeriodMetric(
+                label: 'Tiền điện kỳ này',
+                value: activeTrend.line.amount == 0
+                    ? '--'
+                    : '${_formatAmount(activeTrend.line.amount)} đ',
+              ),
+            ],
             if (activeTrend != null || showFallbackStatus) ...[
               const SizedBox(height: 14),
               Container(height: 1, color: AppColors.cardBorder),
@@ -1300,6 +1304,21 @@ class _UtilityCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ElectricityPeriodMetric extends StatelessWidget {
+  const _ElectricityPeriodMetric({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(child: Text(label, style: AppTypography.metaLabel)),
+      Text(value, style: AppTypography.metaValue),
+    ],
+  );
 }
 
 class _UtilityReadingMetric extends StatelessWidget {

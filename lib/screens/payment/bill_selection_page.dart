@@ -168,7 +168,8 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
         invoice.canPay &&
         (invoice.qrCode.isNotEmpty || invoice.transferDescription.isNotEmpty);
 
-    if (isUtility || !canOpenQr) {
+    // The list is only an index: every invoice is reviewed before payment.
+    if (invoice.isTenantVisible || isUtility || !canOpenQr) {
       Navigator.of(context)
           .push(
             MaterialPageRoute(
@@ -337,7 +338,7 @@ String _typeFilterEmptyLabel(_BillTypeFilter filter) {
   return switch (filter) {
     _BillTypeFilter.all => '',
     _BillTypeFilter.rent => 'tiền phòng',
-    _BillTypeFilter.utility => 'điện nước & dịch vụ',
+    _BillTypeFilter.utility => 'tiền điện & dịch vụ',
     _BillTypeFilter.other => 'khác',
   };
 }
@@ -517,7 +518,7 @@ class _BillFilterBar extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               AppFilterChip(
-                label: 'Điện nước & DV',
+                label: 'Điện & dịch vụ',
                 icon: Icons.bolt_rounded,
                 isActive: activeType == _BillTypeFilter.utility,
                 onTap: () => onTypeChanged(_BillTypeFilter.utility),
@@ -756,16 +757,6 @@ class _PendingBillCard extends StatelessWidget {
                                 ),
                               ),
                               _InvoiceTypePill(invoice: invoice),
-                              Text(
-                                'Hạn: ${_formatDate(invoice.dueDate)}',
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: AppColors.bodyText,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  height: 15 / 11,
-                                ),
-                              ),
                             ],
                           ),
                           const SizedBox(height: 12),
@@ -790,15 +781,38 @@ class _PendingBillCard extends StatelessWidget {
                               ),
                             ],
                           ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.calendar_today_outlined,
+                                color: AppColors.warningText,
+                                size: 14,
+                              ),
+                              const SizedBox(width: 7),
+                              const Text(
+                                'Hạn nộp',
+                                style: TextStyle(
+                                  color: AppColors.bodyText,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _formatDate(invoice.dueDate),
+                                style: const TextStyle(
+                                  color: AppColors.warningText,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
                           if (invoice.utilityMeterLines.isNotEmpty) ...[
                             const SizedBox(height: 12),
                             if (invoice.hasOpenMeterReadingReview)
-                              const _ReviewStatusChip()
-                            else if (invoice.reviewableUtilityLines.isNotEmpty)
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: _ComplaintButton(onTap: onComplain),
-                              ),
+                              const _ReviewStatusChip(),
                           ],
                         ],
                       ),
@@ -845,6 +859,8 @@ class _ReviewStatusChip extends StatelessWidget {
   }
 }
 
+// Retained only as a local presentation primitive for future contextual detail UI.
+// ignore: unused_element
 class _ComplaintButton extends StatelessWidget {
   const _ComplaintButton({required this.onTap});
   final VoidCallback onTap;
@@ -881,7 +897,7 @@ class _ComplaintButton extends StatelessWidget {
             ),
             SizedBox(width: 6),
             Text(
-              'Khiếu nại điện nước',
+              'Khiếu nại tiền điện',
               style: TextStyle(
                 color: AppColors.warningText,
                 fontSize: 12,

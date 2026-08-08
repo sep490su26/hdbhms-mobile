@@ -776,7 +776,7 @@ class _RequestCard extends StatelessWidget {
   final VoidCallback onTap;
 
   Color get _accentColor => switch (request.type) {
-    TenantRequestType.renewContract => AppColors.deepBlue,
+    TenantRequestType.renewContract => AppColors.actionBlue,
     TenantRequestType.terminateContract => AppColors.danger,
     TenantRequestType.changeRoom => const Color(0xFF0284C7),
     TenantRequestType.addRoommate => AppColors.successText,
@@ -784,7 +784,7 @@ class _RequestCard extends StatelessWidget {
   };
 
   Color get _accentBg => switch (request.type) {
-    TenantRequestType.renewContract => AppColors.primarySurface,
+    TenantRequestType.renewContract => AppColors.infoSurface,
     TenantRequestType.terminateContract => const Color(0xFFFFF0F0),
     TenantRequestType.changeRoom => const Color(0xFFEFF8FF),
     TenantRequestType.addRoommate => const Color(0xFFF0FFF4),
@@ -1095,7 +1095,7 @@ class _RequestDetailDialog extends StatelessWidget {
   };
 
   Color get _accentColor => switch (request.type) {
-    TenantRequestType.renewContract => AppColors.deepBlue,
+    TenantRequestType.renewContract => AppColors.actionBlue,
     TenantRequestType.terminateContract => AppColors.danger,
     TenantRequestType.changeRoom => const Color(0xFF0284C7),
     TenantRequestType.addRoommate => AppColors.successText,
@@ -1103,7 +1103,7 @@ class _RequestDetailDialog extends StatelessWidget {
   };
 
   Color get _accentBg => switch (request.type) {
-    TenantRequestType.renewContract => AppColors.primarySurface,
+    TenantRequestType.renewContract => AppColors.infoSurface,
     TenantRequestType.terminateContract => const Color(0xFFFFF0F0),
     TenantRequestType.changeRoom => const Color(0xFFEFF8FF),
     TenantRequestType.addRoommate => const Color(0xFFF0FFF4),
@@ -1611,7 +1611,7 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
 
   Color get _accentColor => switch (widget.changeRequest.requestType) {
     ChangeRequestType.roomTransfer => const Color(0xFF0284C7),
-    ChangeRequestType.contractRenewal => AppColors.deepBlue,
+    ChangeRequestType.contractRenewal => AppColors.actionBlue,
     ChangeRequestType.contractLiquidation => AppColors.danger,
     ChangeRequestType.moveOut => AppColors.danger,
     ChangeRequestType.depositRefundRequest => AppColors.successText,
@@ -1624,7 +1624,7 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
 
   Color get _accentBg => switch (widget.changeRequest.requestType) {
     ChangeRequestType.roomTransfer => const Color(0xFFEFF8FF),
-    ChangeRequestType.contractRenewal => AppColors.primarySurface,
+    ChangeRequestType.contractRenewal => AppColors.infoSurface,
     ChangeRequestType.contractLiquidation => const Color(0xFFFFF0F0),
     ChangeRequestType.moveOut => const Color(0xFFFFF0F0),
     ChangeRequestType.depositRefundRequest => const Color(0xFFF0FFF4),

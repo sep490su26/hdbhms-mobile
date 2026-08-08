@@ -225,9 +225,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
         .toList(growable: false);
   }
 
-  Future<void> _selectPaidDateFilter(
-    List<TenantInvoice> paidInvoices,
-  ) async {
+  Future<void> _selectPaidDateFilter(List<TenantInvoice> paidInvoices) async {
     final now = DateTime.now();
     final lastMonth = DateTime(now.year, now.month);
     final datedInvoices = paidInvoices
@@ -409,8 +407,8 @@ class _HistoryDateFilterControl extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppColors.radiusMd),
         child: Ink(
-          height: 52,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          height: 64,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: selectedMonth == null
                 ? AppColors.surface
@@ -424,40 +422,50 @@ class _HistoryDateFilterControl extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(
-                Icons.event_outlined,
-                size: 19,
-                color: selectedMonth == null
-                    ? AppColors.bodyText
-                    : AppColors.deepBlue,
-              ),
-              const SizedBox(width: 9),
-              const Text(
-                'Tháng giao dịch',
-                style: TextStyle(
-                  color: AppColors.bodyText,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                ),
+                child: Icon(
+                  Icons.calendar_month_outlined,
+                  size: 19,
+                  color: selectedMonth == null
+                      ? AppColors.bodyText
+                      : AppColors.primary,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 9),
               Expanded(
-                child: FittedBox(
-                  alignment: Alignment.centerRight,
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    _monthLabel(selectedMonth),
-                    maxLines: 1,
-                    style: const TextStyle(
-                      color: AppColors.deepBlue,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Thời gian giao dịch',
+                      style: TextStyle(
+                        color: AppColors.inputText,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _monthLabel(selectedMonth),
+                      maxLines: 1,
+                      style: const TextStyle(
+                        color: AppColors.bodyText,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const Icon(
-                Icons.keyboard_arrow_down_rounded,
+                Icons.chevron_right_rounded,
                 color: AppColors.deepBlue,
                 size: 20,
               ),
@@ -499,7 +507,7 @@ class _HistoryTypeFilterBar extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           AppFilterChip(
-            label: 'Điện nước & DV',
+            label: 'Điện & dịch vụ',
             icon: Icons.bolt_rounded,
             isActive: selectedFilter == _HistoryInvoiceTypeFilter.utility,
             onTap: () => onChanged(_HistoryInvoiceTypeFilter.utility),

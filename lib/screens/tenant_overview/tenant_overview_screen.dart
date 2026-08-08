@@ -963,27 +963,26 @@ class _RoomSectionHeader extends StatelessWidget {
         ),
         const SizedBox(width: AppColors.space8),
         Container(
-          padding: const EdgeInsets.fromLTRB(10, 7, 11, 7),
+          padding: const EdgeInsets.fromLTRB(9, 6, 10, 6),
           decoration: BoxDecoration(
-            color: AppColors.primarySurface,
-            borderRadius: BorderRadius.circular(AppColors.radiusMd),
-            border: Border.all(color: AppColors.primary.withValues(alpha: .18)),
+            color: AppColors.darkBlue,
+            borderRadius: BorderRadius.circular(AppColors.radiusPill),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(
                 Icons.meeting_room_outlined,
-                color: AppColors.primary,
-                size: 16,
+                color: Colors.white,
+                size: 14,
               ),
               const SizedBox(width: 6),
               Text(
                 '$roomCount phòng',
                 style: const TextStyle(
-                  color: AppColors.primary,
+                  color: Colors.white,
                   fontSize: 12,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                   height: 16 / 12,
                 ),
               ),
@@ -1035,7 +1034,7 @@ class _RoomOverviewCard extends StatelessWidget {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: AppColors.deepBlue,
+                  color: AppColors.darkBlue,
                   borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 ),
                 alignment: Alignment.center,
@@ -1046,7 +1045,7 @@ class _RoomOverviewCard extends StatelessWidget {
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 15,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),

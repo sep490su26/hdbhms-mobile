@@ -471,21 +471,23 @@ class _RoomSelector extends StatelessWidget {
         : 'Đổi phòng, đang chọn ${room!.displayName}',
     child: Material(
       color: AppColors.surface,
-      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         child: Container(
           padding: const EdgeInsets.all(AppColors.space12),
           decoration: BoxDecoration(
-            border: Border.all(color: AppColors.cardBorder),
-            borderRadius: BorderRadius.circular(AppColors.radiusSm),
+            border: Border.all(
+              color: AppColors.actionCyan.withValues(alpha: .42),
+            ),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
           ),
           child: Row(
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 46,
+                height: 46,
                 decoration: BoxDecoration(
                   color:
                       (room == null ? AppColors.actionCyan : AppColors.success)

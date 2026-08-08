@@ -180,7 +180,21 @@ class _RenewContractRequestScreenState
                           filled: true,
                           fillColor: AppColors.inputFill,
                           hintText: 'Ví dụ: 9',
-                          suffixText: 'tháng',
+                          suffixIconConstraints: const BoxConstraints(
+                            minWidth: 68,
+                            minHeight: AppColors.minimumTouchTarget,
+                          ),
+                          suffixIcon: Container(
+                            height: AppColors.minimumTouchTarget,
+                            alignment: Alignment.center,
+                            decoration: const BoxDecoration(
+                              color: AppColors.primarySurface,
+                              border: Border(
+                                left: BorderSide(color: AppColors.cardBorder),
+                              ),
+                            ),
+                            child: Text('tháng', style: AppTypography.label),
+                          ),
                           helper: Row(
                             children: [
                               const Icon(

@@ -7,7 +7,7 @@ import 'qr_payment_page.dart';
 import 'utility_complaint_screen.dart';
 
 /// Màn chi tiết hóa đơn: hiển thị breakdown từng dòng, trạng thái,
-/// nút thanh toán và (nếu là UTILITY) nút khiếu nại điện nước.
+/// nút thanh toán và (nếu là UTILITY) nút khiếu nại tiền điện.
 class BillDetailScreen extends StatelessWidget {
   const BillDetailScreen({
     super.key,
@@ -92,7 +92,9 @@ class BillDetailScreen extends StatelessWidget {
   };
 
   bool get _isUtility => invoice.isUtilityType;
-  bool get _hasComplainableLines => invoice.reviewableUtilityLines.isNotEmpty;
+  bool get _hasComplainableLines => invoice.reviewableUtilityLines.any(
+    (line) => line.lineType == 'ELECTRICITY',
+  );
   bool get _canPay => invoice.canPay && !invoice.hasOpenMeterReadingReview;
 
   @override
@@ -387,7 +389,9 @@ class BillDetailScreen extends StatelessWidget {
                             height: 36,
                             decoration: BoxDecoration(
                               color: color.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                              borderRadius: BorderRadius.circular(
+                                AppColors.radiusMd,
+                              ),
                             ),
                             child: Icon(icon, color: color, size: 19),
                           ),
@@ -440,7 +444,9 @@ class BillDetailScreen extends StatelessWidget {
                           padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                           decoration: BoxDecoration(
                             color: color.withValues(alpha: 0.06),
-                            borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                            borderRadius: BorderRadius.circular(
+                              AppColors.radiusSm,
+                            ),
                             border: Border.all(
                               color: color.withValues(alpha: 0.18),
                             ),
@@ -571,7 +577,12 @@ class BillDetailScreen extends StatelessWidget {
     // Review statuses for existing lines
     final lines = invoice.lines;
     final reviewLines = lines
-        .where((l) => l.reviewStatus.isNotEmpty && l.reviewStatus != 'NONE')
+        .where(
+          (l) =>
+              l.lineType == 'ELECTRICITY' &&
+              l.reviewStatus.isNotEmpty &&
+              l.reviewStatus != 'NONE',
+        )
         .toList();
 
     if (reviewLines.isNotEmpty) {
@@ -673,33 +684,25 @@ class BillDetailScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 46,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: [AppColors.deepBlue, AppColors.primary],
-                  ),
+                  color: AppColors.surface,
                   borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.warning.withValues(alpha: 0.24),
-                      blurRadius: 16,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
+                  border: Border.all(
+                    color: AppColors.warning.withValues(alpha: .72),
+                  ),
                 ),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
                       Icons.edit_note_rounded,
-                      color: Colors.white,
+                      color: AppColors.warningText,
                       size: 20,
                     ),
                     SizedBox(width: 8),
                     Text(
-                      'Gửi khiếu nại điện nước',
+                      'Gửi khiếu nại tiền điện',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.warningText,
                         fontSize: 14,
                         fontWeight: FontWeight.w900,
                       ),
@@ -707,7 +710,7 @@ class BillDetailScreen extends StatelessWidget {
                     SizedBox(width: 8),
                     Icon(
                       Icons.arrow_forward_rounded,
-                      color: Colors.white,
+                      color: AppColors.warningText,
                       size: 18,
                     ),
                   ],
@@ -954,7 +957,7 @@ class _ReviewStatusCard extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              isElec ? 'Khiếu nại điện' : 'Khiếu nại nước',
+              isElec ? 'Khiếu nại tiền điện' : 'Khiếu nại chỉ số',
               style: TextStyle(
                 color: color,
                 fontSize: 13,

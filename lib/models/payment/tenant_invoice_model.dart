@@ -105,7 +105,7 @@ class TenantInvoice {
   String get invoiceTypeLabel {
     return switch (normalizedInvoiceType) {
       'RENT' => 'Tiền phòng',
-      'UTILITY' => 'Điện nước & dịch vụ',
+      'UTILITY' => 'Tiền điện & dịch vụ',
       _ => 'Khác',
     };
   }
@@ -134,7 +134,7 @@ class TenantInvoice {
       return 'Bồi thường chi phí bảo trì';
     }
     if (isUtilityType) {
-      return 'Hóa đơn điện nước & dịch vụ ${_periodLabel(billingPeriod)}';
+      return 'Hóa đơn tiền điện & dịch vụ ${_periodLabel(billingPeriod)}';
     }
     if (isRentType) {
       return 'Hóa đơn tiền phòng ${_periodLabel(billingPeriod)}';
