@@ -42,12 +42,6 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
     super.dispose();
   }
 
-  String _lineLabel(TenantInvoiceLine line) {
-    if (line.lineType == 'ELECTRICITY') return 'Khiếu nại sai số điện';
-    if (line.lineType == 'WATER') return 'Khiếu nại sai số nước';
-    return line.description.isEmpty ? line.lineType : line.description;
-  }
-
   String _formatReading(double? value) {
     if (value == null) return '--';
     final asInt = value.truncateToDouble() == value;
@@ -176,65 +170,7 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
                                       ),
                                       const SizedBox(height: 16),
 
-                                      // Complaint type
-                                      const _FieldLabel(
-                                        'Loại khiếu nại',
-                                        required: true,
-                                      ),
-                                      const SizedBox(height: 6),
-                                      DropdownButtonFormField<
-                                        TenantInvoiceLine
-                                      >(
-                                        initialValue: _selectedLine,
-                                        items: _lines
-                                            .map(
-                                              (line) => DropdownMenuItem(
-                                                value: line,
-                                                child: Row(
-                                                  children: [
-                                                    Icon(
-                                                      line.lineType ==
-                                                              'ELECTRICITY'
-                                                          ? Icons.bolt_rounded
-                                                          : Icons
-                                                                .water_drop_rounded,
-                                                      color:
-                                                          line.lineType ==
-                                                              'ELECTRICITY'
-                                                          ? AppColors.warning
-                                                          : const Color(
-                                                              0xFF0EA5E9,
-                                                            ),
-                                                      size: 18,
-                                                    ),
-                                                    const SizedBox(width: 8),
-                                                    Text(_lineLabel(line)),
-                                                  ],
-                                                ),
-                                              ),
-                                            )
-                                            .toList(),
-                                        onChanged: _submitting
-                                            ? null
-                                            : (line) {
-                                                if (line == null) return;
-                                                setState(
-                                                  () => _selectedLine = line,
-                                                );
-                                              },
-                                        validator: (v) => v == null
-                                            ? 'Vui lòng chọn loại'
-                                            : null,
-                                        decoration: _fieldDecoration(
-                                          hintText: 'Chọn loại khiếu nại',
-                                          prefixIcon:
-                                              Icons.report_problem_outlined,
-                                        ),
-                                        icon: const Icon(
-                                          Icons.keyboard_arrow_down_rounded,
-                                          color: AppColors.bodyText,
-                                        ),
-                                      ),
+                                      const _ElectricityComplaintSummary(),
                                       const SizedBox(height: 16),
 
                                       // Reading snapshot
@@ -818,6 +754,47 @@ class _NoElectricityLineState extends StatelessWidget {
           'Chỉ số nước vẫn được hiển thị trong hóa đơn nhưng không hỗ trợ khiếu nại.',
           textAlign: TextAlign.center,
           style: TextStyle(color: AppColors.bodyText, fontSize: 13),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ElectricityComplaintSummary extends StatelessWidget {
+  const _ElectricityComplaintSummary();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: AppColors.warningSurface,
+      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+      border: Border.all(color: AppColors.warning.withValues(alpha: .3)),
+    ),
+    child: const Row(
+      children: [
+        Icon(Icons.bolt_rounded, color: AppColors.warning, size: 20),
+        SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Khiếu nại tiền điện',
+                style: TextStyle(
+                  color: AppColors.warningText,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              SizedBox(height: 3),
+              Text(
+                'Kiểm tra chỉ số điện của hóa đơn này',
+                style: TextStyle(color: AppColors.bodyText, fontSize: 12),
+              ),
+            ],
+          ),
         ),
       ],
     ),

@@ -30,15 +30,35 @@ class _RenewContractRequestScreenState
     extends State<RenewContractRequestScreen> {
   final _formKey = GlobalKey<FormState>();
   final _monthsController = TextEditingController(text: '12');
+  final _monthsFocusNode = FocusNode();
   final _noteController = TextEditingController();
   bool _submitting = false;
   String? _submitError;
+  bool _selectMonthsOnFocus = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _monthsFocusNode.addListener(_handleMonthsFocus);
+  }
+
+  void _handleMonthsFocus() {
+    if (!_monthsFocusNode.hasFocus || !_selectMonthsOnFocus) return;
+    _selectMonthsOnFocus = false;
+    _monthsController.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: _monthsController.text.length,
+    );
+  }
 
   int get _months => int.tryParse(_monthsController.text) ?? 0;
 
   @override
   void dispose() {
     _monthsController.dispose();
+    _monthsFocusNode
+      ..removeListener(_handleMonthsFocus)
+      ..dispose();
     _noteController.dispose();
     super.dispose();
   }
@@ -165,10 +185,17 @@ class _RenewContractRequestScreenState
                       const SizedBox(height: AppColors.space8),
                       TextFormField(
                         controller: _monthsController,
+                        focusNode: _monthsFocusNode,
                         keyboardType: TextInputType.number,
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                         ],
+                        onTap: () {
+                          if (_monthsFocusNode.hasFocus &&
+                              _selectMonthsOnFocus) {
+                            _handleMonthsFocus();
+                          }
+                        },
                         onChanged: (_) => setState(() {}),
                         validator: (value) {
                           final months = int.tryParse(value ?? '');
@@ -307,7 +334,11 @@ class _RenewContractRequestScreenState
     label: '$value tháng',
     isActive: _months == value,
     expanded: true,
-    onTap: () => setState(() => _monthsController.text = '$value'),
+    onTap: () {
+      _monthsFocusNode.unfocus();
+      _selectMonthsOnFocus = true;
+      setState(() => _monthsController.text = '$value');
+    },
   );
 }
 

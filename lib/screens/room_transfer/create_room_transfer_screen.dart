@@ -478,9 +478,14 @@ class _RoomSelector extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(AppColors.space12),
           decoration: BoxDecoration(
-            border: Border.all(
-              color: AppColors.actionCyan.withValues(alpha: .42),
-            ),
+            border: Border.all(color: AppColors.cardBorder),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.deepBlue.withValues(alpha: .04),
+                blurRadius: 12,
+                offset: const Offset(0, 5),
+              ),
+            ],
             borderRadius: BorderRadius.circular(AppColors.radiusMd),
           ),
           child: Row(

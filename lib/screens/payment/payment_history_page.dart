@@ -507,7 +507,7 @@ class _HistoryTypeFilterBar extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           AppFilterChip(
-            label: 'Điện & dịch vụ',
+            label: 'Tiền điện & dịch vụ',
             icon: Icons.bolt_rounded,
             isActive: selectedFilter == _HistoryInvoiceTypeFilter.utility,
             onTap: () => onChanged(_HistoryInvoiceTypeFilter.utility),

@@ -218,7 +218,6 @@ class _MonthYearPickerSheetState extends State<_MonthYearPickerSheet> {
                     : isAvailable
                     ? AppColors.surface
                     : AppColors.surfaceMuted.withValues(alpha: 0.58),
-                borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 shape: RoundedRectangleBorder(
                   side: BorderSide(
                     color: selected
@@ -255,7 +254,8 @@ class _MonthYearPickerSheetState extends State<_MonthYearPickerSheet> {
           const SizedBox(height: 20),
           Row(
             children: [
-              Expanded(
+              Flexible(
+                flex: 4,
                 child: OutlinedButton(
                   onPressed: () => Navigator.of(context).pop(DateTime(0)),
                   style: OutlinedButton.styleFrom(
@@ -268,7 +268,8 @@ class _MonthYearPickerSheetState extends State<_MonthYearPickerSheet> {
                 ),
               ),
               const SizedBox(width: 10),
-              Expanded(
+              Flexible(
+                flex: 6,
                 child: ElevatedButton(
                   onPressed: _pendingMonth == null
                       ? null

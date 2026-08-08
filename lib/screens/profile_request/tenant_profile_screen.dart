@@ -553,7 +553,7 @@ class _ContractEntrySection extends StatelessWidget {
         AppActionRowButton(
           icon: Icons.description_rounded,
           title: 'Xem danh sách hợp đồng',
-          subtitle: 'Hợp đồng thuê, cọc và tài liệu liên quan',
+          subtitle: 'Theo dõi hợp đồng thuê và tài liệu liên quan',
           accentColor: AppColors.accent,
           onTap: () {
             Navigator.of(context).push(

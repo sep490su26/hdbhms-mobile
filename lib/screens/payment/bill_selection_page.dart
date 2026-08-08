@@ -338,7 +338,7 @@ String _typeFilterEmptyLabel(_BillTypeFilter filter) {
   return switch (filter) {
     _BillTypeFilter.all => '',
     _BillTypeFilter.rent => 'tiền phòng',
-    _BillTypeFilter.utility => 'tiền điện & dịch vụ',
+    _BillTypeFilter.utility => 'Tiền điện & dịch vụ',
     _BillTypeFilter.other => 'khác',
   };
 }
@@ -518,7 +518,7 @@ class _BillFilterBar extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               AppFilterChip(
-                label: 'Điện & dịch vụ',
+                label: 'Tiền điện & dịch vụ',
                 icon: Icons.bolt_rounded,
                 isActive: activeType == _BillTypeFilter.utility,
                 onTap: () => onTypeChanged(_BillTypeFilter.utility),
@@ -791,7 +791,7 @@ class _PendingBillCard extends StatelessWidget {
                               ),
                               const SizedBox(width: 7),
                               const Text(
-                                'Hạn nộp',
+                                'Hạn nộp:',
                                 style: TextStyle(
                                   color: AppColors.bodyText,
                                   fontSize: 12,
@@ -802,7 +802,7 @@ class _PendingBillCard extends StatelessWidget {
                               Text(
                                 _formatDate(invoice.dueDate),
                                 style: const TextStyle(
-                                  color: AppColors.warningText,
+                                  color: AppColors.darkBlue,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                 ),

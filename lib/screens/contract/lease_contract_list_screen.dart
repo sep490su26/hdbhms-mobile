@@ -352,13 +352,16 @@ class _FilterBar extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            _FilterChip(
-              icon: Icons.calendar_month_outlined,
-              label: selectedDateRange != null
-                  ? '${_formatDate(selectedDateRange!.start)} – ${_formatDate(selectedDateRange!.end)}'
-                  : 'Ngày ký',
-              isActive: selectedDateRange != null,
-              onTap: onPickDateRange,
+            SizedBox(
+              width: 218,
+              child: _FilterChip(
+                icon: Icons.calendar_month_outlined,
+                label: selectedDateRange != null
+                    ? '${_formatDate(selectedDateRange!.start)} – ${_formatDate(selectedDateRange!.end)}'
+                    : 'Ngày ký hợp đồng',
+                isActive: selectedDateRange != null,
+                onTap: onPickDateRange,
+              ),
             ),
             const SizedBox(width: AppColors.space8),
             SizedBox(
@@ -418,7 +421,7 @@ class _FilterChip extends StatelessWidget {
           ),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: MainAxisSize.max,
           children: [
             Icon(
               icon,
@@ -426,14 +429,17 @@ class _FilterChip extends StatelessWidget {
               size: 15,
             ),
             const SizedBox(width: 6),
-            Text(
-              label,
-              maxLines: 1,
-              style: TextStyle(
-                color: isActive ? AppColors.deepBlue : AppColors.bodyText,
-                fontSize: 12,
-                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-                height: 14 / 11,
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: isActive ? AppColors.darkBlue : AppColors.bodyText,
+                  fontSize: 12,
+                  fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                  height: 14 / 11,
+                ),
               ),
             ),
           ],
@@ -513,13 +519,15 @@ class _StatusDropdown extends StatelessWidget {
   Future<void> _openSelector(BuildContext context) async {
     await showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: AppColors.surface,
       showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
+      builder: (sheetContext) => FractionallySizedBox(
+        heightFactor: 0.7,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
@@ -527,37 +535,34 @@ class _StatusDropdown extends StatelessWidget {
                 style: AppColors.topBarTitleStyle,
               ),
               const SizedBox(height: AppColors.space8),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  selectedStatus == null
-                      ? Icons.radio_button_checked_rounded
-                      : Icons.radio_button_off_rounded,
-                  color: selectedStatus == null
-                      ? AppColors.primary
-                      : AppColors.bodyText,
-                ),
-                title: const Text('Tất cả'),
-                onTap: () {
-                  onChanged(null);
-                  Navigator.of(sheetContext).pop();
-                },
-              ),
-              ...statusOptions.entries.map(
-                (entry) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(
-                    selectedStatus == entry.key
-                        ? Icons.radio_button_checked_rounded
-                        : Icons.radio_button_off_rounded,
-                    color: selectedStatus == entry.key
-                        ? AppColors.primary
-                        : AppColors.bodyText,
-                  ),
-                  title: Text(entry.value),
-                  onTap: () {
-                    onChanged(entry.key);
-                    Navigator.of(sheetContext).pop();
+              Expanded(
+                child: ListView.separated(
+                  itemCount: statusOptions.length + 1,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final isAll = index == 0;
+                    final entry = isAll
+                        ? null
+                        : statusOptions.entries.elementAt(index - 1);
+                    final isSelected = isAll
+                        ? selectedStatus == null
+                        : selectedStatus == entry!.key;
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        isSelected
+                            ? Icons.radio_button_checked_rounded
+                            : Icons.radio_button_off_rounded,
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.bodyText,
+                      ),
+                      title: Text(isAll ? 'Tất cả' : entry!.value),
+                      onTap: () {
+                        onChanged(isAll ? null : entry!.key);
+                        Navigator.of(sheetContext).pop();
+                      },
+                    );
                   },
                 ),
               ),
@@ -732,7 +737,7 @@ class _EmptyState extends StatelessWidget {
     onAction: onRetry,
     scrollable: true,
     onRefresh: () async => onRetry(),
-    topSpacing: 32,
+    topSpacing: 8,
   );
 }
 
