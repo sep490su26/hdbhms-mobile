@@ -180,7 +180,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 10),
               const SizedBox(height: 18),
-              const _SectionHeading('Điện năng'),
+              const _SectionHeading('Tiêu thụ điện'),
               const SizedBox(height: 17),
               _UtilitiesSection(
                 utilities: _provider.roomUtilitySummary,

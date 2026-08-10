@@ -146,7 +146,9 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        ),
         title: const Text(
           'Xác nhận thực hiện chuyển phòng',
           style: TextStyle(fontWeight: FontWeight.w800),

@@ -12,6 +12,7 @@ import '../../widgets/app_skeleton.dart';
 import '../../widgets/app_filter_chip.dart';
 import '../../widgets/app_list_state.dart';
 import '../../widgets/app_month_year_picker.dart';
+import '../../widgets/paid_invoice_card.dart';
 import '../../widgets/tenant_bottom_navigation.dart';
 import '../maintenance/maintenance_ticket_list_screen.dart';
 import '../notification/notification_list_screen.dart';
@@ -150,7 +151,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                   else ...[
                     for (var i = 0; i < filteredInvoices.length; i++) ...[
                       if (i > 0) const SizedBox(height: 12),
-                      _HistoryCard(invoice: filteredInvoices[i]),
+                      PaidInvoiceCard(invoice: filteredInvoices[i]),
                     ],
                   ],
                   const SizedBox(height: 12),
@@ -673,177 +674,6 @@ class _HistoryDateFilterOption extends StatelessWidget {
 
 // ── History Card (individual) ─────────────────────────────────────────────────
 
-class _HistoryCard extends StatelessWidget {
-  const _HistoryCard({required this.invoice});
-
-  final TenantInvoice invoice;
-
-  @override
-  Widget build(BuildContext context) {
-    final amount = _historyAmount(invoice);
-    final date = _historyDate(invoice);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusLg),
-        border: Border.all(color: AppColors.cardBorder),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.deepBlue.withValues(alpha: 0.05),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Left accent bar (green = paid)
-            Container(
-              width: 4,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [AppColors.success, Color(0xFF059669)],
-                ),
-                borderRadius: BorderRadius.horizontal(
-                  left: Radius.circular(16),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Icon
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEDEFFF),
-                        borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                      ),
-                      child: Icon(
-                        _historyIcon(invoice),
-                        color: AppColors.deepBlue,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Title & meta
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            invoice.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.inputText,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              height: 20 / 15,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            [
-                              if (invoice.roomCode.isNotEmpty)
-                                'Phòng ${invoice.roomCode}',
-                              _formatDate(date),
-                            ].join(' · '),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.bodyText,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              height: 17 / 12,
-                            ),
-                          ),
-                          if (invoice.invoiceCode.isNotEmpty) ...[
-                            const SizedBox(height: 3),
-                            Text(
-                              invoice.invoiceCode,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.hintText,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                height: 15 / 11,
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 10),
-                          // Paid badge
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFD7FBE4),
-                              borderRadius: BorderRadius.circular(
-                                AppColors.radiusPill,
-                              ),
-                            ),
-                            child: const FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.check_circle_rounded,
-                                    color: AppColors.successText,
-                                    size: 12,
-                                  ),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'ĐÃ THANH TOÁN',
-                                    style: TextStyle(
-                                      color: Color(0xFF15803D),
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w900,
-                                      height: 13 / 10,
-                                      letterSpacing: 0.4,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    // Amount
-                    Text(
-                      '${_formatAmount(amount)}đ',
-                      style: const TextStyle(
-                        color: AppColors.deepBlue,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        height: 21 / 16,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ── Loading ───────────────────────────────────────────────────────────────────
 
 class _HistoryLoading extends StatelessWidget {
@@ -1077,21 +907,4 @@ String _formatAmount(int amount) {
     buffer.write(value[index]);
   }
   return buffer.toString();
-}
-
-IconData _historyIcon(TenantInvoice invoice) {
-  final lineTypes = invoice.lines.map((line) => line.lineType).toSet();
-  if (lineTypes.contains('VIOLATION_FINE')) {
-    return Icons.gavel_rounded;
-  }
-  if (lineTypes.contains('MAINTENANCE_COMPENSATION')) {
-    return Icons.construction_rounded;
-  }
-  if (invoice.invoiceType == 'UTILITY') {
-    return Icons.flash_on_outlined;
-  }
-  if (invoice.invoiceType == 'RENT') {
-    return Icons.receipt_long_outlined;
-  }
-  return Icons.payments_outlined;
 }

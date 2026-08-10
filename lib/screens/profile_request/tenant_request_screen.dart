@@ -32,13 +32,28 @@ class TenantRequestScreen extends StatefulWidget {
     this.currentRoomService = const CurrentRoomService(),
     this.roomId,
     this.roomCode = '',
-  });
+    this.previewRequests,
+    this.previewChangeRequests,
+    this.initialFilterType,
+  }) : assert(
+         previewRequests == null || previewChangeRequests == null,
+         'Only one local preview data source can be supplied.',
+       );
 
   final ChangeRequestService changeRequestService;
   final RoomTransferService roomTransferService;
   final CurrentRoomService currentRoomService;
   final int? roomId;
   final String roomCode;
+
+  /// Local-only data for the internal preview launcher. When supplied, no
+  /// request is made to the backend and the regular list/detail UI is reused.
+  final List<TenantRequest>? previewRequests;
+
+  /// Local API-shaped data for previews that need the production detail
+  /// component, such as the liquidation progress timeline.
+  final List<ChangeRequest>? previewChangeRequests;
+  final TenantRequestType? initialFilterType;
 
   @override
   State<TenantRequestScreen> createState() => _TenantRequestScreenState();
@@ -63,6 +78,19 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (widget.previewRequests != null ||
+        widget.previewChangeRequests != null) {
+      _filterType = widget.initialFilterType;
+      if (widget.previewRequests != null) {
+        _requests.addAll(widget.previewRequests!);
+      }
+      for (final request
+          in widget.previewChangeRequests ?? const <ChangeRequest>[]) {
+        _changeRequestMap[request.id] = request;
+        _requests.add(_toTenantRequest(request));
+      }
+      return;
+    }
     _loadApiRequests();
   }
 
@@ -74,7 +102,11 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && mounted && !_loadingApi) {
+    if (widget.previewRequests == null &&
+        widget.previewChangeRequests == null &&
+        state == AppLifecycleState.resumed &&
+        mounted &&
+        !_loadingApi) {
       _loadApiRequests();
     }
   }
@@ -82,6 +114,10 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
   /// Fetches change requests from the backend API and converts them to
   /// [TenantRequest] objects for display in the unified list.
   Future<void> _loadApiRequests() async {
+    if (widget.previewRequests != null ||
+        widget.previewChangeRequests != null) {
+      return;
+    }
     setState(() => _loadingApi = true);
     var apiRequests = const <ChangeRequest>[];
     var holderNominations = const <RoomTransferRequest>[];
@@ -503,7 +539,11 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
           header: _buildHeader(),
           child: RefreshIndicator(
             color: AppColors.deepBlue,
-            onRefresh: _loadApiRequests,
+            onRefresh:
+                widget.previewRequests == null &&
+                    widget.previewChangeRequests == null
+                ? _loadApiRequests
+                : () async {},
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(14, 18, 14, 96),

@@ -6,6 +6,7 @@ import 'package:hdbhms_mobile/models/change_request/change_request_model.dart';
 import 'package:hdbhms_mobile/models/contract/lease_contract_model.dart';
 import 'package:hdbhms_mobile/models/room_transfer/room_transfer_model.dart';
 import 'package:hdbhms_mobile/screens/contract/lease_contract_screen.dart';
+import 'package:hdbhms_mobile/screens/contract/renew_contract_request_screen.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/change_request/change_request_service.dart';
@@ -690,6 +691,41 @@ void main() {
     expect(submittedMonths, 18);
     expect(submittedStartDate, DateTime(2026, 8, 1));
     expect(submittedEndDate, DateTime(2028, 1, 31));
+  });
+
+  testWidgets('renewal custom months field remains editable after a preset', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RenewContractRequestScreen(
+          contract: _contract(endDate: DateTime(2026, 7, 31)),
+          contractService: const _FakeLeaseContractService(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final termField = find.byKey(const Key('renewal-custom-months'));
+    expect(termField, findsOneWidget);
+
+    await tester.ensureVisible(termField);
+    await tester.tap(termField);
+    await tester.enterText(termField, '9');
+    await tester.pump();
+    expect(tester.widget<TextFormField>(termField).controller!.text, '9');
+
+    final preset = find.text('12 tháng');
+    await tester.ensureVisible(preset);
+    await tester.tap(preset);
+    await tester.pump();
+    expect(tester.widget<TextFormField>(termField).controller!.text, '12');
+
+    await tester.ensureVisible(termField);
+    await tester.tap(termField);
+    await tester.enterText(termField, '9');
+    await tester.pump();
+    expect(tester.widget<TextFormField>(termField).controller!.text, '9');
   });
 
   testWidgets('contract screen blocks extension term under 6 months', (

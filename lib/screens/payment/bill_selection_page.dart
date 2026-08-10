@@ -19,6 +19,7 @@ import 'qr_payment_page.dart';
 import 'utility_complaint_screen.dart';
 import '../../widgets/app_filter_chip.dart';
 import '../../widgets/app_list_state.dart';
+import '../../widgets/paid_invoice_card.dart';
 
 class BillSelectionPage extends StatefulWidget {
   const BillSelectionPage({
@@ -27,12 +28,16 @@ class BillSelectionPage extends StatefulWidget {
     this.currentRoomService = const CurrentRoomService(),
     this.roomId,
     this.roomCode = '',
+    this.previewInvoices,
   });
 
   final TenantInvoiceService invoiceService;
   final CurrentRoomService currentRoomService;
   final int? roomId;
   final String roomCode;
+
+  /// Local-only invoices used by the internal preview launcher.
+  final List<TenantInvoice>? previewInvoices;
 
   @override
   State<BillSelectionPage> createState() => _BillSelectionPageState();
@@ -137,6 +142,8 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
   }
 
   Future<List<TenantInvoice>> _loadInvoices() async {
+    final previewInvoices = widget.previewInvoices;
+    if (previewInvoices != null) return previewInvoices;
     final scope = await resolveRoomScope(
       roomId: widget.roomId,
       roomCode: widget.roomCode,
@@ -271,7 +278,7 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
       typeFilteredInvoices
           .where((invoice) => invoice.isPaid)
           .map(
-            (invoice) => _PaidBillCard(
+            (invoice) => PaidInvoiceCard(
               invoice: invoice,
               onTap: () => _openInvoicePreviewFlow(context, invoice),
             ),
@@ -786,7 +793,7 @@ class _PendingBillCard extends StatelessWidget {
                             children: [
                               const Icon(
                                 Icons.calendar_today_outlined,
-                                color: AppColors.warningText,
+                                color: AppColors.bodyText,
                                 size: 14,
                               ),
                               const SizedBox(width: 7),
@@ -802,7 +809,7 @@ class _PendingBillCard extends StatelessWidget {
                               Text(
                                 _formatDate(invoice.dueDate),
                                 style: const TextStyle(
-                                  color: AppColors.darkBlue,
+                                  color: AppColors.primary,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -940,120 +947,6 @@ class _PaidDivider extends StatelessWidget {
         ),
         Expanded(child: Divider(color: Color(0xFFD7D7E0), height: 1)),
       ],
-    );
-  }
-}
-
-class _PaidBillCard extends StatelessWidget {
-  const _PaidBillCard({required this.invoice, required this.onTap});
-
-  final TenantInvoice invoice;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 86),
-        padding: const EdgeInsets.fromLTRB(22, 16, 18, 15),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8FCFA),
-          borderRadius: BorderRadius.circular(AppColors.radiusLg),
-          border: Border.all(color: AppColors.success.withValues(alpha: 0.18)),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.deepBlue.withValues(alpha: 0.035),
-              blurRadius: 14,
-              offset: const Offset(0, 7),
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(Icons.check_circle_outline, color: AppColors.success),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          invoice.title,
-                          style: const TextStyle(
-                            color: AppColors.inputText,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            height: 20 / 15,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _formatAmount(invoice.totalAmount),
-                        style: const TextStyle(
-                          color: AppColors.inputText,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
-                          height: 20 / 15,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 7),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 9,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF8096FF),
-                          borderRadius: BorderRadius.circular(
-                            AppColors.radiusPill,
-                          ),
-                        ),
-                        child: const Text(
-                          'ĐÃ THANH TOÁN',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w900,
-                            height: 12 / 9,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      _InvoiceTypePill(invoice: invoice),
-                      const Spacer(),
-                      Flexible(
-                        child: Text(
-                          invoice.issuedAt == null
-                              ? 'Đã thanh toán'
-                              : 'Ngày: ${_formatDate(invoice.issuedAt)}',
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.bodyText,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            height: 15 / 11,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
