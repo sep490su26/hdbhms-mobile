@@ -9,6 +9,7 @@ import 'package:hdbhms_mobile/models/contract/contract_list_item_model.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
@@ -348,44 +349,59 @@ class _FilterBar extends StatelessWidget {
           ),
         ),
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            SizedBox(
-              width: 218,
-              child: _FilterChip(
-                icon: Icons.calendar_month_outlined,
-                label: selectedDateRange != null
-                    ? '${_formatDate(selectedDateRange!.start)} – ${_formatDate(selectedDateRange!.end)}'
-                    : 'Ngày ký hợp đồng',
-                isActive: selectedDateRange != null,
-                onTap: onPickDateRange,
-              ),
-            ),
-            const SizedBox(width: AppColors.space8),
-            SizedBox(
-              width: 168,
-              child: _StatusDropdown(
-                selectedStatus: selectedStatus,
-                statusOptions: statusOptions,
-                onChanged: onStatusChanged,
-              ),
-            ),
-            if (hasActiveFilters) ...[
-              const SizedBox(width: AppColors.space4),
-              IconButton(
-                tooltip: 'Xóa bộ lọc',
-                onPressed: onClearFilters,
-                constraints: const BoxConstraints.tightFor(
-                  width: AppColors.minimumTouchTarget,
-                  height: AppColors.minimumTouchTarget,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Tất cả hợp đồng',
+                  style: AppTypography.sectionTitle,
                 ),
-                icon: const Icon(Icons.close_rounded, color: AppColors.danger),
               ),
+              if (hasActiveFilters)
+                TextButton.icon(
+                  onPressed: onClearFilters,
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                  label: const Text('Xóa lọc'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    minimumSize: const Size(0, AppColors.minimumTouchTarget),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                ),
             ],
-          ],
-        ),
+          ),
+          const SizedBox(height: AppColors.space8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 218,
+                  child: _FilterChip(
+                    icon: Icons.calendar_month_outlined,
+                    label: selectedDateRange != null
+                        ? '${_formatDate(selectedDateRange!.start)} – ${_formatDate(selectedDateRange!.end)}'
+                        : 'Ngày ký hợp đồng',
+                    isActive: selectedDateRange != null,
+                    onTap: onPickDateRange,
+                  ),
+                ),
+                const SizedBox(width: AppColors.space8),
+                SizedBox(
+                  width: 168,
+                  child: _StatusDropdown(
+                    selectedStatus: selectedStatus,
+                    statusOptions: statusOptions,
+                    onChanged: onStatusChanged,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -597,6 +613,13 @@ class _ContractCard extends StatelessWidget {
             border: Border.all(
               color: AppColors.cardBorder.withValues(alpha: 0.6),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.deepBlue.withValues(alpha: 0.04),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
           child: Row(
             children: [

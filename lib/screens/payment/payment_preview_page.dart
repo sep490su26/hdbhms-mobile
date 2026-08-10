@@ -6,6 +6,7 @@ import 'package:hdbhms_mobile/theme/app_colors.dart';
 import '../../models/change_request/change_request_model.dart';
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../models/profile_request/tenant_request_model.dart';
+import '../../models/room_transfer/room_transfer_model.dart';
 import '../../services/payment/tenant_invoice_service.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/app_screen_shell.dart';
@@ -149,80 +150,146 @@ class PaymentPreviewPage extends StatelessWidget {
     ),
   ];
 
-  static final List<TenantRequest> _processingRequestPreviews = [
-    TenantRequest(
-      id: 'PREVIEW-RENEW-01',
-      type: TenantRequestType.renewContract,
-      status: TenantRequestStatus.processing,
-      note:
+  /// API-shaped fixtures ensure every request preview takes the same list and
+  /// detail route that a real request uses.
+  static final List<ChangeRequest> _processingRequestPreviews = [
+    ChangeRequest(
+      id: -300,
+      requestCode: 'PREVIEW-RENEW-01',
+      requestType: ChangeRequestType.contractRenewal,
+      title: 'Gia hạn hợp đồng phòng P.203',
+      description:
           'Yêu cầu gia hạn đang được quản lý kiểm tra trước khi lập phụ lục hợp đồng.',
+      status: ChangeRequestStatus.processing,
+      requesterId: -1001,
       createdAt: DateTime(2026, 7, 22, 9, 15),
-      details: const {
-        'Mã hợp đồng': 'HD-P203-2026',
-        'Thời gian gia hạn': '12 tháng',
-        'Ngày bắt đầu dự kiến': '01/10/2026',
-      },
+      requestPayload: jsonEncode({
+        'contractCode': 'HD-P203-2026',
+        'roomCode': 'P.203',
+        'startDate': '2025-10-01',
+        'oldEndDate': '2026-09-30',
+        'renewalTermMonths': 12,
+        'newStartDate': '2026-10-01',
+        'newEndDate': '2027-09-30',
+        'monthlyRent': 4500000,
+        'paymentCycleMonths': 1,
+        'depositAmount': 4500000,
+      }),
     ),
-    TenantRequest(
-      id: 'PREVIEW-LIQUIDATION-01',
-      type: TenantRequestType.terminateContract,
-      status: TenantRequestStatus.processing,
-      note:
-          'Quản lý đang đối chiếu công nợ và chuẩn bị các bước bàn giao phòng.',
+    ChangeRequest(
+      id: -301,
+      requestCode: 'PREVIEW-LIQUIDATION-01',
+      requestType: ChangeRequestType.contractLiquidation,
+      title: 'Thanh lý hợp đồng phòng P.203',
+      description:
+          'Quản lý đã tiếp nhận yêu cầu và đang lập hóa đơn tất toán trước khi hoàn tất thủ tục.',
+      status: ChangeRequestStatus.processing,
+      requesterId: -1,
       createdAt: DateTime(2026, 7, 18, 14, 40),
-      details: const {
-        'Mã hợp đồng': 'HD-P203-2026',
-        'Ngày hết hạn': '30/09/2026',
-        'Ngày trả phòng dự kiến': '15/08/2026',
-      },
+      requestPayload: jsonEncode({
+        'contractCode': 'HD-P203-2026',
+        'roomCode': 'P.203',
+        'liquidationDate': '2026-08-15',
+        'liquidationStage': 'WAITING_FINAL_INVOICE',
+        'depositRefundStatus': 'NOT_STARTED',
+      }),
     ),
-    TenantRequest(
-      id: 'PREVIEW-TRANSFER-01',
-      type: TenantRequestType.changeRoom,
-      status: TenantRequestStatus.processing,
-      note:
+    ChangeRequest(
+      id: -302,
+      requestCode: 'PREVIEW-TRANSFER-01',
+      requestType: ChangeRequestType.roomTransfer,
+      title: 'Chuyển phòng P.203 sang P.305',
+      description:
           'Yêu cầu chuyển phòng đang được kiểm tra tình trạng phòng và lịch bàn giao.',
+      status: ChangeRequestStatus.processing,
+      requesterId: -1001,
       createdAt: DateTime(2026, 7, 16, 10, 5),
-      details: const {
-        'Phòng hiện tại': 'P.203',
-        'Phòng mong muốn': 'P.305',
-        'Tầng/khu vực': 'Tầng 3 · Khu A',
-      },
+      requestPayload: jsonEncode({
+        'transferRequestId': -303,
+        'transferRequestCode': 'PREVIEW-TRANSFER-01',
+        'currentRoom': 'P.203',
+        'targetRoom': 'P.305',
+        'requestedTransferDate': '2026-08-01',
+      }),
     ),
-    TenantRequest(
-      id: 'PREVIEW-ROOMMATE-01',
-      type: TenantRequestType.addRoommate,
-      status: TenantRequestStatus.processing,
-      note:
+    ChangeRequest(
+      id: -304,
+      requestCode: 'PREVIEW-ROOMMATE-01',
+      requestType: ChangeRequestType.addCoOccupant,
+      title: 'Đăng ký người ở cùng phòng P.203',
+      description:
           'Thông tin người ở cùng đang được kiểm tra để hoàn tất đăng ký lưu trú.',
+      status: ChangeRequestStatus.processing,
+      requesterId: -1001,
       createdAt: DateTime(2026, 7, 12, 16, 25),
-      details: const {
-        'Họ và tên': 'Nguyễn Minh Anh',
-        'Số điện thoại': '0901 234 567',
-        'Email': 'minhanh@example.com',
-        'Ngày bắt đầu ở': '01/08/2026',
-      },
+      requestPayload: jsonEncode({
+        'contractCode': 'HD-P203-2026',
+        'roomCode': 'P.203',
+        'fullName': 'Nguyễn Minh Anh',
+        'phone': '0901 234 567',
+        'email': 'minhanh@example.com',
+        'moveInDate': '2026-08-01',
+      }),
+    ),
+    ChangeRequest(
+      id: -305,
+      requestCode: 'PREVIEW-ELECTRIC-METER-01',
+      requestType: ChangeRequestType.meterReadingCorrection,
+      title: 'Khiếu nại số điện tháng 07/2026',
+      description:
+          'Chỉ số điện trên hóa đơn cao hơn mức sử dụng thực tế. Vui lòng kiểm tra lại chỉ số công tơ.',
+      status: ChangeRequestStatus.processing,
+      requesterId: -1001,
+      createdAt: DateTime(2026, 7, 24, 11, 20),
+      requestPayload: jsonEncode({
+        'invoiceCode': 'UTILITY-DEMO-002',
+        'roomCode': 'P.203',
+        'billingPeriod': '2026-07',
+        'meterType': 'ELECTRICITY',
+        'previousValue': 1240,
+        'currentValue': 1450,
+        'reportedCurrentValue': 1325,
+        'usageAmount': 210,
+        'unitPrice': 3500,
+        'lineAmount': 735000,
+        'description':
+            'Chỉ số trên hóa đơn là 1.450 kWh, nhưng chỉ số tôi ghi nhận là 1.325 kWh.',
+      }),
     ),
   ];
 
-  static final ChangeRequest _liquidationProgressPreview = ChangeRequest(
-    id: -301,
-    requestCode: 'PREVIEW-LIQUIDATION-01',
-    requestType: ChangeRequestType.contractLiquidation,
-    title: 'Thanh lý hợp đồng phòng P.203',
-    description:
-        'Quản lý đã tiếp nhận yêu cầu và đang lập hóa đơn tất toán trước khi hoàn tất thủ tục.',
-    status: ChangeRequestStatus.processing,
-    requesterId: -1,
-    createdAt: DateTime(2026, 7, 18, 14, 40),
-    requestPayload: jsonEncode({
-      'contractCode': 'HD-P203-2026',
-      'roomCode': 'P.203',
-      'liquidationDate': '2026-08-15',
-      'liquidationStage': 'WAITING_FINAL_INVOICE',
-      'depositRefundStatus': 'NOT_STARTED',
-    }),
-  );
+  static final RoomTransferRequest _roomTransferProgressPreview =
+      RoomTransferRequest(
+        id: -303,
+        requestCode: 'PREVIEW-TRANSFER-01',
+        requesterId: -1001,
+        oldContractId: -401,
+        oldRoomId: -203,
+        targetRoomId: -305,
+        transferringTenantProfileIds: const [-1001],
+        transferringTenantNames: const {-1001: 'Nguyễn Hoàng Minh'},
+        sourceHolderCandidateProfileIds: const [],
+        sourceHolderCandidateNames: const {},
+        targetTransferType: TargetTransferType.newContract,
+        requestedTransferDate: DateTime(2026, 8, 1),
+        status: TransferRequestStatus.waitingExecution,
+        oldRoomName: 'Phòng 203 · Khu A',
+        oldRoomCode: 'P.203',
+        oldContractCode: 'HD-P203-2026',
+        targetRoomName: 'Phòng 305 · Khu A',
+        targetRoomCode: 'P.305',
+        oldRoomPrice: 4500000,
+        newRoomPrice: 4800000,
+        priceDifferenceAmount: 300000,
+        priceDifferenceToPay: 300000,
+        reason: 'Cần chuyển sang phòng có không gian rộng hơn.',
+        remainingOccupantCountAfterTransfer: 0,
+        sourceRoomWillBeEmptyAfterTransfer: true,
+        paymentBranch: 'ADD_TO_NEXT_INVOICE',
+        eligibleAtCreation: true,
+        eligibilityCheckedAt: DateTime(2026, 7, 16, 10, 5),
+        transferCountThisYear: 1,
+      );
 
   static final List<TenantInvoice> _allInvoicesPreview = [
     _rentInvoice,
@@ -303,7 +370,7 @@ class PaymentPreviewPage extends StatelessWidget {
               const SizedBox(height: 8),
               _PreviewTile(
                 icon: Icons.report_problem_outlined,
-                title: 'Khiếu nại tiền điện',
+                title: 'Khiếu nại số điện',
                 subtitle: 'Kiểm tra form phản hồi chỉ số',
                 onTap: () => _openComplaint(context, _reviewableUtilityInvoice),
               ),
@@ -404,6 +471,7 @@ class PaymentPreviewPage extends StatelessWidget {
       Icons.assignment_return_rounded,
       Icons.swap_horiz_rounded,
       Icons.person_add_alt_1_rounded,
+      Icons.bolt_outlined,
     ];
     return List.generate(_processingRequestPreviews.length, (index) {
       final request = _processingRequestPreviews[index];
@@ -413,7 +481,7 @@ class PaymentPreviewPage extends StatelessWidget {
         ),
         child: _PreviewTile(
           icon: icons[index],
-          title: request.type.fullLabel,
+          title: _previewRequestTitle(request),
           subtitle: 'Trạng thái: Đang xử lý',
           onTap: () => _openRequestPreview(context, request),
         ),
@@ -421,21 +489,43 @@ class PaymentPreviewPage extends StatelessWidget {
     });
   }
 
-  void _openRequestPreview(BuildContext context, TenantRequest request) {
+  void _openRequestPreview(BuildContext context, ChangeRequest request) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => TenantRequestScreen(
-          previewRequests: request.type == TenantRequestType.terminateContract
-              ? null
-              : [request],
-          previewChangeRequests:
-              request.type == TenantRequestType.terminateContract
-              ? [_liquidationProgressPreview]
+          previewChangeRequests: [request],
+          previewRoomTransfers:
+              request.requestType == ChangeRequestType.roomTransfer
+              ? {request.id: _roomTransferProgressPreview}
+              : const {},
+          previewTenantProfileId:
+              request.requestType == ChangeRequestType.roomTransfer
+              ? -1001
               : null,
-          initialFilterType: request.type,
+          initialFilterType: _tenantRequestTypeFor(request.requestType),
         ),
       ),
     );
+  }
+
+  TenantRequestType _tenantRequestTypeFor(ChangeRequestType type) {
+    return switch (type) {
+      ChangeRequestType.contractRenewal => TenantRequestType.renewContract,
+      ChangeRequestType.contractLiquidation ||
+      ChangeRequestType.moveOut => TenantRequestType.terminateContract,
+      ChangeRequestType.roomTransfer => TenantRequestType.changeRoom,
+      ChangeRequestType.addCoOccupant => TenantRequestType.addRoommate,
+      ChangeRequestType.meterReadingCorrection =>
+        TenantRequestType.utilityComplaint,
+      _ => TenantRequestType.renewContract,
+    };
+  }
+
+  String _previewRequestTitle(ChangeRequest request) {
+    if (request.requestType == ChangeRequestType.meterReadingCorrection) {
+      return 'Khiếu nại số điện';
+    }
+    return _tenantRequestTypeFor(request.requestType).fullLabel;
   }
 
   void _openAllInvoicesPreview(BuildContext context) {

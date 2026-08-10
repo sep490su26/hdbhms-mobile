@@ -584,6 +584,356 @@ void main() {
     await tester.pump(const Duration(seconds: 16));
   });
 
+  testWidgets(
+    'holder replacement waits for replacement contract without refund action',
+    (tester) async {
+      final request = ChangeRequest(
+        id: 46,
+        requestCode: 'CR-46',
+        requestType: ChangeRequestType.contractLiquidation,
+        title: 'Yeu cau thanh ly hop dong HD-TEST',
+        description: 'Doi nguoi dung ten',
+        status: ChangeRequestStatus.processing,
+        requesterId: 1,
+        createdAt: DateTime(2026, 8, 1, 9),
+        requestPayload: jsonEncode({
+          'roomId': 201,
+          'roomCode': '201',
+          'liquidationMode': 'PRIMARY_LEAVES_CO_OCCUPANT_STAYS',
+          'liquidationStage': 'WAITING_REPLACEMENT_CONTRACT',
+          'depositRefundStatus': 'NOT_REQUIRED',
+        }),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TenantRequestScreen(
+            changeRequestService: _FakeChangeRequestService([request]),
+            roomTransferService: const _EmptyRoomTransferService(),
+            roomId: 201,
+            roomCode: '201',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Xem chi tiết').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Hợp đồng thay thế'), findsOneWidget);
+      expect(find.text('Đang chờ lập hợp đồng thay thế'), findsOneWidget);
+      expect(find.text('Đã nhận tiền cọc'), findsNothing);
+    },
+  );
+
+  testWidgets('request detail reads the BE co-occupant phone key', (
+    tester,
+  ) async {
+    final requests = [
+      ChangeRequest(
+        id: 47,
+        requestCode: 'CR-47',
+        requestType: ChangeRequestType.addCoOccupant,
+        title: 'Them nguoi o cung',
+        description: '',
+        status: ChangeRequestStatus.pending,
+        requesterId: 1,
+        createdAt: DateTime(2026, 8, 1),
+        requestPayload: jsonEncode({
+          'roomId': 201,
+          'roomCode': '201',
+          'fullName': 'Nguyen Van B',
+          'phone': '0901234567',
+          'email': 'b@example.com',
+          'moveInDate': '2026-08-10',
+          'note': 'Nguoi o cung moi',
+        }),
+      ),
+      ChangeRequest(
+        id: 48,
+        requestCode: 'CR-48',
+        requestType: ChangeRequestType.meterReadingCorrection,
+        title: 'Khieu nai chi so dien',
+        description: '',
+        status: ChangeRequestStatus.pending,
+        requesterId: 1,
+        createdAt: DateTime(2026, 8, 1),
+        requestPayload: jsonEncode({
+          'roomId': 201,
+          'roomCode': '201',
+          'meterType': 'ELECTRICITY',
+          'previousValue': 100,
+          'currentValue': 150,
+          'reportedCurrentValue': 130,
+          'usageAmount': 50,
+          'unitPrice': 3000,
+          'lineAmount': 150000,
+          'invoiceCode': 'INV-48',
+          'billingPeriod': '2026-08',
+          'description': 'Chi so dong ho thuc te',
+        }),
+      ),
+    ];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TenantRequestScreen(
+          changeRequestService: _FakeChangeRequestService(requests),
+          roomTransferService: const _EmptyRoomTransferService(),
+          roomId: 201,
+          roomCode: '201',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Xem chi tiết').first);
+    await tester.pumpAndSettle();
+    expect(find.text('0901234567'), findsOneWidget);
+    expect(find.text('b@example.com'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded).first);
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 16));
+  });
+
+  testWidgets('request detail derives simple progress from every API status', (
+    tester,
+  ) async {
+    const resultLabels = {
+      ChangeRequestStatus.pending: 'Chưa có kết quả',
+      ChangeRequestStatus.underReview: 'Chưa có kết quả',
+      ChangeRequestStatus.processing: 'Chưa có kết quả',
+      ChangeRequestStatus.approved: 'Đã duyệt',
+      ChangeRequestStatus.completed: 'Hoàn tất',
+      ChangeRequestStatus.rejected: 'Bị từ chối',
+      ChangeRequestStatus.cancelled: 'Đã hủy',
+    };
+
+    for (final entry in resultLabels.entries) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RequestDetailScreen(
+            changeRequest: ChangeRequest(
+              id: 60,
+              requestCode: 'CR-60',
+              requestType: ChangeRequestType.contractRenewal,
+              title: 'Renewal request',
+              description: '',
+              status: entry.key,
+              requesterId: 1,
+              createdAt: DateTime(2026, 8, 1, 9),
+              resolvedAt: entry.key.isTerminal
+                  ? DateTime(2026, 8, 2, 10)
+                  : null,
+              requestPayload: jsonEncode({'roomCode': '201'}),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(entry.value), findsWidgets);
+      if (entry.key.isTerminal) {
+        expect(find.textContaining('02/08/2026 10:00'), findsWidgets);
+      }
+    }
+  });
+
+  testWidgets(
+    'meter correction detail reads the supported payload keys and units',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RequestDetailScreen(
+            changeRequest: ChangeRequest(
+              id: 61,
+              requestCode: 'CR-61',
+              requestType: ChangeRequestType.meterReadingCorrection,
+              title: 'Meter correction',
+              description: '',
+              status: ChangeRequestStatus.pending,
+              requesterId: 1,
+              createdAt: DateTime(2026, 8, 1),
+              requestPayload: jsonEncode({
+                'meterType': 'ELECTRICITY',
+                'previousValue': 100,
+                'currentValue': 150,
+                'reportedCurrentValue': 130,
+                'usageAmount': 50,
+                'unitPrice': 3000,
+                'lineAmount': 150000,
+              }),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('100 kWh'), findsOneWidget);
+      expect(find.text('150 kWh'), findsOneWidget);
+      expect(find.text('130 kWh'), findsOneWidget);
+      expect(find.text('50 kWh'), findsOneWidget);
+      expect(find.text('3000 đ/kWh'), findsOneWidget);
+      expect(find.text('150000 đ'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'liquidation only exposes refund actions after manager recording',
+    (tester) async {
+      for (final refundStatus in const [
+        'WAITING_OWNER_APPROVAL',
+        'APPROVED_WAITING_REFUND',
+      ]) {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: RequestDetailScreen(
+              changeRequest: ChangeRequest(
+                id: 62,
+                requestCode: 'CR-62',
+                requestType: ChangeRequestType.contractLiquidation,
+                title: 'Liquidation request',
+                description: '',
+                status: ChangeRequestStatus.processing,
+                requesterId: 1,
+                createdAt: DateTime(2026, 8, 1),
+                requestPayload: jsonEncode({
+                  'liquidationStage': 'WAITING_HANDOVER',
+                  'depositRefundStatus': refundStatus,
+                }),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Đã nhận tiền cọc'), findsNothing);
+        expect(find.text('Chưa nhận / Sai số tiền'), findsNothing);
+      }
+    },
+  );
+
+  testWidgets(
+    'request detail remains overflow-safe on target mobile viewports',
+    (tester) async {
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      for (final size in const [
+        Size(320, 640),
+        Size(360, 800),
+        Size(390, 844),
+        Size(430, 932),
+      ]) {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: RequestDetailScreen(
+              changeRequest: ChangeRequest(
+                id: 63,
+                requestCode: 'METER-REQUEST-WITH-A-LONG-CODE-202608',
+                requestType: ChangeRequestType.meterReadingCorrection,
+                title: 'Meter correction',
+                description: 'Nội dung kiểm tra chỉ số điện có thể dài.',
+                status: ChangeRequestStatus.underReview,
+                requesterId: 1,
+                createdAt: DateTime(2026, 8, 1),
+                requestPayload: jsonEncode({
+                  'invoiceCode': 'INV-202608',
+                  'roomCode': 'P.201',
+                  'billingPeriod': '2026-08',
+                  'previousValue': 100,
+                  'currentValue': 150,
+                  'reportedCurrentValue': 130,
+                  'usageAmount': 50,
+                  'unitPrice': 3000,
+                  'lineAmount': 150000,
+                }),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      }
+    },
+  );
+
+  testWidgets('request types use their required detail destinations', (
+    tester,
+  ) async {
+    final cases = <(ChangeRequest, String)>[
+      (
+        ChangeRequest(
+          id: 70,
+          requestCode: 'CR-RENEWAL',
+          requestType: ChangeRequestType.contractRenewal,
+          title: 'Renewal',
+          description: '',
+          status: ChangeRequestStatus.pending,
+          requesterId: 1,
+          requestPayload: jsonEncode({'roomId': 201, 'roomCode': '201'}),
+        ),
+        'Chi tiết yêu cầu',
+      ),
+      (
+        ChangeRequest(
+          id: 71,
+          requestCode: 'CR-LIQUIDATION',
+          requestType: ChangeRequestType.contractLiquidation,
+          title: 'Liquidation',
+          description: '',
+          status: ChangeRequestStatus.pending,
+          requesterId: 1,
+        ),
+        'Chi tiết yêu cầu',
+      ),
+      (
+        ChangeRequest(
+          id: 72,
+          requestCode: 'CR-COOCCUPANT',
+          requestType: ChangeRequestType.addCoOccupant,
+          title: 'Co-occupant',
+          description: '',
+          status: ChangeRequestStatus.pending,
+          requesterId: 1,
+        ),
+        'Chi tiết yêu cầu',
+      ),
+      (
+        ChangeRequest(
+          id: 73,
+          requestCode: 'CR-METER',
+          requestType: ChangeRequestType.meterReadingCorrection,
+          title: 'Meter correction',
+          description: '',
+          status: ChangeRequestStatus.pending,
+          requesterId: 1,
+        ),
+        'Chi tiết yêu cầu',
+      ),
+    ];
+
+    for (final item in cases) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TenantRequestScreen(
+            changeRequestService: _FakeChangeRequestService([item.$1]),
+            roomTransferService: const _EmptyRoomTransferService(),
+            roomId: 201,
+            roomCode: '201',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Xem chi tiết').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text(item.$2), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.arrow_back_rounded).first);
+      await tester.pumpAndSettle();
+    }
+    await tester.pump(const Duration(seconds: 16));
+  });
+
   testWidgets('request screen filters room transfers by selected source room', (
     tester,
   ) async {

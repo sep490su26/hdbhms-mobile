@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/payment/tenant_invoice_service.dart';
 import '../../widgets/app_top_bar.dart';
 
-/// Màn hình khiếu nại chỉ số điện – full-screen thay bottom sheet cũ.
+/// Màn hình khiếu nại số điện – full-screen thay bottom sheet cũ.
 class UtilityComplaintScreen extends StatefulWidget {
   const UtilityComplaintScreen({
     super.key,
@@ -25,6 +26,8 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
   TenantInvoiceLine? _selectedLine;
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _detailController = TextEditingController();
+  final TextEditingController _reportedValueController =
+      TextEditingController();
   bool _submitting = false;
 
   @override
@@ -39,6 +42,7 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
   @override
   void dispose() {
     _detailController.dispose();
+    _reportedValueController.dispose();
     super.dispose();
   }
 
@@ -71,12 +75,19 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
       _snack('Dữ liệu hóa đơn không hợp lệ. Vui lòng thử lại.');
       return;
     }
+    final reportedCurrentValue = double.tryParse(
+      _reportedValueController.text.trim().replaceAll(',', '.'),
+    );
+    if (reportedCurrentValue == null) {
+      _snack('Vui lòng nhập chỉ số điện bạn cho là đúng.');
+      return;
+    }
     setState(() => _submitting = true);
     try {
       await widget.invoiceService.submitMeterReadingReview(
         invoiceId: invoiceId,
         lineId: lineId,
-        reportedCurrentValue: selectedLine?.currentValue ?? 0,
+        reportedCurrentValue: reportedCurrentValue,
         description: _detailController.text.trim(),
       );
       if (!mounted) return;
@@ -121,7 +132,7 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
             children: [
               // ── App bar ──────────────────────────────────
               AppTopBar(
-                title: 'Khiếu nại tiền điện',
+                title: 'Khiếu nại số điện',
                 onBack: _submitting
                     ? null
                     : () => Navigator.of(context).maybePop(),
@@ -178,6 +189,51 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
                                         line: _selectedLine!,
                                         formatReading: _formatReading,
                                         formatAmount: _formatAmount,
+                                      ),
+                                      const SizedBox(height: 16),
+
+                                      const _FieldLabel(
+                                        'Chỉ số điện bạn cho là đúng',
+                                        required: true,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      TextFormField(
+                                        key: const Key(
+                                          'meter-reported-current-value',
+                                        ),
+                                        controller: _reportedValueController,
+                                        enabled: !_submitting,
+                                        keyboardType:
+                                            const TextInputType.numberWithOptions(
+                                              decimal: true,
+                                            ),
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter.allow(
+                                            RegExp(r'^\d*[,.]?\d{0,2}'),
+                                          ),
+                                        ],
+                                        validator: (value) {
+                                          final parsed = double.tryParse(
+                                            (value ?? '').trim().replaceAll(
+                                              ',',
+                                              '.',
+                                            ),
+                                          );
+                                          if (parsed == null) {
+                                            return 'Vui lòng nhập chỉ số điện hợp lệ';
+                                          }
+                                          final previous =
+                                              _selectedLine?.previousValue;
+                                          if (previous != null &&
+                                              parsed < previous) {
+                                            return 'Chỉ số không được nhỏ hơn chỉ số cũ (${_formatReading(previous)} kWh)';
+                                          }
+                                          return null;
+                                        },
+                                        decoration: _fieldDecoration(
+                                          hintText: 'Ví dụ: 1250',
+                                          prefixIcon: Icons.bolt_rounded,
+                                        ).copyWith(suffixText: 'kWh'),
                                       ),
                                       const SizedBox(height: 16),
 
@@ -271,7 +327,7 @@ class _ComplaintAppBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
                 Text(
-                  'Khiếu nại tiền điện',
+                  'Khiếu nại số điện',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -704,6 +760,7 @@ class _SubmitButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppColors.radiusSm),
       ),
       child: FilledButton.icon(
+        key: const Key('meter-complaint-submit'),
         onPressed: submitting ? null : onPressed,
         style: FilledButton.styleFrom(
           backgroundColor: Colors.transparent,
@@ -781,7 +838,7 @@ class _ElectricityComplaintSummary extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Khiếu nại tiền điện',
+                'Khiếu nại số điện',
                 style: TextStyle(
                   color: AppColors.warningText,
                   fontSize: 13,

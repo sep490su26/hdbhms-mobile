@@ -14,6 +14,7 @@ import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
 import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 
@@ -26,11 +27,21 @@ class RoomTransferDetailScreen extends StatefulWidget {
     required this.changeRequest,
     this.transferService = const RoomTransferService(),
     this.leaseContractService = const LeaseContractService(),
+    this.initialTransfer,
+    this.previewCurrentTenantProfileId,
   });
 
   final ChangeRequest changeRequest;
   final RoomTransferService transferService;
   final LeaseContractService leaseContractService;
+
+  /// Local data used only by the internal preview launcher. Production flows
+  /// leave this null and load the linked transfer request from the API.
+  final RoomTransferRequest? initialTransfer;
+
+  /// Lets the preview render the same tenant-visible sections as production
+  /// without making a profile request. Never supplied by production routes.
+  final int? previewCurrentTenantProfileId;
 
   @override
   State<RoomTransferDetailScreen> createState() =>
@@ -68,6 +79,13 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    final initialTransfer = widget.initialTransfer;
+    if (initialTransfer != null) {
+      _transfer = initialTransfer;
+      _transferLoadAttempted = true;
+      _currentTenantProfileId = widget.previewCurrentTenantProfileId;
+      return;
+    }
     _loadCurrentTenantProfile();
     _tryLoadTransfer();
   }
@@ -1352,9 +1370,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     final result = <Widget>[];
     for (var i = 0; i < rows.length; i++) {
       if (i > 0) {
-        result.add(const SizedBox(height: 8));
-        result.add(const Divider(height: 1, color: Color(0xFFEEECEE)));
-        result.add(const SizedBox(height: 8));
+        result.add(const SizedBox(height: 12));
       }
       result.add(rows[i]);
     }
@@ -2144,33 +2160,6 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
       }
     }
 
-    // If no transfer-specific actions, show generic close
-    if (actions.isEmpty &&
-        !_isTargetHolder &&
-        !_isNominatedHolder &&
-        (!_transferLoadAttempted || _transferLoadError == null)) {
-      actions.add(
-        SizedBox(
-          width: double.infinity,
-          height: 46,
-          child: OutlinedButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.deepBlue,
-              side: const BorderSide(color: AppColors.deepBlue),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppColors.radiusMd),
-              ),
-            ),
-            child: const Text(
-              'Đóng',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-            ),
-          ),
-        ),
-      );
-    }
-
     return actions;
   }
 
@@ -2555,9 +2544,8 @@ class _SectionCard extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 title,
-                style: const TextStyle(
-                  color: Color(0xFF000666),
-                  fontSize: 14,
+                style: AppTypography.label.copyWith(
+                  color: AppColors.deepBlue,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -2587,9 +2575,8 @@ class _InfoRow extends StatelessWidget {
           width: 120,
           child: Text(
             label,
-            style: const TextStyle(
+            style: AppTypography.label.copyWith(
               color: AppColors.bodyText,
-              fontSize: 13,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -2598,9 +2585,8 @@ class _InfoRow extends StatelessWidget {
           child: Text(
             value,
             textAlign: TextAlign.end,
-            style: TextStyle(
+            style: AppTypography.body.copyWith(
               color: valueColor ?? AppColors.inputText,
-              fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
           ),

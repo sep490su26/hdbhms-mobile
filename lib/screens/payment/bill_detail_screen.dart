@@ -7,7 +7,7 @@ import 'qr_payment_page.dart';
 import 'utility_complaint_screen.dart';
 
 /// Màn chi tiết hóa đơn: hiển thị breakdown từng dòng, trạng thái,
-/// nút thanh toán và (nếu là UTILITY) nút khiếu nại tiền điện.
+/// nút thanh toán và (nếu là UTILITY) nút khiếu nại số điện.
 class BillDetailScreen extends StatelessWidget {
   const BillDetailScreen({
     super.key,
@@ -733,7 +733,7 @@ class BillDetailScreen extends StatelessWidget {
                     ),
                     SizedBox(width: 8),
                     Text(
-                      'Gửi khiếu nại tiền điện',
+                      'Gửi khiếu nại số điện',
                       style: TextStyle(
                         color: AppColors.warningText,
                         fontSize: 14,
@@ -990,7 +990,7 @@ class _ReviewStatusCard extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              isElec ? 'Khiếu nại tiền điện' : 'Khiếu nại chỉ số',
+              isElec ? 'Khiếu nại số điện' : 'Khiếu nại chỉ số',
               style: TextStyle(
                 color: color,
                 fontSize: 13,

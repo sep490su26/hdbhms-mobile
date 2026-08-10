@@ -904,7 +904,7 @@ class _ComplaintButton extends StatelessWidget {
             ),
             SizedBox(width: 6),
             Text(
-              'Khiếu nại tiền điện',
+              'Khiếu nại số điện',
               style: TextStyle(
                 color: AppColors.warningText,
                 fontSize: 12,
