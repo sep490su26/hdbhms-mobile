@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/payment/tenant_invoice_service.dart';
 import '../../widgets/app_top_bar.dart';
 
-/// Màn hình khiếu nại chỉ số điện nước – full-screen thay bottom sheet cũ.
+/// Màn hình khiếu nại số điện – full-screen thay bottom sheet cũ.
 class UtilityComplaintScreen extends StatefulWidget {
   const UtilityComplaintScreen({
     super.key,
@@ -22,28 +23,27 @@ class UtilityComplaintScreen extends StatefulWidget {
 
 class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
   late final List<TenantInvoiceLine> _lines;
-  late TenantInvoiceLine _selectedLine;
+  TenantInvoiceLine? _selectedLine;
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _detailController = TextEditingController();
+  final TextEditingController _reportedValueController =
+      TextEditingController();
   bool _submitting = false;
 
   @override
   void initState() {
     super.initState();
-    _lines = widget.invoice.reviewableUtilityLines;
-    _selectedLine = _lines.first;
+    _lines = widget.invoice.reviewableUtilityLines
+        .where((line) => line.lineType == 'ELECTRICITY')
+        .toList(growable: false);
+    _selectedLine = _lines.isEmpty ? null : _lines.first;
   }
 
   @override
   void dispose() {
     _detailController.dispose();
+    _reportedValueController.dispose();
     super.dispose();
-  }
-
-  String _lineLabel(TenantInvoiceLine line) {
-    if (line.lineType == 'ELECTRICITY') return 'Khiếu nại sai số điện';
-    if (line.lineType == 'WATER') return 'Khiếu nại sai số nước';
-    return line.description.isEmpty ? line.lineType : line.description;
   }
 
   String _formatReading(double? value) {
@@ -69,9 +69,17 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
       return;
     }
     final invoiceId = widget.invoice.id;
-    final lineId = _selectedLine.id;
+    final selectedLine = _selectedLine;
+    final lineId = selectedLine?.id;
     if (invoiceId == null || lineId == null) {
       _snack('Dữ liệu hóa đơn không hợp lệ. Vui lòng thử lại.');
+      return;
+    }
+    final reportedCurrentValue = double.tryParse(
+      _reportedValueController.text.trim().replaceAll(',', '.'),
+    );
+    if (reportedCurrentValue == null) {
+      _snack('Vui lòng nhập chỉ số điện bạn cho là đúng.');
       return;
     }
     setState(() => _submitting = true);
@@ -79,7 +87,7 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
       await widget.invoiceService.submitMeterReadingReview(
         invoiceId: invoiceId,
         lineId: lineId,
-        reportedCurrentValue: _selectedLine.currentValue ?? 0,
+        reportedCurrentValue: reportedCurrentValue,
         description: _detailController.text.trim(),
       );
       if (!mounted) return;
@@ -124,7 +132,7 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
             children: [
               // ── App bar ──────────────────────────────────
               AppTopBar(
-                title: 'Khiếu nại điện nước',
+                title: 'Khiếu nại số điện',
                 onBack: _submitting
                     ? null
                     : () => Navigator.of(context).maybePop(),
@@ -143,132 +151,135 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
                     ),
                     keyboardDismissBehavior:
                         ScrollViewKeyboardDismissBehavior.onDrag,
-                    child: Form(
-                      key: _formKey,
-                      autovalidateMode: AutovalidateMode.onUserInteraction,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Hero card
-                          _HeroCard(invoice: widget.invoice),
-                          const SizedBox(height: 16),
-
-                          // Form card
-                          _FormCard(
+                    child: _lines.isEmpty
+                        ? const _NoElectricityLineState()
+                        : Form(
+                            key: _formKey,
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Room number (read-only)
-                                const _FieldLabel('Số phòng'),
-                                const SizedBox(height: 6),
-                                _ReadOnlyField(
-                                  value: widget.invoice.roomCode.isEmpty
-                                      ? 'Chưa có thông tin phòng'
-                                      : 'Phòng ${widget.invoice.roomCode}',
-                                  icon: Icons.apartment_rounded,
-                                ),
+                                // Hero card
+                                _HeroCard(invoice: widget.invoice),
                                 const SizedBox(height: 16),
 
-                                // Complaint type
-                                const _FieldLabel(
-                                  'Loại khiếu nại',
-                                  required: true,
-                                ),
-                                const SizedBox(height: 6),
-                                DropdownButtonFormField<TenantInvoiceLine>(
-                                  initialValue: _selectedLine,
-                                  items: _lines
-                                      .map(
-                                        (line) => DropdownMenuItem(
-                                          value: line,
-                                          child: Row(
-                                            children: [
-                                              Icon(
-                                                line.lineType == 'ELECTRICITY'
-                                                    ? Icons.bolt_rounded
-                                                    : Icons.water_drop_rounded,
-                                                color:
-                                                    line.lineType ==
-                                                        'ELECTRICITY'
-                                                    ? AppColors.warning
-                                                    : const Color(0xFF0EA5E9),
-                                                size: 18,
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Text(_lineLabel(line)),
-                                            ],
-                                          ),
+                                // Form card
+                                _FormCard(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      // Room number (read-only)
+                                      const _FieldLabel('Số phòng'),
+                                      const SizedBox(height: 6),
+                                      _ReadOnlyField(
+                                        value: widget.invoice.roomCode.isEmpty
+                                            ? 'Chưa có thông tin phòng'
+                                            : 'Phòng ${widget.invoice.roomCode}',
+                                        icon: Icons.apartment_rounded,
+                                      ),
+                                      const SizedBox(height: 16),
+
+                                      const _ElectricityComplaintSummary(),
+                                      const SizedBox(height: 16),
+
+                                      // Reading snapshot
+                                      _ReadingSnapshotCard(
+                                        line: _selectedLine!,
+                                        formatReading: _formatReading,
+                                        formatAmount: _formatAmount,
+                                      ),
+                                      const SizedBox(height: 16),
+
+                                      const _FieldLabel(
+                                        'Chỉ số điện bạn cho là đúng',
+                                        required: true,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      TextFormField(
+                                        key: const Key(
+                                          'meter-reported-current-value',
                                         ),
-                                      )
-                                      .toList(),
-                                  onChanged: _submitting
-                                      ? null
-                                      : (line) {
-                                          if (line == null) return;
-                                          setState(() => _selectedLine = line);
+                                        controller: _reportedValueController,
+                                        enabled: !_submitting,
+                                        keyboardType:
+                                            const TextInputType.numberWithOptions(
+                                              decimal: true,
+                                            ),
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter.allow(
+                                            RegExp(r'^\d*[,.]?\d{0,2}'),
+                                          ),
+                                        ],
+                                        validator: (value) {
+                                          final parsed = double.tryParse(
+                                            (value ?? '').trim().replaceAll(
+                                              ',',
+                                              '.',
+                                            ),
+                                          );
+                                          if (parsed == null) {
+                                            return 'Vui lòng nhập chỉ số điện hợp lệ';
+                                          }
+                                          final previous =
+                                              _selectedLine?.previousValue;
+                                          if (previous != null &&
+                                              parsed < previous) {
+                                            return 'Chỉ số không được nhỏ hơn chỉ số cũ (${_formatReading(previous)} kWh)';
+                                          }
+                                          return null;
                                         },
-                                  validator: (v) =>
-                                      v == null ? 'Vui lòng chọn loại' : null,
-                                  decoration: _fieldDecoration(
-                                    hintText: 'Chọn loại khiếu nại',
-                                    prefixIcon: Icons.report_problem_outlined,
-                                  ),
-                                  icon: const Icon(
-                                    Icons.keyboard_arrow_down_rounded,
-                                    color: AppColors.bodyText,
+                                        decoration: _fieldDecoration(
+                                          hintText: 'Ví dụ: 1250',
+                                          prefixIcon: Icons.bolt_rounded,
+                                        ).copyWith(suffixText: 'kWh'),
+                                      ),
+                                      const SizedBox(height: 16),
+
+                                      // Detail content
+                                      const _FieldLabel(
+                                        'Nội dung chi tiết khiếu nại',
+                                        required: true,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      TextFormField(
+                                        controller: _detailController,
+                                        enabled: !_submitting,
+                                        minLines: 4,
+                                        maxLines: 7,
+                                        textInputAction:
+                                            TextInputAction.newline,
+                                        validator: (v) {
+                                          if (v == null ||
+                                              v.trim().length < 10) {
+                                            return 'Vui lòng mô tả rõ hơn (ít nhất 10 ký tự)';
+                                          }
+                                          return null;
+                                        },
+                                        decoration: _fieldDecoration(
+                                          hintText:
+                                              'Mô tả chi tiết lý do khiếu nại, ví dụ: chỉ số trên đồng hồ thực tế thấp hơn số trong hóa đơn...',
+                                          prefixIcon: null,
+                                        ).copyWith(alignLabelWithHint: true),
+                                      ),
+                                    ],
                                   ),
                                 ),
                                 const SizedBox(height: 16),
 
-                                // Reading snapshot
-                                _ReadingSnapshotCard(
-                                  line: _selectedLine,
-                                  formatReading: _formatReading,
-                                  formatAmount: _formatAmount,
-                                ),
-                                const SizedBox(height: 16),
+                                // Info note
+                                const _InfoNote(),
+                                const SizedBox(height: 24),
 
-                                // Detail content
-                                const _FieldLabel(
-                                  'Nội dung chi tiết khiếu nại',
-                                  required: true,
-                                ),
-                                const SizedBox(height: 6),
-                                TextFormField(
-                                  controller: _detailController,
-                                  enabled: !_submitting,
-                                  minLines: 4,
-                                  maxLines: 7,
-                                  textInputAction: TextInputAction.newline,
-                                  validator: (v) {
-                                    if (v == null || v.trim().length < 10) {
-                                      return 'Vui lòng mô tả rõ hơn (ít nhất 10 ký tự)';
-                                    }
-                                    return null;
-                                  },
-                                  decoration: _fieldDecoration(
-                                    hintText:
-                                        'Mô tả chi tiết lý do khiếu nại, ví dụ: chỉ số trên đồng hồ thực tế thấp hơn số trong hóa đơn...',
-                                    prefixIcon: null,
-                                  ).copyWith(alignLabelWithHint: true),
+                                // Submit button
+                                _SubmitButton(
+                                  submitting: _submitting,
+                                  onPressed: _submit,
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 16),
-
-                          // Info note
-                          const _InfoNote(),
-                          const SizedBox(height: 24),
-
-                          // Submit button
-                          _SubmitButton(
-                            submitting: _submitting,
-                            onPressed: _submit,
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
                 ),
               ),
@@ -316,7 +327,7 @@ class _ComplaintAppBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
                 Text(
-                  'Khiếu nại điện nước',
+                  'Khiếu nại số điện',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -578,9 +589,7 @@ class _ReadingSnapshotCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isElec = line.lineType == 'ELECTRICITY';
-    final accentColor = isElec
-        ? AppColors.warning
-        : const Color(0xFF0EA5E9);
+    final accentColor = isElec ? AppColors.warning : const Color(0xFF0EA5E9);
     final bgColor = isElec ? AppColors.warningSurface : AppColors.infoSurface;
     final unit = isElec ? 'kWh' : 'm³';
     String withUnit(double? value) {
@@ -751,12 +760,15 @@ class _SubmitButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppColors.radiusSm),
       ),
       child: FilledButton.icon(
+        key: const Key('meter-complaint-submit'),
         onPressed: submitting ? null : onPressed,
         style: FilledButton.styleFrom(
           backgroundColor: Colors.transparent,
           disabledBackgroundColor: Colors.transparent,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusSm)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
+          ),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
         ),
         icon: submitting
@@ -773,6 +785,77 @@ class _SubmitButton extends StatelessWidget {
       ),
     );
   }
+}
+
+class _NoElectricityLineState extends StatelessWidget {
+  const _NoElectricityLineState();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.only(top: 56),
+    child: Column(
+      children: [
+        Icon(Icons.bolt_outlined, color: AppColors.bodyText, size: 40),
+        SizedBox(height: 12),
+        Text(
+          'Không có chỉ số điện để khiếu nại',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: AppColors.inputText,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        SizedBox(height: 6),
+        Text(
+          'Chỉ số nước vẫn được hiển thị trong hóa đơn nhưng không hỗ trợ khiếu nại.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: AppColors.bodyText, fontSize: 13),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ElectricityComplaintSummary extends StatelessWidget {
+  const _ElectricityComplaintSummary();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: AppColors.warningSurface,
+      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+      border: Border.all(color: AppColors.warning.withValues(alpha: .3)),
+    ),
+    child: const Row(
+      children: [
+        Icon(Icons.bolt_rounded, color: AppColors.warning, size: 20),
+        SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Khiếu nại số điện',
+                style: TextStyle(
+                  color: AppColors.warningText,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              SizedBox(height: 3),
+              Text(
+                'Kiểm tra chỉ số điện của hóa đơn này',
+                style: TextStyle(color: AppColors.bodyText, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────

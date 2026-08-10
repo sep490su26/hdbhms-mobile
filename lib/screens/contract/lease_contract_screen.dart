@@ -197,11 +197,11 @@ class _ContractHeader extends StatelessWidget {
                 height: 36,
                 decoration: BoxDecoration(
                   color: AppColors.primarySurface,
-                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                  shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.weekend_outlined,
-                  color: AppColors.primary,
+                  color: AppColors.darkBlue,
                   size: 20,
                 ),
               ),
@@ -1007,23 +1007,12 @@ class _DocumentSection extends StatelessWidget {
       title: 'Quản lý tài liệu',
       child: url.isEmpty
           ? const _MutedText('Chưa có tài liệu hợp đồng')
-          : SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
-                onPressed: () =>
-                    _showContractFile(context, url, suggestedFilename),
-                icon: const Icon(Icons.description_outlined, size: 20),
-                label: const Text('Xem hợp đồng'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.deepBlue,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                  ),
-                ),
-              ),
+          : AppActionRowButton(
+              icon: Icons.description_outlined,
+              title: 'Xem hợp đồng',
+              subtitle: 'Mở tài liệu hợp đồng đã ký',
+              accentColor: AppColors.actionBlue,
+              onTap: () => _showContractFile(context, url, suggestedFilename),
             ),
     );
   }

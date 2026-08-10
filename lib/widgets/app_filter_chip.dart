@@ -56,6 +56,9 @@ class AppFilterChip extends StatelessWidget {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: expanded
+              ? MainAxisAlignment.center
+              : MainAxisAlignment.start,
           children: [
             if (icon != null) ...[
               Icon(

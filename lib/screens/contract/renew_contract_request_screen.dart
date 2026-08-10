@@ -163,41 +163,79 @@ class _RenewContractRequestScreenState
                         required: true,
                       ),
                       const SizedBox(height: AppColors.space8),
-                      TextFormField(
-                        controller: _monthsController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        onChanged: (_) => setState(() {}),
-                        validator: (value) {
-                          final months = int.tryParse(value ?? '');
-                          return months == null || months < 6
-                              ? 'Thời hạn gia hạn tối thiểu 6 tháng.'
-                              : null;
-                        },
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: AppColors.inputFill,
-                          hintText: 'Ví dụ: 9',
-                          suffixText: 'tháng',
-                          helper: Row(
-                            children: [
-                              const Icon(
-                                Icons.info_outline_rounded,
-                                color: AppColors.bodyText,
-                                size: 14,
-                              ),
-                              const SizedBox(width: AppColors.space4),
-                              Text(
-                                'Nhập từ 6 tháng trở lên',
-                                style: AppTypography.caption.copyWith(
-                                  fontWeight: FontWeight.w600,
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.inputFill,
+                          borderRadius: BorderRadius.circular(
+                            AppColors.radiusSm,
+                          ),
+                          border: Border.all(color: AppColors.cardBorder),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                key: const Key('renewal-custom-months'),
+                                controller: _monthsController,
+                                enabled: true,
+                                readOnly: false,
+                                enableInteractiveSelection: true,
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
+                                onChanged: (_) => setState(() {}),
+                                validator: (value) {
+                                  final months = int.tryParse(value ?? '');
+                                  return months == null || months < 6
+                                      ? 'Thời hạn gia hạn tối thiểu 6 tháng.'
+                                      : null;
+                                },
+                                decoration: const InputDecoration(
+                                  hintText: 'Ví dụ: 9',
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  errorBorder: InputBorder.none,
+                                  focusedErrorBorder: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 14,
+                                  ),
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                            Container(
+                              width: 68,
+                              height: AppColors.minimumTouchTarget,
+                              alignment: Alignment.center,
+                              decoration: const BoxDecoration(
+                                color: AppColors.primarySurface,
+                                border: Border(
+                                  left: BorderSide(color: AppColors.cardBorder),
+                                ),
+                              ),
+                              child: Text('tháng', style: AppTypography.label),
+                            ),
+                          ],
                         ),
+                      ),
+                      const SizedBox(height: AppColors.space4),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.info_outline_rounded,
+                            color: AppColors.bodyText,
+                            size: 14,
+                          ),
+                          const SizedBox(width: AppColors.space4),
+                          Text(
+                            'Nhập từ 6 tháng trở lên',
+                            style: AppTypography.caption.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

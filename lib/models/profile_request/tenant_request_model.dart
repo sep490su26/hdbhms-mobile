@@ -16,7 +16,7 @@ enum TenantRequestType {
       case TenantRequestType.addRoommate:
         return 'Thêm người ở';
       case TenantRequestType.utilityComplaint:
-        return 'Khiếu nại điện nước';
+        return 'Khiếu nại số điện';
     }
   }
 
@@ -31,7 +31,7 @@ enum TenantRequestType {
       case TenantRequestType.addRoommate:
         return 'Thêm người ở cùng';
       case TenantRequestType.utilityComplaint:
-        return 'Khiếu nại điện nước';
+        return 'Khiếu nại số điện';
     }
   }
 

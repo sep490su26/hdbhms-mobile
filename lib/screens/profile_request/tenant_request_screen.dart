@@ -32,13 +32,36 @@ class TenantRequestScreen extends StatefulWidget {
     this.currentRoomService = const CurrentRoomService(),
     this.roomId,
     this.roomCode = '',
-  });
+    this.previewRequests,
+    this.previewChangeRequests,
+    this.previewRoomTransfers = const {},
+    this.previewTenantProfileId,
+    this.initialFilterType,
+  }) : assert(
+         previewRequests == null || previewChangeRequests == null,
+         'Only one local preview data source can be supplied.',
+       );
 
   final ChangeRequestService changeRequestService;
   final RoomTransferService roomTransferService;
   final CurrentRoomService currentRoomService;
   final int? roomId;
   final String roomCode;
+
+  /// Local-only data for the internal preview launcher. When supplied, no
+  /// request is made to the backend and the regular list/detail UI is reused.
+  final List<TenantRequest>? previewRequests;
+
+  /// Local API-shaped data for previews that need the production detail
+  /// component, such as the liquidation progress timeline.
+  final List<ChangeRequest>? previewChangeRequests;
+
+  /// Linked local transfer data for the internal preview launcher. This keeps
+  /// the room-transfer preview on the same dedicated detail screen as the
+  /// production flow without contacting the API.
+  final Map<int, RoomTransferRequest> previewRoomTransfers;
+  final int? previewTenantProfileId;
+  final TenantRequestType? initialFilterType;
 
   @override
   State<TenantRequestScreen> createState() => _TenantRequestScreenState();
@@ -63,6 +86,19 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (widget.previewRequests != null ||
+        widget.previewChangeRequests != null) {
+      _filterType = widget.initialFilterType;
+      if (widget.previewRequests != null) {
+        _requests.addAll(widget.previewRequests!);
+      }
+      for (final request
+          in widget.previewChangeRequests ?? const <ChangeRequest>[]) {
+        _changeRequestMap[request.id] = request;
+        _requests.add(_toTenantRequest(request));
+      }
+      return;
+    }
     _loadApiRequests();
   }
 
@@ -74,7 +110,11 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && mounted && !_loadingApi) {
+    if (widget.previewRequests == null &&
+        widget.previewChangeRequests == null &&
+        state == AppLifecycleState.resumed &&
+        mounted &&
+        !_loadingApi) {
       _loadApiRequests();
     }
   }
@@ -82,6 +122,10 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
   /// Fetches change requests from the backend API and converts them to
   /// [TenantRequest] objects for display in the unified list.
   Future<void> _loadApiRequests() async {
+    if (widget.previewRequests != null ||
+        widget.previewChangeRequests != null) {
+      return;
+    }
     setState(() => _loadingApi = true);
     var apiRequests = const <ChangeRequest>[];
     var holderNominations = const <RoomTransferRequest>[];
@@ -247,8 +291,10 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
         break;
       case ChangeRequestType.addCoOccupant:
         add('Họ và tên', ['fullName', 'name']);
-        add('Số điện thoại', ['phoneNumber', 'phone']);
+        add('Số điện thoại', ['phone', 'phoneNumber']);
+        add('Email', ['email']);
         add('Ngày bắt đầu ở', ['moveInDate']);
+        add('Ghi chú', ['note']);
         break;
       case ChangeRequestType.meterReadingCorrection:
         add('Loại đồng hồ', ['meterType']);
@@ -318,6 +364,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
       'WAITING_FINAL_INVOICE' => 'Chờ hóa đơn tất toán',
       'WAITING_PAYMENT' => 'Chờ thanh toán tất toán',
       'WAITING_DEPOSIT_REFUND' => 'Chờ hoàn cọc',
+      'WAITING_REPLACEMENT_CONTRACT' => 'Chờ hợp đồng thay thế',
       'WAITING_SIGNED_DOCUMENT' => 'Chờ ký biên bản',
       'READY_TO_CONFIRM' => 'Sẵn sàng xác nhận thanh lý',
       'CONFIRMED' => 'Đã thanh lý',
@@ -432,8 +479,12 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
         Navigator.of(context)
             .push(
               MaterialPageRoute(
-                builder: (_) =>
-                    RoomTransferDetailScreen(changeRequest: changeRequest),
+                builder: (_) => RoomTransferDetailScreen(
+                  changeRequest: changeRequest,
+                  initialTransfer:
+                      widget.previewRoomTransfers[changeRequest.id],
+                  previewCurrentTenantProfileId: widget.previewTenantProfileId,
+                ),
               ),
             )
             .then((refreshed) {
@@ -442,12 +493,15 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
         return;
       }
 
-      showDialog<bool>(
-        context: context,
-        builder: (_) => _ApiRequestDetailDialog(changeRequest: changeRequest),
-      ).then((refreshed) {
-        if (refreshed == true) _loadApiRequests();
-      });
+      Navigator.of(context)
+          .push<bool>(
+            MaterialPageRoute(
+              builder: (_) => RequestDetailScreen(changeRequest: changeRequest),
+            ),
+          )
+          .then((refreshed) {
+            if (refreshed == true) _loadApiRequests();
+          });
       return;
     }
 
@@ -503,7 +557,11 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
           header: _buildHeader(),
           child: RefreshIndicator(
             color: AppColors.deepBlue,
-            onRefresh: _loadApiRequests,
+            onRefresh:
+                widget.previewRequests == null &&
+                    widget.previewChangeRequests == null
+                ? _loadApiRequests
+                : () async {},
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(14, 18, 14, 96),
@@ -776,7 +834,7 @@ class _RequestCard extends StatelessWidget {
   final VoidCallback onTap;
 
   Color get _accentColor => switch (request.type) {
-    TenantRequestType.renewContract => AppColors.deepBlue,
+    TenantRequestType.renewContract => AppColors.actionBlue,
     TenantRequestType.terminateContract => AppColors.danger,
     TenantRequestType.changeRoom => const Color(0xFF0284C7),
     TenantRequestType.addRoommate => AppColors.successText,
@@ -784,7 +842,7 @@ class _RequestCard extends StatelessWidget {
   };
 
   Color get _accentBg => switch (request.type) {
-    TenantRequestType.renewContract => AppColors.primarySurface,
+    TenantRequestType.renewContract => AppColors.infoSurface,
     TenantRequestType.terminateContract => const Color(0xFFFFF0F0),
     TenantRequestType.changeRoom => const Color(0xFFEFF8FF),
     TenantRequestType.addRoommate => const Color(0xFFF0FFF4),
@@ -1095,7 +1153,7 @@ class _RequestDetailDialog extends StatelessWidget {
   };
 
   Color get _accentColor => switch (request.type) {
-    TenantRequestType.renewContract => AppColors.deepBlue,
+    TenantRequestType.renewContract => AppColors.actionBlue,
     TenantRequestType.terminateContract => AppColors.danger,
     TenantRequestType.changeRoom => const Color(0xFF0284C7),
     TenantRequestType.addRoommate => AppColors.successText,
@@ -1103,7 +1161,7 @@ class _RequestDetailDialog extends StatelessWidget {
   };
 
   Color get _accentBg => switch (request.type) {
-    TenantRequestType.renewContract => AppColors.primarySurface,
+    TenantRequestType.renewContract => AppColors.infoSurface,
     TenantRequestType.terminateContract => const Color(0xFFFFF0F0),
     TenantRequestType.changeRoom => const Color(0xFFEFF8FF),
     TenantRequestType.addRoommate => const Color(0xFFF0FFF4),
@@ -1131,24 +1189,13 @@ class _RequestDetailDialog extends StatelessWidget {
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 48),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 430),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppColors.radiusLg),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 28,
-              offset: const Offset(0, 12),
-            ),
-          ],
-        ),
+        decoration: BoxDecoration(color: AppColors.surface),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 10, 12),
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
               child: Row(
                 children: [
                   Container(
@@ -1165,15 +1212,6 @@ class _RequestDetailDialog extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Chi tiết yêu cầu',
-                          style: TextStyle(
-                            color: AppColors.deepBlue,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
                         Text(
                           request.type.fullLabel,
                           maxLines: 1,
@@ -1185,19 +1223,6 @@ class _RequestDetailDialog extends StatelessWidget {
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 34,
-                      height: 34,
-                    ),
-                    icon: const Icon(
-                      Icons.close_rounded,
-                      color: AppColors.bodyText,
-                      size: 20,
                     ),
                   ),
                 ],
@@ -1359,7 +1384,7 @@ class _RequestDetailDialog extends StatelessWidget {
       TenantRequestType.utilityComplaint => [
         _DetailRow(
           label: 'Loại yêu cầu',
-          value: d['Loại yêu cầu'] ?? 'Khiếu nại chỉ số điện nước',
+          value: d['Loại yêu cầu'] ?? 'Khiếu nại số điện',
         ),
         _DetailRow(label: 'Phòng', value: d['Phòng'] ?? 'Xem chi tiết yêu cầu'),
       ],
@@ -1368,10 +1393,15 @@ class _RequestDetailDialog extends StatelessWidget {
 }
 
 class _DetailSection extends StatelessWidget {
-  const _DetailSection({required this.title, required this.children});
+  const _DetailSection({
+    required this.title,
+    required this.children,
+    this.icon,
+  });
 
   final String title;
   final List<Widget> children;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -1386,14 +1416,30 @@ class _DetailSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: AppColors.deepBlue,
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.2,
-            ),
+          Row(
+            children: [
+              if (icon != null) ...[
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySurface,
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                  ),
+                  child: Icon(icon, size: 15, color: AppColors.deepBlue),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppTypography.metaLabel.copyWith(
+                    color: AppColors.deepBlue,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           ...children,
@@ -1417,29 +1463,15 @@ class _DetailRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 4,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: AppColors.bodyText,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                height: 17 / 12,
-              ),
-            ),
-          ),
+          Expanded(flex: 4, child: Text(label, style: AppTypography.metaLabel)),
           const SizedBox(width: 12),
           Expanded(
             flex: 5,
             child: Text(
               value,
               textAlign: TextAlign.right,
-              style: TextStyle(
+              style: AppTypography.metaValue.copyWith(
                 color: valueColor ?? AppColors.inputText,
-                fontSize: 12.5,
-                fontWeight: FontWeight.w800,
-                height: 18 / 12.5,
               ),
             ),
           ),
@@ -1454,6 +1486,96 @@ class _LiquidationProgressStep {
 
   final String title;
   final String subtitle;
+}
+
+class _RequestDetailHero extends StatelessWidget {
+  const _RequestDetailHero({
+    required this.icon,
+    required this.iconColor,
+    required this.iconBackground,
+    required this.type,
+    required this.requestCode,
+    required this.createdAt,
+    required this.status,
+    required this.statusColor,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBackground;
+  final String type;
+  final String requestCode;
+  final String createdAt;
+  final String status;
+  final Color statusColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: iconBackground,
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                ),
+                child: Icon(icon, color: iconColor, size: 22),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  type,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.cardTitle,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                requestCode.isEmpty ? '--' : requestCode,
+                style: AppTypography.metaValue,
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                ),
+                child: Text(
+                  status,
+                  style: AppTypography.caption.copyWith(
+                    color: statusColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          Text('Tạo lúc $createdAt', style: AppTypography.caption),
+        ],
+      ),
+    );
+  }
 }
 
 class _ProgressStepRow extends StatelessWidget {
@@ -1547,17 +1669,16 @@ class _ProgressStepRow extends StatelessWidget {
 }
 
 // ── API Request detail dialog ─────────────────────────────────────────────────────
-class _ApiRequestDetailDialog extends StatefulWidget {
-  const _ApiRequestDetailDialog({required this.changeRequest});
+class RequestDetailScreen extends StatefulWidget {
+  const RequestDetailScreen({super.key, required this.changeRequest});
 
   final ChangeRequest changeRequest;
 
   @override
-  State<_ApiRequestDetailDialog> createState() =>
-      _ApiRequestDetailDialogState();
+  State<RequestDetailScreen> createState() => _RequestDetailScreenState();
 }
 
-class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
+class _RequestDetailScreenState extends State<RequestDetailScreen> {
   RoomTransferRequest? _roomTransferRequest;
   bool _loadingTransfer = false;
   bool _submittingRefund = false;
@@ -1611,7 +1732,7 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
 
   Color get _accentColor => switch (widget.changeRequest.requestType) {
     ChangeRequestType.roomTransfer => const Color(0xFF0284C7),
-    ChangeRequestType.contractRenewal => AppColors.deepBlue,
+    ChangeRequestType.contractRenewal => AppColors.actionBlue,
     ChangeRequestType.contractLiquidation => AppColors.danger,
     ChangeRequestType.moveOut => AppColors.danger,
     ChangeRequestType.depositRefundRequest => AppColors.successText,
@@ -1624,7 +1745,7 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
 
   Color get _accentBg => switch (widget.changeRequest.requestType) {
     ChangeRequestType.roomTransfer => const Color(0xFFEFF8FF),
-    ChangeRequestType.contractRenewal => AppColors.primarySurface,
+    ChangeRequestType.contractRenewal => AppColors.infoSurface,
     ChangeRequestType.contractLiquidation => const Color(0xFFFFF0F0),
     ChangeRequestType.moveOut => const Color(0xFFFFF0F0),
     ChangeRequestType.depositRefundRequest => const Color(0xFFF0FFF4),
@@ -1658,275 +1779,180 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
   bool get _canConfirmDepositRefund {
     return widget.changeRequest.requestType ==
             ChangeRequestType.contractLiquidation &&
+        !_isHolderReplacementLiquidation &&
         _payload['depositRefundStatus'] == 'RECORDED_BY_MANAGER';
   }
+
+  bool get _isHolderReplacementLiquidation =>
+      _payload['liquidationMode'] == 'PRIMARY_LEAVES_CO_OCCUPANT_STAYS';
 
   bool get _isLiquidationRequest =>
       widget.changeRequest.requestType == ChangeRequestType.contractLiquidation;
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 48),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 430),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppColors.radiusLg),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 28,
-              offset: const Offset(0, 12),
-            ),
-          ],
-        ),
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
         child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 10, 12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: _accentBg,
-                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                    ),
-                    child: Icon(_icon, color: _accentColor, size: 22),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Chi tiết yêu cầu',
-                          style: TextStyle(
-                            color: AppColors.deepBlue,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          widget.changeRequest.requestType.label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.bodyText,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 34,
-                      height: 34,
-                    ),
-                    icon: const Icon(
-                      Icons.close_rounded,
-                      color: AppColors.bodyText,
-                      size: 20,
-                    ),
-                  ),
-                ],
-              ),
+            AppTopBar(
+              title: 'Chi tiết yêu cầu',
+              onBack: () => Navigator.of(context).maybePop(),
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 18),
-              child: Divider(height: 1, color: Color(0xFFEEECEE)),
-            ),
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(color: AppColors.surface),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _DetailSection(
-                      title: 'Tổng quan',
-                      children: [
-                        _DetailRow(
-                          label: 'Mã yêu cầu',
-                          value: widget.changeRequest.requestCode,
-                        ),
-                        _DetailRow(
-                          label: 'Ngày tạo',
-                          value: _formatTime(widget.changeRequest.createdAt),
-                        ),
-                        _DetailRow(
-                          label: 'Trạng thái',
-                          value: widget.changeRequest.status.label,
-                          valueColor: _statusColor,
-                        ),
-                      ],
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
+                      child: _RequestDetailHero(
+                        icon: _icon,
+                        iconColor: _accentColor,
+                        iconBackground: _accentBg,
+                        type: widget.changeRequest.requestType.label,
+                        requestCode: widget.changeRequest.requestCode,
+                        createdAt: _formatTime(widget.changeRequest.createdAt),
+                        status: widget.changeRequest.status.label,
+                        statusColor: _statusColor,
+                      ),
                     ),
-                    if (_isLiquidationRequest) ...[
-                      const SizedBox(height: 12),
-                      _DetailSection(
-                        title: 'Tiến trình thanh lý',
-                        children: _buildLiquidationProgress(_payload),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    if (_loadingTransfer)
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(20),
-                          child: CircularProgressIndicator(
-                            color: AppColors.deepBlue,
-                          ),
-                        ),
-                      )
-                    else
-                      _DetailSection(
-                        title: 'Chi tiết',
-                        children: _buildTypeDetails(),
-                      ),
-                    if (widget.changeRequest.description.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      _DetailSection(
-                        title: 'Nội dung / ghi chú',
-                        children: [
-                          Text(
-                            widget.changeRequest.description,
-                            style: const TextStyle(
-                              color: AppColors.inputText,
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w500,
-                              height: 20 / 13.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                    if (widget.changeRequest.resolutionNote != null &&
-                        widget.changeRequest.resolutionNote!.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      _DetailSection(
-                        title: 'Ghi chú giải quyết',
-                        children: [
-                          Text(
-                            widget.changeRequest.resolutionNote!,
-                            style: const TextStyle(
-                              color: AppColors.inputText,
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w500,
-                              height: 20 / 13.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_canConfirmDepositRefund) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      height: 46,
-                      child: ElevatedButton(
-                        onPressed: _submittingRefund
-                            ? null
-                            : _confirmDepositRefund,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.successText,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                              AppColors.radiusSm,
-                            ),
-                          ),
-                        ),
-                        child: _submittingRefund
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (_isLiquidationRequest) ...[
+                              _DetailSection(
+                                title: 'Tiến trình thanh lý',
+                                icon: Icons.account_tree_outlined,
+                                children: _buildLiquidationProgress(_payload),
+                              ),
+                            ] else ...[
+                              _DetailSection(
+                                title: 'Tiến trình xử lý',
+                                icon: Icons.account_tree_outlined,
+                                children: _buildSimpleProgress(),
+                              ),
+                            ],
+                            const SizedBox(height: 12),
+                            if (_loadingTransfer)
+                              const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(20),
+                                  child: CircularProgressIndicator(
+                                    color: AppColors.deepBlue,
+                                  ),
                                 ),
                               )
-                            : const Text(
-                                'Đã nhận tiền cọc',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w900,
+                            else
+                              ..._buildRequestDetailSections(),
+                            if (widget
+                                .changeRequest
+                                .description
+                                .isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              _DetailSection(
+                                title: 'Nội dung / ghi chú',
+                                icon: Icons.notes_outlined,
+                                children: [
+                                  Text(
+                                    widget.changeRequest.description,
+                                    style: const TextStyle(
+                                      color: AppColors.inputText,
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w500,
+                                      height: 20 / 13.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                            const SizedBox(height: 12),
+                            _buildResolutionSection(),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (_canConfirmDepositRefund)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: double.infinity,
+                              height: 46,
+                              child: ElevatedButton(
+                                onPressed: _submittingRefund
+                                    ? null
+                                    : _confirmDepositRefund,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.successText,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppColors.radiusSm,
+                                    ),
+                                  ),
+                                ),
+                                child: _submittingRefund
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Đã nhận tiền cọc',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 44,
+                              child: OutlinedButton(
+                                onPressed: _submittingRefund
+                                    ? null
+                                    : _disputeDepositRefund,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.danger,
+                                  side: const BorderSide(
+                                    color: Color(0xFFFECACA),
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppColors.radiusSm,
+                                    ),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Chưa nhận / Sai số tiền',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                               ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 44,
-                      child: OutlinedButton(
-                        onPressed: _submittingRefund
-                            ? null
-                            : _disputeDepositRefund,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.danger,
-                          side: const BorderSide(color: Color(0xFFFECACA)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                              AppColors.radiusSm,
                             ),
-                          ),
-                        ),
-                        child: const Text(
-                          'Chưa nhận / Sai số tiền',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                          ),
+                            const SizedBox(height: 10),
+                          ],
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
                   ],
-                  SizedBox(
-                    width: double.infinity,
-                    height: 46,
-                    child: ElevatedButton(
-                      onPressed: _submittingRefund
-                          ? null
-                          : () => Navigator.of(context).pop(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.deepBlue,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            AppColors.radiusSm,
-                          ),
-                        ),
-                      ),
-                      child: const Text(
-                        'Đóng',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ],
@@ -2021,7 +2047,75 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
     return 'Không xử lý được yêu cầu.';
   }
 
+  List<Widget> _buildSimpleProgress() {
+    final status = widget.changeRequest.status;
+    final finalStatus =
+        status == ChangeRequestStatus.approved ||
+        status == ChangeRequestStatus.completed ||
+        status == ChangeRequestStatus.rejected ||
+        status == ChangeRequestStatus.cancelled;
+    final processing = status == ChangeRequestStatus.processing;
+    final reviewing =
+        status == ChangeRequestStatus.pending ||
+        status == ChangeRequestStatus.underReview;
+    final middleLabel = processing
+        ? 'Đang xử lý'
+        : status == ChangeRequestStatus.underReview
+        ? 'Đang xem xét'
+        : status == ChangeRequestStatus.cancelled
+        ? 'Đã dừng xử lý'
+        : 'Chờ xét duyệt';
+    final resultLabel = switch (status) {
+      ChangeRequestStatus.approved => 'Đã duyệt',
+      ChangeRequestStatus.completed => 'Hoàn tất',
+      ChangeRequestStatus.rejected => 'Bị từ chối',
+      ChangeRequestStatus.cancelled => 'Đã hủy',
+      _ => 'Chưa có kết quả',
+    };
+    final steps = [
+      _LiquidationProgressStep(
+        title: 'Đã gửi',
+        subtitle: _formatTime(widget.changeRequest.createdAt),
+      ),
+      _LiquidationProgressStep(
+        title: 'Xét duyệt / xử lý',
+        subtitle: middleLabel,
+      ),
+      _LiquidationProgressStep(
+        title: 'Kết quả',
+        subtitle: finalStatus && widget.changeRequest.resolvedAt != null
+            ? '$resultLabel • ${_formatTime(widget.changeRequest.resolvedAt)}'
+            : resultLabel,
+      ),
+    ];
+    final currentIndex = finalStatus ? 2 : (processing || reviewing ? 1 : 1);
+    final color =
+        status == ChangeRequestStatus.rejected ||
+            status == ChangeRequestStatus.cancelled
+        ? AppColors.danger
+        : _accentColor;
+    return [
+      for (var i = 0; i < steps.length; i++)
+        _ProgressStepRow(
+          step: steps[i],
+          isDone:
+              i == 0 ||
+              (finalStatus && i < 2) ||
+              (finalStatus &&
+                  i == 2 &&
+                  status != ChangeRequestStatus.rejected &&
+                  status != ChangeRequestStatus.cancelled),
+          isActive: i == currentIndex,
+          isLast: i == steps.length - 1,
+          color: color,
+        ),
+    ];
+  }
+
   List<Widget> _buildLiquidationProgress(Map<String, dynamic> payload) {
+    if (_isHolderReplacementLiquidation) {
+      return _buildHolderReplacementProgress(payload);
+    }
     final stage = payload['liquidationStage']?.toString() ?? '';
     final refundStatus = payload['depositRefundStatus']?.toString() ?? '';
     final currentIndex = _liquidationProgressIndex(stage, refundStatus);
@@ -2087,6 +2181,55 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
     ];
   }
 
+  List<Widget> _buildHolderReplacementProgress(Map<String, dynamic> payload) {
+    final stage = payload['liquidationStage']?.toString() ?? '';
+    final rejected =
+        widget.changeRequest.status == ChangeRequestStatus.rejected;
+    final cancelled =
+        widget.changeRequest.status == ChangeRequestStatus.cancelled;
+    final currentIndex = switch (stage) {
+      'CONFIRMED' => 3,
+      'WAITING_REPLACEMENT_CONTRACT' => 2,
+      _ when widget.changeRequest.status == ChangeRequestStatus.completed => 3,
+      _ => 1,
+    };
+    final steps = [
+      _LiquidationProgressStep(
+        title: 'Gửi yêu cầu',
+        subtitle: _formatTime(widget.changeRequest.createdAt),
+      ),
+      _LiquidationProgressStep(
+        title: 'Chủ trọ duyệt',
+        subtitle: widget.changeRequest.status == ChangeRequestStatus.pending
+            ? 'Đang chờ quyết định'
+            : widget.changeRequest.status.label,
+      ),
+      _LiquidationProgressStep(
+        title: 'Hợp đồng thay thế',
+        subtitle: stage == 'WAITING_REPLACEMENT_CONTRACT'
+            ? 'Đang chờ lập hợp đồng thay thế'
+            : 'Chưa tới bước này',
+      ),
+      _LiquidationProgressStep(
+        title: 'Hoàn tất',
+        subtitle: currentIndex == 3
+            ? 'Đã hoàn tất thay đổi người đứng tên'
+            : 'Chưa hoàn tất',
+      ),
+    ];
+
+    return [
+      for (var i = 0; i < steps.length; i++)
+        _ProgressStepRow(
+          step: steps[i],
+          isDone: !rejected && !cancelled && currentIndex > i,
+          isActive: currentIndex == i,
+          isLast: i == steps.length - 1,
+          color: rejected || cancelled ? AppColors.danger : _accentColor,
+        ),
+    ];
+  }
+
   int _liquidationProgressIndex(String stage, String refundStatus) {
     if (widget.changeRequest.status == ChangeRequestStatus.rejected ||
         widget.changeRequest.status == ChangeRequestStatus.cancelled) {
@@ -2140,6 +2283,181 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
       return 'Chờ ghi nhận hoàn cọc$amountText';
     }
     return '${_refundStatusLabel(refundStatus)}$amountText';
+  }
+
+  List<Widget> _buildRequestDetailSections() {
+    final p = _payload;
+    _DetailSection section(String title, IconData icon, List<Widget> rows) =>
+        _DetailSection(title: title, icon: icon, children: rows);
+
+    switch (widget.changeRequest.requestType) {
+      case ChangeRequestType.contractRenewal:
+        return [
+          section('Hợp đồng', Icons.description_outlined, [
+            _DetailRow(
+              label: 'Phòng hiện tại',
+              value: _requiredPayloadText(p, ['roomCode']),
+            ),
+            _DetailRow(
+              label: 'Mã hợp đồng',
+              value: _requiredPayloadText(p, ['contractCode']),
+            ),
+            _DetailRow(
+              label: 'Ngày bắt đầu',
+              value: _payloadDate(p, ['startDate']),
+            ),
+            _DetailRow(
+              label: 'Hết hạn cũ',
+              value: _payloadDate(p, ['oldEndDate', 'endDate']),
+            ),
+          ]),
+          const SizedBox(height: 12),
+          section('Nội dung gia hạn', Icons.autorenew_rounded, [
+            _DetailRow(
+              label: 'Thời hạn',
+              value: _monthValue(p, 'renewalTermMonths'),
+            ),
+            _DetailRow(
+              label: 'Bắt đầu mới',
+              value: _payloadDate(p, ['newStartDate']),
+            ),
+            _DetailRow(
+              label: 'Kết thúc mới',
+              value: _payloadDate(p, ['newEndDate']),
+            ),
+            _DetailRow(
+              label: 'Giá thuê',
+              value: _payloadMoney(p, ['monthlyRent']),
+            ),
+            _DetailRow(
+              label: 'Chu kỳ thanh toán',
+              value: _monthValue(p, 'paymentCycleMonths'),
+            ),
+            _DetailRow(
+              label: 'Tiền cọc',
+              value: _payloadMoney(p, ['depositAmount']),
+            ),
+            if (_hasPayloadValue(p, ['note']))
+              _DetailRow(label: 'Ghi chú', value: _payloadText(p, ['note'])),
+          ]),
+        ];
+      case ChangeRequestType.addCoOccupant:
+        return [
+          section('Hợp đồng', Icons.description_outlined, [
+            _DetailRow(
+              label: 'Mã hợp đồng',
+              value: _requiredPayloadText(p, ['contractCode']),
+            ),
+            _DetailRow(
+              label: 'Phòng',
+              value: _requiredPayloadText(p, ['roomCode']),
+            ),
+          ]),
+          const SizedBox(height: 12),
+          section('Thông tin người ở cùng', Icons.person_outline_rounded, [
+            _DetailRow(
+              label: 'Họ và tên',
+              value: _requiredPayloadText(p, ['fullName']),
+            ),
+            _DetailRow(
+              label: 'Số điện thoại',
+              value: _requiredPayloadText(p, ['phone', 'phoneNumber']),
+            ),
+            if (_hasPayloadValue(p, ['email']))
+              _DetailRow(label: 'Email', value: _payloadText(p, ['email'])),
+            if (_hasPayloadValue(p, ['moveInDate']))
+              _DetailRow(
+                label: 'Ngày bắt đầu ở',
+                value: _payloadDate(p, ['moveInDate']),
+              ),
+            if (_hasPayloadValue(p, ['note']))
+              _DetailRow(label: 'Ghi chú', value: _payloadText(p, ['note'])),
+          ]),
+        ];
+      case ChangeRequestType.meterReadingCorrection:
+        return [
+          section('Hóa đơn', Icons.receipt_long_outlined, [
+            _DetailRow(
+              label: 'Mã hóa đơn',
+              value: _requiredPayloadText(p, ['invoiceCode']),
+            ),
+            _DetailRow(
+              label: 'Phòng',
+              value: _requiredPayloadText(p, ['roomCode']),
+            ),
+            _DetailRow(
+              label: 'Kỳ hóa đơn',
+              value: _billingPeriod(p['billingPeriod']),
+            ),
+          ]),
+          const SizedBox(height: 12),
+          section('Chỉ số điện', Icons.bolt_outlined, [
+            _DetailRow(
+              label: 'Chỉ số tháng trước',
+              value: _meterValue(p, 'previousValue', 'kWh'),
+            ),
+            _DetailRow(
+              label: 'Chỉ số tháng này',
+              value: _meterValue(p, 'currentValue', 'kWh'),
+            ),
+            _DetailRow(
+              label: 'Chỉ số bạn báo',
+              value: _meterValue(p, 'reportedCurrentValue', 'kWh'),
+            ),
+            _DetailRow(
+              label: 'Lượng tiêu thụ',
+              value: _meterValue(p, 'usageAmount', 'kWh'),
+            ),
+            _DetailRow(
+              label: 'Đơn giá',
+              value: _meterValue(p, 'unitPrice', 'đ/kWh'),
+            ),
+            _DetailRow(
+              label: 'Thành tiền',
+              value: _meterValue(p, 'lineAmount', 'đ'),
+            ),
+          ]),
+          if (_hasPayloadValue(p, ['description'])) ...[
+            const SizedBox(height: 12),
+            section('Nội dung khiếu nại', Icons.notes_outlined, [
+              Text(_payloadText(p, ['description']), style: AppTypography.body),
+            ]),
+          ],
+        ];
+      default:
+        return [
+          section('Chi tiết', Icons.info_outline_rounded, _buildTypeDetails()),
+        ];
+    }
+  }
+
+  Widget _buildResolutionSection() {
+    final rejected =
+        widget.changeRequest.status == ChangeRequestStatus.rejected;
+    final note = widget.changeRequest.resolutionNote?.trim();
+    final hasNote = note != null && note.isNotEmpty;
+    final updatedAt = widget.changeRequest.resolvedAt;
+    return _DetailSection(
+      title: rejected ? 'Lý do từ chối' : 'Phản hồi quản lý',
+      icon: rejected ? Icons.error_outline_rounded : Icons.chat_outlined,
+      children: [
+        Text(
+          hasNote ? note : 'Chưa có phản hồi',
+          style: AppTypography.body.copyWith(
+            color: hasNote
+                ? (rejected ? AppColors.danger : AppColors.inputText)
+                : AppColors.bodyText,
+          ),
+        ),
+        if (updatedAt != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            'Cập nhật ${_formatTime(updatedAt)}',
+            style: AppTypography.caption,
+          ),
+        ],
+      ],
+    );
   }
 
   List<Widget> _buildTypeDetails() {
@@ -2251,12 +2569,16 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
         ),
         _DetailRow(
           label: 'Số điện thoại',
-          value: p['phoneNumber']?.toString() ?? 'Chưa có thông tin',
+          value: _payloadText(p, ['phone', 'phoneNumber']),
         ),
+        if (_payloadText(p, ['email']) != 'Chưa có thông tin')
+          _DetailRow(label: 'Email', value: _payloadText(p, ['email'])),
         _DetailRow(
           label: 'Ngày bắt đầu ở',
           value: p['moveInDate']?.toString() ?? 'Chưa có thông tin',
         ),
+        if (_payloadText(p, ['note']) != 'Chưa có thông tin')
+          _DetailRow(label: 'Ghi chú', value: _payloadText(p, ['note'])),
       ],
       ChangeRequestType.complaint => [
         _DetailRow(
@@ -2274,13 +2596,40 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
           value: p['meterType']?.toString() ?? 'Chưa có thông tin',
         ),
         _DetailRow(
-          label: 'Số cũ',
-          value: p['oldValue']?.toString() ?? 'Chưa có thông tin',
+          label: 'Mã hóa đơn',
+          value: _payloadText(p, ['invoiceCode']),
+        ),
+        _DetailRow(label: 'Phòng', value: _payloadText(p, ['roomCode'])),
+        _DetailRow(
+          label: 'Kỳ hóa đơn',
+          value: _payloadText(p, ['billingPeriod']),
         ),
         _DetailRow(
-          label: 'Số mới',
-          value: p['newValue']?.toString() ?? 'Chưa có thông tin',
+          label: 'Chỉ số cũ',
+          value: _meterValue(p, 'previousValue', 'kWh'),
         ),
+        _DetailRow(
+          label: 'Chỉ số trên hóa đơn',
+          value: _meterValue(p, 'currentValue', 'kWh'),
+        ),
+        _DetailRow(
+          label: 'Chỉ số bạn báo',
+          value: _meterValue(p, 'reportedCurrentValue', 'kWh'),
+        ),
+        _DetailRow(
+          label: 'Sản lượng',
+          value: _meterValue(p, 'usageAmount', 'kWh'),
+        ),
+        _DetailRow(
+          label: 'Đơn giá',
+          value: _meterValue(p, 'unitPrice', 'đ/kWh'),
+        ),
+        _DetailRow(
+          label: 'Thành tiền',
+          value: _meterValue(p, 'lineAmount', 'đ'),
+        ),
+        if (_payloadText(p, ['description']) != 'Chưa có thông tin')
+          _DetailRow(label: 'Mô tả', value: _payloadText(p, ['description'])),
       ],
       ChangeRequestType.invoiceAdjustment => [
         _DetailRow(
@@ -2394,6 +2743,46 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
     return text.isEmpty ? 'Chưa có thông tin' : text;
   }
 
+  String _requiredPayloadText(Map<String, dynamic> payload, List<String> keys) {
+    final value = _firstPayloadValue(payload, keys)?.toString().trim() ?? '';
+    return value.isEmpty ? '--' : value;
+  }
+
+  String _payloadDate(Map<String, dynamic> payload, List<String> keys) {
+    final raw = _requiredPayloadText(payload, keys);
+    if (raw == '--') return raw;
+    final parsed = DateTime.tryParse(raw);
+    return parsed == null ? raw : _formatDate(parsed);
+  }
+
+  String _billingPeriod(Object? value) {
+    final raw = value?.toString().trim() ?? '';
+    final match = RegExp(r'^(\d{4})-(\d{1,2})$').firstMatch(raw);
+    if (match == null) return raw.isEmpty ? '--' : raw;
+    return '${match.group(2)!.padLeft(2, '0')}/${match.group(1)}';
+  }
+
+  String _payloadMoney(Map<String, dynamic> payload, List<String> keys) {
+    final value = _firstPayloadValue(payload, keys);
+    if (value == null || value.toString().trim().isEmpty) return '--';
+    return _formatMoney(value);
+  }
+
+  String _monthValue(Map<String, dynamic> payload, String key) {
+    final value = _requiredPayloadText(payload, [key]);
+    return value == '--' ? value : '$value tháng';
+  }
+
+  bool _hasPayloadValue(Map<String, dynamic> payload, List<String> keys) {
+    final value = _firstPayloadValue(payload, keys)?.toString().trim() ?? '';
+    return value.isNotEmpty;
+  }
+
+  String _meterValue(Map<String, dynamic> payload, String key, String unit) {
+    final value = _payloadText(payload, [key]);
+    return value == 'Chưa có thông tin' ? value : '$value $unit';
+  }
+
   String _stageLabel(String value) {
     return switch (value) {
       'WAITING_APPROVAL' => 'Chờ duyệt',
@@ -2401,6 +2790,7 @@ class _ApiRequestDetailDialogState extends State<_ApiRequestDetailDialog> {
       'WAITING_FINAL_INVOICE' => 'Chờ hóa đơn tất toán',
       'WAITING_PAYMENT' => 'Chờ thanh toán tất toán',
       'WAITING_DEPOSIT_REFUND' => 'Chờ hoàn cọc',
+      'WAITING_REPLACEMENT_CONTRACT' => 'Chờ hợp đồng thay thế',
       'WAITING_SIGNED_DOCUMENT' => 'Chờ ký biên bản',
       'READY_TO_CONFIRM' => 'Sẵn sàng xác nhận thanh lý',
       'CONFIRMED' => 'Đã thanh lý',

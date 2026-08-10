@@ -151,7 +151,9 @@ class _HolderNominationScreenState extends State<HolderNominationScreen> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        ),
         icon: const Icon(
           Icons.check_circle,
           color: AppColors.successText,

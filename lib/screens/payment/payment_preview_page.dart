@@ -1,17 +1,24 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 
+import '../../models/change_request/change_request_model.dart';
 import '../../models/payment/tenant_invoice_model.dart';
+import '../../models/profile_request/tenant_request_model.dart';
+import '../../models/room_transfer/room_transfer_model.dart';
 import '../../services/payment/tenant_invoice_service.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/app_screen_shell.dart';
 import '../../widgets/app_top_bar.dart';
 import 'bill_detail_screen.dart';
+import 'bill_selection_page.dart';
 import 'payment_success_page.dart';
 import 'payment_history_page.dart';
 import 'qr_payment_page.dart';
 import 'qr_receipt_download_page.dart';
 import 'utility_complaint_screen.dart';
+import '../profile_request/tenant_request_screen.dart';
 
 /// Internal launcher for validating production payment flows with sample data.
 class PaymentPreviewPage extends StatelessWidget {
@@ -57,23 +64,12 @@ class PaymentPreviewPage extends StatelessWidget {
         usageAmount: 180,
       ),
       TenantInvoiceLine(
-        id: -103,
-        lineType: 'WATER',
-        description: 'Tiền nước',
-        quantity: 12,
-        unitPrice: 13000,
-        amount: 156000,
-        previousValue: 44,
-        currentValue: 56,
-        usageAmount: 12,
-      ),
-      TenantInvoiceLine(
         id: -106,
         lineType: 'SERVICE',
         description: 'Phí dịch vụ',
         quantity: 1,
-        unitPrice: 120000,
-        amount: 120000,
+        unitPrice: 276000,
+        amount: 276000,
       ),
     ],
   );
@@ -100,24 +96,11 @@ class PaymentPreviewPage extends StatelessWidget {
       ),
       TenantInvoiceLine(
         id: -105,
-        lineType: 'WATER',
-        description: 'Tiền nước',
-        quantity: 14,
-        unitPrice: 13000,
-        amount: 182000,
-        previousValue: 56,
-        currentValue: 70,
-        usageAmount: 14,
-        canComplain: true,
-        reviewStatus: 'NONE',
-      ),
-      TenantInvoiceLine(
-        id: -107,
         lineType: 'SERVICE',
         description: 'Phí dịch vụ',
         quantity: 1,
-        unitPrice: 120000,
-        amount: 120000,
+        unitPrice: 302000,
+        amount: 302000,
       ),
     ],
   );
@@ -167,6 +150,174 @@ class PaymentPreviewPage extends StatelessWidget {
     ),
   ];
 
+  /// API-shaped fixtures ensure every request preview takes the same list and
+  /// detail route that a real request uses.
+  static final List<ChangeRequest> _processingRequestPreviews = [
+    ChangeRequest(
+      id: -300,
+      requestCode: 'PREVIEW-RENEW-01',
+      requestType: ChangeRequestType.contractRenewal,
+      title: 'Gia hạn hợp đồng phòng P.203',
+      description:
+          'Yêu cầu gia hạn đang được quản lý kiểm tra trước khi lập phụ lục hợp đồng.',
+      status: ChangeRequestStatus.processing,
+      requesterId: -1001,
+      createdAt: DateTime(2026, 7, 22, 9, 15),
+      requestPayload: jsonEncode({
+        'contractCode': 'HD-P203-2026',
+        'roomCode': 'P.203',
+        'startDate': '2025-10-01',
+        'oldEndDate': '2026-09-30',
+        'renewalTermMonths': 12,
+        'newStartDate': '2026-10-01',
+        'newEndDate': '2027-09-30',
+        'monthlyRent': 4500000,
+        'paymentCycleMonths': 1,
+        'depositAmount': 4500000,
+      }),
+    ),
+    ChangeRequest(
+      id: -301,
+      requestCode: 'PREVIEW-LIQUIDATION-01',
+      requestType: ChangeRequestType.contractLiquidation,
+      title: 'Thanh lý hợp đồng phòng P.203',
+      description:
+          'Quản lý đã tiếp nhận yêu cầu và đang lập hóa đơn tất toán trước khi hoàn tất thủ tục.',
+      status: ChangeRequestStatus.processing,
+      requesterId: -1,
+      createdAt: DateTime(2026, 7, 18, 14, 40),
+      requestPayload: jsonEncode({
+        'contractCode': 'HD-P203-2026',
+        'roomCode': 'P.203',
+        'liquidationDate': '2026-08-15',
+        'liquidationStage': 'WAITING_FINAL_INVOICE',
+        'depositRefundStatus': 'NOT_STARTED',
+      }),
+    ),
+    ChangeRequest(
+      id: -302,
+      requestCode: 'PREVIEW-TRANSFER-01',
+      requestType: ChangeRequestType.roomTransfer,
+      title: 'Chuyển phòng P.203 sang P.305',
+      description:
+          'Yêu cầu chuyển phòng đang được kiểm tra tình trạng phòng và lịch bàn giao.',
+      status: ChangeRequestStatus.processing,
+      requesterId: -1001,
+      createdAt: DateTime(2026, 7, 16, 10, 5),
+      requestPayload: jsonEncode({
+        'transferRequestId': -303,
+        'transferRequestCode': 'PREVIEW-TRANSFER-01',
+        'currentRoom': 'P.203',
+        'targetRoom': 'P.305',
+        'requestedTransferDate': '2026-08-01',
+      }),
+    ),
+    ChangeRequest(
+      id: -304,
+      requestCode: 'PREVIEW-ROOMMATE-01',
+      requestType: ChangeRequestType.addCoOccupant,
+      title: 'Đăng ký người ở cùng phòng P.203',
+      description:
+          'Thông tin người ở cùng đang được kiểm tra để hoàn tất đăng ký lưu trú.',
+      status: ChangeRequestStatus.processing,
+      requesterId: -1001,
+      createdAt: DateTime(2026, 7, 12, 16, 25),
+      requestPayload: jsonEncode({
+        'contractCode': 'HD-P203-2026',
+        'roomCode': 'P.203',
+        'fullName': 'Nguyễn Minh Anh',
+        'phone': '0901 234 567',
+        'email': 'minhanh@example.com',
+        'moveInDate': '2026-08-01',
+      }),
+    ),
+    ChangeRequest(
+      id: -305,
+      requestCode: 'PREVIEW-ELECTRIC-METER-01',
+      requestType: ChangeRequestType.meterReadingCorrection,
+      title: 'Khiếu nại số điện tháng 07/2026',
+      description:
+          'Chỉ số điện trên hóa đơn cao hơn mức sử dụng thực tế. Vui lòng kiểm tra lại chỉ số công tơ.',
+      status: ChangeRequestStatus.processing,
+      requesterId: -1001,
+      createdAt: DateTime(2026, 7, 24, 11, 20),
+      requestPayload: jsonEncode({
+        'invoiceCode': 'UTILITY-DEMO-002',
+        'roomCode': 'P.203',
+        'billingPeriod': '2026-07',
+        'meterType': 'ELECTRICITY',
+        'previousValue': 1240,
+        'currentValue': 1450,
+        'reportedCurrentValue': 1325,
+        'usageAmount': 210,
+        'unitPrice': 3500,
+        'lineAmount': 735000,
+        'description':
+            'Chỉ số trên hóa đơn là 1.450 kWh, nhưng chỉ số tôi ghi nhận là 1.325 kWh.',
+      }),
+    ),
+  ];
+
+  static final RoomTransferRequest _roomTransferProgressPreview =
+      RoomTransferRequest(
+        id: -303,
+        requestCode: 'PREVIEW-TRANSFER-01',
+        requesterId: -1001,
+        oldContractId: -401,
+        oldRoomId: -203,
+        targetRoomId: -305,
+        transferringTenantProfileIds: const [-1001],
+        transferringTenantNames: const {-1001: 'Nguyễn Hoàng Minh'},
+        sourceHolderCandidateProfileIds: const [],
+        sourceHolderCandidateNames: const {},
+        targetTransferType: TargetTransferType.newContract,
+        requestedTransferDate: DateTime(2026, 8, 1),
+        status: TransferRequestStatus.waitingExecution,
+        oldRoomName: 'Phòng 203 · Khu A',
+        oldRoomCode: 'P.203',
+        oldContractCode: 'HD-P203-2026',
+        targetRoomName: 'Phòng 305 · Khu A',
+        targetRoomCode: 'P.305',
+        oldRoomPrice: 4500000,
+        newRoomPrice: 4800000,
+        priceDifferenceAmount: 300000,
+        priceDifferenceToPay: 300000,
+        reason: 'Cần chuyển sang phòng có không gian rộng hơn.',
+        remainingOccupantCountAfterTransfer: 0,
+        sourceRoomWillBeEmptyAfterTransfer: true,
+        paymentBranch: 'ADD_TO_NEXT_INVOICE',
+        eligibleAtCreation: true,
+        eligibilityCheckedAt: DateTime(2026, 7, 16, 10, 5),
+        transferCountThisYear: 1,
+      );
+
+  static final List<TenantInvoice> _allInvoicesPreview = [
+    _rentInvoice,
+    _utilityInvoice,
+    _invoice(
+      id: -103,
+      invoiceCode: 'RENT-DEMO-OVERDUE',
+      invoiceType: 'RENT',
+      totalAmount: 4500000,
+      transferDescription: 'THANHTOAN RENT DEMO OVERDUE',
+      billingPeriod: '2026-05',
+      status: 'OVERDUE',
+      issuedAt: DateTime(2026, 5, 2),
+      dueDate: DateTime(2026, 5, 20),
+      lines: const [
+        TenantInvoiceLine(
+          id: -103,
+          lineType: 'RENT',
+          description: 'Tiền phòng tháng 05/2026',
+          quantity: 1,
+          unitPrice: 4500000,
+          amount: 4500000,
+        ),
+      ],
+    ),
+    ..._paidHistoryInvoices.take(4),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -187,6 +338,19 @@ class PaymentPreviewPage extends StatelessWidget {
                 style: AppTypography.body,
               ),
               const SizedBox(height: 20),
+              const _PreviewSectionTitle('Danh sách hóa đơn'),
+              const SizedBox(height: 8),
+              _PreviewTile(
+                icon: Icons.receipt_long_rounded,
+                title: 'Tất cả hóa đơn',
+                subtitle: 'Có cả hóa đơn đã thanh toán và chưa thanh toán',
+                onTap: () => _openAllInvoicesPreview(context),
+              ),
+              const SizedBox(height: 20),
+              const _PreviewSectionTitle('Yêu cầu đang xử lý'),
+              const SizedBox(height: 8),
+              ..._buildRequestPreviewTiles(context),
+              const SizedBox(height: 20),
               const _PreviewSectionTitle('Hóa đơn'),
               const SizedBox(height: 8),
               _PreviewTile(
@@ -198,7 +362,7 @@ class PaymentPreviewPage extends StatelessWidget {
               const SizedBox(height: 8),
               _PreviewTile(
                 icon: Icons.receipt_long_rounded,
-                title: 'Chi tiết hóa đơn điện nước',
+                title: 'Chi tiết hóa đơn tiền điện & dịch vụ',
                 subtitle: 'Hiển thị chỉ số và quyền khiếu nại',
                 onTap: () =>
                     _openBillDetail(context, _reviewableUtilityInvoice),
@@ -206,7 +370,7 @@ class PaymentPreviewPage extends StatelessWidget {
               const SizedBox(height: 8),
               _PreviewTile(
                 icon: Icons.report_problem_outlined,
-                title: 'Khiếu nại điện nước',
+                title: 'Khiếu nại số điện',
                 subtitle: 'Kiểm tra form phản hồi chỉ số',
                 onTap: () => _openComplaint(context, _reviewableUtilityInvoice),
               ),
@@ -222,8 +386,8 @@ class PaymentPreviewPage extends StatelessWidget {
               const SizedBox(height: 8),
               _PreviewTile(
                 icon: Icons.qr_code_rounded,
-                title: 'QR điện nước và dịch vụ',
-                subtitle: 'Hóa đơn điện nước',
+                title: 'QR tiền điện & dịch vụ',
+                subtitle: 'Hóa đơn tiền điện & dịch vụ',
                 onTap: () => _openQr(context, _utilityInvoice),
               ),
               const SizedBox(height: 8),
@@ -241,8 +405,8 @@ class PaymentPreviewPage extends StatelessWidget {
               const SizedBox(height: 8),
               _PreviewTile(
                 icon: Icons.check_circle_outline_rounded,
-                title: 'Thanh toán thành công điện nước',
-                subtitle: 'Trạng thái hoàn tất của hóa đơn điện nước',
+                title: 'Thanh toán thành công tiền điện & dịch vụ',
+                subtitle: 'Trạng thái hoàn tất của hóa đơn tiền điện & dịch vụ',
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) =>
@@ -256,7 +420,8 @@ class PaymentPreviewPage extends StatelessWidget {
               _PreviewTile(
                 icon: Icons.history_rounded,
                 title: 'Lịch sử thanh toán nhiều kỳ',
-                subtitle: 'Dữ liệu từ 01/2025 đến 07/2026 để thử bộ lọc tháng/năm',
+                subtitle:
+                    'Dữ liệu từ 01/2025 đến 07/2026 để thử bộ lọc tháng/năm',
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => PaymentHistoryPage(
@@ -278,7 +443,7 @@ class PaymentPreviewPage extends StatelessWidget {
               const SizedBox(height: 8),
               _PreviewTile(
                 icon: Icons.download_rounded,
-                title: 'Mẫu QR điện nước và dịch vụ',
+                title: 'Mẫu QR tiền điện & dịch vụ',
                 subtitle: 'Xem trước ảnh QR có thể tải về',
                 onTap: () => _openReceiptPreview(context, _utilityInvoice),
               ),
@@ -296,6 +461,78 @@ class PaymentPreviewPage extends StatelessWidget {
           invoice: invoice,
           pollInterval: const Duration(days: 1),
         ),
+      ),
+    );
+  }
+
+  List<Widget> _buildRequestPreviewTiles(BuildContext context) {
+    const icons = [
+      Icons.event_repeat_rounded,
+      Icons.assignment_return_rounded,
+      Icons.swap_horiz_rounded,
+      Icons.person_add_alt_1_rounded,
+      Icons.bolt_outlined,
+    ];
+    return List.generate(_processingRequestPreviews.length, (index) {
+      final request = _processingRequestPreviews[index];
+      return Padding(
+        padding: EdgeInsets.only(
+          bottom: index == _processingRequestPreviews.length - 1 ? 0 : 8,
+        ),
+        child: _PreviewTile(
+          icon: icons[index],
+          title: _previewRequestTitle(request),
+          subtitle: 'Trạng thái: Đang xử lý',
+          onTap: () => _openRequestPreview(context, request),
+        ),
+      );
+    });
+  }
+
+  void _openRequestPreview(BuildContext context, ChangeRequest request) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => TenantRequestScreen(
+          previewChangeRequests: [request],
+          previewRoomTransfers:
+              request.requestType == ChangeRequestType.roomTransfer
+              ? {request.id: _roomTransferProgressPreview}
+              : const {},
+          previewTenantProfileId:
+              request.requestType == ChangeRequestType.roomTransfer
+              ? -1001
+              : null,
+          initialFilterType: _tenantRequestTypeFor(request.requestType),
+        ),
+      ),
+    );
+  }
+
+  TenantRequestType _tenantRequestTypeFor(ChangeRequestType type) {
+    return switch (type) {
+      ChangeRequestType.contractRenewal => TenantRequestType.renewContract,
+      ChangeRequestType.contractLiquidation ||
+      ChangeRequestType.moveOut => TenantRequestType.terminateContract,
+      ChangeRequestType.roomTransfer => TenantRequestType.changeRoom,
+      ChangeRequestType.addCoOccupant => TenantRequestType.addRoommate,
+      ChangeRequestType.meterReadingCorrection =>
+        TenantRequestType.utilityComplaint,
+      _ => TenantRequestType.renewContract,
+    };
+  }
+
+  String _previewRequestTitle(ChangeRequest request) {
+    if (request.requestType == ChangeRequestType.meterReadingCorrection) {
+      return 'Khiếu nại số điện';
+    }
+    return _tenantRequestTypeFor(request.requestType).fullLabel;
+  }
+
+  void _openAllInvoicesPreview(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) =>
+            BillSelectionPage(previewInvoices: _allInvoicesPreview),
       ),
     );
   }

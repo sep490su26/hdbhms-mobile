@@ -37,7 +37,8 @@ class AppEmptyState extends StatelessWidget {
       final state = AppListState(
         kind: AppListStateKind.empty,
         title: title,
-        description: description ?? 'Nội dung sẽ xuất hiện tại đây khi có dữ liệu.',
+        description:
+            description ?? 'Nội dung sẽ xuất hiện tại đây khi có dữ liệu.',
         icon: icon,
         actionLabel: actionLabel,
         onAction: onAction,

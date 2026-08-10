@@ -7,7 +7,7 @@ import 'qr_payment_page.dart';
 import 'utility_complaint_screen.dart';
 
 /// Màn chi tiết hóa đơn: hiển thị breakdown từng dòng, trạng thái,
-/// nút thanh toán và (nếu là UTILITY) nút khiếu nại điện nước.
+/// nút thanh toán và (nếu là UTILITY) nút khiếu nại số điện.
 class BillDetailScreen extends StatelessWidget {
   const BillDetailScreen({
     super.key,
@@ -22,7 +22,6 @@ class BillDetailScreen extends StatelessWidget {
 
   static const _lineIcons = <String, IconData>{
     'ELECTRICITY': Icons.bolt_rounded,
-    'WATER': Icons.water_drop_rounded,
     'RENT': Icons.apartment_rounded,
     'SERVICE': Icons.miscellaneous_services_rounded,
     'VIOLATION_FINE': Icons.gavel_rounded,
@@ -31,7 +30,6 @@ class BillDetailScreen extends StatelessWidget {
 
   static const _lineColors = <String, Color>{
     'ELECTRICITY': AppColors.warning,
-    'WATER': Color(0xFF0EA5E9),
     'RENT': Color(0xFF6366F1),
     'SERVICE': AppColors.success,
     'VIOLATION_FINE': Color(0xFFEF4444),
@@ -83,7 +81,6 @@ class BillDetailScreen extends StatelessWidget {
 
   static String _typeLabel(String type) => switch (type) {
     'ELECTRICITY' => 'Tiền điện',
-    'WATER' => 'Tiền nước',
     'RENT' => 'Tiền phòng',
     'SERVICE' => 'Phí dịch vụ',
     'VIOLATION_FINE' => 'Phạt vi phạm',
@@ -92,8 +89,37 @@ class BillDetailScreen extends StatelessWidget {
   };
 
   bool get _isUtility => invoice.isUtilityType;
-  bool get _hasComplainableLines => invoice.reviewableUtilityLines.isNotEmpty;
+  bool get _hasComplainableLines => invoice.reviewableUtilityLines.any(
+    (line) => line.lineType == 'ELECTRICITY',
+  );
   bool get _canPay => invoice.canPay && !invoice.hasOpenMeterReadingReview;
+
+  List<({TenantInvoiceLine? line, int amount, bool serviceGroup})>
+  _presentationLines() {
+    final waterAndService = invoice.lines
+        .where((line) => line.lineType == 'WATER' || line.lineType == 'SERVICE')
+        .toList(growable: false);
+    final groupedAmount = waterAndService.fold<int>(
+      0,
+      (sum, line) => sum + line.amount,
+    );
+    final visible =
+        <({TenantInvoiceLine? line, int amount, bool serviceGroup})>[
+          ...invoice.lines
+              .where(
+                (line) =>
+                    line.lineType != 'WATER' && line.lineType != 'SERVICE',
+              )
+              .map(
+                (line) =>
+                    (line: line, amount: line.amount, serviceGroup: false),
+              ),
+        ];
+    if (waterAndService.isNotEmpty) {
+      visible.add((line: null, amount: groupedAmount, serviceGroup: true));
+    }
+    return visible;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -305,7 +331,7 @@ class BillDetailScreen extends StatelessWidget {
   // ── Invoice line breakdown ────────────────────────────────────
 
   Widget _buildLineBreakdown() {
-    final lines = invoice.lines;
+    final lines = _presentationLines();
     if (lines.isEmpty) return const SizedBox.shrink();
 
     return Container(
@@ -368,9 +394,14 @@ class BillDetailScreen extends StatelessWidget {
           // Lines
           ...lines.asMap().entries.map((entry) {
             final idx = entry.key;
-            final line = entry.value;
-            final color = _lineColors[line.lineType] ?? AppColors.bodyText;
-            final icon = _lineIcons[line.lineType] ?? Icons.circle_outlined;
+            final displayLine = entry.value;
+            final line = displayLine.line;
+            final color = displayLine.serviceGroup
+                ? AppColors.success
+                : _lineColors[line!.lineType] ?? AppColors.bodyText;
+            final icon = displayLine.serviceGroup
+                ? Icons.miscellaneous_services_rounded
+                : _lineIcons[line!.lineType] ?? Icons.circle_outlined;
             final isLast = idx == lines.length - 1;
 
             return Column(
@@ -387,7 +418,9 @@ class BillDetailScreen extends StatelessWidget {
                             height: 36,
                             decoration: BoxDecoration(
                               color: color.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                              borderRadius: BorderRadius.circular(
+                                AppColors.radiusMd,
+                              ),
                             ),
                             child: Icon(icon, color: color, size: 19),
                           ),
@@ -397,7 +430,9 @@ class BillDetailScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  line.description.isEmpty
+                                  displayLine.serviceGroup
+                                      ? 'Phí dịch vụ'
+                                      : line!.description.isEmpty
                                       ? _typeLabel(line.lineType)
                                       : line.description,
                                   style: const TextStyle(
@@ -406,7 +441,8 @@ class BillDetailScreen extends StatelessWidget {
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                if (line.quantity > 0 &&
+                                if (!displayLine.serviceGroup &&
+                                    line!.quantity > 0 &&
                                     line.unitPrice > 0) ...[
                                   const SizedBox(height: 3),
                                   Text(
@@ -422,7 +458,7 @@ class BillDetailScreen extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            _fmt(line.amount),
+                            _fmt(displayLine.amount),
                             style: TextStyle(
                               color: color,
                               fontSize: 15,
@@ -432,7 +468,8 @@ class BillDetailScreen extends StatelessWidget {
                         ],
                       ),
                       // Meter reading row (điện/nước)
-                      if (line.previousValue != null &&
+                      if (!displayLine.serviceGroup &&
+                          line!.previousValue != null &&
                           line.currentValue != null) ...[
                         const SizedBox(height: 10),
                         Container(
@@ -440,7 +477,9 @@ class BillDetailScreen extends StatelessWidget {
                           padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                           decoration: BoxDecoration(
                             color: color.withValues(alpha: 0.06),
-                            borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                            borderRadius: BorderRadius.circular(
+                              AppColors.radiusSm,
+                            ),
                             border: Border.all(
                               color: color.withValues(alpha: 0.18),
                             ),
@@ -571,7 +610,12 @@ class BillDetailScreen extends StatelessWidget {
     // Review statuses for existing lines
     final lines = invoice.lines;
     final reviewLines = lines
-        .where((l) => l.reviewStatus.isNotEmpty && l.reviewStatus != 'NONE')
+        .where(
+          (l) =>
+              l.lineType == 'ELECTRICITY' &&
+              l.reviewStatus.isNotEmpty &&
+              l.reviewStatus != 'NONE',
+        )
         .toList();
 
     if (reviewLines.isNotEmpty) {
@@ -673,33 +717,25 @@ class BillDetailScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 46,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: [AppColors.deepBlue, AppColors.primary],
-                  ),
+                  color: AppColors.surface,
                   borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.warning.withValues(alpha: 0.24),
-                      blurRadius: 16,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
+                  border: Border.all(
+                    color: AppColors.warning.withValues(alpha: .72),
+                  ),
                 ),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
                       Icons.edit_note_rounded,
-                      color: Colors.white,
+                      color: AppColors.warningText,
                       size: 20,
                     ),
                     SizedBox(width: 8),
                     Text(
-                      'Gửi khiếu nại điện nước',
+                      'Gửi khiếu nại số điện',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.warningText,
                         fontSize: 14,
                         fontWeight: FontWeight.w900,
                       ),
@@ -707,7 +743,7 @@ class BillDetailScreen extends StatelessWidget {
                     SizedBox(width: 8),
                     Icon(
                       Icons.arrow_forward_rounded,
-                      color: Colors.white,
+                      color: AppColors.warningText,
                       size: 18,
                     ),
                   ],
@@ -954,7 +990,7 @@ class _ReviewStatusCard extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              isElec ? 'Khiếu nại điện' : 'Khiếu nại nước',
+              isElec ? 'Khiếu nại số điện' : 'Khiếu nại chỉ số',
               style: TextStyle(
                 color: color,
                 fontSize: 13,

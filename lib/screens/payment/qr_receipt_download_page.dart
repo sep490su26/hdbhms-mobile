@@ -252,7 +252,7 @@ class QrReceiptTemplate extends StatelessWidget {
     final isRent = invoice.invoiceType.toUpperCase() == 'RENT';
     final typeLabel = isRent
         ? 'THANH TOÁN TIỀN PHÒNG'
-        : 'THANH TOÁN ĐIỆN NƯỚC & DỊCH VỤ';
+        : 'THANH TOÁN TIỀN ĐIỆN & DỊCH VỤ';
 
     final infoRows = <({String label, String value, bool highlight})>[
       (label: 'Ngân hàng', value: invoice.bankShortName, highlight: false),

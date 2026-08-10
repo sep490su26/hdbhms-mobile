@@ -272,8 +272,9 @@ class AppTheme {
         return Colors.transparent;
       }),
       rangeSelectionBackgroundColor: AppColors.primary.withValues(alpha: 0.2),
-      rangeSelectionOverlayColor:
-          const WidgetStatePropertyAll(Colors.transparent),
+      rangeSelectionOverlayColor: const WidgetStatePropertyAll(
+        Colors.transparent,
+      ),
       dividerColor: outline,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppColors.radiusMd),

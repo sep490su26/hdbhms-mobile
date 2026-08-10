@@ -105,16 +105,8 @@ class _ListStateIllustration extends StatelessWidget {
             ),
             child: SizedBox(width: 164, height: 164),
           ),
-          const Positioned(
-            top: 0,
-            right: 18,
-            child: _StateOrb(size: 48),
-          ),
-          const Positioned(
-            bottom: 2,
-            left: 6,
-            child: _StateOrb(size: 34),
-          ),
+          const Positioned(top: 0, right: 18, child: _StateOrb(size: 48)),
+          const Positioned(bottom: 2, left: 6, child: _StateOrb(size: 34)),
           Container(
             width: 202,
             height: 142,

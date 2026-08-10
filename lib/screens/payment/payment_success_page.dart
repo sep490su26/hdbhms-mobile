@@ -916,7 +916,7 @@ class _SuccessData {
       return _SuccessData(
         transactionCode: transactionCode,
         invoiceCode: 'Hóa đơn tiện ích tháng 12/2025',
-        paymentTitle: 'Điện nước & dịch vụ',
+        paymentTitle: 'Tiền điện & dịch vụ',
         totalAmount: 800000,
         completedAt: completedAt ?? DateTime(2025, 12, 22, 14, 32, 5),
         items: const [
@@ -973,7 +973,7 @@ class _SuccessData {
           : 'Mã hóa đơn: ${invoice.invoiceCode}',
       paymentTitle: invoice.invoiceType.toUpperCase() == 'RENT'
           ? 'Tiền phòng'
-          : 'Điện nước & dịch vụ',
+          : 'Tiền điện & dịch vụ',
       totalAmount: invoice.totalAmount,
       completedAt: completedAt ?? invoice.paidAt ?? DateTime.now().toLocal(),
       items: items,

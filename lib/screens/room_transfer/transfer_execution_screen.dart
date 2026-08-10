@@ -326,7 +326,9 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
       barrierDismissible: false,
       barrierColor: Colors.black54,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        ),
         title: const Text(
           'Thành công!',
           style: TextStyle(fontWeight: FontWeight.w800),

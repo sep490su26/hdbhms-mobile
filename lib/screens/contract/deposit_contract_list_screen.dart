@@ -347,64 +347,41 @@ class _FilterBar extends StatelessWidget {
           ),
         ),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final date = _FilterChip(
-            icon: Icons.calendar_month_outlined,
-            label: selectedDateRange != null
-                ? '${_formatDate(selectedDateRange!.start)} - ${_formatDate(selectedDateRange!.end)}'
-                : 'Ngày ký hợp đồng',
-            isActive: selectedDateRange != null,
-            onTap: onPickDateRange,
-          );
-          final status = _StatusDropdown(
-            selectedStatus: selectedStatus,
-            statusOptions: statusOptions,
-            onChanged: onStatusChanged,
-          );
-          final clear = hasActiveFilters
-              ? IconButton(
-                  tooltip: 'Xóa bộ lọc',
-                  onPressed: onClearFilters,
-                  constraints: const BoxConstraints.tightFor(
-                    width: AppColors.minimumTouchTarget,
-                    height: AppColors.minimumTouchTarget,
-                  ),
-                  icon: const Icon(
-                    Icons.close_rounded,
-                    color: AppColors.danger,
-                  ),
-                )
-              : null;
-          if (constraints.maxWidth < 420) {
-            return Column(
-              children: [
-                SizedBox(width: double.infinity, child: date),
-                const SizedBox(height: AppColors.space8),
-                Row(
-                  children: [
-                    Expanded(child: status),
-                    if (clear != null) ...[
-                      const SizedBox(width: AppColors.space8),
-                      clear,
-                    ],
-                  ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _FilterChip(
+              icon: Icons.calendar_month_outlined,
+              label: selectedDateRange != null
+                  ? '${_formatDate(selectedDateRange!.start)} – ${_formatDate(selectedDateRange!.end)}'
+                  : 'Ngày ký',
+              isActive: selectedDateRange != null,
+              onTap: onPickDateRange,
+            ),
+            const SizedBox(width: AppColors.space8),
+            SizedBox(
+              width: 168,
+              child: _StatusDropdown(
+                selectedStatus: selectedStatus,
+                statusOptions: statusOptions,
+                onChanged: onStatusChanged,
+              ),
+            ),
+            if (hasActiveFilters) ...[
+              const SizedBox(width: AppColors.space4),
+              IconButton(
+                tooltip: 'Xóa bộ lọc',
+                onPressed: onClearFilters,
+                constraints: const BoxConstraints.tightFor(
+                  width: AppColors.minimumTouchTarget,
+                  height: AppColors.minimumTouchTarget,
                 ),
-              ],
-            );
-          }
-          return Row(
-            children: [
-              Expanded(child: date),
-              const SizedBox(width: AppColors.space8),
-              Expanded(child: status),
-              if (clear != null) ...[
-                const SizedBox(width: AppColors.space4),
-                clear,
-              ],
+                icon: const Icon(Icons.close_rounded, color: AppColors.danger),
+              ),
             ],
-          );
-        },
+          ],
+        ),
       ),
     );
   }
@@ -448,17 +425,14 @@ class _FilterChip extends StatelessWidget {
               size: 15,
             ),
             const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: isActive ? AppColors.deepBlue : AppColors.bodyText,
-                  fontSize: 11,
-                  fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-                  height: 14 / 11,
-                ),
+            Text(
+              label,
+              maxLines: 1,
+              style: TextStyle(
+                color: isActive ? AppColors.deepBlue : AppColors.bodyText,
+                fontSize: 12,
+                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                height: 14 / 11,
               ),
             ),
           ],
@@ -757,7 +731,7 @@ class _EmptyState extends StatelessWidget {
     onAction: onRetry,
     scrollable: true,
     onRefresh: () async => onRetry(),
-    topSpacing: 120,
+    topSpacing: 32,
   );
 }
 

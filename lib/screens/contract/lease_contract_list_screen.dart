@@ -9,6 +9,7 @@ import 'package:hdbhms_mobile/models/contract/contract_list_item_model.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
@@ -348,64 +349,59 @@ class _FilterBar extends StatelessWidget {
           ),
         ),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final date = _FilterChip(
-            icon: Icons.calendar_month_outlined,
-            label: selectedDateRange != null
-                ? '${_formatDate(selectedDateRange!.start)} - ${_formatDate(selectedDateRange!.end)}'
-                : 'Ngày ký hợp đồng',
-            isActive: selectedDateRange != null,
-            onTap: onPickDateRange,
-          );
-          final status = _StatusDropdown(
-            selectedStatus: selectedStatus,
-            statusOptions: statusOptions,
-            onChanged: onStatusChanged,
-          );
-          final clear = hasActiveFilters
-              ? IconButton(
-                  tooltip: 'Xóa bộ lọc',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Tất cả hợp đồng',
+                  style: AppTypography.sectionTitle,
+                ),
+              ),
+              if (hasActiveFilters)
+                TextButton.icon(
                   onPressed: onClearFilters,
-                  constraints: const BoxConstraints.tightFor(
-                    width: AppColors.minimumTouchTarget,
-                    height: AppColors.minimumTouchTarget,
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                  label: const Text('Xóa lọc'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    minimumSize: const Size(0, AppColors.minimumTouchTarget),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
                   ),
-                  icon: const Icon(
-                    Icons.close_rounded,
-                    color: AppColors.danger,
-                  ),
-                )
-              : null;
-          if (constraints.maxWidth < 420) {
-            return Column(
+                ),
+            ],
+          ),
+          const SizedBox(height: AppColors.space8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
               children: [
-                SizedBox(width: double.infinity, child: date),
-                const SizedBox(height: AppColors.space8),
-                Row(
-                  children: [
-                    Expanded(child: status),
-                    if (clear != null) ...[
-                      const SizedBox(width: AppColors.space8),
-                      clear,
-                    ],
-                  ],
+                SizedBox(
+                  width: 218,
+                  child: _FilterChip(
+                    icon: Icons.calendar_month_outlined,
+                    label: selectedDateRange != null
+                        ? '${_formatDate(selectedDateRange!.start)} – ${_formatDate(selectedDateRange!.end)}'
+                        : 'Ngày ký hợp đồng',
+                    isActive: selectedDateRange != null,
+                    onTap: onPickDateRange,
+                  ),
+                ),
+                const SizedBox(width: AppColors.space8),
+                SizedBox(
+                  width: 168,
+                  child: _StatusDropdown(
+                    selectedStatus: selectedStatus,
+                    statusOptions: statusOptions,
+                    onChanged: onStatusChanged,
+                  ),
                 ),
               ],
-            );
-          }
-          return Row(
-            children: [
-              Expanded(child: date),
-              const SizedBox(width: AppColors.space8),
-              Expanded(child: status),
-              if (clear != null) ...[
-                const SizedBox(width: AppColors.space4),
-                clear,
-              ],
-            ],
-          );
-        },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -441,7 +437,7 @@ class _FilterChip extends StatelessWidget {
           ),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: MainAxisSize.max,
           children: [
             Icon(
               icon,
@@ -449,14 +445,14 @@ class _FilterChip extends StatelessWidget {
               size: 15,
             ),
             const SizedBox(width: 6),
-            Flexible(
+            Expanded(
               child: Text(
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: isActive ? AppColors.deepBlue : AppColors.bodyText,
-                  fontSize: 11,
+                  color: isActive ? AppColors.darkBlue : AppColors.bodyText,
+                  fontSize: 12,
                   fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
                   height: 14 / 11,
                 ),
@@ -539,13 +535,15 @@ class _StatusDropdown extends StatelessWidget {
   Future<void> _openSelector(BuildContext context) async {
     await showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: AppColors.surface,
       showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
+      builder: (sheetContext) => FractionallySizedBox(
+        heightFactor: 0.7,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
@@ -553,37 +551,34 @@ class _StatusDropdown extends StatelessWidget {
                 style: AppColors.topBarTitleStyle,
               ),
               const SizedBox(height: AppColors.space8),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  selectedStatus == null
-                      ? Icons.radio_button_checked_rounded
-                      : Icons.radio_button_off_rounded,
-                  color: selectedStatus == null
-                      ? AppColors.primary
-                      : AppColors.bodyText,
-                ),
-                title: const Text('Tất cả'),
-                onTap: () {
-                  onChanged(null);
-                  Navigator.of(sheetContext).pop();
-                },
-              ),
-              ...statusOptions.entries.map(
-                (entry) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(
-                    selectedStatus == entry.key
-                        ? Icons.radio_button_checked_rounded
-                        : Icons.radio_button_off_rounded,
-                    color: selectedStatus == entry.key
-                        ? AppColors.primary
-                        : AppColors.bodyText,
-                  ),
-                  title: Text(entry.value),
-                  onTap: () {
-                    onChanged(entry.key);
-                    Navigator.of(sheetContext).pop();
+              Expanded(
+                child: ListView.separated(
+                  itemCount: statusOptions.length + 1,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final isAll = index == 0;
+                    final entry = isAll
+                        ? null
+                        : statusOptions.entries.elementAt(index - 1);
+                    final isSelected = isAll
+                        ? selectedStatus == null
+                        : selectedStatus == entry!.key;
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        isSelected
+                            ? Icons.radio_button_checked_rounded
+                            : Icons.radio_button_off_rounded,
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.bodyText,
+                      ),
+                      title: Text(isAll ? 'Tất cả' : entry!.value),
+                      onTap: () {
+                        onChanged(isAll ? null : entry!.key);
+                        Navigator.of(sheetContext).pop();
+                      },
+                    );
                   },
                 ),
               ),
@@ -618,6 +613,13 @@ class _ContractCard extends StatelessWidget {
             border: Border.all(
               color: AppColors.cardBorder.withValues(alpha: 0.6),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.deepBlue.withValues(alpha: 0.04),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
           child: Row(
             children: [
@@ -758,7 +760,7 @@ class _EmptyState extends StatelessWidget {
     onAction: onRetry,
     scrollable: true,
     onRefresh: () async => onRetry(),
-    topSpacing: 120,
+    topSpacing: 8,
   );
 }
 

@@ -15,6 +15,27 @@ String formatTopBarTitle(String value) {
   return value.trim();
 }
 
+/// Formats a user-facing calendar date without changing any API/date keys.
+String formatDateVN(DateTime? value, {String fallback = 'Chưa cập nhật'}) {
+  if (value == null) return fallback;
+  return '${value.day.toString().padLeft(2, '0')}/'
+      '${value.month.toString().padLeft(2, '0')}/${value.year}';
+}
+
+/// Formats a user-facing timestamp. API serialization must keep using ISO.
+String formatDateTimeVN(DateTime? value, {String fallback = 'Chưa cập nhật'}) {
+  if (value == null) return fallback;
+  return '${formatDateVN(value, fallback: fallback)} '
+      '${value.hour.toString().padLeft(2, '0')}:'
+      '${value.minute.toString().padLeft(2, '0')}';
+}
+
+String formatTimeVN(DateTime? value, {String fallback = 'Chưa cập nhật'}) {
+  if (value == null) return fallback;
+  return '${value.hour.toString().padLeft(2, '0')}:'
+      '${value.minute.toString().padLeft(2, '0')}';
+}
+
 String _formatPropertyWord(String word) {
   if (word.isEmpty) return word;
   final hasLetter = word.toLowerCase() != word.toUpperCase();

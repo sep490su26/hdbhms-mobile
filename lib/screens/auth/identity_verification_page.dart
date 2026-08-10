@@ -701,7 +701,9 @@ class _ImageCaptureStepCard extends StatelessWidget {
     foregroundColor: AppColors.deepBlue,
     side: const BorderSide(color: AppColors.deepBlue),
     minimumSize: const Size.fromHeight(44),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusSm)),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+    ),
     textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
   );
 }

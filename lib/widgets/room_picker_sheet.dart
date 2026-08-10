@@ -260,6 +260,7 @@ class _RoomOptionCard extends StatelessWidget {
                                 ? 'Phòng hiện tại'
                                 : room.statusLabel,
                             muted: isCurrent,
+                            status: room.statusLabel,
                           ),
                         ],
                       ),
@@ -315,27 +316,46 @@ String _metadata(AvailableRoom room) => [
 ].join(' · ');
 
 class _RoomStatusBadge extends StatelessWidget {
-  const _RoomStatusBadge({required this.label, required this.muted});
+  const _RoomStatusBadge({
+    required this.label,
+    required this.muted,
+    this.status = '',
+  });
 
   final String label;
   final bool muted;
+  final String status;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-    decoration: BoxDecoration(
-      color: muted ? AppColors.surfaceMuted : AppColors.successSurface,
-      borderRadius: BorderRadius.circular(AppColors.radiusPill),
-    ),
-    child: Text(
-      label,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: AppTypography.metaLabel.copyWith(
-        color: muted ? AppColors.bodyText : AppColors.successText,
+  Widget build(BuildContext context) {
+    final normalized = status.trim().toUpperCase();
+    final isSoonVacant =
+        normalized == 'SOON_VACANT' ||
+        label.trim().toLowerCase().contains('sắp trống');
+    final background = muted
+        ? AppColors.surfaceMuted
+        : isSoonVacant
+        ? AppColors.warningSurface
+        : AppColors.successSurface;
+    final foreground = muted
+        ? AppColors.bodyText
+        : isSoonVacant
+        ? AppColors.warningText
+        : AppColors.successText;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
       ),
-    ),
-  );
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppTypography.metaLabel.copyWith(color: foreground),
+      ),
+    );
+  }
 }
 
 class _EmptyRooms extends StatelessWidget {

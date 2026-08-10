@@ -214,55 +214,64 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
 
     return Scaffold(
       backgroundColor: theme.background,
-      body: Stack(
-        children: [
-          Positioned.fill(child: _DecoratedBackground(theme: theme)),
-          SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 430),
-                child: CustomScrollView(
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: AppTopBar(
-                        title: theme.title,
-                        onBack: () => Navigator.of(context).maybePop(),
-                      ),
-                    ),
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
-                      sliver: SliverList.list(
-                        children: [
-                          _PaymentHero(invoice: _invoice, theme: theme),
-                          const SizedBox(height: 18),
-                          _QrCard(
-                            qrCode: _invoice.qrCode,
-                            theme: theme,
-                            downloading: _downloadingQr,
-                            onDownload: _downloadQr,
-                          ),
-                          if (fields.isNotEmpty) ...[
-                            const SizedBox(height: 18),
-                            _InformationCard(fields: fields, theme: theme),
-                          ],
-                          const SizedBox(height: 18),
-                          _SecurityNote(theme: theme),
-                          const SizedBox(height: 20),
-                          _ConfirmButton(
-                            theme: theme,
-                            checking: _checking,
-                            onPressed: () =>
-                                _checkPaymentStatus(showPendingMessage: true),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            AppTopBar(
+              title: theme.title,
+              onBack: () => Navigator.of(context).maybePop(),
+            ),
+            Expanded(
+              child: Stack(
+                children: [
+                  Positioned.fill(child: _DecoratedBackground(theme: theme)),
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 430),
+                      child: CustomScrollView(
+                        slivers: [
+                          SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                            sliver: SliverList.list(
+                              children: [
+                                _PaymentHero(invoice: _invoice, theme: theme),
+                                const SizedBox(height: 18),
+                                _QrCard(
+                                  qrCode: _invoice.qrCode,
+                                  theme: theme,
+                                  downloading: _downloadingQr,
+                                  onDownload: _downloadQr,
+                                ),
+                                if (fields.isNotEmpty) ...[
+                                  const SizedBox(height: 18),
+                                  _InformationCard(
+                                    fields: fields,
+                                    theme: theme,
+                                  ),
+                                ],
+                                const SizedBox(height: 18),
+                                _SecurityNote(theme: theme),
+                                const SizedBox(height: 20),
+                                _ConfirmButton(
+                                  theme: theme,
+                                  checking: _checking,
+                                  onPressed: () => _checkPaymentStatus(
+                                    showPendingMessage: true,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -947,7 +956,7 @@ class _PaymentVisualTheme {
       );
     }
     return const _PaymentVisualTheme(
-      title: 'Thanh toán điện nước & dịch vụ',
+      title: 'Thanh toán tiền điện & dịch vụ',
       subtitle: 'Chi phí tiện ích trong kỳ',
       icon: Icons.bolt_rounded,
       background: AppColors.background,
