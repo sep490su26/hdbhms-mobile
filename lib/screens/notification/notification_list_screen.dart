@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 
 import '../../models/notification/notification_model.dart';
 import '../../services/notification/notification_service.dart';
@@ -488,8 +489,9 @@ class _NotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isUnread = !item.isRead;
     return Material(
-      color: AppColors.surface,
+      color: isUnread ? AppColors.infoSurface : AppColors.surface,
       borderRadius: BorderRadius.circular(AppColors.radiusMd),
       child: InkWell(
         onTap: onTap,
@@ -498,9 +500,9 @@ class _NotificationCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppColors.radiusMd),
             border: Border.all(
-              color: item.isRead
-                  ? AppColors.cardBorder.withValues(alpha: 0.7)
-                  : AppColors.deepBlue.withValues(alpha: 0.35),
+              color: isUnread
+                  ? AppColors.primary.withValues(alpha: 0.22)
+                  : AppColors.cardBorder.withValues(alpha: 0.7),
             ),
           ),
           child: IntrinsicHeight(
@@ -510,9 +512,7 @@ class _NotificationCard extends StatelessWidget {
                 Container(
                   width: 4,
                   decoration: BoxDecoration(
-                    color: item.isRead
-                        ? Colors.transparent
-                        : AppColors.deepBlue,
+                    color: isUnread ? AppColors.primary : Colors.transparent,
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(10),
                       bottomLeft: Radius.circular(10),
@@ -534,29 +534,44 @@ class _NotificationCard extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 7),
-                        // Tiêu đề
-                        Text(
-                          item.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: AppColors.inputText,
-                            fontSize: 14,
-                            fontWeight: item.isRead
-                                ? FontWeight.w600
-                                : FontWeight.w800,
-                            height: 19 / 14,
-                          ),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (isUnread) ...[
+                              Container(
+                                width: 7,
+                                height: 7,
+                                margin: const EdgeInsets.only(top: 6),
+                                decoration: const BoxDecoration(
+                                  color: AppColors.primary,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 7),
+                            ],
+                            Expanded(
+                              child: Text(
+                                item.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTypography.body.copyWith(
+                                  color: AppColors.inputText,
+                                  fontWeight: item.isRead
+                                      ? FontWeight.w600
+                                      : FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 4),
                         // Thời gian
                         Text(
                           _formatTime(item.createdAt),
-                          style: const TextStyle(
+                          style: AppTypography.caption.copyWith(
                             color: AppColors.bodyText,
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
-                            height: 15 / 11,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -565,11 +580,9 @@ class _NotificationCard extends StatelessWidget {
                           item.content,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: AppTypography.caption.copyWith(
                             color: AppColors.bodyText,
-                            fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            height: 17 / 12,
                           ),
                         ),
                       ],
@@ -620,16 +633,14 @@ class _TypeBadge extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(_icon, size: 13, color: AppColors.deepBlue),
+        Icon(_icon, size: 14, color: AppColors.primary),
         const SizedBox(width: 4),
         Text(
-          type.label.toUpperCase(),
-          style: const TextStyle(
-            color: AppColors.deepBlue,
+          type.label,
+          style: AppTypography.caption.copyWith(
+            color: AppColors.primary,
             fontSize: 10,
-            fontWeight: FontWeight.w900,
-            height: 14 / 10,
-            letterSpacing: 0.5,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ],
@@ -645,29 +656,27 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isRead) {
-      return const Text(
+      return Text(
         'Đã đọc',
-        style: TextStyle(
+        style: AppTypography.caption.copyWith(
           color: AppColors.bodyText,
           fontSize: 10,
           fontWeight: FontWeight.w600,
-          height: 14 / 10,
         ),
       );
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: AppColors.deepBlue.withValues(alpha: 0.10),
+        color: AppColors.primary.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(AppColors.radiusPill),
       ),
-      child: const Text(
+      child: Text(
         'Chưa đọc',
-        style: TextStyle(
-          color: AppColors.deepBlue,
+        style: AppTypography.caption.copyWith(
+          color: AppColors.primary,
           fontSize: 10,
           fontWeight: FontWeight.w800,
-          height: 14 / 10,
         ),
       ),
     );
@@ -688,154 +697,89 @@ class _NotificationDetailDialog extends StatelessWidget {
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppColors.radiusLg),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 420,
+          maxHeight: MediaQuery.sizeOf(context).height * 0.76,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header dialog
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 12, 0),
-              child: Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: AppColors.primarySurface,
-                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                    ),
-                    child: const Icon(
-                      Icons.notifications_rounded,
-                      color: AppColors.deepBlue,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'Chi tiết thông báo',
-                    style: TextStyle(
-                      color: AppColors.deepBlue,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      height: 20 / 15,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 36,
-                      height: 36,
-                    ),
-                    icon: const Icon(
-                      Icons.close_rounded,
-                      color: AppColors.bodyText,
-                      size: 20,
-                    ),
-                    tooltip: 'Đóng',
-                  ),
-                ],
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
-              child: Divider(height: 1, thickness: 1, color: Color(0xFFEEECEE)),
-            ),
-
-            // Scrollable content
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppColors.radiusLg),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 8, 8),
+                child: Row(
                   children: [
-                    // Tiêu đề thông báo
-                    Text(
-                      item.title,
-                      style: const TextStyle(
-                        color: AppColors.inputText,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        height: 21 / 15,
+                    const Expanded(
+                      child: Text('Thông báo', style: AppTypography.cardTitle),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      tooltip: 'Đóng',
+                      constraints: const BoxConstraints.tightFor(
+                        width: AppColors.minimumTouchTarget,
+                        height: AppColors.minimumTouchTarget,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    // Thời gian
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.schedule_rounded,
-                          size: 13,
-                          color: AppColors.bodyText,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          _formatDetailTime(item.createdAt),
-                          style: const TextStyle(
-                            color: AppColors.bodyText,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            height: 16 / 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    const Divider(
-                      height: 1,
-                      thickness: 1,
-                      color: Color(0xFFEEECEE),
-                    ),
-                    const SizedBox(height: 14),
-                    // Nội dung đầy đủ
-                    Text(
-                      item.content,
-                      style: const TextStyle(
-                        color: AppColors.inputText,
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w500,
-                        height: 20 / 13.5,
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: AppColors.bodyText,
+                        size: 20,
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-
-            // Nút đóng
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-              child: SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.deepBlue,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                    ),
-                  ),
-                  child: const Text(
-                    'Đóng',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      height: 20 / 15,
-                    ),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          _TypeBadge(type: item.type),
+                          const SizedBox(width: 8),
+                          _StatusBadge(isRead: item.isRead),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        item.title,
+                        style: AppTypography.cardTitle.copyWith(fontSize: 16),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _formatDetailTime(item.createdAt),
+                        style: AppTypography.caption,
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceMuted,
+                          borderRadius: BorderRadius.circular(
+                            AppColors.radiusMd,
+                          ),
+                        ),
+                        child: Text(
+                          item.content,
+                          style: AppTypography.body.copyWith(
+                            color: AppColors.inputText,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -861,6 +805,7 @@ class _ErrorState extends StatelessWidget {
         title: 'Không tải được thông báo',
         description: message,
         actionLabel: 'Thử lại',
+        actionIcon: Icons.refresh_rounded,
         onAction: onRetry,
       ),
     ),

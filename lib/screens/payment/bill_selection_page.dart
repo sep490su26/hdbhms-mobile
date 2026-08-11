@@ -448,6 +448,7 @@ class _BillErrorState extends StatelessWidget {
     title: 'Không tải được hóa đơn',
     description: message,
     actionLabel: 'Thử lại',
+    actionIcon: Icons.refresh_rounded,
     onAction: onRetry,
   );
 }

@@ -57,8 +57,10 @@ class _AuthTextFieldState extends State<AuthTextField> {
       children: [
         Semantics(
           label: widget.required ? '${widget.label}, bắt buộc' : widget.label,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+          child: Wrap(
+            spacing: 3,
+            runSpacing: 2,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text(
                 widget.uppercaseLabel
@@ -68,7 +70,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
               ),
               if (widget.required)
                 const Text(
-                  ' *',
+                  '*',
                   style: TextStyle(
                     color: AppColors.danger,
                     fontWeight: FontWeight.w800,

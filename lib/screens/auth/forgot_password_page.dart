@@ -7,6 +7,7 @@ import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
+import 'package:hdbhms_mobile/widgets/auth_inline_message.dart';
 import 'package:hdbhms_mobile/widgets/auth_text_field.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
@@ -79,36 +80,31 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             onBack: () => Navigator.of(context).maybePop(),
           ),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 28, 20, 40),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
             child: Form(
               key: _formKey,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: AppColors.primarySurface,
-                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                    ),
-                    child: const Icon(
-                      Icons.lock_reset_outlined,
-                      color: AppColors.deepBlue,
-                      size: 26,
-                    ),
+                  const Icon(
+                    Icons.lock_reset_outlined,
+                    key: Key('forgot-password-intro-icon'),
+                    color: AppColors.primary,
+                    size: 34,
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 10),
                   const Text(
                     'Khôi phục mật khẩu',
                     style: AppTypography.pageTitle,
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   const Text(
                     'Nhập email hoặc số điện thoại đã đăng ký. Chúng tôi sẽ gửi mã xác minh để bạn tiếp tục.',
                     style: AppTypography.bodyLarge,
+                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
                   AuthTextField(
                     label: 'Email hoặc số điện thoại',
                     hintText: 'Nhập thông tin đã đăng ký',
@@ -125,7 +121,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   ),
                   if (_requestError != null) ...[
                     const SizedBox(height: 12),
-                    _InlineAuthMessage(message: _requestError!),
+                    AuthInlineMessage(message: _requestError!),
                   ],
                   const SizedBox(height: 24),
                   SizedBox(
@@ -144,13 +140,16 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text('Gửi mã xác minh'),
-                                SizedBox(width: 8),
-                                Icon(Icons.arrow_forward_rounded, size: 19),
-                              ],
+                          : FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text('Gửi mã xác minh'),
+                                  SizedBox(width: 8),
+                                  Icon(Icons.arrow_forward_rounded, size: 19),
+                                ],
+                              ),
                             ),
                     ),
                   ),
@@ -159,42 +158,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _InlineAuthMessage extends StatelessWidget {
-  const _InlineAuthMessage({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.dangerSurface,
-        borderRadius: BorderRadius.circular(AppColors.radiusSm),
-        border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.error_outline_rounded,
-            color: AppColors.danger,
-            size: 19,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message,
-              style: AppTypography.body.copyWith(color: AppColors.dangerText),
-            ),
-          ),
-        ],
       ),
     );
   }

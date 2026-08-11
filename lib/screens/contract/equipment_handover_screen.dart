@@ -466,6 +466,7 @@ class _HandoverEmptyState extends StatelessWidget {
     icon: Icons.inventory_2_outlined,
     title: 'Ch\u01B0a c\u00F3 th\u00F4ng tin thi\u1EBFt b\u1ECB b\u00E0n giao',
     actionLabel: 'Th\u1EED l\u1EA1i',
+    actionIcon: Icons.refresh_rounded,
     onAction: onRetry,
     scrollable: true,
     onRefresh: () async => onRetry(),

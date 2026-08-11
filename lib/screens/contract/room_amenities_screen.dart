@@ -701,6 +701,7 @@ class _AmenitiesEmptyState extends StatelessWidget {
     description:
         'Danh s\u00E1ch \u0111\u1ED3 d\u00F9ng b\u00E0n giao s\u1EBD hi\u1EC3n th\u1ECB t\u1EA1i \u0111\u00E2y',
     actionLabel: 'Th\u1EED l\u1EA1i',
+    actionIcon: Icons.refresh_rounded,
     onAction: onRetry,
     scrollable: true,
     onRefresh: () async => onRetry(),

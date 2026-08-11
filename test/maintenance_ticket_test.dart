@@ -258,10 +258,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Chờ thanh toán'), findsOneWidget);
-      expect(
-        find.text('Đã hoàn tất xử lý · Cần thanh toán 2.000đ'),
-        findsOneWidget,
-      );
+      expect(find.text('Cần thanh toán 2.000đ'), findsOneWidget);
     },
   );
 

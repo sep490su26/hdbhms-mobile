@@ -728,6 +728,7 @@ class _EmptyState extends StatelessWidget {
     title:
         'B\u1EA1n ch\u01B0a c\u00F3 h\u1EE3p \u0111\u1ED3ng c\u1ECDc n\u00E0o',
     actionLabel: 'Th\u1EED l\u1EA1i',
+    actionIcon: Icons.refresh_rounded,
     onAction: onRetry,
     scrollable: true,
     onRefresh: () async => onRetry(),
@@ -744,6 +745,7 @@ class _EmptyFilterState extends StatelessWidget {
     title:
         'Kh\u00F4ng c\u00F3 H\u0110 c\u1ECDc ph\u00F9 h\u1EE3p v\u1EDBi b\u1ED9 l\u1ECDc',
     actionLabel: 'X\u00F3a b\u1ED9 l\u1ECDc',
+    actionIcon: Icons.filter_alt_off_rounded,
     onAction: onClear,
   );
 }

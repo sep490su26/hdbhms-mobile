@@ -722,6 +722,7 @@ class _HistoryError extends StatelessWidget {
     title: 'Không tải được lịch sử thanh toán',
     description: message,
     actionLabel: 'Thử lại',
+    actionIcon: Icons.refresh_rounded,
     onAction: onRetry,
   );
 }
@@ -748,6 +749,8 @@ class _HistoryEmpty extends StatelessWidget {
         : 'Các giao dịch đã thanh toán sẽ xuất hiện ở đây.',
     icon: Icons.receipt_long_outlined,
     actionLabel: hasAnyPaidInvoice ? 'Xóa bộ lọc' : null,
+    actionIcon: hasAnyPaidInvoice ? Icons.filter_alt_off_rounded : null,
+    actionStyle: AppListStateActionStyle.secondary,
     onAction: hasAnyPaidInvoice ? onClearFilter : null,
   );
 

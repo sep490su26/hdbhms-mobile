@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:hdbhms_mobile/screens/auth/forgot_password_code_page.dart';
 import 'package:hdbhms_mobile/screens/auth/forgot_password_page.dart';
 import 'package:hdbhms_mobile/screens/auth/password_reset_success_page.dart';
 import 'package:hdbhms_mobile/services/auth/forgot_password_service.dart';
@@ -8,16 +9,20 @@ import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
+import 'package:hdbhms_mobile/widgets/auth_inline_message.dart';
 import 'package:hdbhms_mobile/widgets/auth_text_field.dart';
+import 'package:hdbhms_mobile/widgets/password_requirements.dart';
 
 class ResetPasswordPage extends StatefulWidget {
   const ResetPasswordPage({
     super.key,
     this.token,
+    this.identity,
     this.forgotPasswordService = const ForgotPasswordService(),
   });
 
   final String? token;
+  final String? identity;
   final ForgotPasswordService forgotPasswordService;
 
   @override
@@ -33,6 +38,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   bool _isInvalidToken = false;
 
   bool get _hasToken => widget.token?.trim().isNotEmpty ?? false;
+  bool get _hasIdentity => widget.identity?.trim().isNotEmpty ?? false;
 
   @override
   void initState() {
@@ -92,7 +98,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           normalized.contains('expired');
       setState(() {
         _submissionError = isInvalidToken
-            ? 'Mã xác minh không hợp lệ hoặc đã hết hạn. Vui lòng nhập lại mã.'
+            ? 'Mã xác minh không hợp lệ hoặc đã hết hạn.'
             : message;
         _isInvalidToken = isInvalidToken;
       });
@@ -101,7 +107,22 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     }
   }
 
-  void _enterCodeAgain() {
+  void _recoverInvalidToken() {
+    if (_hasIdentity) {
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+        return;
+      }
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => ForgotPasswordCodePage(
+            identity: widget.identity!,
+            forgotPasswordService: widget.forgotPasswordService,
+          ),
+        ),
+      );
+      return;
+    }
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => const ForgotPasswordPage()),
       (route) => false,
@@ -130,44 +151,41 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
             onBack: () => Navigator.of(context).maybePop(),
           ),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 28, 20, 40),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
             child: Form(
               key: _formKey,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: AppColors.primarySurface,
-                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                    ),
-                    child: const Icon(
-                      Icons.lock_reset_rounded,
-                      color: AppColors.deepBlue,
-                      size: 26,
-                    ),
+                  const Icon(
+                    Icons.lock_outline,
+                    key: Key('reset-password-intro-icon'),
+                    color: AppColors.primary,
+                    size: 34,
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 10),
                   const Text(
                     'Thiết lập mật khẩu mới',
                     style: AppTypography.pageTitle,
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   const Text(
                     'Mật khẩu cần có ít nhất 8 ký tự, gồm chữ cái và chữ số.',
                     style: AppTypography.bodyLarge,
+                    textAlign: TextAlign.center,
                   ),
                   if (_submissionError != null) ...[
-                    const SizedBox(height: 20),
-                    _ResetErrorCard(
+                    const SizedBox(height: 16),
+                    AuthInlineMessage(
                       message: _submissionError!,
-                      showRetryCode: _isInvalidToken,
-                      onRetryCode: _enterCodeAgain,
+                      actionLabel: _isInvalidToken
+                          ? (_hasIdentity ? 'Nhập mã khác' : 'Yêu cầu mã mới')
+                          : null,
+                      onAction: _isInvalidToken ? _recoverInvalidToken : null,
                     ),
                   ],
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
                   AuthTextField(
                     label: 'Mật khẩu mới',
                     hintText: 'Ít nhất 8 ký tự',
@@ -189,6 +207,25 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                       }
                       return null;
                     },
+                  ),
+                  const SizedBox(height: 12),
+                  PasswordRequirements(
+                    passwordController: _passwordController,
+                    rules: [
+                      PasswordRequirementRule(
+                        label: 'Tối thiểu 8 ký tự',
+                        isMet: (password) => password.length >= 8,
+                      ),
+                      PasswordRequirementRule(
+                        label: 'Có ít nhất một chữ cái',
+                        isMet: (password) =>
+                            RegExp(r'[a-zA-Z]').hasMatch(password),
+                      ),
+                      PasswordRequirementRule(
+                        label: 'Có ít nhất một chữ số',
+                        isMet: (password) => RegExp(r'\d').hasMatch(password),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   AuthTextField(
@@ -234,67 +271,6 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _ResetErrorCard extends StatelessWidget {
-  const _ResetErrorCard({
-    required this.message,
-    required this.showRetryCode,
-    required this.onRetryCode,
-  });
-
-  final String message;
-  final bool showRetryCode;
-  final VoidCallback onRetryCode;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.dangerSurface,
-        borderRadius: BorderRadius.circular(AppColors.radiusSm),
-        border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(
-                Icons.error_outline_rounded,
-                color: AppColors.danger,
-                size: 19,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  message,
-                  style: AppTypography.body.copyWith(
-                    color: AppColors.dangerText,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (showRetryCode) ...[
-            const SizedBox(height: 8),
-            TextButton.icon(
-              onPressed: onRetryCode,
-              icon: const Icon(Icons.keyboard_alt_outlined, size: 18),
-              label: const Text('Nhập lại mã'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.dangerText,
-                minimumSize: const Size(0, AppColors.minimumTouchTarget),
-              ),
-            ),
-          ],
-        ],
       ),
     );
   }

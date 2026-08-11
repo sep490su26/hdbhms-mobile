@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 
 enum AppListStateKind { empty, error }
+
+enum AppListStateActionStyle { primary, secondary }
 
 /// Shared empty and error treatment for screens that render collections.
 class AppListState extends StatelessWidget {
@@ -13,6 +16,8 @@ class AppListState extends StatelessWidget {
     required this.description,
     this.icon = Icons.inbox_outlined,
     this.actionLabel,
+    this.actionIcon,
+    this.actionStyle,
     this.onAction,
   });
 
@@ -21,13 +26,26 @@ class AppListState extends StatelessWidget {
   final String description;
   final IconData icon;
   final String? actionLabel;
+  final IconData? actionIcon;
+  final AppListStateActionStyle? actionStyle;
   final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
     final isError = kind == AppListStateKind.error;
-    final accent = isError ? AppColors.dangerText : AppColors.deepBlue;
+    final accent = isError ? AppColors.dangerText : AppColors.primary;
     final displayIcon = isError ? Icons.cloud_off_rounded : icon;
+    final illustrationSurface = isError
+        ? AppColors.dangerSurface
+        : AppColors.infoSurface;
+    final secondarySurface = isError
+        ? AppColors.dangerSurface.withValues(alpha: 0.6)
+        : AppColors.primaryLight.withValues(alpha: 0.75);
+    final resolvedActionStyle =
+        actionStyle ??
+        (isError
+            ? AppListStateActionStyle.primary
+            : AppListStateActionStyle.secondary);
 
     return Container(
       width: double.infinity,
@@ -40,41 +58,31 @@ class AppListState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _ListStateIllustration(icon: displayIcon, color: accent),
+          _ListStateIllustration(
+            icon: displayIcon,
+            color: accent,
+            background: illustrationSurface,
+            secondaryBackground: secondarySurface,
+          ),
           const SizedBox(height: 18),
           Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: AppColors.deepBlue,
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-              height: 22 / 16,
-            ),
+            style: AppTypography.cardTitle.copyWith(color: AppColors.darkBlue),
           ),
           const SizedBox(height: 7),
           Text(
             description,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: AppColors.bodyText,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              height: 19 / 13,
-            ),
+            style: AppTypography.body.copyWith(fontWeight: FontWeight.w500),
           ),
           if (onAction != null && actionLabel != null) ...[
             const SizedBox(height: 18),
-            ElevatedButton.icon(
-              onPressed: onAction,
-              icon: Icon(isError ? Icons.refresh_rounded : Icons.tune_rounded),
-              label: Text(actionLabel!),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(0, 44),
-                textStyle: const TextStyle(fontWeight: FontWeight.w800),
-              ),
+            _ListStateAction(
+              label: actionLabel!,
+              icon: actionIcon,
+              onPressed: onAction!,
+              style: resolvedActionStyle,
             ),
           ],
         ],
@@ -84,10 +92,17 @@ class AppListState extends StatelessWidget {
 }
 
 class _ListStateIllustration extends StatelessWidget {
-  const _ListStateIllustration({required this.icon, required this.color});
+  const _ListStateIllustration({
+    required this.icon,
+    required this.color,
+    required this.background,
+    required this.secondaryBackground,
+  });
 
   final IconData icon;
   final Color color;
+  final Color background;
+  final Color secondaryBackground;
 
   @override
   Widget build(BuildContext context) {
@@ -98,15 +113,23 @@ class _ListStateIllustration extends StatelessWidget {
         alignment: Alignment.center,
         clipBehavior: Clip.none,
         children: [
-          const DecoratedBox(
+          DecoratedBox(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Color(0xFFE8EAFC),
+              color: background,
             ),
             child: SizedBox(width: 164, height: 164),
           ),
-          const Positioned(top: 0, right: 18, child: _StateOrb(size: 48)),
-          const Positioned(bottom: 2, left: 6, child: _StateOrb(size: 34)),
+          Positioned(
+            top: 0,
+            right: 18,
+            child: _StateOrb(size: 48, color: secondaryBackground),
+          ),
+          Positioned(
+            bottom: 2,
+            left: 6,
+            child: _StateOrb(size: 34, color: secondaryBackground),
+          ),
           Container(
             width: 202,
             height: 142,
@@ -114,9 +137,9 @@ class _ListStateIllustration extends StatelessWidget {
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(AppColors.radiusLg),
               border: Border.all(color: AppColors.cardBorder),
-              boxShadow: const [
+              boxShadow: [
                 BoxShadow(
-                  color: Color(0x12101F3A),
+                  color: AppColors.darkBlue.withValues(alpha: 0.07),
                   blurRadius: 12,
                   offset: Offset(0, 5),
                 ),
@@ -150,19 +173,77 @@ class _ListStateIllustration extends StatelessWidget {
 }
 
 class _StateOrb extends StatelessWidget {
-  const _StateOrb({required this.size});
+  const _StateOrb({required this.size, required this.color});
 
   final double size;
+  final Color color;
 
   @override
   Widget build(BuildContext context) => Container(
     width: size,
     height: size,
-    decoration: const BoxDecoration(
-      shape: BoxShape.circle,
-      color: Color(0xFFE0E3F5),
-    ),
+    decoration: BoxDecoration(shape: BoxShape.circle, color: color),
   );
+}
+
+class _ListStateAction extends StatelessWidget {
+  const _ListStateAction({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    required this.style,
+  });
+
+  final String label;
+  final IconData? icon;
+  final VoidCallback onPressed;
+  final AppListStateActionStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    final labelWidget = Text(label, style: AppTypography.button);
+    final hasIcon = icon != null;
+    if (style == AppListStateActionStyle.primary) {
+      return ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          minimumSize: const Size(0, AppColors.minimumTouchTarget),
+          elevation: 0,
+        ),
+        child: hasIcon
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon!, size: 18),
+                  const SizedBox(width: 7),
+                  labelWidget,
+                ],
+              )
+            : labelWidget,
+      );
+    }
+
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.primary,
+        minimumSize: const Size(0, AppColors.minimumTouchTarget),
+        side: const BorderSide(color: AppColors.primary),
+      ),
+      child: hasIcon
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon!, size: 18),
+                const SizedBox(width: 7),
+                labelWidget,
+              ],
+            )
+          : labelWidget,
+    );
+  }
 }
 
 class _StateLine extends StatelessWidget {

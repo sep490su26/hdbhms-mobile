@@ -12,10 +12,12 @@ class AppEmptyState extends StatelessWidget {
     required this.title,
     this.description,
     this.actionLabel,
+    this.actionIcon,
+    this.actionStyle,
     this.onAction,
     this.scrollable = false,
     this.onRefresh,
-    this.iconColor = AppColors.deepBlue,
+    this.iconColor = AppColors.primary,
     this.topSpacing = 80,
     this.compact = false,
   });
@@ -24,6 +26,8 @@ class AppEmptyState extends StatelessWidget {
   final String title;
   final String? description;
   final String? actionLabel;
+  final IconData? actionIcon;
+  final AppListStateActionStyle? actionStyle;
   final VoidCallback? onAction;
   final bool scrollable;
   final Future<void> Function()? onRefresh;
@@ -41,6 +45,8 @@ class AppEmptyState extends StatelessWidget {
             description ?? 'Nội dung sẽ xuất hiện tại đây khi có dữ liệu.',
         icon: icon,
         actionLabel: actionLabel,
+        actionIcon: actionIcon,
+        actionStyle: actionStyle,
         onAction: onAction,
       );
 
@@ -93,10 +99,16 @@ class AppEmptyState extends StatelessWidget {
           ],
           if (onAction != null && actionLabel != null) ...[
             const SizedBox(height: 18),
-            ElevatedButton.icon(
+            OutlinedButton.icon(
               onPressed: onAction,
-              icon: const Icon(Icons.refresh_rounded),
+              icon: actionIcon == null
+                  ? const SizedBox.shrink()
+                  : Icon(actionIcon, size: 18),
               label: Text(actionLabel!),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
+              ),
             ),
           ],
         ],

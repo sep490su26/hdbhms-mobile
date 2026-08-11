@@ -815,34 +815,35 @@ class _TicketRow extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          ticket.code,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.deepBlue,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                            height: 15 / 11,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
                           ticket.category.label,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: AppTypography.button.copyWith(
                             color: AppColors.inputText,
-                            fontSize: 14,
                             fontWeight: FontWeight.w800,
-                            height: 18 / 14,
                           ),
+                        ),
+                        const SizedBox(height: 3),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 5,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(
+                              ticket.code,
+                              style: AppTypography.caption.copyWith(
+                                color: AppColors.primary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.25,
+                              ),
+                            ),
+                            _StatusSummary(ticket: ticket),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  SizedBox(width: 106, child: _StatusSummary(ticket: ticket)),
                 ],
               ),
               const SizedBox(height: 12),
@@ -850,14 +851,19 @@ class _TicketRow extends StatelessWidget {
                 ticket.description,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: AppTypography.body.copyWith(
                   color: AppColors.bodyText,
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  height: 18 / 13,
                 ),
               ),
               const SizedBox(height: 11),
+              if (ticket.requiresTenantPayment ||
+                  (ticket.billingStatusLabel.isNotEmpty &&
+                      ticket.status == TicketStatus.completed)) ...[
+                _BillingSummary(ticket: ticket),
+                const SizedBox(height: 10),
+              ],
               Row(
                 children: [
                   const Icon(
@@ -868,11 +874,10 @@ class _TicketRow extends StatelessWidget {
                   const SizedBox(width: 6),
                   Text(
                     _formatDate(ticket.createdDate),
-                    style: const TextStyle(
+                    style: AppTypography.caption.copyWith(
                       color: AppColors.bodyText,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      height: 15 / 11,
                     ),
                   ),
                   const Spacer(),
@@ -898,62 +903,74 @@ class _StatusSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ticket.requiresTenantPayment
-        ? _billingStatusColors(ticket.billingStatus)
-        : _statusColors(ticket.status);
-    final secondaryText = ticket.requiresTenantPayment
-        ? 'Đã hoàn tất xử lý · Cần thanh toán ${_formatCurrency(ticket.chargeAmount ?? 0)}đ'
-        : ticket.billingStatusLabel.isNotEmpty &&
-              ticket.status == TicketStatus.completed
-        ? 'Đã hoàn tất xử lý · ${ticket.billingStatusLabel}'
-        : '';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
-          decoration: BoxDecoration(
-            color: colors.background,
-            borderRadius: BorderRadius.circular(AppColors.radiusSm),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(colors.icon, color: colors.foreground, size: 13),
-              const SizedBox(width: 3),
-              Flexible(
-                child: Text(
-                  ticket.primaryStatusLabel,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: colors.foreground,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    height: 14 / 11,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (secondaryText.isNotEmpty) ...[
-          const SizedBox(height: 5),
+    final colors = _statusColors(ticket.status);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: colors.background,
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(colors.icon, color: colors.foreground, size: 13),
+          const SizedBox(width: 3),
           Text(
-            secondaryText,
-            maxLines: 3,
-            textAlign: TextAlign.right,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.bodyText,
-              fontSize: 9,
-              fontWeight: FontWeight.w600,
-              height: 12 / 9,
+            ticket.primaryStatusLabel,
+            style: AppTypography.caption.copyWith(
+              color: colors.foreground,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],
-      ],
+      ),
+    );
+  }
+}
+
+class _BillingSummary extends StatelessWidget {
+  const _BillingSummary({required this.ticket});
+
+  final MaintenanceTicketModel ticket;
+
+  @override
+  Widget build(BuildContext context) {
+    final isPaymentRequired = ticket.requiresTenantPayment;
+    final colors = isPaymentRequired
+        ? _billingStatusColors(ticket.billingStatus)
+        : _statusColors(ticket.status);
+    final text = isPaymentRequired
+        ? 'Cần thanh toán ${_formatCurrency(ticket.chargeAmount ?? 0)}đ'
+        : ticket.billingStatusLabel;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: colors.background,
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isPaymentRequired
+                ? Icons.payments_outlined
+                : Icons.receipt_long_outlined,
+            color: colors.foreground,
+            size: 16,
+          ),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              text,
+              style: AppTypography.caption.copyWith(
+                color: colors.foreground,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1187,6 +1204,7 @@ class _StateMessage extends StatelessWidget {
     title: title,
     description: 'Kiểm tra kết nối mạng rồi thử tải lại danh sách.',
     actionLabel: 'Thử lại',
+    actionIcon: Icons.refresh_rounded,
     onAction: onRetry,
   );
 }

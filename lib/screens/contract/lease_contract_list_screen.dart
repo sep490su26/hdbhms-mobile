@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/widgets/app_date_picker.dart';
 import 'package:hdbhms_mobile/widgets/app_empty_state.dart';
+import 'package:hdbhms_mobile/widgets/app_list_state.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
 import 'package:hdbhms_mobile/models/contract/contract_list_item_model.dart';
@@ -340,66 +341,138 @@ class _FilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: AppColors.cardBorder.withValues(alpha: 0.4),
-          ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+          border: Border.all(color: AppColors.cardBorder),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                SizedBox(
-                  width: 218,
-                  child: _FilterChip(
-                    icon: Icons.calendar_month_outlined,
-                    label: selectedDateRange != null
-                        ? '${_formatDate(selectedDateRange!.start)} – ${_formatDate(selectedDateRange!.end)}'
-                        : 'Ngày ký hợp đồng',
-                    isActive: selectedDateRange != null,
-                    onTap: onPickDateRange,
-                  ),
+                const Expanded(
+                  child: Text('Bộ lọc', style: AppTypography.label),
                 ),
-                const SizedBox(width: AppColors.space8),
-                SizedBox(
-                  width: 168,
-                  child: _StatusDropdown(
-                    selectedStatus: selectedStatus,
-                    statusOptions: statusOptions,
-                    onChanged: onStatusChanged,
+                if (hasActiveFilters)
+                  Semantics(
+                    button: true,
+                    label: 'Xóa bộ lọc',
+                    child: IconButton(
+                      onPressed: onClearFilters,
+                      tooltip: 'Xóa bộ lọc',
+                      constraints: const BoxConstraints.tightFor(
+                        width: AppColors.minimumTouchTarget,
+                        height: AppColors.minimumTouchTarget,
+                      ),
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      color: AppColors.primary,
+                    ),
                   ),
-                ),
               ],
             ),
-          ),
-          if (hasActiveFilters) ...[
-            const SizedBox(height: AppColors.space8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: onClearFilters,
-                icon: const Icon(Icons.close_rounded, size: 18),
-                label: const Text('Xóa bộ lọc'),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  minimumSize: const Size(0, AppColors.minimumTouchTarget),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                ),
-              ),
+            const SizedBox(height: 10),
+            const Text('Ngày ký hợp đồng', style: AppTypography.metaLabel),
+            const SizedBox(height: 6),
+            _DateRangeFilter(
+              selectedDateRange: selectedDateRange,
+              onTap: onPickDateRange,
+            ),
+            const SizedBox(height: 10),
+            const Text('Trạng thái', style: AppTypography.metaLabel),
+            const SizedBox(height: 6),
+            _StatusDropdown(
+              selectedStatus: selectedStatus,
+              statusOptions: statusOptions,
+              onChanged: onStatusChanged,
             ),
           ],
-        ],
+        ),
       ),
     );
   }
+}
+
+class _DateRangeFilter extends StatelessWidget {
+  const _DateRangeFilter({
+    required this.selectedDateRange,
+    required this.onTap,
+  });
+
+  final DateTimeRange? selectedDateRange;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = selectedDateRange != null;
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+        child: Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(
+            minHeight: AppColors.minimumTouchTarget,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.primarySurface : AppColors.inputFill,
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
+            border: Border.all(
+              color: isActive
+                  ? AppColors.primary.withValues(alpha: 0.5)
+                  : AppColors.cardBorder.withValues(alpha: 0.6),
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.calendar_month_outlined,
+                color: isActive ? AppColors.primary : AppColors.bodyText,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: isActive
+                    ? Wrap(
+                        spacing: 8,
+                        runSpacing: 2,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(
+                            _formatDate(selectedDateRange!.start),
+                            style: _textStyle(isActive),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_rounded,
+                            color: AppColors.primary,
+                            size: 16,
+                          ),
+                          Text(
+                            _formatDate(selectedDateRange!.end),
+                            style: _textStyle(isActive),
+                          ),
+                        ],
+                      )
+                    : Text('Chọn khoảng ngày', style: _textStyle(isActive)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  TextStyle _textStyle(bool isActive) => AppTypography.metaValue.copyWith(
+    color: isActive ? AppColors.darkBlue : AppColors.bodyText,
+  );
 }
 
 class _ContractsListIntro extends StatelessWidget {
@@ -418,64 +491,6 @@ class _ContractsListIntro extends StatelessWidget {
           SizedBox(height: 4),
           Text('Theo dõi hợp đồng thuê của bạn.', style: AppTypography.body),
         ],
-      ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({
-    required this.icon,
-    required this.label,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: AppColors.minimumTouchTarget,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          color: isActive ? AppColors.primarySurface : AppColors.inputFill,
-          borderRadius: BorderRadius.circular(AppColors.radiusSm),
-          border: Border.all(
-            color: isActive
-                ? AppColors.deepBlue.withValues(alpha: 0.5)
-                : AppColors.cardBorder.withValues(alpha: 0.6),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.max,
-          children: [
-            Icon(
-              icon,
-              color: isActive ? AppColors.deepBlue : AppColors.bodyText,
-              size: 15,
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: isActive ? AppColors.darkBlue : AppColors.bodyText,
-                  fontSize: 12,
-                  fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-                  height: 14 / 11,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -510,7 +525,7 @@ class _StatusDropdown extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppColors.radiusSm),
             border: Border.all(
               color: isActive
-                  ? AppColors.deepBlue.withValues(alpha: 0.5)
+                  ? AppColors.primary.withValues(alpha: 0.5)
                   : AppColors.cardBorder.withValues(alpha: 0.6),
             ),
           ),
@@ -518,7 +533,7 @@ class _StatusDropdown extends StatelessWidget {
             children: [
               Icon(
                 Icons.filter_list_rounded,
-                color: isActive ? AppColors.deepBlue : AppColors.bodyText,
+                color: isActive ? AppColors.primary : AppColors.bodyText,
                 size: 18,
               ),
               const SizedBox(width: 6),
@@ -529,16 +544,15 @@ class _StatusDropdown extends StatelessWidget {
                       : statusOptions[selectedStatus]!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: isActive ? AppColors.deepBlue : AppColors.bodyText,
-                    fontSize: 12,
+                  style: AppTypography.metaValue.copyWith(
+                    color: isActive ? AppColors.primary : AppColors.bodyText,
                     fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
                   ),
                 ),
               ),
               Icon(
                 Icons.keyboard_arrow_down_rounded,
-                color: isActive ? AppColors.deepBlue : AppColors.bodyText,
+                color: isActive ? AppColors.primary : AppColors.bodyText,
                 size: 20,
               ),
             ],
@@ -770,6 +784,7 @@ class _EmptyState extends StatelessWidget {
     title:
         'B\u1EA1n ch\u01B0a c\u00F3 h\u1EE3p \u0111\u1ED3ng thu\u00EA n\u00E0o',
     actionLabel: 'Th\u1EED l\u1EA1i',
+    actionIcon: Icons.refresh_rounded,
     onAction: onRetry,
     scrollable: true,
     onRefresh: () async => onRetry(),
@@ -786,6 +801,7 @@ class _EmptyFilterState extends StatelessWidget {
     title:
         'Kh\u00F4ng c\u00F3 h\u1EE3p \u0111\u1ED3ng ph\u00F9 h\u1EE3p v\u1EDBi b\u1ED9 l\u1ECDc',
     actionLabel: 'X\u00F3a b\u1ED9 l\u1ECDc',
+    actionIcon: Icons.filter_alt_off_rounded,
     onAction: onClear,
   );
 }
@@ -797,43 +813,19 @@ class _ErrorState extends StatelessWidget {
   final VoidCallback onRetry;
 
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.error_outline_rounded,
-              color: AppColors.deepBlue,
-              size: 42,
-            ),
-            const SizedBox(height: 14),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.inputText,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 18),
-            ElevatedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Thử lại'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: AppListState(
+        kind: AppListStateKind.error,
+        title: 'Không tải được danh sách hợp đồng',
+        description: message,
+        actionLabel: 'Thử lại',
+        actionIcon: Icons.refresh_rounded,
+        onAction: onRetry,
       ),
-    );
-  }
+    ),
+  );
 }
 
 // ── Helpers ──

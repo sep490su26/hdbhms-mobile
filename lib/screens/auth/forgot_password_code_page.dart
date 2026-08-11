@@ -9,6 +9,7 @@ import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
+import 'package:hdbhms_mobile/widgets/auth_inline_message.dart';
 import 'package:hdbhms_mobile/widgets/otp_input_boxes.dart';
 
 class ForgotPasswordCodePage extends StatefulWidget {
@@ -35,6 +36,7 @@ class _ForgotPasswordCodePageState extends State<ForgotPasswordCodePage> {
   bool _isResending = false;
   String? _codeError;
   String? _resendMessage;
+  String? _resendError;
 
   String get _code => _controllers.map((controller) => controller.text).join();
 
@@ -88,6 +90,7 @@ class _ForgotPasswordCodePageState extends State<ForgotPasswordCodePage> {
       MaterialPageRoute(
         builder: (context) => ResetPasswordPage(
           token: code,
+          identity: widget.identity,
           forgotPasswordService: widget.forgotPasswordService,
         ),
       ),
@@ -100,6 +103,7 @@ class _ForgotPasswordCodePageState extends State<ForgotPasswordCodePage> {
     setState(() {
       _isResending = true;
       _resendMessage = null;
+      _resendError = null;
       _codeError = null;
     });
 
@@ -112,7 +116,7 @@ class _ForgotPasswordCodePageState extends State<ForgotPasswordCodePage> {
       });
       _startCooldown();
     } on ForgotPasswordException catch (error) {
-      if (mounted) setState(() => _codeError = error.message);
+      if (mounted) setState(() => _resendError = error.message);
     } finally {
       if (mounted) setState(() => _isResending = false);
     }
@@ -135,31 +139,45 @@ class _ForgotPasswordCodePageState extends State<ForgotPasswordCodePage> {
             onBack: () => Navigator.of(context).maybePop(),
           ),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 28, 20, 40),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: AppColors.primarySurface,
-                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                  ),
-                  child: const Icon(
-                    Icons.mark_email_read_outlined,
-                    color: AppColors.deepBlue,
-                    size: 26,
-                  ),
+                const Icon(
+                  Icons.verified_user_outlined,
+                  key: Key('forgot-password-code-intro-icon'),
+                  color: AppColors.primary,
+                  size: 34,
                 ),
-                const SizedBox(height: 20),
-                const Text('Nhập mã xác minh', style: AppTypography.pageTitle),
+                const SizedBox(height: 10),
+                const Text(
+                  'Nhập mã xác minh',
+                  style: AppTypography.pageTitle,
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 8),
-                Text(
-                  'Mã gồm 6 chữ số đã được gửi đến ${widget.identity}.',
-                  style: AppTypography.bodyLarge,
+                Text.rich(
+                  TextSpan(
+                    style: AppTypography.bodyLarge,
+                    children: [
+                      const TextSpan(
+                        text: 'Mã gồm 6 chữ số đã được gửi cho tài khoản\n',
+                      ),
+                      TextSpan(
+                        text: widget.identity,
+                        style: AppTypography.bodyLarge.copyWith(
+                          color: AppColors.inputText,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const TextSpan(
+                        text: '.\nVui lòng kiểm tra thông tin đã đăng ký.',
+                      ),
+                    ],
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
                 OtpInputBoxes(
                   controllers: _controllers,
                   focusNodes: _focusNodes,
@@ -168,12 +186,8 @@ class _ForgotPasswordCodePageState extends State<ForgotPasswordCodePage> {
                   },
                 ),
                 if (_codeError != null) ...[
-                  const SizedBox(height: 12),
-                  _CodeMessage(message: _codeError!, isError: true),
-                ],
-                if (_resendMessage != null) ...[
-                  const SizedBox(height: 12),
-                  _CodeMessage(message: _resendMessage!),
+                  const SizedBox(height: 10),
+                  AuthInlineMessage(message: _codeError!),
                 ],
                 const SizedBox(height: 24),
                 SizedBox(
@@ -193,20 +207,35 @@ class _ForgotPasswordCodePageState extends State<ForgotPasswordCodePage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
                 Center(
-                  child: _secondsRemaining > 0
-                      ? Text(
-                          'Gửi lại mã sau $_cooldownLabel',
-                          style: AppTypography.body,
+                  child: Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    alignment: WrapAlignment.center,
+                    spacing: 4,
+                    children: [
+                      const Text(
+                        'Không nhận được mã?',
+                        style: AppTypography.body,
+                      ),
+                      if (_secondsRemaining > 0)
+                        Text(
+                          'Gửi lại sau $_cooldownLabel',
+                          style: AppTypography.body.copyWith(
+                            color: AppColors.bodyText,
+                            fontWeight: FontWeight.w600,
+                          ),
                         )
-                      : TextButton(
+                      else
+                        TextButton(
                           onPressed: _isResending ? null : _resendCode,
                           style: TextButton.styleFrom(
+                            foregroundColor: AppColors.primary,
                             minimumSize: const Size(
                               0,
                               AppColors.minimumTouchTarget,
                             ),
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
                           ),
                           child: _isResending
                               ? const SizedBox(
@@ -219,51 +248,22 @@ class _ForgotPasswordCodePageState extends State<ForgotPasswordCodePage> {
                                 )
                               : const Text('Gửi lại mã'),
                         ),
+                    ],
+                  ),
                 ),
+                if (_resendMessage != null || _resendError != null) ...[
+                  const SizedBox(height: 6),
+                  AuthInlineMessage(
+                    message: _resendMessage ?? _resendError!,
+                    kind: _resendMessage != null
+                        ? AuthInlineMessageKind.success
+                        : AuthInlineMessageKind.error,
+                  ),
+                ],
               ],
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _CodeMessage extends StatelessWidget {
-  const _CodeMessage({required this.message, this.isError = false});
-
-  final String message;
-  final bool isError;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isError ? AppColors.danger : AppColors.successText;
-    final surface = isError
-        ? AppColors.dangerSurface
-        : AppColors.successSurface;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusSm),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            isError ? Icons.error_outline_rounded : Icons.check_circle_outline,
-            color: color,
-            size: 19,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message,
-              style: AppTypography.body.copyWith(color: color),
-            ),
-          ),
-        ],
       ),
     );
   }

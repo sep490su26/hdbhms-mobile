@@ -146,7 +146,7 @@ class _OtpBox extends StatelessWidget {
             contentPadding: EdgeInsets.zero,
             border: _border(AppColors.cardBorder),
             enabledBorder: _border(AppColors.cardBorder),
-            focusedBorder: _border(AppColors.deepBlue, width: 1.4),
+            focusedBorder: _border(AppColors.primary, width: 1.4),
           ),
           onChanged: onChanged,
         ),

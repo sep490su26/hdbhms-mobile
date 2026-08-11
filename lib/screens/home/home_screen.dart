@@ -874,14 +874,14 @@ class _PaymentStatusCard extends StatelessWidget {
         invoiceSummary.unpaidCount > 0 || invoiceSummary.totalUnpaidAmount > 0;
     final unpaidCount = invoiceSummary.unpaidCount;
     final hasMultipleBills = unpaidCount > 1;
-    final dueText = invoiceSummary.nearestDueDate == null
-        ? 'Chưa có hạn thanh toán'
-        : 'Gần nhất: ${_formatDate(invoiceSummary.nearestDueDate!)}';
-    final helperText = !hasUnpaid
-        ? 'Phòng hiện tại không có khoản cần thanh toán.'
+    final dueText = !hasUnpaid || invoiceSummary.nearestDueDate == null
+        ? 'Chưa có hạn nộp'
         : hasMultipleBills
-        ? 'Có $unpaidCount khoản đang chờ. Bấm để chọn hóa đơn cần thanh toán.'
-        : 'Thanh toán khoản đang đến hạn của phòng hiện tại.';
+        ? 'Hạn nộp gần nhất: ${_formatDate(invoiceSummary.nearestDueDate!)}'
+        : 'Hạn nộp: ${_formatDate(invoiceSummary.nearestDueDate!)}';
+    final helperText = hasMultipleBills
+        ? 'Có $unpaidCount hóa đơn đang chờ thanh toán. Chọn hóa đơn bạn muốn xử lý.'
+        : null;
     final actionLabel = hasMultipleBills
         ? 'Chọn khoản thanh toán'
         : 'Xem chi tiết hóa đơn';
@@ -936,11 +936,9 @@ class _PaymentStatusCard extends StatelessWidget {
                   hasMultipleBills
                       ? 'Tổng cần thanh toán'
                       : 'Trạng thái thanh toán',
-                  style: TextStyle(
+                  style: AppTypography.button.copyWith(
                     color: mainTextColor,
-                    fontSize: 15,
                     fontWeight: FontWeight.w800,
-                    height: 20 / 15,
                   ),
                 ),
               ),
@@ -950,11 +948,9 @@ class _PaymentStatusCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             dueText,
-            style: TextStyle(
+            style: AppTypography.body.copyWith(
               color: mutedTextColor,
-              fontSize: 14,
               fontWeight: FontWeight.w500,
-              height: 19 / 14,
             ),
           ),
           const SizedBox(height: 15),
@@ -976,45 +972,37 @@ class _PaymentStatusCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-            decoration: BoxDecoration(
-              color: hasUnpaid
-                  ? Colors.white.withValues(alpha: 0.13)
-                  : AppColors.surfaceMuted,
-              borderRadius: BorderRadius.circular(AppColors.radiusMd),
-              border: Border.all(
-                color: hasUnpaid
-                    ? Colors.white.withValues(alpha: 0.14)
-                    : AppColors.cardBorder,
+          if (helperText != null) ...[
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.13),
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
               ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  hasMultipleBills
-                      ? Icons.fact_check_outlined
-                      : Icons.receipt_long_outlined,
-                  color: hasUnpaid ? Colors.white : AppColors.bodyText,
-                  size: 18,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    helperText,
-                    style: TextStyle(
-                      color: hasUnpaid ? Colors.white : AppColors.bodyText,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      height: 17 / 12,
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.fact_check_outlined,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      helperText,
+                      style: AppTypography.caption.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: 18),
           SizedBox(
             width: double.infinity,
@@ -1033,14 +1021,7 @@ class _PaymentStatusCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppColors.radiusLg),
                 ),
               ),
-              child: Text(
-                actionLabel,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                  height: 20 / 16,
-                ),
-              ),
+              child: Text(actionLabel, style: AppTypography.button),
             ),
           ),
         ],
@@ -1058,28 +1039,38 @@ class _PaymentBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: isUnpaid
-            ? AppColors.accentWarm.withValues(alpha: 0.16)
-            : AppColors.success.withValues(alpha: 0.12),
+            ? Colors.white.withValues(alpha: 0.16)
+            : AppColors.successSurface,
         borderRadius: BorderRadius.circular(AppColors.radiusPill),
         border: Border.all(
           color: isUnpaid
-              ? AppColors.accentWarm.withValues(alpha: 0.34)
-              : AppColors.success.withValues(alpha: 0.24),
+              ? Colors.white.withValues(alpha: 0.26)
+              : AppColors.successText.withValues(alpha: 0.2),
         ),
       ),
-      child: Text(
-        isUnpaid
-            ? (unpaidCount > 1 ? '$unpaidCount khoản' : 'Chưa thanh toán')
-            : 'Đã thanh toán',
-        style: TextStyle(
-          color: isUnpaid ? AppColors.dangerText : AppColors.success,
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
-          height: 16 / 12,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isUnpaid) ...[
+            const Icon(Icons.circle, color: AppColors.warning, size: 7),
+            const SizedBox(width: 5),
+          ],
+          Text(
+            isUnpaid
+                ? (unpaidCount > 1
+                      ? '$unpaidCount khoản chờ thanh toán'
+                      : 'Chưa thanh toán')
+                : 'Đã thanh toán',
+            style: AppTypography.caption.copyWith(
+              color: isUnpaid ? Colors.white : AppColors.successText,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

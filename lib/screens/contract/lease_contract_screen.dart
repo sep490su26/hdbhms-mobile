@@ -1104,6 +1104,7 @@ class _ContractEmptyState extends StatelessWidget {
     title:
         'B\u1EA1n ch\u01B0a c\u00F3 h\u1EE3p \u0111\u1ED3ng thu\u00EA ph\u00F2ng \u0111ang hi\u1EC7u l\u1EF1c',
     actionLabel: 'Th\u1EED l\u1EA1i',
+    actionIcon: Icons.refresh_rounded,
     onAction: onRetry,
     scrollable: true,
     onRefresh: () async => onRetry(),

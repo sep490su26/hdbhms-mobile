@@ -599,6 +599,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
                     title: 'Không tải được danh sách yêu cầu',
                     description: _loadError!,
                     actionLabel: 'Thử lại',
+                    actionIcon: Icons.refresh_rounded,
                     onAction: _loadApiRequests,
                   )
                 else if (filtered.isEmpty)

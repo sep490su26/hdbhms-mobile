@@ -5,7 +5,11 @@ import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
+import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
+import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
+import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 import 'package:hdbhms_mobile/widgets/auth_text_field.dart';
+import 'package:hdbhms_mobile/widgets/password_requirements.dart';
 import 'package:hdbhms_mobile/screens/auth/identity_verification_page.dart';
 import 'package:hdbhms_mobile/screens/tenant_overview/tenant_overview_screen.dart';
 
@@ -146,82 +150,39 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       child: Scaffold(
         backgroundColor: AppColors.background,
         body: SafeArea(
-          top: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _ChangePasswordHeader(
-                canGoBack: !widget.isRequired && !_isLoading,
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 448),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 28, 20, 32),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const _ChangePasswordIntro(),
-                            const SizedBox(height: 32),
-                            _ChangePasswordFormCard(
-                              formKey: _formKey,
-                              passwordController: _passwordController,
-                              confirmPasswordController:
-                                  _confirmPasswordController,
-                              isLoading: _isLoading,
-                              onSubmit: _handleChangePassword,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+          child: AppScreenShell(
+            header: AppTopBar(
+              title: 'Đổi mật khẩu',
+              onBack: widget.isRequired || _isLoading
+                  ? null
+                  : () => Navigator.of(context).maybePop(),
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Icon(
+                    Icons.lock_outline,
+                    key: Key('change-password-intro-icon'),
+                    color: AppColors.primary,
+                    size: 34,
                   ),
-                ),
+                  const SizedBox(height: 10),
+                  const _ChangePasswordIntro(),
+                  const SizedBox(height: 24),
+                  _ChangePasswordFormCard(
+                    formKey: _formKey,
+                    passwordController: _passwordController,
+                    confirmPasswordController: _confirmPasswordController,
+                    isLoading: _isLoading,
+                    onSubmit: _handleChangePassword,
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ChangePasswordHeader extends StatelessWidget {
-  const _ChangePasswordHeader({required this.canGoBack});
-
-  final bool canGoBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: AppColors.topBarHeight,
-      color: AppColors.surface,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 48,
-            height: 48,
-            child: IconButton(
-              onPressed: canGoBack
-                  ? () => Navigator.of(context).maybePop()
-                  : null,
-              padding: EdgeInsets.zero,
-              icon: const Icon(
-                Icons.arrow_back,
-                color: AppColors.topBarIconColor,
-                size: AppColors.topBarIconSize,
-              ),
-              tooltip: 'Quay lại',
             ),
           ),
-          const SizedBox(width: 4),
-          const Expanded(
-            child: Text('Đổi mật khẩu', style: AppTypography.topBarTitle),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -233,13 +194,18 @@ class _ChangePasswordIntro extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Thiết lập mật khẩu mới', style: AppTypography.pageTitle),
+        Text(
+          'Thiết lập mật khẩu mới',
+          style: AppTypography.pageTitle,
+          textAlign: TextAlign.center,
+        ),
         SizedBox(height: 8),
         Text(
           'Bạn cần đổi mật khẩu tạm trước khi tiếp tục sử dụng ứng dụng.',
           style: AppTypography.bodyLarge,
+          textAlign: TextAlign.center,
         ),
       ],
     );
@@ -263,182 +229,84 @@ class _ChangePasswordFormCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(22, 24, 22, 26),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusLg),
-        border: Border.all(color: AppColors.cardBorder),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.darkBlue.withValues(alpha: 0.05),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
+    return Form(
+      key: formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AuthTextField(
+            label: 'Mật khẩu mới',
+            hintText: 'Nhập mật khẩu mới',
+            controller: passwordController,
+            obscureText: true,
+            textInputAction: TextInputAction.next,
+            hintColor: AppColors.hintText,
+            uppercaseLabel: false,
+            required: true,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Vui lòng nhập mật khẩu mới';
+              }
+              if (value.length < 8) {
+                return 'Mật khẩu mới phải có ít nhất 8 ký tự';
+              }
+              if (!RegExp(r'\d').hasMatch(value)) {
+                return 'Mật khẩu mới phải có ít nhất một chữ số';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 12),
+          PasswordRequirements(
+            passwordController: passwordController,
+            rules: [
+              PasswordRequirementRule(
+                label: 'Tối thiểu 8 ký tự',
+                isMet: (password) => password.length >= 8,
+              ),
+              PasswordRequirementRule(
+                label: 'Có ít nhất một chữ số',
+                isMet: (password) => RegExp(r'\d').hasMatch(password),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          AuthTextField(
+            label: 'Xác nhận mật khẩu',
+            hintText: 'Nhập lại mật khẩu mới',
+            controller: confirmPasswordController,
+            obscureText: true,
+            textInputAction: TextInputAction.done,
+            hintColor: AppColors.hintText,
+            uppercaseLabel: false,
+            required: true,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Vui lòng xác nhận mật khẩu mới';
+              }
+              return value != passwordController.text
+                  ? 'Xác nhận mật khẩu không khớp'
+                  : null;
+            },
+          ),
+          const SizedBox(height: 28),
+          AppPrimaryGradientButton(
+            height: 52,
+            borderRadius: AppColors.radiusMd,
+            onPressed: isLoading ? null : onSubmit,
+            child: isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text('ĐỔI MẬT KHẨU'),
           ),
         ],
       ),
-      child: Form(
-        key: formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AuthTextField(
-              label: 'Mật khẩu mới',
-              hintText: 'Nhập mật khẩu mới',
-              controller: passwordController,
-              obscureText: true,
-              textInputAction: TextInputAction.next,
-              hintColor: AppColors.hintText,
-              contentPadding: const EdgeInsets.fromLTRB(17, 18, 48, 18),
-              uppercaseLabel: false,
-              required: true,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Vui lòng nhập mật khẩu mới';
-                }
-                if (value.length < 8) {
-                  return 'Mật khẩu mới phải có ít nhất 8 ký tự';
-                }
-                if (!RegExp(r'\d').hasMatch(value)) {
-                  return 'Mật khẩu mới phải có ít nhất một chữ số';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 24),
-            AuthTextField(
-              label: 'Xác nhận mật khẩu',
-              hintText: 'Nhập lại mật khẩu mới',
-              controller: confirmPasswordController,
-              obscureText: true,
-              textInputAction: TextInputAction.done,
-              hintColor: AppColors.hintText,
-              contentPadding: const EdgeInsets.fromLTRB(17, 18, 48, 18),
-              uppercaseLabel: false,
-              required: true,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Vui lòng xác nhận mật khẩu mới';
-                }
-                return value != passwordController.text
-                    ? 'Xác nhận mật khẩu không khớp'
-                    : null;
-              },
-            ),
-            const SizedBox(height: 24),
-            _PasswordRequirements(passwordController: passwordController),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: isLoading ? null : onSubmit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shadowColor: Colors.black.withValues(alpha: 0.05),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radiusLg),
-                  ),
-                ),
-                child: isLoading
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('ĐỔI MẬT KHẨU', style: AppTypography.button),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PasswordRequirements extends StatelessWidget {
-  const _PasswordRequirements({required this.passwordController});
-
-  final TextEditingController passwordController;
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<TextEditingValue>(
-      valueListenable: passwordController,
-      builder: (context, value, child) {
-        final password = value.text;
-        final hasMinimumLength = password.length >= 8;
-        final hasNumber = RegExp(r'\d').hasMatch(password);
-
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.requirementBackground,
-            borderRadius: BorderRadius.circular(AppColors.radiusMd),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Yêu cầu mật khẩu:',
-                style: TextStyle(
-                  color: AppColors.inputText,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  height: 16 / 12,
-                  letterSpacing: 0.6,
-                ),
-              ),
-              const SizedBox(height: 8),
-              _RequirementItem(
-                text: 'Tối thiểu 8 ký tự',
-                isMet: hasMinimumLength,
-              ),
-              const SizedBox(height: 8),
-              _RequirementItem(text: 'Có ít nhất một chữ số', isMet: hasNumber),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _RequirementItem extends StatelessWidget {
-  const _RequirementItem({required this.text, required this.isMet});
-
-  final String text;
-  final bool isMet;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(
-          isMet ? Icons.check_circle : Icons.circle_outlined,
-          color: isMet ? AppColors.success : AppColors.cardBorder,
-          size: 15,
-        ),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Text(
-            text,
-            style: const TextStyle(
-              color: AppColors.bodyText,
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
-              height: 20 / 14,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
