@@ -139,6 +139,7 @@ class _LeaseContractListScreenState extends State<LeaseContractListScreen> {
   Widget _buildListContent() {
     return Column(
       children: [
+        const _ContractsListIntro(),
         _FilterBar(
           selectedStatus: _selectedStatus,
           selectedDateRange: _selectedDateRange,
@@ -340,7 +341,7 @@ class _FilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(
@@ -352,28 +353,6 @@ class _FilterBar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Tất cả hợp đồng',
-                  style: AppTypography.sectionTitle,
-                ),
-              ),
-              if (hasActiveFilters)
-                TextButton.icon(
-                  onPressed: onClearFilters,
-                  icon: const Icon(Icons.close_rounded, size: 18),
-                  label: const Text('Xóa lọc'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    minimumSize: const Size(0, AppColors.minimumTouchTarget),
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: AppColors.space8),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -401,6 +380,43 @@ class _FilterBar extends StatelessWidget {
               ],
             ),
           ),
+          if (hasActiveFilters) ...[
+            const SizedBox(height: AppColors.space8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onClearFilters,
+                icon: const Icon(Icons.close_rounded, size: 18),
+                label: const Text('Xóa bộ lọc'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  minimumSize: const Size(0, AppColors.minimumTouchTarget),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ContractsListIntro extends StatelessWidget {
+  const _ContractsListIntro();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 18, 14, 14),
+      color: AppColors.background,
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Tất cả hợp đồng', style: AppTypography.pageTitle),
+          SizedBox(height: 4),
+          Text('Theo dõi hợp đồng thuê của bạn.', style: AppTypography.body),
         ],
       ),
     );
@@ -650,11 +666,8 @@ class _ContractCard extends StatelessWidget {
                                 : item.contractCode,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: AppTypography.cardTitle.copyWith(
                               color: AppColors.inputText,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              height: 20 / 15,
                             ),
                           ),
                         ),

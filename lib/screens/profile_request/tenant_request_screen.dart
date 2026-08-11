@@ -838,7 +838,7 @@ class _RequestCard extends StatelessWidget {
     TenantRequestType.terminateContract => AppColors.danger,
     TenantRequestType.changeRoom => const Color(0xFF0284C7),
     TenantRequestType.addRoommate => AppColors.successText,
-    TenantRequestType.utilityComplaint => const Color(0xFFEA580C),
+    TenantRequestType.utilityComplaint => AppColors.actionAmber,
   };
 
   Color get _accentBg => switch (request.type) {
@@ -846,7 +846,7 @@ class _RequestCard extends StatelessWidget {
     TenantRequestType.terminateContract => const Color(0xFFFFF0F0),
     TenantRequestType.changeRoom => const Color(0xFFEFF8FF),
     TenantRequestType.addRoommate => const Color(0xFFF0FFF4),
-    TenantRequestType.utilityComplaint => const Color(0xFFFFF7ED),
+    TenantRequestType.utilityComplaint => AppColors.amberSurface,
   };
 
   @override
@@ -1157,7 +1157,7 @@ class _RequestDetailDialog extends StatelessWidget {
     TenantRequestType.terminateContract => AppColors.danger,
     TenantRequestType.changeRoom => const Color(0xFF0284C7),
     TenantRequestType.addRoommate => AppColors.successText,
-    TenantRequestType.utilityComplaint => const Color(0xFFEA580C),
+    TenantRequestType.utilityComplaint => AppColors.actionAmber,
   };
 
   Color get _accentBg => switch (request.type) {
@@ -1165,7 +1165,7 @@ class _RequestDetailDialog extends StatelessWidget {
     TenantRequestType.terminateContract => const Color(0xFFFFF0F0),
     TenantRequestType.changeRoom => const Color(0xFFEFF8FF),
     TenantRequestType.addRoommate => const Color(0xFFF0FFF4),
-    TenantRequestType.utilityComplaint => const Color(0xFFFFF7ED),
+    TenantRequestType.utilityComplaint => AppColors.amberSurface,
   };
 
   Color get _statusColor => switch (request.status) {
@@ -1737,8 +1737,8 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
     ChangeRequestType.moveOut => AppColors.danger,
     ChangeRequestType.depositRefundRequest => AppColors.successText,
     ChangeRequestType.addCoOccupant => AppColors.successText,
-    ChangeRequestType.complaint => const Color(0xFFEA580C),
-    ChangeRequestType.meterReadingCorrection => AppColors.deepBlue,
+    ChangeRequestType.complaint => AppColors.actionAmber,
+    ChangeRequestType.meterReadingCorrection => AppColors.actionAmber,
     ChangeRequestType.invoiceAdjustment => const Color(0xFF7C3AED),
     ChangeRequestType.rentPriceAdjustment => const Color(0xFF0891B2),
   };
@@ -1750,8 +1750,8 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
     ChangeRequestType.moveOut => const Color(0xFFFFF0F0),
     ChangeRequestType.depositRefundRequest => const Color(0xFFF0FFF4),
     ChangeRequestType.addCoOccupant => const Color(0xFFF0FFF4),
-    ChangeRequestType.complaint => const Color(0xFFFFF7ED),
-    ChangeRequestType.meterReadingCorrection => AppColors.primarySurface,
+    ChangeRequestType.complaint => AppColors.amberSurface,
+    ChangeRequestType.meterReadingCorrection => AppColors.amberSurface,
     ChangeRequestType.invoiceAdjustment => const Color(0xFFF3E8FF),
     ChangeRequestType.rentPriceAdjustment => AppColors.primaryLight,
   };

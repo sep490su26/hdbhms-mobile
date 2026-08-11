@@ -8,29 +8,42 @@ class OtpInputBoxes extends StatelessWidget {
     super.key,
     required this.controllers,
     required this.focusNodes,
+    this.onChanged,
   }) : assert(controllers.length == 6),
        assert(focusNodes.length == 6);
 
   final List<TextEditingController> controllers;
   final List<FocusNode> focusNodes;
+  final VoidCallback? onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        for (var index = 0; index < controllers.length; index++)
-          _OtpBox(
-            controller: controllers[index],
-            focusNode: focusNodes[index],
-            onChanged: (value) => _handleChanged(index, value),
-            onBackspaceOnEmpty: () {
-              if (index > 0) {
-                focusNodes[index - 1].requestFocus();
-              }
-            },
-          ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final boxWidth = ((constraints.maxWidth - 40) / controllers.length)
+            .clamp(38.0, 48.0);
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            for (var index = 0; index < controllers.length; index++)
+              _OtpBox(
+                key: Key('otp-box-$index'),
+                width: boxWidth,
+                controller: controllers[index],
+                focusNode: focusNodes[index],
+                onChanged: (value) {
+                  _handleChanged(index, value);
+                  onChanged?.call();
+                },
+                onBackspaceOnEmpty: () {
+                  if (index > 0) {
+                    focusNodes[index - 1].requestFocus();
+                  }
+                },
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -80,12 +93,15 @@ class OtpInputBoxes extends StatelessWidget {
 
 class _OtpBox extends StatelessWidget {
   const _OtpBox({
+    super.key,
+    required this.width,
     required this.controller,
     required this.focusNode,
     required this.onChanged,
     required this.onBackspaceOnEmpty,
   });
 
+  final double width;
   final TextEditingController controller;
   final FocusNode focusNode;
   final ValueChanged<String> onChanged;
@@ -103,8 +119,8 @@ class _OtpBox extends StatelessWidget {
         return KeyEventResult.ignored;
       },
       child: SizedBox(
-        width: 42,
-        height: 48,
+        width: width,
+        height: AppColors.minimumTouchTarget,
         child: TextField(
           controller: controller,
           focusNode: focusNode,
@@ -112,6 +128,7 @@ class _OtpBox extends StatelessWidget {
           textAlign: TextAlign.center,
           keyboardType: TextInputType.number,
           textInputAction: TextInputAction.next,
+          autofillHints: const [AutofillHints.oneTimeCode],
           inputFormatters: [
             FilteringTextInputFormatter.digitsOnly,
             LengthLimitingTextInputFormatter(6),
@@ -119,13 +136,13 @@ class _OtpBox extends StatelessWidget {
           style: const TextStyle(
             color: AppColors.inputText,
             fontSize: 20,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w700,
             height: 24 / 20,
           ),
           decoration: InputDecoration(
             counterText: '',
             filled: true,
-            fillColor: Colors.white,
+            fillColor: AppColors.inputFill,
             contentPadding: EdgeInsets.zero,
             border: _border(AppColors.cardBorder),
             enabledBorder: _border(AppColors.cardBorder),

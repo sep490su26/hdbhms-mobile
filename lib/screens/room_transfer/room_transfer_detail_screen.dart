@@ -1702,9 +1702,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
               label: 'Mã yêu cầu',
               value: _req.requestCode.isNotEmpty ? _req.requestCode : '--',
             ),
-            const SizedBox(height: 8),
-            const Divider(height: 1, color: Color(0xFFEEECEE)),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _InfoRow(
               label: 'Trạng thái',
               value: _transfer == null
@@ -1712,14 +1710,10 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                   : _displayTransferStatusLabel(_transfer!),
               valueColor: _effectiveStatusColor,
             ),
-            const SizedBox(height: 8),
-            const Divider(height: 1, color: Color(0xFFEEECEE)),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _InfoRow(label: 'Ngày tạo', value: _formatDate(_req.createdAt)),
             if (_req.resolvedAt != null) ...[
-              const SizedBox(height: 8),
-              const Divider(height: 1, color: Color(0xFFEEECEE)),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               _InfoRow(
                 label: 'Ngày xử lý',
                 value: _formatDate(_req.resolvedAt),
@@ -2420,14 +2414,23 @@ class _StatusBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _bg,
         borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        border: Border.all(color: _color.withValues(alpha: 0.18)),
       ),
       child: Row(
         children: [
-          Icon(_icon, color: _color, size: 24),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.72),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
+            ),
+            child: Icon(_icon, color: _color, size: 22),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -2438,7 +2441,7 @@ class _StatusBanner extends StatelessWidget {
                   style: TextStyle(
                     color: _color,
                     fontSize: 15,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -2446,7 +2449,7 @@ class _StatusBanner extends StatelessWidget {
                   _subtitle,
                   style: TextStyle(
                     color: _color.withValues(alpha: 0.75),
-                    fontSize: 12,
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -2529,7 +2532,7 @@ class _SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppColors.radiusMd),
@@ -2540,13 +2543,20 @@ class _SectionCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, color: AppColors.deepBlue, size: 20),
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.primarySurface,
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                ),
+                child: Icon(icon, color: AppColors.deepBlue, size: 18),
+              ),
               const SizedBox(width: 8),
               Text(
                 title,
-                style: AppTypography.label.copyWith(
+                style: AppTypography.cardTitle.copyWith(
                   color: AppColors.deepBlue,
-                  fontWeight: FontWeight.w800,
                 ),
               ),
             ],
@@ -2577,7 +2587,7 @@ class _InfoRow extends StatelessWidget {
             label,
             style: AppTypography.label.copyWith(
               color: AppColors.bodyText,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -2587,7 +2597,7 @@ class _InfoRow extends StatelessWidget {
             textAlign: TextAlign.end,
             style: AppTypography.body.copyWith(
               color: valueColor ?? AppColors.inputText,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
@@ -2615,36 +2625,67 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDanger = color == AppColors.danger;
+    final iconWidget = busy
+        ? SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: isDanger ? AppColors.danger : Colors.white,
+            ),
+          )
+        : Icon(icon, size: 20);
+
     return SizedBox(
       width: double.infinity,
       height: 48,
-      child: ElevatedButton.icon(
-        onPressed: busy || !enabled ? null : onTap,
-        icon: busy
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
+      child: isDanger
+          ? OutlinedButton.icon(
+              onPressed: busy || !enabled ? null : onTap,
+              icon: iconWidget,
+              label: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
                 ),
-              )
-            : Icon(icon, size: 20),
-        label: Text(
-          label,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: color.withValues(alpha: 0.5),
-          disabledForegroundColor: Colors.white.withValues(alpha: 0.8),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppColors.radiusMd),
-          ),
-        ),
-      ),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.danger,
+                backgroundColor: AppColors.dangerSurface,
+                disabledForegroundColor: AppColors.danger.withValues(
+                  alpha: 0.45,
+                ),
+                side: BorderSide(
+                  color: AppColors.danger.withValues(alpha: 0.65),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                ),
+              ),
+            )
+          : ElevatedButton.icon(
+              onPressed: busy || !enabled ? null : onTap,
+              icon: iconWidget,
+              label: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: color,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: color.withValues(alpha: 0.5),
+                disabledForegroundColor: Colors.white.withValues(alpha: 0.8),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                ),
+              ),
+            ),
     );
   }
 }
@@ -2836,10 +2877,18 @@ class _TargetHolderApprovalCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(
-                Icons.person_add_outlined,
-                color: const Color(0xFFD97706),
-                size: 22,
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                ),
+                child: const Icon(
+                  Icons.person_add_outlined,
+                  color: Color(0xFFD97706),
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 8),
               const Expanded(
@@ -2869,21 +2918,21 @@ class _TargetHolderApprovalCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _ApprovalButton(
-                  label: 'Từ chối',
-                  icon: Icons.close_outlined,
-                  color: AppColors.danger,
+                  label: 'Đồng ý',
+                  icon: Icons.check_outlined,
+                  color: AppColors.primary,
                   busy: busy,
-                  onTap: onReject,
+                  onTap: onApprove,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _ApprovalButton(
-                  label: 'Đồng ý',
-                  icon: Icons.check_outlined,
-                  color: AppColors.successText,
+                  label: 'Từ chối',
+                  icon: Icons.close_outlined,
+                  color: AppColors.danger,
                   busy: busy,
-                  onTap: onApprove,
+                  onTap: onReject,
                 ),
               ),
             ],
@@ -2911,34 +2960,65 @@ class _ApprovalButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDanger = color == AppColors.danger;
+    final iconWidget = busy
+        ? SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: isDanger ? AppColors.danger : Colors.white,
+            ),
+          )
+        : Icon(icon, size: 18);
+
     return SizedBox(
       height: 44,
-      child: ElevatedButton.icon(
-        onPressed: busy ? null : onTap,
-        icon: busy
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
+      child: isDanger
+          ? OutlinedButton.icon(
+              onPressed: busy ? null : onTap,
+              icon: iconWidget,
+              label: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
                 ),
-              )
-            : Icon(icon, size: 18),
-        label: Text(
-          label,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: color.withValues(alpha: 0.5),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppColors.radiusMd),
-          ),
-        ),
-      ),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.danger,
+                backgroundColor: AppColors.dangerSurface,
+                disabledForegroundColor: AppColors.danger.withValues(
+                  alpha: 0.45,
+                ),
+                side: BorderSide(
+                  color: AppColors.danger.withValues(alpha: 0.65),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                ),
+              ),
+            )
+          : ElevatedButton.icon(
+              onPressed: busy ? null : onTap,
+              icon: iconWidget,
+              label: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: color,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: color.withValues(alpha: 0.5),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                ),
+              ),
+            ),
     );
   }
 }
@@ -3162,20 +3242,9 @@ class _StatusTimeline extends StatelessWidget {
         children: [
           const Row(
             children: [
-              Icon(
-                Icons.timeline_outlined,
-                color: AppColors.deepBlue,
-                size: 20,
-              ),
+              _TimelineHeadingIcon(),
               SizedBox(width: 8),
-              Text(
-                'Tiến trình xử lý',
-                style: TextStyle(
-                  color: Color(0xFF000666),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+              Text('Tiến trình xử lý', style: AppTypography.cardTitle),
             ],
           ),
           const SizedBox(height: 16),
@@ -3209,6 +3278,12 @@ class _StatusTimeline extends StatelessWidget {
                         ? AppColors.deepBlue
                         : AppColors.neutralBorder,
                     shape: BoxShape.circle,
+                    border: isCurrent
+                        ? Border.all(
+                            color: AppColors.deepBlue.withValues(alpha: 0.18),
+                            width: 4,
+                          )
+                        : null,
                   ),
                   child: Icon(
                     step.icon,
@@ -3241,7 +3316,8 @@ class _StatusTimeline extends StatelessWidget {
                         ? AppColors.deepBlue
                         : AppColors.bodyText,
                     fontSize: 13,
-                    fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
+                    fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w600,
+                    height: 18 / 13,
                   ),
                 ),
               ),
@@ -3252,6 +3328,27 @@ class _StatusTimeline extends StatelessWidget {
     }
 
     return widgets;
+  }
+}
+
+class _TimelineHeadingIcon extends StatelessWidget {
+  const _TimelineHeadingIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        color: AppColors.primarySurface,
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+      ),
+      child: const Icon(
+        Icons.timeline_outlined,
+        color: AppColors.deepBlue,
+        size: 18,
+      ),
+    );
   }
 }
 

@@ -29,6 +29,7 @@ class AppColors {
   static const actionBlue = Color(0xFF2563EB);
   static const actionViolet = Color(0xFF7C3AED);
   static const actionOrange = Color(0xFFF97316);
+  static const actionAmber = Color(0xFFEA580C);
   static const actionEmerald = Color(0xFF059669);
   static const actionRose = Color(0xFFE11D48);
   static const actionCyan = Color(0xFF0891B2);
@@ -53,6 +54,7 @@ class AppColors {
   static const successSurface = Color(0xFFE7F8F1);
   static const warningText = Color(0xFF92400E);
   static const warningSurface = Color(0xFFFFFBEB);
+  static const amberSurface = Color(0xFFFFF7ED);
   static const dangerText = Color(0xFFB42318);
   static const dangerSurface = Color(0xFFFFE9E8);
   static const infoSurface = Color(0xFFEFF6FF);
