@@ -195,6 +195,7 @@ class TenantInvoiceLine {
     this.meterReadingId,
     this.meterType = '',
     this.readingPeriod = '',
+    this.readingDate,
     this.previousValue,
     this.currentValue,
     this.usageAmount,
@@ -212,6 +213,7 @@ class TenantInvoiceLine {
   final int? meterReadingId;
   final String meterType;
   final String readingPeriod;
+  final DateTime? readingDate;
   final double? previousValue;
   final double? currentValue;
   final double? usageAmount;
@@ -236,6 +238,7 @@ class TenantInvoiceLine {
       meterReadingId: int.tryParse(_firstString(json, ['meterReadingId'])),
       meterType: _firstString(json, ['meterType']),
       readingPeriod: _firstString(json, ['readingPeriod']),
+      readingDate: DateTime.tryParse(_firstString(json, ['readingDate'])),
       previousValue: _doubleField(json, ['previousValue']),
       currentValue: _doubleField(json, ['currentValue']),
       usageAmount: _doubleField(json, ['usageAmount']),

@@ -177,6 +177,8 @@ class LeaseContractOccupant {
     required this.email,
     required this.occupantRole,
     required this.status,
+    this.moveInDate,
+    this.moveOutDate,
   });
 
   final int? tenantProfileId;
@@ -185,6 +187,8 @@ class LeaseContractOccupant {
   final String email;
   final String occupantRole;
   final String status;
+  final DateTime? moveInDate;
+  final DateTime? moveOutDate;
 
   bool get isActive => status.trim().toUpperCase() == 'ACTIVE';
   bool get isPrimary => occupantRole.trim().toUpperCase() == 'PRIMARY';
@@ -213,6 +217,8 @@ class LeaseContractOccupant {
         'role',
       ]),
       status: _firstString(json, const ['status']),
+      moveInDate: _firstDate(json, const ['moveInDate', 'move_in_date']),
+      moveOutDate: _firstDate(json, const ['moveOutDate', 'move_out_date']),
     );
   }
 }

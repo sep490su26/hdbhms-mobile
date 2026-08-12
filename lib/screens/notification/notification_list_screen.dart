@@ -16,14 +16,19 @@ import '../../widgets/app_top_bar.dart';
 
 /// Màn danh sách thông báo với filter Tất cả / Chưa đọc / Đã đọc.
 class NotificationListScreen extends StatefulWidget {
-  const NotificationListScreen({super.key});
+  const NotificationListScreen({
+    super.key,
+    this.notificationService = const NotificationService(),
+  });
+
+  final NotificationService notificationService;
 
   @override
   State<NotificationListScreen> createState() => _NotificationListScreenState();
 }
 
 class _NotificationListScreenState extends State<NotificationListScreen> {
-  final NotificationService _notificationService = const NotificationService();
+  late final NotificationService _notificationService;
   _NotifFilter _activeFilter = _NotifFilter.all;
 
   List<NotificationItem> _items = [];
@@ -36,6 +41,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
   @override
   void initState() {
     super.initState();
+    _notificationService = widget.notificationService;
     _fetchNotifications();
   }
 
@@ -710,12 +716,21 @@ class _NotificationDetailDialog extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 8, 8),
+              Container(
+                height: 58,
+                padding: const EdgeInsets.only(left: 20, right: 8),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: AppColors.cardBorder),
+                  ),
+                ),
                 child: Row(
                   children: [
                     const Expanded(
-                      child: Text('Thông báo', style: AppTypography.cardTitle),
+                      child: Text(
+                        'Chi tiết thông báo',
+                        style: AppTypography.cardTitle,
+                      ),
                     ),
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
@@ -735,7 +750,7 @@ class _NotificationDetailDialog extends StatelessWidget {
               ),
               Flexible(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -746,12 +761,12 @@ class _NotificationDetailDialog extends StatelessWidget {
                           _StatusBadge(isRead: item.isRead),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 18),
                       Text(
                         item.title,
                         style: AppTypography.cardTitle.copyWith(fontSize: 16),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 7),
                       Text(
                         _formatDetailTime(item.createdAt),
                         style: AppTypography.caption,

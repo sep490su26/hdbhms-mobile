@@ -52,35 +52,45 @@ class TenantBottomNavigation extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _BottomNavItem(
-                icon: Icons.home_rounded,
-                label: 'Trang chủ',
-                isSelected: activeTab == TenantBottomNavTab.home,
-                onTap: onHomeTap,
+              Expanded(
+                child: _BottomNavItem(
+                  icon: Icons.home_rounded,
+                  label: 'Trang chủ',
+                  isSelected: activeTab == TenantBottomNavTab.home,
+                  onTap: onHomeTap,
+                ),
               ),
-              _BottomNavItem(
-                icon: Icons.receipt_long_outlined,
-                label: 'Hóa đơn',
-                isSelected: activeTab == TenantBottomNavTab.bills,
-                onTap: onBillsTap,
+              Expanded(
+                child: _BottomNavItem(
+                  icon: Icons.receipt_long_outlined,
+                  label: 'Hóa đơn',
+                  isSelected: activeTab == TenantBottomNavTab.bills,
+                  onTap: onBillsTap,
+                ),
               ),
-              _BottomNavItem(
-                icon: Icons.handyman_outlined,
-                label: 'Sự cố',
-                isSelected: activeTab == TenantBottomNavTab.support,
-                onTap: onSupportTap,
+              Expanded(
+                child: _BottomNavItem(
+                  icon: Icons.handyman_outlined,
+                  label: 'Sự cố',
+                  isSelected: activeTab == TenantBottomNavTab.support,
+                  onTap: onSupportTap,
+                ),
               ),
-              _BottomNavItem(
-                icon: Icons.assignment_outlined,
-                label: 'Yêu cầu',
-                isSelected: activeTab == TenantBottomNavTab.requests,
-                onTap: onRequestsTap,
+              Expanded(
+                child: _BottomNavItem(
+                  icon: Icons.assignment_outlined,
+                  label: 'Yêu cầu',
+                  isSelected: activeTab == TenantBottomNavTab.requests,
+                  onTap: onRequestsTap,
+                ),
               ),
-              _BottomNavItem(
-                icon: Icons.person_outline,
-                label: 'Hồ sơ',
-                isSelected: activeTab == TenantBottomNavTab.profile,
-                onTap: onProfileTap,
+              Expanded(
+                child: _BottomNavItem(
+                  icon: Icons.person_outline,
+                  label: 'Hồ sơ',
+                  isSelected: activeTab == TenantBottomNavTab.profile,
+                  onTap: onProfileTap,
+                ),
               ),
             ],
           ),
@@ -120,7 +130,7 @@ class _BottomNavItem extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(AppColors.radiusLg),
           child: SizedBox(
-            width: 62,
+            width: double.infinity,
             height: 60,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),

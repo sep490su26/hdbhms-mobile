@@ -5,6 +5,7 @@ import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 
 import 'package:hdbhms_mobile/models/home/home_summary_model.dart';
+import 'package:hdbhms_mobile/models/home/electricity_consumption_entry.dart';
 import 'package:hdbhms_mobile/providers/home_provider.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
@@ -32,6 +33,7 @@ import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart
 import 'package:hdbhms_mobile/screens/tenant_overview/tenant_overview_screen.dart';
 import 'package:hdbhms_mobile/screens/web_view_screen.dart';
 import 'package:hdbhms_mobile/screens/contract/room_amenities_screen.dart';
+import 'package:hdbhms_mobile/screens/home/electricity_consumption_history_screen.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -67,6 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
       homeService: widget.homeService,
       leaseContractService: widget.leaseContractService,
       tenantInvoiceService: widget.tenantInvoiceService,
+      tenantProfileService: widget.profileService,
       initialRoom: widget.initialRoom,
     )..addListener(_handleProviderChanged);
     _provider.load();
@@ -185,7 +188,9 @@ class _HomeScreenState extends State<HomeScreen> {
               _UtilitiesSection(
                 utilities: _provider.roomUtilitySummary,
                 electricityTrend: _provider.electricityTrend,
-                invoiceService: widget.tenantInvoiceService,
+                electricityEntries: _provider.electricityConsumptionEntries,
+                roomLabel: _provider.electricityRoomLabel,
+                occupancyStart: _provider.electricityOccupancyStart,
               ),
               const SizedBox(height: 17),
               const _SectionHeading('Thao tác nhanh'),
@@ -929,21 +934,32 @@ class _PaymentStatusCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  hasMultipleBills
-                      ? 'Tổng cần thanh toán'
-                      : 'Trạng thái thanh toán',
-                  style: AppTypography.button.copyWith(
-                    color: mainTextColor,
-                    fontWeight: FontWeight.w800,
-                  ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final title = Text(
+                'Thanh toán nhanh',
+                style: AppTypography.button.copyWith(
+                  color: mainTextColor,
+                  fontWeight: FontWeight.w800,
                 ),
-              ),
-              _PaymentBadge(isUnpaid: hasUnpaid, unpaidCount: unpaidCount),
-            ],
+              );
+              final badge = _PaymentBadge(
+                isUnpaid: hasUnpaid,
+                unpaidCount: unpaidCount,
+              );
+              if (constraints.maxWidth < 290) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [title, const SizedBox(height: 8), badge],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: title),
+                  badge,
+                ],
+              );
+            },
           ),
           const SizedBox(height: 6),
           Text(
@@ -954,24 +970,38 @@ class _PaymentStatusCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 15),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Flexible(
-                child: Text(
-                  '${_formatAmount(invoiceSummary.totalUnpaidAmount)}đ',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: mainTextColor,
-                    fontSize: 32,
-                    fontWeight: FontWeight.w900,
-                    height: 38 / 32,
+          if (hasUnpaid) ...[
+            Text(
+              'Tổng tiền cần thanh toán',
+              style: AppTypography.metaLabel.copyWith(color: mutedTextColor),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Flexible(
+                  child: Text(
+                    '${_formatAmount(invoiceSummary.totalUnpaidAmount)}đ',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: mainTextColor,
+                      fontSize: 32,
+                      fontWeight: FontWeight.w900,
+                      height: 38 / 32,
+                    ),
                   ),
                 ),
+              ],
+            ),
+          ] else
+            Text(
+              'Không có khoản cần thanh toán',
+              style: AppTypography.body.copyWith(
+                color: mainTextColor,
+                fontWeight: FontWeight.w700,
               ),
-            ],
-          ),
+            ),
           if (helperText != null) ...[
             const SizedBox(height: 14),
             Container(
@@ -1061,9 +1091,11 @@ class _PaymentBadge extends StatelessWidget {
           Text(
             isUnpaid
                 ? (unpaidCount > 1
-                      ? '$unpaidCount khoản chờ thanh toán'
+                      ? '$unpaidCount hóa đơn chờ'
                       : 'Chưa thanh toán')
                 : 'Đã thanh toán',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: AppTypography.caption.copyWith(
               color: isUnpaid ? Colors.white : AppColors.successText,
               fontSize: 11,
@@ -1080,12 +1112,16 @@ class _UtilitiesSection extends StatelessWidget {
   const _UtilitiesSection({
     required this.utilities,
     required this.electricityTrend,
-    required this.invoiceService,
+    required this.electricityEntries,
+    required this.roomLabel,
+    required this.occupancyStart,
   });
 
   final UtilitySummary utilities;
   final UtilityInvoiceTrend? electricityTrend;
-  final TenantInvoiceService invoiceService;
+  final List<ElectricityConsumptionEntry> electricityEntries;
+  final String roomLabel;
+  final DateTime? occupancyStart;
 
   @override
   Widget build(BuildContext context) {
@@ -1094,7 +1130,9 @@ class _UtilitiesSection extends StatelessWidget {
         _UtilityCard(
           usage: utilities.electricity,
           trend: electricityTrend,
-          invoiceService: invoiceService,
+          electricityEntries: electricityEntries,
+          roomLabel: roomLabel,
+          occupancyStart: occupancyStart,
           title: 'Điện',
           unit: 'kWh',
           icon: Icons.bolt_rounded,
@@ -1110,7 +1148,9 @@ class _UtilityCard extends StatelessWidget {
   const _UtilityCard({
     required this.usage,
     required this.trend,
-    required this.invoiceService,
+    required this.electricityEntries,
+    required this.roomLabel,
+    required this.occupancyStart,
     required this.title,
     required this.unit,
     required this.icon,
@@ -1120,7 +1160,9 @@ class _UtilityCard extends StatelessWidget {
 
   final UtilityUsage? usage;
   final UtilityInvoiceTrend? trend;
-  final TenantInvoiceService invoiceService;
+  final List<ElectricityConsumptionEntry> electricityEntries;
+  final String roomLabel;
+  final DateTime? occupancyStart;
   final String title;
   final String unit;
   final IconData icon;
@@ -1211,7 +1253,9 @@ class _UtilityCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (activeTrend != null) _UtilityTrendBadge(trend: activeTrend),
+                if (activeTrend != null &&
+                    activeTrend.direction != UtilityTrendDirection.unavailable)
+                  _UtilityTrendBadge(trend: activeTrend),
               ],
             ),
             const SizedBox(height: 16),
@@ -1253,43 +1297,43 @@ class _UtilityCard extends StatelessWidget {
                     : '${_formatAmount(activeTrend.line.amount)} đ',
               ),
             ],
-            if (activeTrend != null || showFallbackStatus) ...[
-              const SizedBox(height: 14),
-              Container(height: 1, color: AppColors.cardBorder),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: _UtilityTrendDescription(
-                      trend: activeTrend,
-                      unit: displayUnit,
-                      fallbackStatus: fallbackStatus,
+            const SizedBox(height: 14),
+            Container(height: 1, color: AppColors.cardBorder),
+            const SizedBox(height: 4),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => ElectricityConsumptionHistoryScreen(
+                      entries: electricityEntries,
+                      roomLabel: roomLabel,
+                      occupancyStart: occupancyStart,
                     ),
                   ),
-                  if (activeTrend != null)
-                    TextButton.icon(
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => BillDetailScreen(
-                            invoice: activeTrend.invoice,
-                            invoiceService: invoiceService,
-                          ),
+                ),
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _UtilityTrendDescription(
+                          trend: activeTrend,
+                          unit: displayUnit,
                         ),
                       ),
-                      icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                      label: const Text('Xem chi tiết'),
-                      style: TextButton.styleFrom(
-                        minimumSize: const Size(44, 44),
-                        foregroundColor: AppColors.primary,
-                        textStyle: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.bodyText,
+                        size: 24,
                       ),
-                    ),
-                ],
+                    ],
+                  ),
+                ),
               ),
-            ],
+            ),
           ],
         ),
       ),
@@ -1307,7 +1351,11 @@ class _ElectricityPeriodMetric extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     children: [
       Expanded(child: Text(label, style: AppTypography.metaLabel)),
-      Text(value, style: AppTypography.metaValue),
+      Text(
+        value,
+        key: ValueKey('electricity-period-value-$label'),
+        style: AppTypography.metaValue,
+      ),
     ],
   );
 }
@@ -1403,7 +1451,7 @@ class _UtilityTrendBadge extends StatelessWidget {
         Icons.remove_rounded,
         AppColors.bodyText,
         AppColors.surfaceMuted,
-        'Đang so sánh',
+        '',
       ),
     };
 
@@ -1434,22 +1482,18 @@ class _UtilityTrendBadge extends StatelessWidget {
 }
 
 class _UtilityTrendDescription extends StatelessWidget {
-  const _UtilityTrendDescription({
-    required this.trend,
-    required this.unit,
-    required this.fallbackStatus,
-  });
+  const _UtilityTrendDescription({required this.trend, required this.unit});
 
   final UtilityInvoiceTrend? trend;
   final String unit;
-  final String fallbackStatus;
 
   @override
   Widget build(BuildContext context) {
     final activeTrend = trend;
-    if (activeTrend == null) {
+    if (activeTrend == null ||
+        activeTrend.direction == UtilityTrendDirection.unavailable) {
       return Text(
-        fallbackStatus,
+        'Lịch sử tiêu thụ điện',
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(
@@ -1474,8 +1518,7 @@ class _UtilityTrendDescription extends StatelessWidget {
       UtilityTrendDirection.decrease =>
         'Tiêu thụ giảm ${_formatUsageValue(difference!.abs())} $unit so với tháng trước',
       UtilityTrendDirection.stable => 'Tiêu thụ không đổi so với tháng trước',
-      UtilityTrendDirection.unavailable =>
-        'Chưa đủ dữ liệu để so sánh tiêu thụ',
+      UtilityTrendDirection.unavailable => 'Lịch sử tiêu thụ điện',
     };
 
     return Text(
@@ -1511,14 +1554,14 @@ class _QuickActions extends StatelessWidget {
   final String? roomCode;
 
   @override
-  Widget build(BuildContext context) {
-    return GridView.count(
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 10,
       crossAxisSpacing: 10,
-      childAspectRatio: 1.62,
+      childAspectRatio: constraints.maxWidth < 300 ? 1.15 : 1.45,
       children: [
         _QuickActionButton(
           icon: Icons.rule_rounded,
@@ -1585,8 +1628,8 @@ class _QuickActions extends StatelessWidget {
           },
         ),
       ],
-    );
-  }
+    ),
+  );
 }
 
 class _QuickActionButton extends StatelessWidget {

@@ -2,10 +2,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:hdbhms_mobile/models/home/home_summary_model.dart';
 import 'package:hdbhms_mobile/models/payment/tenant_invoice_model.dart';
+import 'package:hdbhms_mobile/models/contract/lease_contract_model.dart';
+import 'package:hdbhms_mobile/models/profile_request/tenant_profile_model.dart';
 import 'package:hdbhms_mobile/providers/home_provider.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
+import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 
 class _FakeHomeService extends HomeService {
   const _FakeHomeService();
@@ -112,6 +115,35 @@ class _FakeLeaseContractService extends LeaseContractService {
         propertyName: 'Nha tro Hai Dang 1',
       ),
     ];
+  }
+
+  @override
+  Future<LeaseContract> getContractById(int contractId, {int? tenantId}) async {
+    return LeaseContract.fromJson({
+      'id': contractId,
+      'contractCode': 'HD-2026-$contractId',
+      'startDate': '2026-05-01',
+      'occupants': [
+        {
+          'tenantProfileId': 1,
+          'fullName': 'Tenant Test',
+          'occupantRole': 'PRIMARY',
+          'status': 'ACTIVE',
+        },
+      ],
+    });
+  }
+}
+
+class _FakeTenantProfileService extends TenantProfileService {
+  const _FakeTenantProfileService();
+
+  @override
+  Future<TenantProfileResponse> getMyProfile() async {
+    return TenantProfileResponse.fromJson({
+      'tenantProfileId': 1,
+      'person': <String, dynamic>{},
+    });
   }
 }
 
@@ -273,6 +305,82 @@ class _TrendTenantInvoiceService extends TenantInvoiceService {
   }
 }
 
+TenantInvoice _meterInvoice({
+  required int id,
+  required int contractId,
+  required String period,
+  DateTime? readingDate,
+  double usage = 30,
+  int remainingAmount = 0,
+}) {
+  return TenantInvoice(
+    id: id,
+    invoiceCode: 'INV-$id',
+    invoiceType: 'UTILITY',
+    billingPeriod: period,
+    status: 'ISSUED',
+    roomId: 103,
+    roomCode: '103',
+    contractId: contractId,
+    contractCode: 'HD-$contractId',
+    dueDate: DateTime(2026, 6, 18),
+    issuedAt: DateTime(2026, int.parse(period.substring(5)), 10),
+    paidAt: null,
+    totalAmount: remainingAmount,
+    paidAmount: 0,
+    remainingAmount: remainingAmount,
+    paymentIntentId: null,
+    checkoutUrl: '',
+    qrCode: '',
+    providerOrderCode: '',
+    paymentLinkId: '',
+    bankBin: '',
+    bankShortName: '',
+    accountNumber: '',
+    accountName: '',
+    transferDescription: '',
+    lines: [
+      TenantInvoiceLine(
+        id: id,
+        lineType: 'ELECTRICITY',
+        description: 'Tiền điện',
+        quantity: usage.round(),
+        unitPrice: 3000,
+        amount: usage.round() * 3000,
+        readingPeriod: period,
+        readingDate: readingDate,
+        previousValue: 100,
+        currentValue: 100 + usage,
+        usageAmount: usage,
+      ),
+    ],
+    priceDifferenceSettlementType: null,
+  );
+}
+
+class _TwoPayableInvoiceService extends TenantInvoiceService {
+  const _TwoPayableInvoiceService();
+
+  @override
+  Future<List<TenantInvoice>> fetchMyInvoices({
+    int? roomId,
+    String? roomCode,
+  }) async => [
+    _meterInvoice(
+      id: 1,
+      contractId: 23,
+      period: '2026-06',
+      remainingAmount: 500000,
+    ),
+    _meterInvoice(
+      id: 2,
+      contractId: 23,
+      period: '2026-07',
+      remainingAmount: 1000000,
+    ),
+  ];
+}
+
 void main() {
   test(
     'home provider uses tenant invoice API and filters by selected room',
@@ -281,6 +389,7 @@ void main() {
         homeService: const _FakeHomeService(),
         leaseContractService: const _FakeLeaseContractService(),
         tenantInvoiceService: const _FakeTenantInvoiceService(),
+        tenantProfileService: const _FakeTenantProfileService(),
       );
 
       await provider.load();
@@ -319,6 +428,7 @@ void main() {
       homeService: homeService,
       leaseContractService: const _FakeLeaseContractService(),
       tenantInvoiceService: const _FakeTenantInvoiceService(),
+      tenantProfileService: const _FakeTenantProfileService(),
       initialRoom: const ActiveRoomItem(
         contractId: 24,
         contractCode: 'HD-2026-H104-24',
@@ -344,6 +454,7 @@ void main() {
         homeService: const _FakeHomeService(),
         leaseContractService: const _FakeLeaseContractService(),
         tenantInvoiceService: const _TrendTenantInvoiceService(),
+        tenantProfileService: const _FakeTenantProfileService(),
       );
 
       await provider.load();
@@ -370,6 +481,72 @@ void main() {
       expect(trend.previousUsage, 30);
       expect(trend.difference, 15);
       expect(trend.direction, UtilityTrendDirection.increase);
+    },
+  );
+
+  test('invoice summary sums payable remaining amounts', () async {
+    final provider = HomeProvider(
+      homeService: const _FakeHomeService(),
+      leaseContractService: const _FakeLeaseContractService(),
+      tenantInvoiceService: const _TwoPayableInvoiceService(),
+      tenantProfileService: const _FakeTenantProfileService(),
+    );
+    await provider.load();
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(provider.payableInvoices, hasLength(2));
+    expect(provider.invoiceSummary.totalUnpaidAmount, 1500000);
+  });
+
+  test(
+    'electricity entries require the selected contract even in the same room',
+    () {
+      final entries = buildTenantScopedElectricityEntries(
+        invoices: [
+          _meterInvoice(id: 1, contractId: 23, period: '2026-06'),
+          _meterInvoice(id: 2, contractId: 24, period: '2026-06'),
+        ],
+        selectedContractId: 24,
+        occupancyStart: DateTime(2026, 5, 1),
+      );
+
+      expect(entries, hasLength(1));
+      expect(entries.single.invoice.contractId, 24);
+    },
+  );
+
+  test(
+    'electricity entries honor move-in and conservatively omit ambiguous periods',
+    () {
+      final entries = buildTenantScopedElectricityEntries(
+        invoices: [
+          _meterInvoice(
+            id: 1,
+            contractId: 23,
+            period: '2026-04',
+            readingDate: DateTime(2026, 4, 30),
+          ),
+          _meterInvoice(
+            id: 2,
+            contractId: 23,
+            period: '2026-05',
+            readingDate: DateTime(2026, 5, 31),
+          ),
+          _meterInvoice(
+            id: 3,
+            contractId: 23,
+            period: '2026-06',
+            readingDate: DateTime(2026, 6, 30),
+          ),
+          _meterInvoice(id: 4, contractId: 23, period: '2026-05'),
+        ],
+        selectedContractId: 23,
+        occupancyStart: DateTime(2026, 5, 15),
+      );
+
+      expect(entries.map((entry) => entry.invoice.id), [3, 2]);
+      expect(entries.any((entry) => entry.invoice.id == 4), isFalse);
     },
   );
 }

@@ -79,6 +79,8 @@ void main() {
             'phone': '0901',
             'occupantRole': 'PRIMARY',
             'status': 'ACTIVE',
+            'moveInDate': '2026-05-15',
+            'moveOutDate': '2026-08-31',
           },
           {
             'tenantProfileId': 102,
@@ -93,6 +95,8 @@ void main() {
       expect(lease.currentTenantProfileId, 101);
       expect(lease.occupants.map((item) => item.tenantProfileId), [101, 102]);
       expect(lease.occupants.first.isPrimary, isTrue);
+      expect(lease.occupants.first.moveInDate, DateTime(2026, 5, 15));
+      expect(lease.occupants.first.moveOutDate, DateTime(2026, 8, 31));
       expect(lease.occupants.last.displayName, 'Tran Thi B');
     },
   );
