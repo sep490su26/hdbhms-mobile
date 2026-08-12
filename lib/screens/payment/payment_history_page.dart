@@ -841,8 +841,9 @@ enum _HistoryDateFilter { all, last7Days, last30Days, last90Days, custom }
 enum _HistoryInvoiceTypeFilter { all, rent, utility, other }
 
 DateTime _historyDate(TenantInvoice invoice) {
-  return invoice.paidAt ??
+  return invoice.issueDate ??
       invoice.issuedAt ??
+      invoice.paidAt ??
       invoice.dueDate ??
       DateTime.fromMillisecondsSinceEpoch(0);
 }

@@ -15,9 +15,10 @@ class PaidInvoiceCard extends StatelessWidget {
     final amount = invoice.paidAmount > 0
         ? invoice.paidAmount
         : invoice.totalAmount;
-    final paidDate =
-        invoice.paidAt ??
+    final createdDate =
+        invoice.issueDate ??
         invoice.issuedAt ??
+        invoice.paidAt ??
         invoice.dueDate ??
         DateTime.fromMillisecondsSinceEpoch(0);
     final card = Container(
@@ -90,7 +91,7 @@ class PaidInvoiceCard extends StatelessWidget {
                             [
                               if (invoice.roomCode.isNotEmpty)
                                 'Phòng ${invoice.roomCode}',
-                              _formatDate(paidDate),
+                              _formatDate(createdDate),
                             ].join(' · '),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,

@@ -256,9 +256,11 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
     BuildContext context,
     List<TenantInvoice> invoices,
   ) {
-    final typeFilteredInvoices = invoices
-        .where((invoice) => _matchesTypeFilter(invoice, _activeTypeFilter))
-        .toList(growable: false);
+    final typeFilteredInvoices =
+        invoices
+            .where((invoice) => _matchesTypeFilter(invoice, _activeTypeFilter))
+            .toList()
+          ..sort(_compareInvoicesByCreatedDate);
 
     final pendingBills = _withSpacing(
       typeFilteredInvoices
@@ -375,6 +377,22 @@ String _formatAmount(int amount) {
 String _formatDate(DateTime? value) {
   if (value == null) return 'Chưa có hạn';
   return '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+}
+
+int _compareInvoicesByCreatedDate(TenantInvoice first, TenantInvoice second) {
+  final firstDate = _invoiceCreatedDate(first);
+  final secondDate = _invoiceCreatedDate(second);
+  final dateOrder = secondDate.compareTo(firstDate);
+  if (dateOrder != 0) return dateOrder;
+  return (second.id ?? 0).compareTo(first.id ?? 0);
+}
+
+DateTime _invoiceCreatedDate(TenantInvoice invoice) {
+  return invoice.issueDate ??
+      invoice.issuedAt ??
+      invoice.paidAt ??
+      invoice.dueDate ??
+      DateTime.fromMillisecondsSinceEpoch(0);
 }
 
 IconData _invoiceTypeIcon(TenantInvoice invoice) {

@@ -11,6 +11,7 @@ class TenantInvoice {
     required this.contractCode,
     required this.dueDate,
     required this.issuedAt,
+    this.issueDate,
     required this.paidAt,
     required this.totalAmount,
     required this.paidAmount,
@@ -41,6 +42,7 @@ class TenantInvoice {
   final String contractCode;
   final DateTime? dueDate;
   final DateTime? issuedAt;
+  final DateTime? issueDate;
   final DateTime? paidAt;
   final int totalAmount;
   final int paidAmount;
@@ -156,6 +158,9 @@ class TenantInvoice {
       contractCode: _firstString(json, ['contractCode']),
       dueDate: DateTime.tryParse(_firstString(json, ['dueDate'])),
       issuedAt: DateTime.tryParse(_firstString(json, ['issuedAt'])),
+      issueDate: DateTime.tryParse(
+        _firstString(json, ['issueDate', 'createdAt']),
+      ),
       paidAt: DateTime.tryParse(_firstString(json, ['paidAt'])),
       totalAmount: _intField(json, ['totalAmount']),
       paidAmount: _intField(json, ['paidAmount']),

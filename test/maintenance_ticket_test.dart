@@ -79,6 +79,17 @@ void main() {
     expect(attachment.name, 'done.png');
   });
 
+  test('TicketAttachment gets file id from download URL fallback', () {
+    final attachment = TicketAttachment.fromJson({
+      'id': 7,
+      'url': '/api/v1/files/download/91',
+      'mimeType': 'image/png',
+    });
+
+    expect(attachment.fileId, 91);
+    expect(attachment.url, endsWith('/api/v1/files/download/91'));
+  });
+
   testWidgets('attachment grid renders downloaded image bytes', (tester) async {
     final fileService = _FakeFileService(_pngBytes);
 

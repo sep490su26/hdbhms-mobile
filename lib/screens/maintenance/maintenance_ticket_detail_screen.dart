@@ -187,6 +187,7 @@ class _MaintenanceTicketDetailScreenState
         costDescription: data.costDescription,
         amount: data.amount,
         paidBy: data.paidBy,
+        afterAttachments: data.afterAttachments,
       ),
       'Đã đánh dấu hoàn tất',
     );
@@ -1293,7 +1294,7 @@ class _CompleteSheetState extends State<_CompleteSheet> {
   final _costDescriptionController = TextEditingController();
   final _amountController = TextEditingController();
   final _paidByController = TextEditingController();
-  int _selectedFileCount = 0;
+  List<MaintenanceAttachment> _selectedFiles = const [];
 
   @override
   void dispose() {
@@ -1309,9 +1310,25 @@ class _CompleteSheetState extends State<_CompleteSheet> {
     if (!mounted || files.isEmpty) {
       return;
     }
-    setState(() {
-      _selectedFileCount = files.length > 3 ? 3 : files.length;
-    });
+    final selected = <MaintenanceAttachment>[];
+    for (final file in files.take(3)) {
+      final bytes = await file.readAsBytes();
+      selected.add(
+        MaintenanceAttachment(
+          name: file.name,
+          path: file.path,
+          mimeType: _imageMimeType(file.name),
+          sizeBytes: bytes.length,
+          type: MaintenanceAttachmentType.image,
+          previewBytes: bytes,
+        ),
+      );
+    }
+    if (mounted) {
+      setState(() {
+        _selectedFiles = List.unmodifiable(selected);
+      });
+    }
   }
 
   @override
@@ -1364,9 +1381,9 @@ class _CompleteSheetState extends State<_CompleteSheet> {
                 ),
               ),
               label: Text(
-                _selectedFileCount == 0
+                _selectedFiles.isEmpty
                     ? 'Thêm ảnh sau sửa chữa'
-                    : 'Đã chọn $_selectedFileCount ảnh',
+                    : 'Đã chọn ${_selectedFiles.length} ảnh',
               ),
             ),
             const SizedBox(height: 18),
@@ -1382,6 +1399,7 @@ class _CompleteSheetState extends State<_CompleteSheet> {
                     costDescription: _costDescriptionController.text,
                     amount: num.tryParse(_amountController.text.trim()) ?? 0,
                     paidBy: _paidByController.text,
+                    afterAttachments: _selectedFiles,
                   ),
                 );
               },
@@ -1391,6 +1409,17 @@ class _CompleteSheetState extends State<_CompleteSheet> {
       ),
     );
   }
+}
+
+String _imageMimeType(String fileName) {
+  final extension = fileName.split('.').last.toLowerCase();
+  return switch (extension) {
+    'jpg' || 'jpeg' => 'image/jpeg',
+    'png' => 'image/png',
+    'webp' => 'image/webp',
+    'gif' => 'image/gif',
+    _ => 'image/jpeg',
+  };
 }
 
 class _BottomSheetFrame extends StatelessWidget {
@@ -1519,12 +1548,14 @@ class _CompleteFormData {
     required this.costDescription,
     required this.amount,
     required this.paidBy,
+    required this.afterAttachments,
   });
 
   final String completionNote;
   final String costDescription;
   final num amount;
   final String paidBy;
+  final List<MaintenanceAttachment> afterAttachments;
 }
 
 bool _shouldShowAfterAttachments(MaintenanceTicketDetail detail) {

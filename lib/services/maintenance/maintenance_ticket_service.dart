@@ -119,10 +119,11 @@ class MaintenanceTicketService {
     required String costDescription,
     required num amount,
     required String paidBy,
-    List<TicketAttachment> afterAttachments = const [],
+    List<MaintenanceAttachment> afterAttachments = const [],
   }) async {
     final normalizedPaidBy = _paidByValue(paidBy);
     final chargeToTenant = normalizedPaidBy == 'TENANT';
+    final attachmentIds = await _uploadAttachments(afterAttachments);
     await _postJson(_uri('/maintenance/tickets/$ticketId/complete'), {
       'completionNote': completionNote.trim(),
       'costDescription': costDescription.trim(),
@@ -134,6 +135,7 @@ class MaintenanceTicketService {
       'lineType': chargeToTenant ? 'MAINTENANCE_COMPENSATION' : null,
       'collectionMethod': chargeToTenant ? 'NO_CHARGE' : 'NO_CHARGE',
       'attachmentPhase': 'AFTER',
+      'attachmentIds': attachmentIds,
     });
   }
 

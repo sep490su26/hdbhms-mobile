@@ -36,6 +36,7 @@ class HomeProvider extends ChangeNotifier {
   bool _sessionExpired = false;
   bool _invoicesLoaded = false;
   List<TenantInvoice> _invoices = const [];
+  List<TenantInvoice> _electricityHistory = const [];
   Future<int?>? _tenantProfileIdRequest;
   final Map<int, Future<_OccupancyWindow?>> _occupancyRequests = {};
   _OccupancyWindow? _electricityOccupancy;
@@ -67,8 +68,11 @@ class HomeProvider extends ChangeNotifier {
   List<ElectricityConsumptionEntry> get electricityConsumptionEntries {
     final occupancy = _electricityOccupancy;
     if (occupancy == null) return const [];
+    final sourceInvoices = _electricityHistory.isNotEmpty
+        ? _electricityHistory
+        : _invoices;
     return buildTenantScopedElectricityEntries(
-      invoices: _invoices,
+      invoices: sourceInvoices,
       selectedContractId: occupancy.contractId,
       occupancyStart: occupancy.start,
       occupancyEnd: occupancy.end,
@@ -265,6 +269,7 @@ class HomeProvider extends ChangeNotifier {
     _errorMessage = null;
     _sessionExpired = false;
     _summary = null;
+    _electricityHistory = const [];
     _activeRooms = const [];
     _selectedRoom = _initialRoom;
     _electricityOccupancy = null;
@@ -299,9 +304,20 @@ class HomeProvider extends ChangeNotifier {
       _invoices = await _tenantInvoiceService.fetchMyInvoices();
       _invoicesLoaded = true;
       notifyListeners();
+      _loadElectricityHistory();
       _resolveSelectedElectricityContext();
     } catch (_) {
       // Keep the home summary as a non-blocking fallback.
+    }
+  }
+
+  Future<void> _loadElectricityHistory() async {
+    try {
+      final history = await _tenantInvoiceService.fetchElectricityHistory();
+      _electricityHistory = history;
+      notifyListeners();
+    } catch (_) {
+      // The invoice list remains a compatible fallback for older deployments.
     }
   }
 

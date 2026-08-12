@@ -31,4 +31,12 @@ void main() {
       DateTime(2026, 5, 31),
     );
   });
+
+  test('tenant invoice parses the creation date', () {
+    final invoice = TenantInvoice.fromJson({
+      'issueDate': '2026-08-11T09:30:00',
+    });
+
+    expect(invoice.issueDate, DateTime(2026, 8, 11, 9, 30));
+  });
 }

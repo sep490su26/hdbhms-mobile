@@ -55,6 +55,49 @@ class TenantInvoiceService {
     }
   }
 
+  /// Returns the tenant-scoped electricity history from the backend.
+  ///
+  /// The response intentionally uses the same invoice shape as the invoice
+  /// endpoint so the existing line parser remains the single source of truth.
+  Future<List<TenantInvoice>> fetchElectricityHistory({int? contractId}) async {
+    final client = _effectiveClient;
+    try {
+      final uri =
+          Uri.parse(
+            '${ApiConfig.baseUrl}/tenant/invoices/electricity-history',
+          ).replace(
+            queryParameters: contractId == null
+                ? null
+                : {'contractId': contractId.toString()},
+          );
+      final response = await client.get(uri).timeout(_timeout);
+      if (response.statusCode == 200) {
+        final decoded = _decodeBody(response.body);
+        final data = decoded['data'];
+        if (data is List) {
+          return data
+              .whereType<Map<String, dynamic>>()
+              .map(TenantInvoice.fromJson)
+              .toList(growable: false);
+        }
+        return const [];
+      }
+      throw TenantInvoiceException(_messageForError(response));
+    } on TimeoutException {
+      throw const TenantInvoiceException('Không kết nối được máy chủ');
+    } on http.ClientException {
+      throw const TenantInvoiceException('Không kết nối được máy chủ');
+    } on FormatException {
+      throw const TenantInvoiceException(
+        'Dữ liệu lịch sử tiêu thụ điện không hợp lệ',
+      );
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
+
   Future<void> submitMeterReadingReview({
     required int invoiceId,
     required int lineId,

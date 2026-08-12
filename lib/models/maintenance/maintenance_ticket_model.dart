@@ -515,14 +515,6 @@ class TicketAttachment {
 
   factory TicketAttachment.fromJson(Map<String, dynamic> json) {
     final id = _asInt(json['id']) ?? 0;
-    final fileId =
-        _firstInt(json, [
-          'fileId',
-          'file_id',
-          'fileMetadataId',
-          'file_metadata_id',
-        ]) ??
-        id;
     final rawUrl = _firstString(json, [
       'url',
       'fileUrl',
@@ -530,6 +522,15 @@ class TicketAttachment {
       'downloadUrl',
       'download_url',
     ]);
+    final fileId =
+        _firstInt(json, [
+          'fileId',
+          'file_id',
+          'fileMetadataId',
+          'file_metadata_id',
+        ]) ??
+        _fileIdFromDownloadUrl(rawUrl) ??
+        0;
     final name = _firstString(json, [
       'name',
       'fileName',
@@ -971,6 +972,11 @@ String _resolveFileUrl(String rawUrl, int? fileId) {
     return '${ApiConfig.baseUrl}/files/download/$fileId';
   }
   return '';
+}
+
+int? _fileIdFromDownloadUrl(String value) {
+  final match = RegExp(r'/files/download/(\d+)').firstMatch(value);
+  return match == null ? null : int.tryParse(match.group(1)!);
 }
 
 String _attachmentMimeFallback(String value) {
