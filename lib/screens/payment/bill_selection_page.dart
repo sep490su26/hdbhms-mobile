@@ -19,7 +19,6 @@ import 'qr_payment_page.dart';
 import 'utility_complaint_screen.dart';
 import '../../widgets/app_filter_chip.dart';
 import '../../widgets/app_list_state.dart';
-import '../../widgets/paid_invoice_card.dart';
 
 class BillSelectionPage extends StatefulWidget {
   const BillSelectionPage({
@@ -29,6 +28,7 @@ class BillSelectionPage extends StatefulWidget {
     this.roomId,
     this.roomCode = '',
     this.previewInvoices,
+    this.notificationInitialUnreadCount,
   });
 
   final TenantInvoiceService invoiceService;
@@ -38,13 +38,13 @@ class BillSelectionPage extends StatefulWidget {
 
   /// Local-only invoices used by the internal preview launcher.
   final List<TenantInvoice>? previewInvoices;
+  final int? notificationInitialUnreadCount;
 
   @override
   State<BillSelectionPage> createState() => _BillSelectionPageState();
 }
 
 class _BillSelectionPageState extends State<BillSelectionPage> {
-  _BillStatusFilter _activeStatusFilter = _BillStatusFilter.all;
   _BillTypeFilter _activeTypeFilter = _BillTypeFilter.all;
   late Future<List<TenantInvoice>> _invoicesFuture;
 
@@ -60,17 +60,21 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: AppScreenShell(
-          header: _BillHeader(onOpenHistory: _openPaymentHistory),
+          header: _BillHeader(
+            onOpenHistory: _openPaymentHistory,
+            notificationInitialUnreadCount:
+                widget.notificationInitialUnreadCount,
+          ),
           child: ListView(
             padding: const EdgeInsets.fromLTRB(14, 22, 14, 18),
             children: [
-              const Text('Tất cả hoá đơn', style: AppTypography.pageTitle),
+              const Text(
+                'Hóa đơn cần thanh toán',
+                style: AppTypography.pageTitle,
+              ),
               const SizedBox(height: 14),
               _BillFilterBar(
-                activeStatus: _activeStatusFilter,
                 activeType: _activeTypeFilter,
-                onStatusChanged: (filter) =>
-                    setState(() => _activeStatusFilter = filter),
                 onTypeChanged: (filter) =>
                     setState(() => _activeTypeFilter = filter),
               ),
@@ -90,7 +94,9 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
                     );
                   }
                   final visibleInvoices = (snapshot.data ?? const [])
-                      .where((invoice) => invoice.isTenantVisible)
+                      .where(
+                        (invoice) => invoice.isTenantVisible && !invoice.isPaid,
+                      )
                       .toList();
                   return Column(
                     children: _buildFilteredBills(context, visibleInvoices),
@@ -264,7 +270,6 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
 
     final pendingBills = _withSpacing(
       typeFilteredInvoices
-          .where((invoice) => !invoice.isPaid)
           .map(
             (invoice) => _PendingBillCard(
               invoice: invoice,
@@ -276,24 +281,12 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
       16,
     );
 
-    final paidBills = _withSpacing(
-      typeFilteredInvoices
-          .where((invoice) => invoice.isPaid)
-          .map(
-            (invoice) => PaidInvoiceCard(
-              invoice: invoice,
-              onTap: () => _openInvoicePreviewFlow(context, invoice),
-            ),
-          )
-          .toList(),
-      12,
-    );
-
     if (invoices.isEmpty) {
       return const [
         _BillEmptyState(
-          title: 'Chưa có hóa đơn',
-          message: 'Khi chủ trọ phát hành hóa đơn, bạn sẽ thấy tại đây.',
+          title: 'Không có khoản cần thanh toán',
+          message:
+              'Các hóa đơn đã thanh toán được lưu trong Lịch sử thanh toán.',
         ),
       ];
     }
@@ -301,36 +294,15 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
     if (typeFilteredInvoices.isEmpty) {
       return [
         _BillEmptyState(
-          title: 'Không có hóa đơn ${_typeFilterEmptyLabel(_activeTypeFilter)}',
-          message: 'Thử chọn loại hóa đơn khác để xem các khoản đang có.',
+          title: 'Không có khoản cần thanh toán',
+          message: 'Thử chọn loại hóa đơn khác hoặc xem Lịch sử thanh toán.',
         ),
       ];
     }
 
-    return switch (_activeStatusFilter) {
-      _BillStatusFilter.all => [
-        if (pendingBills.isNotEmpty) ...pendingBills,
-        if (paidBills.isNotEmpty) ...[
-          const SizedBox(height: 28),
-          const _PaidDivider(),
-          const SizedBox(height: 22),
-          ...paidBills,
-        ],
-      ],
-      _BillStatusFilter.unpaid =>
-        pendingBills.isEmpty
-            ? const [
-                _BillEmptyState(
-                  title: 'Không có khoản cần trả',
-                  message: 'Phòng hiện tại chưa có hóa đơn chờ thanh toán.',
-                ),
-              ]
-            : pendingBills,
-    };
+    return pendingBills;
   }
 }
-
-enum _BillStatusFilter { all, unpaid }
 
 enum _BillTypeFilter { all, rent, utility, other }
 
@@ -340,15 +312,6 @@ bool _matchesTypeFilter(TenantInvoice invoice, _BillTypeFilter filter) {
     _BillTypeFilter.rent => invoice.isRentType,
     _BillTypeFilter.utility => invoice.isUtilityType,
     _BillTypeFilter.other => invoice.isOtherType,
-  };
-}
-
-String _typeFilterEmptyLabel(_BillTypeFilter filter) {
-  return switch (filter) {
-    _BillTypeFilter.all => '',
-    _BillTypeFilter.rent => 'tiền phòng',
-    _BillTypeFilter.utility => 'Tiền điện & dịch vụ',
-    _BillTypeFilter.other => 'khác',
   };
 }
 
@@ -487,16 +450,9 @@ class _BillEmptyState extends StatelessWidget {
 }
 
 class _BillFilterBar extends StatelessWidget {
-  const _BillFilterBar({
-    required this.activeStatus,
-    required this.activeType,
-    required this.onStatusChanged,
-    required this.onTypeChanged,
-  });
+  const _BillFilterBar({required this.activeType, required this.onTypeChanged});
 
-  final _BillStatusFilter activeStatus;
   final _BillTypeFilter activeType;
-  final ValueChanged<_BillStatusFilter> onStatusChanged;
   final ValueChanged<_BillTypeFilter> onTypeChanged;
 
   @override
@@ -510,28 +466,7 @@ class _BillFilterBar extends StatelessWidget {
             children: [
               AppFilterChip(
                 label: 'Tất cả',
-                icon: Icons.list_rounded,
-                isActive: activeStatus == _BillStatusFilter.all,
-                onTap: () => onStatusChanged(_BillStatusFilter.all),
-              ),
-              const SizedBox(width: 8),
-              AppFilterChip(
-                label: 'Chưa thanh toán',
-                icon: Icons.pending_actions_rounded,
-                isActive: activeStatus == _BillStatusFilter.unpaid,
-                onTap: () => onStatusChanged(_BillStatusFilter.unpaid),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              AppFilterChip(
-                label: 'Mọi loại',
-                icon: Icons.category_outlined,
+                icon: Icons.grid_view_rounded,
                 isActive: activeType == _BillTypeFilter.all,
                 onTap: () => onTypeChanged(_BillTypeFilter.all),
               ),
@@ -565,9 +500,13 @@ class _BillFilterBar extends StatelessWidget {
 }
 
 class _BillHeader extends StatelessWidget {
-  const _BillHeader({required this.onOpenHistory});
+  const _BillHeader({
+    required this.onOpenHistory,
+    this.notificationInitialUnreadCount,
+  });
 
   final VoidCallback onOpenHistory;
+  final int? notificationInitialUnreadCount;
 
   @override
   Widget build(BuildContext context) {
@@ -595,7 +534,9 @@ class _BillHeader extends StatelessWidget {
                 builder: (context) => const NotificationListScreen(),
               ),
             ),
-            icon: const AppNotificationBell(),
+            icon: AppNotificationBell(
+              initialUnreadCount: notificationInitialUnreadCount,
+            ),
             tooltip: 'Thông báo',
           ),
         ],
@@ -939,33 +880,6 @@ class _ComplaintButton extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _PaidDivider extends StatelessWidget {
-  const _PaidDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Row(
-      children: [
-        Expanded(child: Divider(color: Color(0xFFD7D7E0), height: 1)),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 14),
-          child: Text(
-            'HÓA ĐƠN ĐÃ THANH TOÁN',
-            style: TextStyle(
-              color: AppColors.bodyText,
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
-              height: 14 / 10,
-              letterSpacing: 0.9,
-            ),
-          ),
-        ),
-        Expanded(child: Divider(color: Color(0xFFD7D7E0), height: 1)),
-      ],
     );
   }
 }

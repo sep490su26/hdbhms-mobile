@@ -355,24 +355,38 @@ class _FilterBar extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Expanded(
-                  child: Text('Bộ lọc', style: AppTypography.label),
-                ),
-                if (hasActiveFilters)
-                  Semantics(
-                    button: true,
-                    label: 'Xóa bộ lọc',
-                    child: IconButton(
-                      onPressed: onClearFilters,
-                      tooltip: 'Xóa bộ lọc',
-                      constraints: const BoxConstraints.tightFor(
-                        width: AppColors.minimumTouchTarget,
-                        height: AppColors.minimumTouchTarget,
-                      ),
-                      icon: const Icon(Icons.close_rounded, size: 20),
-                      color: AppColors.primary,
+                Expanded(
+                  child: Text(
+                    'Bộ lọc',
+                    style: AppTypography.label.copyWith(
+                      color: AppColors.darkBlue,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
+                ),
+                SizedBox(
+                  width: 48,
+                  height: AppColors.minimumTouchTarget,
+                  child: Semantics(
+                    button: hasActiveFilters,
+                    label: 'Xóa bộ lọc',
+                    child: TextButton(
+                      onPressed: hasActiveFilters ? onClearFilters : null,
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        foregroundColor: AppColors.primary,
+                        disabledForegroundColor: AppColors.bodyText.withValues(
+                          alpha: .45,
+                        ),
+                        textStyle: AppTypography.metaLabel.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      child: const Text('Xóa'),
+                    ),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 10),
@@ -441,25 +455,30 @@ class _DateRangeFilter extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: isActive
-                    ? Wrap(
-                        spacing: 8,
-                        runSpacing: 2,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Text(
-                            _formatDate(selectedDateRange!.start),
-                            style: _textStyle(isActive),
-                          ),
-                          const Icon(
-                            Icons.arrow_forward_rounded,
-                            color: AppColors.primary,
-                            size: 16,
-                          ),
-                          Text(
-                            _formatDate(selectedDateRange!.end),
-                            style: _textStyle(isActive),
-                          ),
-                        ],
+                    ? FittedBox(
+                        alignment: Alignment.centerLeft,
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _formatDate(selectedDateRange!.start),
+                              style: _textStyle(isActive),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 8),
+                              child: Icon(
+                                Icons.arrow_forward_rounded,
+                                color: AppColors.primary,
+                                size: 16,
+                              ),
+                            ),
+                            Text(
+                              _formatDate(selectedDateRange!.end),
+                              style: _textStyle(isActive),
+                            ),
+                          ],
+                        ),
                       )
                     : Text('Chọn khoảng ngày', style: _textStyle(isActive)),
               ),

@@ -13,6 +13,7 @@ import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 import 'package:hdbhms_mobile/widgets/app_filter_chip.dart';
 import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
+import 'package:hdbhms_mobile/widgets/request_form_widgets.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
@@ -289,26 +290,13 @@ class _CreateMaintenanceTicketScreenState
   }
 
   Future<void> _showSuccessDialog(MaintenanceTicketModel ticket) async {
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Gửi yêu cầu thành công'),
-          content: Text(
-            'Mã phiếu của bạn là ${ticket.code}. Quản lý sẽ tiếp nhận và phản hồi trong vòng 24 giờ.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.of(this.context).pop(true);
-              },
-              child: const Text('Xem phiếu'),
-            ),
-          ],
-        );
-      },
+    await showAppAnimatedSuccessDialog(
+      context,
+      title: 'Gửi yêu cầu thành công',
+      message:
+          'Mã phiếu của bạn là ${ticket.code}. Quản lý sẽ tiếp nhận và phản hồi trong vòng 24 giờ.',
+      primaryLabel: 'Xem phiếu',
+      onPrimary: () => Navigator.of(context).pop(true),
     );
   }
 

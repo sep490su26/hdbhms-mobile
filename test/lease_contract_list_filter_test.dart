@@ -50,7 +50,8 @@ void main() {
 
     expect(find.text('Tất cả hợp đồng'), findsOneWidget);
     expect(find.text('Bộ lọc'), findsOneWidget);
-    expect(find.bySemanticsLabel('Xóa bộ lọc'), findsNothing);
+    expect(find.bySemanticsLabel('Xóa bộ lọc'), findsOneWidget);
+    expect(find.text('Xóa'), findsOneWidget);
 
     await tester.tap(find.text('Trạng thái').last);
     await tester.pumpAndSettle();
@@ -63,7 +64,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(service.requestedStatuses.last, isNull);
-    expect(find.bySemanticsLabel('Xóa bộ lọc'), findsNothing);
+    expect(find.bySemanticsLabel('Xóa bộ lọc'), findsOneWidget);
   });
 
   testWidgets('lease filter is overflow-free at supported mobile widths', (

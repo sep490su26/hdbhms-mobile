@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -253,7 +254,7 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
                                 const SizedBox(height: 18),
                                 _SecurityNote(theme: theme),
                                 const SizedBox(height: 20),
-                                _ConfirmButton(
+                                _AutoCheckStatus(
                                   theme: theme,
                                   checking: _checking,
                                   onPressed: () => _checkPaymentStatus(
@@ -780,8 +781,8 @@ class _SecurityNote extends StatelessWidget {
   }
 }
 
-class _ConfirmButton extends StatelessWidget {
-  const _ConfirmButton({
+class _AutoCheckStatus extends StatelessWidget {
+  const _AutoCheckStatus({
     required this.theme,
     required this.checking,
     required this.onPressed,
@@ -793,44 +794,43 @@ class _ConfirmButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 56,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: [AppColors.deepBlue, AppColors.primary],
-          ),
-          borderRadius: BorderRadius.circular(AppColors.radiusSm),
-        ),
-        child: FilledButton.icon(
-          onPressed: checking ? null : onPressed,
-          style: FilledButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            foregroundColor: theme.iconColor,
-            disabledBackgroundColor: Colors.transparent,
-            disabledForegroundColor: theme.iconColor.withValues(alpha: 0.75),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppColors.radiusSm),
-            ),
-            textStyle: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 12, 10, 10),
+      decoration: BoxDecoration(
+        color: AppColors.primarySurface,
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        border: Border.all(color: AppColors.primary.withValues(alpha: .16)),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: theme.primary,
             ),
           ),
-          icon: checking
-              ? SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: theme.iconColor,
-                  ),
-                )
-              : const Icon(Icons.refresh_rounded),
-          label: Text(checking ? 'Đang kiểm tra...' : 'Tôi đã chuyển khoản'),
-        ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Đang tự động kiểm tra thanh toán',
+              style: AppTypography.metaLabel.copyWith(
+                color: AppColors.bodyText,
+              ),
+            ),
+          ),
+          TextButton.icon(
+            onPressed: checking ? null : onPressed,
+            icon: const Icon(Icons.refresh_rounded, size: 16),
+            label: const Text('Kiểm tra lại'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              textStyle: AppTypography.metaLabel,
+            ),
+          ),
+        ],
       ),
     );
   }

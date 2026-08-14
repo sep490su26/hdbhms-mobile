@@ -74,6 +74,32 @@ Widget _screen(List<ElectricityConsumptionEntry> entries) => MaterialApp(
 );
 
 void main() {
+  test('chart points fill only eligible gaps and use a round axis', () {
+    final points = buildElectricityChartPoints(
+      entries: [
+        _entry(period: '2026-08', usage: 73.7),
+        _entry(period: '2026-05', usage: 47),
+      ],
+      occupancyStart: DateTime(2026, 5, 15),
+    );
+
+    expect(points.map((point) => point.month.month), [5, 6, 7, 8]);
+    expect(points.map((point) => point.hasReading), [true, false, false, true]);
+    expect(
+      points
+          .where((point) => !point.hasReading)
+          .every((point) => point.usage == 0),
+      isTrue,
+    );
+    expect(buildElectricityChartAxis([47]).ticks, [0, 20, 40, 60]);
+    expect(buildElectricityChartAxis([221]).ticks, [0, 100, 200, 300]);
+    expect(formatElectricityChartMonth(DateTime(2026, 6)), 'T6');
+    expect(
+      formatElectricityChartMonth(DateTime(2026, 1), includeYear: true),
+      'T1/26',
+    );
+  });
+
   testWidgets('history empty state remains usable', (tester) async {
     await tester.pumpWidget(_screen(const []));
 
@@ -88,6 +114,8 @@ void main() {
 
     expect(find.text('Từ 15/05/2026'), findsOneWidget);
     expect(find.text('30 kWh'), findsOneWidget);
+    await tester.drag(find.byType(ListView), const Offset(0, -360));
+    await tester.pumpAndSettle();
     expect(find.text('3.000 đ/kWh'), findsOneWidget);
     expect(find.text('90.000 đ'), findsOneWidget);
 
@@ -97,7 +125,14 @@ void main() {
         _entry(period: '2026-06', usage: 30),
       ]),
     );
-    expect(find.text('Thống kê tiêu thụ'), findsOneWidget);
+    expect(find.text('Biểu đồ tiêu thụ điện'), findsOneWidget);
+    expect(find.text('Đơn vị: kWh'), findsOneWidget);
+    expect(
+      find.text(
+        'Tháng chưa có kỳ ghi nhận được hiển thị ở mức 0 trên biểu đồ.',
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Kỳ 07/2026'), findsOneWidget);
     await tester.drag(find.byType(ListView), const Offset(0, -400));
     await tester.pumpAndSettle();

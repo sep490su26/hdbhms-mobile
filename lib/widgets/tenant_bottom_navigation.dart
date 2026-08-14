@@ -54,8 +54,8 @@ class TenantBottomNavigation extends StatelessWidget {
             children: [
               Expanded(
                 child: _BottomNavItem(
-                  icon: Icons.home_rounded,
-                  label: 'Trang chủ',
+                  icon: Icons.dashboard_rounded,
+                  label: 'Tổng quan',
                   isSelected: activeTab == TenantBottomNavTab.home,
                   onTap: onHomeTap,
                 ),

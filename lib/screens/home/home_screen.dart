@@ -348,14 +348,14 @@ class _HomeHeader extends StatelessWidget {
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
             icon: Semantics(
-              label: 'Ch\u1ECDn ph\u00F2ng kh\u00E1c',
+              label: 'Trang chủ',
               child: Icon(
-                Icons.swap_horiz_rounded,
+                Icons.home_rounded,
                 color: AppColors.topBarIconColor,
                 size: 24,
               ),
             ),
-            tooltip: 'Chọn phòng khác',
+            tooltip: 'Trang chủ',
           ),
           const SizedBox(width: 6),
           IconButton(

@@ -9,6 +9,8 @@ import 'package:hdbhms_mobile/services/auth/identity_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/screens/tenant_overview/tenant_overview_screen.dart';
+import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
+import 'package:hdbhms_mobile/widgets/request_form_widgets.dart';
 
 enum IdentityDocumentStep {
   portrait,
@@ -104,26 +106,14 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
       canPop: !widget.isRequired && !_isSubmitting,
       child: Scaffold(
         backgroundColor: AppColors.background,
-        appBar: AppBar(
-          automaticallyImplyLeading: !widget.isRequired,
-          backgroundColor: AppColors.surface,
-          foregroundColor: AppColors.deepBlue,
-          elevation: 0,
-          title: const Text(
-            'Ho\u00E0n t\u1EA5t h\u1ED3 s\u01A1',
-            style: AppColors.topBarTitleStyle,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(AppColors.topBarHeight),
+          child: AppTopBar(
+            title: 'Hoàn tất hồ sơ',
+            onBack: widget.isRequired
+                ? null
+                : () => Navigator.of(context).maybePop(),
           ),
-          actions: [
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(
-                Icons.help_outline_rounded,
-                color: AppColors.topBarIconColor,
-                size: AppColors.topBarIconSize,
-              ),
-              tooltip: 'Tr\u1EE3 gi\u00FAp',
-            ),
-          ],
         ),
         body: Center(
           child: ConstrainedBox(
@@ -354,26 +344,38 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
       }
 
       if (widget.onCompleted != null) {
-        _showMessage('Hoàn tất hồ sơ thành công');
-        widget.onCompleted!();
+        await showAppAnimatedSuccessDialog(
+          context,
+          title: 'Hoàn tất hồ sơ',
+          message: 'Thông tin định danh của bạn đã được gửi thành công.',
+          primaryLabel: 'Tiếp tục',
+          onPrimary: widget.onCompleted!,
+        );
         return;
       }
 
       if (result.profileCompleted ||
           result.onboarding.nextStep == OnboardingState.home) {
-        _showMessage('Hoàn tất hồ sơ thành công');
-        await Future<void>.delayed(const Duration(milliseconds: 600));
+        await showAppAnimatedSuccessDialog(
+          context,
+          title: 'Hoàn tất hồ sơ',
+          message: 'Thông tin định danh của bạn đã được gửi thành công.',
+          primaryLabel: 'Về tổng quan',
+          onPrimary: () {
+            if (!mounted) return;
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => TenantOverviewScreen(
+                  authService: widget.authService,
+                  homeService: widget.homeService,
+                ),
+              ),
+            );
+          },
+        );
         if (!mounted) {
           return;
         }
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => TenantOverviewScreen(
-              authService: widget.authService,
-              homeService: widget.homeService,
-            ),
-          ),
-        );
         return;
       }
 
@@ -501,7 +503,14 @@ class _IdentityStepper extends StatelessWidget {
               ),
             ),
             if (index != steps.length - 1)
-              Container(width: 10, height: 2, color: const Color(0xFFE0E3F2)),
+              Container(
+                width: 10,
+                height: 2,
+                color: _connectorColor(
+                  _statusFor(steps[index]),
+                  _statusFor(steps[index + 1]),
+                ),
+              ),
           ],
         ],
       ),
@@ -522,6 +531,16 @@ class _IdentityStepper extends StatelessWidget {
             ? _StepStatus.done
             : _StepStatus.pending;
     }
+  }
+
+  Color _connectorColor(_StepStatus current, _StepStatus next) {
+    if (current == _StepStatus.done && next != _StepStatus.pending) {
+      return AppColors.success;
+    }
+    if (current == _StepStatus.active || next == _StepStatus.active) {
+      return AppColors.primary;
+    }
+    return AppColors.cardBorder;
   }
 }
 
@@ -544,11 +563,17 @@ class _StepPill extends StatelessWidget {
           width: 26,
           height: 26,
           decoration: BoxDecoration(
-            color: isActive || isDone ? AppColors.deepBlue : AppColors.surface,
+            color: isDone
+                ? AppColors.success
+                : isActive
+                ? AppColors.primary
+                : AppColors.surface,
             shape: BoxShape.circle,
             border: Border.all(
-              color: isActive || isDone
-                  ? AppColors.deepBlue
+              color: isDone
+                  ? AppColors.success
+                  : isActive
+                  ? AppColors.primary
                   : AppColors.cardBorder,
             ),
           ),
@@ -565,7 +590,11 @@ class _StepPill extends StatelessWidget {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            color: isActive || isDone ? AppColors.deepBlue : AppColors.bodyText,
+            color: isDone
+                ? AppColors.successText
+                : isActive
+                ? AppColors.primary
+                : AppColors.bodyText,
             fontSize: 10,
             fontWeight: isActive ? FontWeight.w900 : FontWeight.w700,
             height: 13 / 10,
@@ -620,7 +649,7 @@ class _ImageCaptureStepCard extends StatelessWidget {
           Text(
             step.title,
             style: const TextStyle(
-              color: AppColors.deepBlue,
+              color: AppColors.darkBlue,
               fontSize: 16,
               fontWeight: FontWeight.w900,
               height: 22 / 16,
@@ -645,7 +674,7 @@ class _ImageCaptureStepCard extends StatelessWidget {
                     ),
                     child: const Center(
                       child: CircularProgressIndicator(
-                        color: AppColors.deepBlue,
+                        color: AppColors.primary,
                       ),
                     ),
                   ),
@@ -698,8 +727,8 @@ class _ImageCaptureStepCard extends StatelessWidget {
   }
 
   static final ButtonStyle _outlinedActionStyle = OutlinedButton.styleFrom(
-    foregroundColor: AppColors.deepBlue,
-    side: const BorderSide(color: AppColors.deepBlue),
+    foregroundColor: AppColors.actionBlue,
+    side: const BorderSide(color: AppColors.actionBlue),
     minimumSize: const Size.fromHeight(44),
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppColors.radiusSm),
@@ -744,14 +773,6 @@ class _ImageMeta extends StatelessWidget {
               fontWeight: FontWeight.w800,
               height: 18 / 12,
             ),
-          ),
-        ),
-        Text(
-          '${(file!.sizeInBytes / (1024 * 1024)).toStringAsFixed(1)} MB',
-          style: const TextStyle(
-            color: AppColors.bodyText,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
           ),
         ),
       ],
@@ -800,16 +821,16 @@ class _InstructionBox extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F6FF),
+        color: AppColors.infoSurface,
         borderRadius: BorderRadius.circular(AppColors.radiusSm),
-        border: Border.all(color: const Color(0xFFE0E3F7)),
+        border: Border.all(color: AppColors.cardBorder),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(
             Icons.info_outline_rounded,
-            color: AppColors.deepBlue,
+            color: AppColors.primary,
             size: 18,
           ),
           const SizedBox(width: 8),
@@ -859,7 +880,7 @@ class _PortraitPreview extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: const BoxDecoration(
-                  color: AppColors.deepBlue,
+                  color: AppColors.primary,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -1205,7 +1226,7 @@ class _BottomActionBar extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: isEnabled ? onContinue : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.deepBlue,
+                  backgroundColor: AppColors.actionBlue,
                   foregroundColor: Colors.white,
                   disabledBackgroundColor: const Color(0xFFD8D9E5),
                   disabledForegroundColor: AppColors.bodyText,

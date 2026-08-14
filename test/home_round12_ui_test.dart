@@ -119,6 +119,10 @@ class _InvoiceService extends TenantInvoiceService {
       ),
   ];
 
+  @override
+  Future<List<TenantInvoice>> fetchElectricityHistory({int? contractId}) =>
+      fetchMyInvoices();
+
   TenantInvoice _invoice(String period, double usage, int remainingAmount) {
     final line = TenantInvoiceLine(
       id: 1,

@@ -3,6 +3,7 @@ import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/payment/tenant_invoice_service.dart';
+import '../../widgets/app_top_bar.dart';
 import 'qr_payment_page.dart';
 import 'utility_complaint_screen.dart';
 
@@ -23,7 +24,7 @@ class BillDetailScreen extends StatelessWidget {
   static const _lineIcons = <String, IconData>{
     'ELECTRICITY': Icons.bolt_rounded,
     'RENT': Icons.apartment_rounded,
-    'SERVICE': Icons.miscellaneous_services_rounded,
+    'SERVICE': Icons.room_service_outlined,
     'VIOLATION_FINE': Icons.gavel_rounded,
     'MAINTENANCE_COMPENSATION': Icons.build_rounded,
   };
@@ -138,7 +139,10 @@ class BillDetailScreen extends StatelessWidget {
           bottom: false,
           child: Column(
             children: [
-              _buildAppBar(context),
+              AppTopBar(
+                title: 'Chi tiết hóa đơn',
+                onBack: () => Navigator.of(context).maybePop(),
+              ),
               const SizedBox(height: 12),
               Expanded(
                 child: Container(
@@ -176,6 +180,9 @@ class BillDetailScreen extends StatelessWidget {
 
   // ── App bar ──────────────────────────────────────────────────
 
+  // Retained temporarily for source compatibility with legacy previews. The
+  // production screen now uses [AppTopBar] directly above.
+  // ignore: unused_element
   Widget _buildAppBar(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(6, 6, 16, 0),
@@ -223,7 +230,6 @@ class BillDetailScreen extends StatelessWidget {
   // ── Hero card ────────────────────────────────────────────────
 
   Widget _buildHeroCard() {
-    final isPending = invoice.status == 'PENDING' || invoice.status == 'UNPAID';
     return Container(
       margin: EdgeInsets.zero,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
@@ -298,27 +304,6 @@ class BillDetailScreen extends StatelessWidget {
                   fontSize: 20,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.5,
-                ),
-              ),
-              Container(
-                margin: const EdgeInsets.only(top: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: isPending
-                      ? AppColors.accentWarm.withValues(alpha: 0.25)
-                      : AppColors.success.withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(AppColors.radiusPill),
-                ),
-                child: Text(
-                  isPending ? 'Chờ thanh toán' : 'Đã thanh toán',
-                  style: TextStyle(
-                    color: isPending
-                        ? const Color(0xFFFF8787)
-                        : const Color(0xFF6EE7B7),
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.2,
-                  ),
                 ),
               ),
             ],
@@ -400,7 +385,7 @@ class BillDetailScreen extends StatelessWidget {
                 ? AppColors.success
                 : _lineColors[line!.lineType] ?? AppColors.bodyText;
             final icon = displayLine.serviceGroup
-                ? Icons.miscellaneous_services_rounded
+                ? Icons.room_service_outlined
                 : _lineIcons[line!.lineType] ?? Icons.circle_outlined;
             final isLast = idx == lines.length - 1;
 
@@ -831,7 +816,7 @@ class BillDetailScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppColors.radiusSm),
             ),
             child: FilledButton.icon(
-              onPressed: () => Navigator.of(context).pushReplacement(
+              onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => QrPaymentPage(
                     invoice: invoice,

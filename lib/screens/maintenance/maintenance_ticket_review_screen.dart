@@ -8,6 +8,7 @@ import '../../widgets/star_rating_input.dart';
 import 'package:hdbhms_mobile/widgets/ticket_attachment_grid.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
+import 'package:hdbhms_mobile/widgets/request_form_widgets.dart';
 
 class MaintenanceTicketReviewScreen extends StatefulWidget {
   const MaintenanceTicketReviewScreen({
@@ -188,23 +189,12 @@ class _MaintenanceTicketReviewScreenState
   }
 
   Future<void> _showSuccessDialog() {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Thành công'),
-          content: const Text('Đã xác nhận hoàn tất và gửi đánh giá'),
-          actions: [
-            AppPrimaryGradientButton(
-              onPressed: () => Navigator.of(context).pop(),
-              height: 40,
-              borderRadius: 12,
-              child: const Text('Đóng'),
-            ),
-          ],
-        );
-      },
+    return showAppAnimatedSuccessDialog(
+      context,
+      title: 'Đã gửi đánh giá',
+      message: 'Đã xác nhận hoàn tất và gửi đánh giá.',
+      primaryLabel: 'Tiếp tục',
+      onPrimary: () {},
     );
   }
 

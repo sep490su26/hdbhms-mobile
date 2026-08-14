@@ -675,7 +675,7 @@ void main() {
     await tester.tap(find.text('H\u00F3a \u0111\u01A1n'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Trang ch\u1EE7'));
+    await tester.tap(find.text('Tổng quan'));
     await tester.pumpAndSettle();
 
     expect(find.text('XIN CH\u00C0O,'), findsOneWidget);
@@ -696,7 +696,7 @@ void main() {
     await tester.tap(find.byTooltip('L\u1ECBch s\u1EED thanh to\u00E1n'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Trang ch\u1EE7'));
+    await tester.tap(find.text('Tổng quan'));
     await tester.pumpAndSettle();
 
     expect(find.text('XIN CH\u00C0O,'), findsOneWidget);

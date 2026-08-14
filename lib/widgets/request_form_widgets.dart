@@ -481,6 +481,172 @@ Future<void> showRequestSuccessSheet(
   ),
 );
 
+Future<void> showAppAnimatedSuccessDialog(
+  BuildContext context, {
+  required String title,
+  required String message,
+  required String primaryLabel,
+  required VoidCallback onPrimary,
+}) => showDialog<void>(
+  context: context,
+  barrierDismissible: false,
+  barrierColor: AppColors.deepBlue.withValues(alpha: .48),
+  builder: (dialogContext) => PopScope(
+    canPop: false,
+    child: AppAnimatedSuccessDialog(
+      title: title,
+      message: message,
+      primaryLabel: primaryLabel,
+      onPrimary: () {
+        Navigator.of(dialogContext, rootNavigator: true).pop();
+        onPrimary();
+      },
+    ),
+  ),
+);
+
+/// Shared terminal-success language used by request forms and onboarding.
+///
+/// It deliberately starts immediately when reduced motion is enabled, and only
+/// triggers one haptic impact for the lifetime of an opened dialog.
+class AppAnimatedSuccessDialog extends StatefulWidget {
+  const AppAnimatedSuccessDialog({
+    super.key,
+    required this.title,
+    required this.message,
+    required this.primaryLabel,
+    required this.onPrimary,
+  });
+
+  final String title;
+  final String message;
+  final String primaryLabel;
+  final VoidCallback onPrimary;
+
+  @override
+  State<AppAnimatedSuccessDialog> createState() =>
+      _AppAnimatedSuccessDialogState();
+}
+
+class _AppAnimatedSuccessDialogState extends State<AppAnimatedSuccessDialog>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  bool _started = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 720),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    final reducedMotion = MediaQuery.disableAnimationsOf(context);
+    _controller.duration = reducedMotion
+        ? const Duration(milliseconds: 1)
+        : const Duration(milliseconds: 720);
+    _controller.forward();
+    if (!reducedMotion) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) HapticFeedback.lightImpact();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Dialog(
+    insetPadding: const EdgeInsets.symmetric(horizontal: 22),
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 356),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppColors.radiusLg),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.deepBlue.withValues(alpha: .2),
+              blurRadius: 28,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, _) {
+            final titleProgress = CurvedAnimation(
+              parent: _controller,
+              curve: const Interval(.40, .74, curve: Curves.easeOut),
+            );
+            final actionProgress = CurvedAnimation(
+              parent: _controller,
+              curve: const Interval(.64, 1, curve: Curves.easeOut),
+            );
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ScaleTransition(
+                  scale: CurvedAnimation(
+                    parent: _controller,
+                    curve: const Interval(0, .44, curve: Curves.easeOutBack),
+                  ),
+                  child: AnimatedSuccessMark(progress: _controller.value),
+                ),
+                const SizedBox(height: AppColors.space16),
+                FadeTransition(
+                  opacity: titleProgress,
+                  child: Text(
+                    widget.title,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.sectionTitle.copyWith(fontSize: 20),
+                  ),
+                ),
+                const SizedBox(height: AppColors.space8),
+                FadeTransition(
+                  opacity: titleProgress,
+                  child: Text(
+                    widget.message,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.body.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppColors.space24),
+                FadeTransition(
+                  opacity: actionProgress,
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: AppPrimaryGradientButton(
+                      height: 50,
+                      onPressed: widget.onPrimary,
+                      child: Text(widget.primaryLabel),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    ),
+  );
+}
+
 class RequestSuccessSheet extends StatefulWidget {
   const RequestSuccessSheet({
     super.key,
@@ -589,15 +755,7 @@ class _RequestSuccessSheetState extends State<RequestSuccessSheet>
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      _SuccessRing(
-                        progress: _controller.value,
-                        multiplier: 1.45,
-                      ),
-                      _SuccessRing(
-                        progress: _controller.value,
-                        multiplier: 1.82,
-                      ),
-                      _SuccessTick(progress: _tickProgress),
+                      AnimatedSuccessMark(progress: _controller.value),
                     ],
                   ),
                 ),
@@ -675,23 +833,31 @@ class _RequestSuccessSheetState extends State<RequestSuccessSheet>
       ),
     ),
   );
-
-  double get _tickProgress => ((_controller.value - .18) / .54).clamp(0, 1);
 }
 
-class _SuccessTick extends StatelessWidget {
-  const _SuccessTick({required this.progress});
+class AnimatedSuccessMark extends StatelessWidget {
+  const AnimatedSuccessMark({super.key, required this.progress});
+
   final double progress;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: 64,
-    height: 64,
-    decoration: const BoxDecoration(
-      color: AppColors.successSurface,
-      shape: BoxShape.circle,
-    ),
-    child: CustomPaint(painter: _TickPainter(progress)),
+  Widget build(BuildContext context) => Stack(
+    alignment: Alignment.center,
+    children: [
+      _SuccessRing(progress: progress, multiplier: 1.45),
+      _SuccessRing(progress: progress, multiplier: 1.82),
+      Container(
+        width: 64,
+        height: 64,
+        decoration: const BoxDecoration(
+          color: AppColors.successSurface,
+          shape: BoxShape.circle,
+        ),
+        child: CustomPaint(
+          painter: _TickPainter(((progress - .18) / .54).clamp(0, 1)),
+        ),
+      ),
+    ],
   );
 }
 
