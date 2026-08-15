@@ -30,11 +30,16 @@ class RoomTransferService {
     List<int>? transferredTenantProfileIds,
     String? reason,
   }) async {
+    final transferMonth = DateTime(
+      requestedTransferDate.year,
+      requestedTransferDate.month,
+      1,
+    );
     final body = <String, dynamic>{
       'sourceContractId': sourceContractId,
       'targetRoomId': targetRoomId,
-      'requestedTransferDate': _dateOnly(requestedTransferDate),
-      'expectedTransferDate': _dateOnly(requestedTransferDate),
+      'requestedTransferDate': _dateOnly(transferMonth),
+      'expectedTransferDate': _dateOnly(transferMonth),
       if (transferredTenantProfileIds != null &&
           transferredTenantProfileIds.isNotEmpty)
         'transferredTenantProfileIds': transferredTenantProfileIds,
@@ -520,14 +525,12 @@ class TransferHandoverData {
   const TransferHandoverData({
     required this.handoverDate,
     required this.electricity,
-    required this.water,
     this.note,
     this.assets = const [],
   });
 
   final DateTime handoverDate;
   final MeterReadingData electricity;
-  final MeterReadingData water;
   final String? note;
   final List<AssetData> assets;
 
@@ -539,7 +542,6 @@ class TransferHandoverData {
           '${handoverDate.day.toString().padLeft(2, '0')}',
       if (note != null && note!.trim().isNotEmpty) 'note': note!.trim(),
       'electricity': electricity.toJson(),
-      'water': water.toJson(),
       if (assets.isNotEmpty)
         'assets': assets.map((a) => a.toJson()).toList(growable: false),
     };

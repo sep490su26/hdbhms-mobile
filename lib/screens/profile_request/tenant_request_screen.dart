@@ -23,6 +23,12 @@ import 'package:hdbhms_mobile/widgets/app_filter_chip.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 import 'package:hdbhms_mobile/widgets/app_list_state.dart';
 
+String _payloadEnumLabel(Object? value, Map<String, String> labels) {
+  final normalized = value?.toString().trim().toUpperCase() ?? '';
+  if (normalized.isEmpty) return 'Chưa có thông tin';
+  return labels[normalized] ?? 'Chưa xác định';
+}
+
 /// Màn "Yêu cầu" – danh sách yêu cầu + filter theo loại
 class TenantRequestScreen extends StatefulWidget {
   const TenantRequestScreen({
@@ -138,21 +144,11 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
 
     if (!mounted) return;
     _roomScope = roomScope;
-    if (!roomScope.hasRoom) {
-      setState(() {
-        _changeRequestMap.clear();
-        _holderNominationMap.clear();
-        _requests.clear();
-        _loadingApi = false;
-        _loadError = null;
-      });
-      return;
-    }
 
     try {
       final scopedRequests = await widget.changeRequestService.getMyRequests(
-        roomId: roomScope.roomId,
-        roomCode: roomScope.roomCode,
+        roomId: roomScope.hasRoom ? roomScope.roomId : null,
+        roomCode: roomScope.hasRoom ? roomScope.roomCode : null,
       );
       apiRequests = [
         ...scopedRequests.where(
@@ -216,13 +212,21 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
       });
 
       final converted = <TenantRequest>[
-        ...visibleApiRequests.map(_toTenantRequest),
+        ...visibleApiRequests.expand(
+          (cr) => [
+            _toTenantRequest(cr),
+            if (_hasTenantRefundRequest(cr)) _toRefundTenantRequest(cr),
+          ],
+        ),
         ...holderNominations.map(_toHolderNominationRequest),
       ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       _requests
         ..removeWhere(
-          (r) => r.id.startsWith('API-') || r.id.startsWith('NOMINATION-'),
+          (r) =>
+              r.id.startsWith('API-') ||
+              r.id.startsWith('REFUND-') ||
+              r.id.startsWith('NOMINATION-'),
         )
         ..insertAll(0, converted);
       _loadingApi = false;
@@ -242,6 +246,88 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
       createdAt: cr.createdAt ?? DateTime.now(),
       details: _requestDetails(cr),
     );
+  }
+
+  bool _hasTenantRefundRequest(ChangeRequest cr) {
+    if (cr.requestType != ChangeRequestType.contractLiquidation) return false;
+    final payload = _payloadOf(cr);
+    final amount = num.tryParse(
+      payload['depositRefundAmount']?.toString() ?? '',
+    );
+    final status = payload['depositRefundStatus']?.toString() ?? '';
+    return amount != null && amount > 0 && status != 'NOT_REQUIRED';
+  }
+
+  TenantRequest _toRefundTenantRequest(ChangeRequest cr) {
+    final payload = _payloadOf(cr);
+    final refundStatus = payload['depositRefundStatus']?.toString() ?? '';
+    final amount = payload['depositRefundAmount'];
+    final roomCode = payload['roomCode']?.toString() ?? '';
+    return TenantRequest(
+      id: 'REFUND-${cr.id}',
+      type: TenantRequestType.depositRefundRequest,
+      status: _mapRefundRequestStatus(refundStatus),
+      note: _refundRequestNote(refundStatus, amount),
+      createdAt: cr.createdAt ?? DateTime.now(),
+      details: {
+        if (roomCode.isNotEmpty) 'Phòng': roomCode,
+        'Số tiền hoàn cọc': _formatRequestAmount(amount),
+        'Trạng thái hoàn cọc': _refundStatusLabel(refundStatus),
+      },
+    );
+  }
+
+  TenantRequestStatus _mapRefundRequestStatus(String status) {
+    if (status == 'TENANT_CONFIRMED') {
+      return TenantRequestStatus.approved;
+    }
+    if (status == 'DISPUTED' ||
+        status == 'OWNER_REJECTED' ||
+        status == 'CANCELLED') {
+      return TenantRequestStatus.rejected;
+    }
+    if (status == 'WAITING_OWNER_APPROVAL' || status == 'PENDING') {
+      return TenantRequestStatus.pending;
+    }
+    return TenantRequestStatus.processing;
+  }
+
+  String _refundRequestNote(String status, Object? amount) {
+    final amountText = _formatRequestAmount(amount);
+    return switch (status) {
+      'APPROVED_WAITING_TENANT_CONFIRMATION' || 'RECORDED_BY_MANAGER' =>
+        'Khoản hoàn cọc đã được duyệt, vui lòng xác nhận đã nhận tiền · $amountText',
+      'TENANT_CONFIRMED' =>
+        'Bạn đã xác nhận đã nhận khoản hoàn cọc · $amountText',
+      'WAITING_OWNER_APPROVAL' =>
+        'Khoản hoàn cọc đang chờ chủ trọ duyệt · $amountText',
+      'DISPUTED' => 'Bạn đã phản hồi về khoản hoàn cọc · $amountText',
+      _ => 'Yêu cầu hoàn cọc · $amountText',
+    };
+  }
+
+  String _refundStatusLabel(String status) {
+    return switch (status) {
+      'APPROVED_WAITING_TENANT_CONFIRMATION' ||
+      'RECORDED_BY_MANAGER' => 'Chờ tenant xác nhận',
+      'TENANT_CONFIRMED' => 'Đã xác nhận',
+      'WAITING_OWNER_APPROVAL' => 'Chờ chủ trọ duyệt',
+      'DISPUTED' => 'Đang phản hồi',
+      'NOT_REQUIRED' => 'Không cần hoàn cọc',
+      _ => 'Đang xử lý',
+    };
+  }
+
+  String _formatRequestAmount(Object? value) {
+    final amount = num.tryParse(value?.toString() ?? '');
+    if (amount == null) return value?.toString() ?? 'Chưa có thông tin';
+    final digits = amount.round().toString();
+    final buffer = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buffer.write('.');
+      buffer.write(digits[i]);
+    }
+    return '${buffer.toString()}đ';
   }
 
   Map<String, String> _requestDetails(ChangeRequest cr) {
@@ -268,7 +354,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
       case ChangeRequestType.roomTransfer:
         add('Phòng hiện tại', ['currentRoom', 'oldRoomCode', 'oldRoomName']);
         add('Phòng mong muốn', ['targetRoom', 'newRoomCode', 'newRoomName']);
-        add('Ngày chuyển', ['expectedTransferDate', 'requestedTransferDate']);
+        add('Tháng chuyển', ['expectedTransferDate', 'requestedTransferDate']);
         break;
       case ChangeRequestType.contractRenewal:
         add('Mã hợp đồng', ['contractCode']);
@@ -297,7 +383,13 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
         add('Ghi chú', ['note']);
         break;
       case ChangeRequestType.meterReadingCorrection:
-        add('Loại đồng hồ', ['meterType']);
+        final meterType = pick(['meterType']);
+        if (meterType != null) {
+          details['Loại đồng hồ'] = _payloadEnumLabel(meterType, const {
+            'ELECTRICITY': 'Điện',
+            'WATER': 'Nước',
+          });
+        }
         add('Phòng', ['roomCode', 'room']);
         break;
       case ChangeRequestType.invoiceAdjustment:
@@ -313,8 +405,29 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
         add('Số tiền cọc', ['depositAmount']);
         break;
       case ChangeRequestType.complaint:
-        add('Danh mục', ['category']);
-        add('Mức ưu tiên', ['priority']);
+        final category = pick(['category']);
+        if (category != null) {
+          details['Danh mục'] = _payloadEnumLabel(category, const {
+            'ELECTRICITY': 'Điện',
+            'WATER': 'Nước',
+            'INTERNET': 'Internet',
+            'FURNITURE': 'Nội thất',
+            'AIR_CONDITIONER': 'Máy lạnh',
+            'DOOR_LOCK': 'Khóa cửa',
+            'CLEANING': 'Vệ sinh',
+            'OTHER': 'Khác',
+          });
+        }
+        final priority = pick(['priority']);
+        if (priority != null) {
+          details['Mức ưu tiên'] = _payloadEnumLabel(priority, const {
+            'LOW': 'Thấp',
+            'MEDIUM': 'Trung bình',
+            'NORMAL': 'Bình thường',
+            'HIGH': 'Cao',
+            'URGENT': 'Khẩn cấp',
+          });
+        }
         break;
     }
 
@@ -328,8 +441,9 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
     final payload = _payloadOf(cr);
     final refundStatus = payload['depositRefundStatus']?.toString();
     final stage = payload['liquidationStage']?.toString();
-    if (refundStatus == 'RECORDED_BY_MANAGER') {
-      return 'Quản lý đã ghi nhận hoàn cọc, vui lòng xác nhận.';
+    if (refundStatus == 'APPROVED_WAITING_TENANT_CONFIRMATION' ||
+        refundStatus == 'RECORDED_BY_MANAGER') {
+      return 'Khoản hoàn cọc đã được duyệt, vui lòng xác nhận đã nhận tiền.';
     }
     if (refundStatus == 'WAITING_OWNER_APPROVAL') {
       return 'Khoản hoàn cọc đang chờ chủ trọ duyệt.';
@@ -466,6 +580,8 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
   void _openDetail(TenantRequest req) {
     final apiId = req.id.startsWith('API-')
         ? int.tryParse(req.id.substring(4))
+        : req.id.startsWith('REFUND-')
+        ? int.tryParse(req.id.substring(7))
         : null;
     final nominationId = req.id.startsWith('NOMINATION-')
         ? int.tryParse(req.id.substring('NOMINATION-'.length))
@@ -837,6 +953,7 @@ class _RequestCard extends StatelessWidget {
   Color get _accentColor => switch (request.type) {
     TenantRequestType.renewContract => AppColors.actionBlue,
     TenantRequestType.terminateContract => AppColors.danger,
+    TenantRequestType.depositRefundRequest => AppColors.successText,
     TenantRequestType.changeRoom => const Color(0xFF0284C7),
     TenantRequestType.addRoommate => AppColors.successText,
     TenantRequestType.utilityComplaint => AppColors.actionAmber,
@@ -845,6 +962,7 @@ class _RequestCard extends StatelessWidget {
   Color get _accentBg => switch (request.type) {
     TenantRequestType.renewContract => AppColors.infoSurface,
     TenantRequestType.terminateContract => const Color(0xFFFFF0F0),
+    TenantRequestType.depositRefundRequest => const Color(0xFFF0FFF4),
     TenantRequestType.changeRoom => const Color(0xFFEFF8FF),
     TenantRequestType.addRoommate => const Color(0xFFF0FFF4),
     TenantRequestType.utilityComplaint => AppColors.amberSurface,
@@ -853,6 +971,10 @@ class _RequestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fields = _summaryFields();
+    final note = request.note.trim();
+    final showNote =
+        request.type == TenantRequestType.depositRefundRequest &&
+        note.isNotEmpty;
 
     return Material(
       color: AppColors.surface,
@@ -914,6 +1036,50 @@ class _RequestCard extends StatelessWidget {
                             height: 16 / 12,
                           ),
                         ),
+                        if (showNote) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFFBEB),
+                              border: Border.all(
+                                color: const Color(0xFFFCD34D),
+                              ),
+                              borderRadius: BorderRadius.circular(
+                                AppColors.radiusSm,
+                              ),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 1),
+                                  child: Icon(
+                                    Icons.warning_amber_rounded,
+                                    color: Color(0xFFD97706),
+                                    size: 16,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    note,
+                                    style: const TextStyle(
+                                      color: Color(0xFF92400E),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      height: 17 / 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -989,6 +1155,8 @@ IconData _requestIcon(TenantRequestType type) {
   return switch (type) {
     TenantRequestType.renewContract => Icons.autorenew_rounded,
     TenantRequestType.terminateContract => Icons.cancel_outlined,
+    TenantRequestType.depositRefundRequest =>
+      Icons.account_balance_wallet_outlined,
     TenantRequestType.changeRoom => Icons.swap_horiz_rounded,
     TenantRequestType.addRoommate => Icons.person_add_outlined,
     TenantRequestType.utilityComplaint => Icons.speed_outlined,
@@ -1148,6 +1316,8 @@ class _RequestDetailDialog extends StatelessWidget {
   IconData get _icon => switch (request.type) {
     TenantRequestType.renewContract => Icons.autorenew_rounded,
     TenantRequestType.terminateContract => Icons.cancel_outlined,
+    TenantRequestType.depositRefundRequest =>
+      Icons.account_balance_wallet_outlined,
     TenantRequestType.changeRoom => Icons.swap_horiz_rounded,
     TenantRequestType.addRoommate => Icons.person_add_outlined,
     TenantRequestType.utilityComplaint => Icons.speed_outlined,
@@ -1156,6 +1326,7 @@ class _RequestDetailDialog extends StatelessWidget {
   Color get _accentColor => switch (request.type) {
     TenantRequestType.renewContract => AppColors.actionBlue,
     TenantRequestType.terminateContract => AppColors.danger,
+    TenantRequestType.depositRefundRequest => AppColors.successText,
     TenantRequestType.changeRoom => const Color(0xFF0284C7),
     TenantRequestType.addRoommate => AppColors.successText,
     TenantRequestType.utilityComplaint => AppColors.actionAmber,
@@ -1164,6 +1335,7 @@ class _RequestDetailDialog extends StatelessWidget {
   Color get _accentBg => switch (request.type) {
     TenantRequestType.renewContract => AppColors.infoSurface,
     TenantRequestType.terminateContract => const Color(0xFFFFF0F0),
+    TenantRequestType.depositRefundRequest => const Color(0xFFF0FFF4),
     TenantRequestType.changeRoom => const Color(0xFFEFF8FF),
     TenantRequestType.addRoommate => const Color(0xFFF0FFF4),
     TenantRequestType.utilityComplaint => AppColors.amberSurface,
@@ -1179,6 +1351,7 @@ class _RequestDetailDialog extends StatelessWidget {
   String get _detailTitle => switch (request.type) {
     TenantRequestType.renewContract => 'Thông tin gia hạn',
     TenantRequestType.terminateContract => 'Thông tin thanh lý',
+    TenantRequestType.depositRefundRequest => 'Thông tin hoàn cọc',
     TenantRequestType.changeRoom => 'Thông tin chuyển phòng',
     TenantRequestType.addRoommate => 'Thông tin người ở cùng',
     TenantRequestType.utilityComplaint => 'Thông tin khiếu nại',
@@ -1351,6 +1524,17 @@ class _RequestDetailDialog extends StatelessWidget {
           label: 'Ngày trả phòng dự kiến',
           value: d['Ngày trả phòng dự kiến'] ?? 'Chưa có thông tin',
           valueColor: AppColors.danger,
+        ),
+      ],
+      TenantRequestType.depositRefundRequest => [
+        _DetailRow(label: 'Phòng', value: d['Phòng'] ?? 'Chưa có thông tin'),
+        _DetailRow(
+          label: 'Số tiền hoàn cọc',
+          value: d['Số tiền hoàn cọc'] ?? 'Chưa có thông tin',
+        ),
+        _DetailRow(
+          label: 'Trạng thái hoàn cọc',
+          value: d['Trạng thái hoàn cọc'] ?? 'Chưa có thông tin',
         ),
       ],
       TenantRequestType.changeRoom => [
@@ -1781,7 +1965,9 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
     return widget.changeRequest.requestType ==
             ChangeRequestType.contractLiquidation &&
         !_isHolderReplacementLiquidation &&
-        _payload['depositRefundStatus'] == 'RECORDED_BY_MANAGER';
+        (_payload['depositRefundStatus'] ==
+                'APPROVED_WAITING_TENANT_CONFIRMATION' ||
+            _payload['depositRefundStatus'] == 'RECORDED_BY_MANAGER');
   }
 
   bool get _isHolderReplacementLiquidation =>
@@ -2480,7 +2666,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
               : 'Chưa có thông tin',
         ),
         _DetailRow(
-          label: 'Ngày chuyển dự kiến',
+          label: 'Tháng chuyển dự kiến',
           value: _formatDate(tr.requestedTransferDate),
         ),
         if (tr.reason.isNotEmpty) _DetailRow(label: 'Lý do', value: tr.reason),
@@ -2501,7 +2687,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
           value: p['targetRoom']?.toString() ?? 'Chưa có thông tin',
         ),
         _DetailRow(
-          label: 'Ngày chuyển dự kiến',
+          label: 'Tháng chuyển dự kiến',
           value:
               (p['expectedTransferDate'] ?? p['requestedTransferDate'])
                   ?.toString() ??
@@ -2584,17 +2770,35 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
       ChangeRequestType.complaint => [
         _DetailRow(
           label: 'Danh mục',
-          value: p['category']?.toString() ?? 'Chưa có thông tin',
+          value: _payloadEnumLabel(p['category'], const {
+            'ELECTRICITY': 'Điện',
+            'WATER': 'Nước',
+            'INTERNET': 'Internet',
+            'FURNITURE': 'Nội thất',
+            'AIR_CONDITIONER': 'Máy lạnh',
+            'DOOR_LOCK': 'Khóa cửa',
+            'CLEANING': 'Vệ sinh',
+            'OTHER': 'Khác',
+          }),
         ),
         _DetailRow(
           label: 'Mức độ ưu tiên',
-          value: p['priority']?.toString() ?? 'Chưa có thông tin',
+          value: _payloadEnumLabel(p['priority'], const {
+            'LOW': 'Thấp',
+            'MEDIUM': 'Trung bình',
+            'NORMAL': 'Bình thường',
+            'HIGH': 'Cao',
+            'URGENT': 'Khẩn cấp',
+          }),
         ),
       ],
       ChangeRequestType.meterReadingCorrection => [
         _DetailRow(
           label: 'Loại đồng hồ',
-          value: p['meterType']?.toString() ?? 'Chưa có thông tin',
+          value: _payloadEnumLabel(p['meterType'], const {
+            'ELECTRICITY': 'Điện',
+            'WATER': 'Nước',
+          }),
         ),
         _DetailRow(
           label: 'Mã hóa đơn',
@@ -2692,7 +2896,15 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
     _addMoneyRow(rows, p, 'Cấn trừ công nợ', ['depositOffsetAmount']);
     _addMoneyRow(rows, p, 'Cọc phải hoàn', ['depositRefundAmount']);
     _addMoneyRow(rows, p, 'Đã ghi nhận hoàn', ['depositRefundedAmount']);
-    _addOptionalRow(rows, p, 'Phương thức hoàn', ['depositRefundMethod']);
+    final refundMethod = _firstPayloadValue(p, ['depositRefundMethod']);
+    if (refundMethod != null && refundMethod.toString().trim().isNotEmpty) {
+      rows.add(
+        _DetailRow(
+          label: 'Phương thức hoàn',
+          value: _refundMethodLabel(refundMethod.toString()),
+        ),
+      );
+    }
     _addOptionalRow(rows, p, 'Ngày hoàn', ['depositRefundedAt']);
     _addOptionalRow(rows, p, 'Mã giao dịch', [
       'depositRefundTransactionRef',
@@ -2742,6 +2954,12 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
     final value = _firstPayloadValue(payload, keys);
     final text = value?.toString().trim() ?? '';
     return text.isEmpty ? 'Chưa có thông tin' : text;
+  }
+
+  String _payloadEnumLabel(Object? value, Map<String, String> labels) {
+    final normalized = value?.toString().trim().toUpperCase() ?? '';
+    if (normalized.isEmpty) return 'Chưa có thông tin';
+    return labels[normalized] ?? 'Chưa xác định';
   }
 
   String _requiredPayloadText(Map<String, dynamic> payload, List<String> keys) {
@@ -2805,13 +3023,23 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
       'PENDING' => 'Chờ quản lý ghi nhận',
       'WAITING_OWNER_APPROVAL' => 'Chờ chủ trọ duyệt',
       'APPROVED_WAITING_REFUND' => 'Đã duyệt, chờ hoàn tiền',
-      'RECORDED_BY_MANAGER' => 'Chờ bạn xác nhận',
+      'APPROVED_WAITING_TENANT_CONFIRMATION' ||
+      'RECORDED_BY_MANAGER' => 'Chờ bạn xác nhận đã nhận tiền',
       'TENANT_CONFIRMED' => 'Bạn đã xác nhận nhận tiền',
       'DISPUTED' => 'Đang phản hồi/tranh chấp',
       'OWNER_REJECTED' => 'Chủ trọ từ chối',
       'OVERRIDDEN' => 'Chủ sở hữu đã xác nhận',
       'CANCELLED' => 'Đã hủy',
       _ => 'Chưa cập nhật',
+    };
+  }
+
+  String _refundMethodLabel(String value) {
+    return switch (value.trim().toUpperCase()) {
+      'BANK_TRANSFER' || 'TRANSFER' => 'Chuyển khoản',
+      'CASH' => 'Tiền mặt',
+      'WALLET' => 'Ví điện tử',
+      _ => 'Chưa xác định',
     };
   }
 

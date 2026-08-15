@@ -64,6 +64,11 @@ TicketStatusColors ticketStatusColors(TicketStatus status) {
       foreground: Color(0xFF55565E),
       icon: Icons.schedule_rounded,
     ),
+    TicketStatus.waitingTenantDecision => const TicketStatusColors(
+      background: Color(0xFFFFF7ED),
+      foreground: Color(0xFFB45309),
+      icon: Icons.price_check_outlined,
+    ),
     TicketStatus.inProgress => const TicketStatusColors(
       background: Color(0xFFE4E7F5),
       foreground: AppColors.deepBlue,

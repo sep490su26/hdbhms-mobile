@@ -22,12 +22,14 @@ void main() {
       final id = await service.createTransferRequest(
         sourceContractId: 7,
         targetRoomId: 9,
-        requestedTransferDate: DateTime(2026, 8, 1),
+        requestedTransferDate: DateTime(2026, 8, 15),
         transferredTenantProfileIds: const [101, 102],
       );
 
       expect(id, 55);
       expect(sentBody?['transferredTenantProfileIds'], [101, 102]);
+      expect(sentBody?['requestedTransferDate'], '2026-08-01');
+      expect(sentBody?['expectedTransferDate'], '2026-08-01');
     },
   );
 }

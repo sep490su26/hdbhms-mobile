@@ -43,13 +43,11 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
 
   // Transfer-out handover
   final _outElectricityCtrl = TextEditingController();
-  final _outWaterCtrl = TextEditingController();
   final _outNoteCtrl = TextEditingController();
   DateTime? _outHandoverDate;
 
   // Transfer-in handover
   final _inElectricityCtrl = TextEditingController();
-  final _inWaterCtrl = TextEditingController();
   final _inNoteCtrl = TextEditingController();
   DateTime? _inHandoverDate;
 
@@ -63,10 +61,8 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
   @override
   void dispose() {
     _outElectricityCtrl.dispose();
-    _outWaterCtrl.dispose();
     _outNoteCtrl.dispose();
     _inElectricityCtrl.dispose();
-    _inWaterCtrl.dispose();
     _inNoteCtrl.dispose();
     super.dispose();
   }
@@ -100,11 +96,6 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
         _outElectricityCtrl,
         latestHandover?.electricity?.currentValue,
         latestReadings?.electricity?.currentValue,
-      );
-      _prefillMoveOutReading(
-        _outWaterCtrl,
-        latestHandover?.water?.currentValue,
-        latestReadings?.water?.currentValue,
       );
       if ((_outNoteCtrl.text.trim().isEmpty) &&
           (latestHandover?.note?.trim().isNotEmpty ?? false)) {
@@ -150,11 +141,6 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
         latestHandover?.electricity?.currentValue,
         latestReadings?.electricity?.currentValue,
       );
-      _prefillReading(
-        _inWaterCtrl,
-        latestHandover?.water?.currentValue,
-        latestReadings?.water?.currentValue,
-      );
       if ((_inNoteCtrl.text.trim().isEmpty) &&
           (latestHandover?.note?.trim().isNotEmpty ?? false)) {
         _inNoteCtrl.text = latestHandover!.note!.trim();
@@ -191,8 +177,7 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
     TransferHandoverData? transferInHandover;
     if (_requiresTransferInNow) {
       final inElectricity = double.tryParse(_inElectricityCtrl.text.trim());
-      final inWater = double.tryParse(_inWaterCtrl.text.trim());
-      if (inElectricity == null || inWater == null) {
+      if (inElectricity == null) {
         throw const RoomTransferException(
           'Chỉ số lúc nhận phòng không hợp lệ.',
         );
@@ -200,7 +185,6 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
       transferInHandover = TransferHandoverData(
         handoverDate: _inHandoverDate ?? DateTime.now(),
         electricity: MeterReadingData(currentValue: inElectricity),
-        water: MeterReadingData(currentValue: inWater),
         note: _inNoteCtrl.text.trim().isEmpty ? null : _inNoteCtrl.text.trim(),
       );
     }
@@ -237,25 +221,18 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
       _snack('Vui lòng nhập chỉ số điện phòng cũ.');
       return;
     }
-    if (_outWaterCtrl.text.trim().isEmpty) {
-      _snack('Vui lòng nhập chỉ số nước phòng cũ.');
-      return;
-    }
 
     setState(() => _submitting = true);
 
     try {
       final outElectricity = double.tryParse(_outElectricityCtrl.text.trim());
-      final outWater = double.tryParse(_outWaterCtrl.text.trim());
-
-      if (outElectricity == null || outWater == null) {
-        throw const RoomTransferException('Chỉ số điện/nước không hợp lệ.');
+      if (outElectricity == null) {
+        throw const RoomTransferException('Chỉ số điện không hợp lệ.');
       }
 
       final transferOutHandover = TransferHandoverData(
         handoverDate: _outHandoverDate ?? DateTime.now(),
         electricity: MeterReadingData(currentValue: outElectricity),
-        water: MeterReadingData(currentValue: outWater),
         note: _outNoteCtrl.text.trim().isEmpty
             ? null
             : _outNoteCtrl.text.trim(),
@@ -269,25 +246,17 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
             'Vui lòng nhập chỉ số điện phòng mới.',
           );
         }
-        if (_inWaterCtrl.text.trim().isEmpty) {
-          throw const RoomTransferException(
-            'Vui lòng nhập chỉ số nước phòng mới.',
-          );
-        }
-
         final inElectricity = double.tryParse(_inElectricityCtrl.text.trim());
-        final inWater = double.tryParse(_inWaterCtrl.text.trim());
 
-        if (inElectricity == null || inWater == null) {
+        if (inElectricity == null) {
           throw const RoomTransferException(
-            'Chỉ số điện/nước phòng mới không hợp lệ.',
+            'Chỉ số điện phòng mới không hợp lệ.',
           );
         }
 
         transferInHandover = TransferHandoverData(
           handoverDate: _inHandoverDate ?? DateTime.now(),
           electricity: MeterReadingData(currentValue: inElectricity),
-          water: MeterReadingData(currentValue: inWater),
           note: _inNoteCtrl.text.trim().isEmpty
               ? null
               : _inNoteCtrl.text.trim(),
@@ -433,12 +402,6 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
               hint: 'Nhập chỉ số điện hiện tại',
             ),
             const SizedBox(height: 12),
-            _MeterReadingField(
-              label: 'Chỉ số nước',
-              controller: _outWaterCtrl,
-              hint: 'Nhập chỉ số nước hiện tại',
-            ),
-            const SizedBox(height: 12),
             TextField(
               controller: _outNoteCtrl,
               decoration: const InputDecoration(
@@ -481,12 +444,6 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
                 label: 'Chỉ số điện',
                 controller: _inElectricityCtrl,
                 hint: 'Nhập chỉ số điện ban đầu',
-              ),
-              const SizedBox(height: 12),
-              _MeterReadingField(
-                label: 'Chỉ số nước',
-                controller: _inWaterCtrl,
-                hint: 'Nhập chỉ số nước ban đầu',
               ),
               const SizedBox(height: 12),
               TextField(

@@ -124,7 +124,7 @@ enum TransferRequestStatus {
       case TransferRequestStatus.managerApproved:
         return 'Quản lý đã duyệt';
       case TransferRequestStatus.waitingHolderResponse:
-        return 'Chờ holder mới phản hồi';
+        return 'Chờ người đứng tên mới phản hồi';
       case TransferRequestStatus.waitingApproval:
         return 'Chờ duyệt';
       case TransferRequestStatus.waitingNewContract:
@@ -357,7 +357,7 @@ class RoomTransferRequest {
       case '':
         return 'Chưa xác định';
       default:
-        return paymentBranch;
+        return 'Chưa xác định';
     }
   }
 
@@ -538,7 +538,7 @@ class AvailableRoom {
   }
 
   String get statusLabel {
-    return switch (currentStatus) {
+    return switch (currentStatus.trim().toUpperCase()) {
       'VACANT' => 'Còn trống',
       'SOON_VACANT' => 'Sắp trống',
       'OCCUPIED' => 'Đang có người ở - cần người đứng tên duyệt',
@@ -547,7 +547,7 @@ class AvailableRoom {
       'ON_HOLD' => 'Đang giữ chỗ',
       'MAINTENANCE' => 'Bảo trì',
       'DRAFT' => 'Nháp',
-      _ => currentStatus,
+      _ => 'Chưa xác định',
     };
   }
 

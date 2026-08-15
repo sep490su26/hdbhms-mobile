@@ -85,7 +85,7 @@ class BillDetailScreen extends StatelessWidget {
     'SERVICE' => 'Phí dịch vụ',
     'VIOLATION_FINE' => 'Phạt vi phạm',
     'MAINTENANCE_COMPENSATION' => 'Bồi thường bảo trì',
-    _ => type,
+    _ => 'Khoản thanh toán',
   };
 
   bool get _isUtility => invoice.isUtilityType;

@@ -1311,6 +1311,11 @@ _BadgeColors _statusColors(TicketStatus status) {
       foreground: Color(0xFF55565E),
       icon: Icons.schedule_rounded,
     ),
+    TicketStatus.waitingTenantDecision => const _BadgeColors(
+      background: Color(0xFFFFF7ED),
+      foreground: Color(0xFFB45309),
+      icon: Icons.price_check_outlined,
+    ),
     TicketStatus.pending => const _BadgeColors(
       background: Color(0xFFFFE9C7),
       foreground: Color(0xFFB45309),

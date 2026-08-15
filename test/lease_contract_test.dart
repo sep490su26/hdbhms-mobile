@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hdbhms_mobile/models/change_request/change_request_model.dart';
 import 'package:hdbhms_mobile/models/contract/lease_contract_model.dart';
+import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
 import 'package:hdbhms_mobile/models/room_transfer/room_transfer_model.dart';
 import 'package:hdbhms_mobile/screens/contract/lease_contract_screen.dart';
 import 'package:hdbhms_mobile/screens/contract/renew_contract_request_screen.dart';
@@ -11,6 +12,7 @@ import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/change_request/change_request_service.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
+import 'package:hdbhms_mobile/services/home/current_room_service.dart';
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -131,6 +133,15 @@ class _FakeChangeRequestService extends ChangeRequestService {
         .where((request) => type == null || request.requestType == type)
         .where((request) => status == null || request.status == status)
         .toList(growable: false);
+  }
+}
+
+class _NoCurrentRoomService extends CurrentRoomService {
+  const _NoCurrentRoomService();
+
+  @override
+  Future<CurrentRentedRoom> getCurrentRentedRoom() async {
+    throw const LeaseContractNotFoundException();
   }
 }
 
@@ -481,6 +492,16 @@ void main() {
     await tester.tap(find.text('Thanh lý hợp đồng'));
     await tester.pumpAndSettle();
 
+    expect(find.text('Cảnh báo mất cọc'), findsOneWidget);
+    expect(
+      find.textContaining(
+        'Nếu thực hiện thanh lý khi hợp đồng còn dưới 1 tháng',
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Tôi hiểu, tiếp tục'));
+    await tester.pumpAndSettle();
+
     expect(find.text('Yêu cầu kết thúc hợp đồng'), findsOneWidget);
     expect(find.text('Ngày thanh lý'), findsOneWidget);
   });
@@ -570,11 +591,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Yêu cầu hoàn cọc'), findsOneWidget);
     await tester.tap(find.text('Xem chi tiết').first);
     await tester.pumpAndSettle();
 
     final refundSubtitle = tester.widget<Text>(
-      find.text('Ch\u1EDD b\u1EA1n x\u00E1c nh\u1EADn \u00B7 2.000\u0111'),
+      find.text(
+        'Ch\u1EDD b\u1EA1n x\u00E1c nh\u1EADn \u0111\u00E3 nh\u1EADn ti\u1EC1n \u00B7 2.000\u0111',
+      ),
     );
     expect(refundSubtitle.style?.fontWeight, FontWeight.w800);
     expect(
@@ -582,6 +606,41 @@ void main() {
       findsOneWidget,
     );
     await tester.pump(const Duration(seconds: 16));
+  });
+
+  testWidgets('liquidation request remains visible without an active room', (
+    tester,
+  ) async {
+    final request = ChangeRequest(
+      id: 49,
+      requestCode: 'CR-49',
+      requestType: ChangeRequestType.contractLiquidation,
+      title: 'Yeu cau hoan coc thanh ly hop dong HD-TEST',
+      description: 'Cho tenant xac nhan da nhan tien',
+      status: ChangeRequestStatus.processing,
+      requesterId: 1,
+      createdAt: DateTime(2026, 8, 1, 9),
+      requestPayload: jsonEncode({
+        'contractId': 9,
+        'roomCode': '201',
+        'depositRefundStatus': 'APPROVED_WAITING_TENANT_CONFIRMATION',
+        'depositRefundAmount': 2000,
+      }),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TenantRequestScreen(
+          changeRequestService: _FakeChangeRequestService([request]),
+          currentRoomService: const _NoCurrentRoomService(),
+          roomTransferService: const _EmptyRoomTransferService(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Yêu cầu hoàn cọc'), findsOneWidget);
+    expect(find.text('Xem chi tiết'), findsNWidgets(2));
   });
 
   testWidgets(

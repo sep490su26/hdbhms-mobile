@@ -52,6 +52,7 @@ class MaintenanceTicketModel {
   final String lineType;
 
   bool get requiresTenantPayment {
+    if (status == TicketStatus.rejected) return false;
     final normalized = billingStatus.toUpperCase();
     if (!chargeToTenant && payer.toUpperCase() != 'TENANT') return false;
     return !{'PAID', 'NO_CHARGE', 'VOIDED', 'CANCELLED'}.contains(normalized);
@@ -116,6 +117,19 @@ class MaintenanceTicketModel {
   }
 
   factory MaintenanceTicketModel.fromJson(Map<String, dynamic> json) {
+    final status = TicketStatus.fromBackend(json['status']?.toString() ?? '');
+    final ticketStatusRawLabel = _firstString(json, [
+      'ticket_status_label',
+      'ticketStatusLabel',
+    ]);
+    final billingStatus = _firstString(json, [
+      'billing_status',
+      'billingStatus',
+    ]);
+    final billingStatusRawLabel = _firstString(json, [
+      'billing_status_label',
+      'billingStatusLabel',
+    ]);
     return MaintenanceTicketModel(
       id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
       code: _firstString(json, ['ticketCode', 'ticket_code', 'code']),
@@ -127,7 +141,7 @@ class MaintenanceTicketModel {
       createdDate:
           DateTime.tryParse(_firstString(json, ['createdAt', 'created_at'])) ??
           DateTime.now(),
-      status: TicketStatus.fromBackend(json['status']?.toString() ?? ''),
+      status: status,
       roomId: _asInt(json['roomId'] ?? json['room_id']),
       roomCode: _firstString(json, ['roomCode', 'room_code']),
       priority: TicketPriority.fromBackend(
@@ -140,15 +154,15 @@ class MaintenanceTicketModel {
         json['repair_requested'] ?? json['repairRequested'],
         true,
       ),
-      ticketStatusLabel: _firstString(json, [
-        'ticket_status_label',
-        'ticketStatusLabel',
-      ]),
-      billingStatus: _firstString(json, ['billing_status', 'billingStatus']),
-      billingStatusLabel: _firstString(json, [
-        'billing_status_label',
-        'billingStatusLabel',
-      ]),
+      ticketStatusLabel: maintenanceTicketStatusLabel(
+        status,
+        ticketStatusRawLabel,
+      ),
+      billingStatus: billingStatus,
+      billingStatusLabel: maintenanceBillingStatusLabel(
+        billingStatus,
+        billingStatusRawLabel,
+      ),
       invoiceId: _asInt(json['invoice_id'] ?? json['invoiceId']),
       invoiceStatus: _firstString(json, ['invoice_status', 'invoiceStatus']),
       invoiceCode: _firstString(json, ['invoice_code', 'invoiceCode']),
@@ -428,6 +442,18 @@ class MaintenanceTicketDetail {
       json['category']?.toString() ?? '',
     );
     final status = TicketStatus.fromBackend(json['status']?.toString() ?? '');
+    final ticketStatusRawLabel = _firstString(json, [
+      'ticket_status_label',
+      'ticketStatusLabel',
+    ]);
+    final billingStatus = _firstString(json, [
+      'billing_status',
+      'billingStatus',
+    ]);
+    final billingStatusRawLabel = _firstString(json, [
+      'billing_status_label',
+      'billingStatusLabel',
+    ]);
     final repairInfo = TicketRepairInfo.fromJson(json);
     final reviewJson = _asMap(json['review']);
 
@@ -468,17 +494,17 @@ class MaintenanceTicketDetail {
       events: _listOfMaps(
         json['events'],
       ).map(TicketTimelineEvent.fromJson).toList(growable: false),
-      billingStatus: _firstString(json, ['billing_status', 'billingStatus']),
-      billingStatusLabel: _firstString(json, [
-        'billing_status_label',
-        'billingStatusLabel',
-      ]),
+      billingStatus: billingStatus,
+      billingStatusLabel: maintenanceBillingStatusLabel(
+        billingStatus,
+        billingStatusRawLabel,
+      ),
       invoiceStatus: _firstString(json, ['invoice_status', 'invoiceStatus']),
       invoiceCode: _firstString(json, ['invoice_code', 'invoiceCode']),
-      ticketStatusLabel: _firstString(json, [
-        'ticket_status_label',
-        'ticketStatusLabel',
-      ]),
+      ticketStatusLabel: maintenanceTicketStatusLabel(
+        status,
+        ticketStatusRawLabel,
+      ),
       paymentStatus: _firstString(json, ['payment_status', 'paymentStatus']),
       invoiceId: _asInt(json['invoice_id'] ?? json['invoiceId']),
       chargeToTenant: _asBool(
@@ -744,8 +770,16 @@ bool canRejectTicket(TicketUserRole role, TicketStatus status) {
 }
 
 bool canUpdateProgress(TicketUserRole role, TicketStatus status) {
-  return role.canManage &&
-      (status == TicketStatus.accepted || status == TicketStatus.inProgress);
+  return role.canManage && status == TicketStatus.inProgress;
+}
+
+bool canSubmitRepairProposal(TicketUserRole role, TicketStatus status) {
+  return role.canManage && status == TicketStatus.accepted;
+}
+
+bool canDecideRepair(TicketUserRole role, TicketStatus status) {
+  return role == TicketUserRole.tenant &&
+      status == TicketStatus.waitingTenantDecision;
 }
 
 bool canCompleteTicket(TicketUserRole role, TicketStatus status) {
@@ -826,6 +860,7 @@ enum TicketPriority {
 enum TicketStatus {
   pending('PENDING_ACCEPTANCE', 'Chờ tiếp nhận'),
   accepted('ACCEPTED', 'Đã tiếp nhận'),
+  waitingTenantDecision('WAITING_TENANT_DECISION', 'Chờ khách quyết định sửa'),
   inProgress('IN_PROGRESS', 'Đang xử lý'),
   waitingConfirmation('WAITING_CONFIRMATION', 'Chờ xác nhận'),
   completed('COMPLETED', 'Hoàn tất'),
@@ -995,13 +1030,29 @@ String _attachmentMimeFallback(String value) {
 }
 
 String _maintenanceActionLabel(String action) {
-  switch (action.trim().toUpperCase()) {
+  final normalized = action.trim().toUpperCase().replaceAll(
+    RegExp(r'[\s-]+'),
+    '_',
+  );
+  switch (normalized) {
     case 'CREATE':
       return 'Tạo phiếu';
     case 'ACCEPT':
       return 'Tiếp nhận';
+    case 'SEND_REPAIR_PROPOSAL':
+      return 'Gửi phương án sửa chữa';
+    case 'TENANT_APPROVE_REPAIR':
+      return 'Khách đồng ý sửa chữa';
+    case 'TENANT_REJECT_REPAIR':
+      return 'Khách không đồng ý sửa';
     case 'START_PROGRESS':
       return 'Bắt đầu xử lý';
+    case 'UPDATE_REPAIR_INFO':
+      return 'Cập nhật thông tin sửa chữa';
+    case 'ATTACH_FILE':
+      return 'Đính kèm tệp';
+    case 'REQUEST_CONFIRMATION':
+      return 'Yêu cầu xác nhận';
     case 'COMPLETE':
     case 'CONFIRM_COMPLETED':
       return 'Hoàn tất xử lý';
@@ -1013,8 +1064,62 @@ String _maintenanceActionLabel(String action) {
     case 'REVIEW':
       return 'Đánh giá';
     default:
-      return action.replaceAll('_', ' ');
+      return 'Cập nhật trạng thái';
   }
+}
+
+String maintenanceCostResponsibilityLabel(String? value) {
+  return switch (value?.trim().toUpperCase()) {
+    'TENANT' => 'Khách thuê chịu',
+    'OWNER' || 'PROPERTY' => 'Chủ trọ chịu',
+    'OPERATION' => 'Chi phí vận hành',
+    'UNDECIDED' || null || '' => 'Chưa xác định',
+    _ => 'Chưa xác định',
+  };
+}
+
+String maintenanceTicketStatusLabel(TicketStatus status, String label) {
+  const labels = {
+    'PENDING': 'Chờ tiếp nhận',
+    'PENDING_ACCEPTANCE': 'Chờ tiếp nhận',
+    'ACCEPTED': 'Đã tiếp nhận',
+    'WAITING_TENANT_DECISION': 'Chờ khách quyết định sửa',
+    'IN_PROGRESS': 'Đang xử lý',
+    'WAITING_CONFIRMATION': 'Chờ xác nhận',
+    'COMPLETED': 'Hoàn tất',
+    'REJECTED': 'Từ chối',
+    'CANCELLED': 'Đã hủy',
+  };
+  final raw = label.trim();
+  final normalized = raw.toUpperCase().replaceAll(RegExp(r'[\s-]+'), '_');
+  if (raw.isEmpty) return labels[status.key] ?? status.label;
+  if (labels.containsKey(normalized)) return labels[normalized]!;
+  return RegExp(r'^[A-Z0-9_ -]+$').hasMatch(raw)
+      ? labels[status.key] ?? status.label
+      : raw;
+}
+
+String maintenanceBillingStatusLabel(String status, String label) {
+  const labels = {
+    'NO_CHARGE': 'Không thu khách',
+    'NOT_INVOICED': 'Chưa tạo hóa đơn',
+    'SCHEDULED': 'Đã lên lịch gộp hóa đơn đầu tháng',
+    'SCHEDULE_FAILED': 'Lỗi lên lịch hóa đơn',
+    'DRAFT': 'Chờ phát hành',
+    'ISSUED': 'Chờ thanh toán',
+    'PENDING_PAYMENT': 'Chờ thanh toán',
+    'PARTIALLY_PAID': 'Thanh toán một phần',
+    'PAID': 'Đã thanh toán',
+    'OVERDUE': 'Quá hạn',
+    'VOIDED': 'Đã hủy',
+  };
+  final normalizedLabel = label.trim().toUpperCase().replaceAll(
+    RegExp(r'[\s-]+'),
+    '_',
+  );
+  final normalizedStatus = status.trim().toUpperCase();
+  return labels[normalizedLabel] ??
+      (label.trim().isNotEmpty ? label : labels[normalizedStatus] ?? '');
 }
 
 String _maintenanceDisplayText(String value) {
@@ -1030,5 +1135,6 @@ String _maintenanceDisplayText(String value) {
       .replaceAll('VOIDED', 'Đã hủy')
       .replaceAll('PENDING_PAYMENT', 'Chờ thanh toán')
       .replaceAll('PAID', 'Đã thanh toán')
+      .replaceAll('ISSUED', 'Chờ thanh toán')
       .replaceAll('NOT_INVOICED', 'Chưa tạo hóa đơn');
 }
