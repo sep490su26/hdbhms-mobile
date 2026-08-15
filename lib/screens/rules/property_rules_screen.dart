@@ -19,9 +19,13 @@ class PropertyRulesScreen extends StatefulWidget {
   const PropertyRulesScreen({
     super.key,
     this.ruleService = const PropertyRuleService(),
+    this.roomId,
+    this.roomCode = '',
   });
 
   final PropertyRuleService ruleService;
+  final int? roomId;
+  final String roomCode;
 
   @override
   State<PropertyRulesScreen> createState() => _PropertyRulesScreenState();
@@ -95,25 +99,41 @@ class _PropertyRulesScreenState extends State<PropertyRulesScreen> {
             Navigator.of(context).popUntil((route) => route.isFirst),
         onBillsTap: () {
           Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const BillSelectionPage()),
+            MaterialPageRoute(
+              builder: (context) => BillSelectionPage(
+                roomId: widget.roomId,
+                roomCode: widget.roomCode,
+              ),
+            ),
           );
         },
         onSupportTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => const MaintenanceTicketListScreen(),
+              builder: (context) => MaintenanceTicketListScreen(
+                roomId: widget.roomId,
+                roomCode: widget.roomCode,
+              ),
             ),
           );
         },
         onProfileTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => const TenantProfileScreen(),
+              builder: (context) => TenantProfileScreen(
+                roomId: widget.roomId,
+                roomCode: widget.roomCode,
+              ),
             ),
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const TenantRequestScreen()),
+          MaterialPageRoute(
+            builder: (context) => TenantRequestScreen(
+              roomId: widget.roomId,
+              roomCode: widget.roomCode,
+            ),
+          ),
         ),
       ),
     );

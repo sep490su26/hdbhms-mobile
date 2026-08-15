@@ -1492,7 +1492,10 @@ class _QuickActions extends StatelessWidget {
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => const PropertyRulesScreen(),
+                builder: (context) => PropertyRulesScreen(
+                  roomId: roomId,
+                  roomCode: roomCode ?? '',
+                ),
               ),
             );
           },
@@ -1640,6 +1643,8 @@ class _HomeBottomNavigation extends StatelessWidget {
               authService: authService,
               homeService: homeService,
               profileService: profileService,
+              roomId: roomContext?.roomId,
+              roomCode: roomContext?.roomCode ?? '',
             ),
           ),
         );

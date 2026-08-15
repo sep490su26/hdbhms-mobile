@@ -187,7 +187,7 @@ class LeaseContractService {
       final response = await client
           .get(
             Uri.parse(
-              '${ApiConfig.baseUrl}/lease-contracts/me?status=ACTIVE&size=1',
+              '${ApiConfig.baseUrl}/lease-contracts/me?status=ACTIVE&size=2',
             ),
           )
           .timeout(_timeout);
@@ -201,6 +201,11 @@ class LeaseContractService {
           if (payload is Map<String, dynamic> && payload.containsKey('data')) {
             final list = payload['data'];
             if (list is List && list.isNotEmpty) {
+              if (list.length > 1) {
+                throw const LeaseContractException(
+                  'Không xác định được hợp đồng nguồn khi có nhiều hợp đồng đang hiệu lực.',
+                );
+              }
               data = list.first;
             }
           } else {

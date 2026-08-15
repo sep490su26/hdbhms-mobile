@@ -379,6 +379,8 @@ class _CreateRequestGrid extends StatelessWidget {
         MaterialPageRoute(
           builder: (_) => AddRoommateRequestScreen(
             contractId: contractId,
+            roomId: contract.room.id,
+            roomCode: contract.room.roomCode,
             contractService: contractService,
           ),
         ),

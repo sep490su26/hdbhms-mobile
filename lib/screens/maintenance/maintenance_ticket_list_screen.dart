@@ -214,7 +214,10 @@ class _MaintenanceTicketListScreenState
         onProfileTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => const TenantProfileScreen(),
+              builder: (context) => TenantProfileScreen(
+                roomId: _activeRoomId,
+                roomCode: _activeRoomCode,
+              ),
             ),
           );
         },

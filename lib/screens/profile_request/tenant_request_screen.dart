@@ -663,7 +663,10 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
         onProfileTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => const TenantProfileScreen(),
+              builder: (context) => TenantProfileScreen(
+                roomId: _activeRoomId,
+                roomCode: _activeRoomCode,
+              ),
             ),
           );
         },

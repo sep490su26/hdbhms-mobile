@@ -208,10 +208,19 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     _ => 'Khoản thanh toán',
   };
 
-  bool get _isUtility => invoice.isUtilityType;
-  bool get _hasComplainableLines => invoice.reviewableUtilityLines.any(
-    (line) => line.normalizedLineType == 'ELECTRICITY',
-  );
+  List<TenantInvoiceLine> get _electricityLines => invoice.lines
+      .where((line) => line.normalizedLineType == 'ELECTRICITY')
+      .toList(growable: false);
+  List<TenantInvoiceLine> get _reviewLines => _electricityLines
+      .where((line) {
+        final status = line.reviewStatus.trim().toUpperCase();
+        return status.isNotEmpty && status != 'NONE';
+      })
+      .toList(growable: false);
+  bool get _hasComplainableLines =>
+      _electricityLines.any((line) => line.canComplain && line.id != null);
+  bool get _showsComplaintSection =>
+      _reviewLines.isNotEmpty || _hasComplainableLines;
   bool get _canPay => invoice.canPay && !invoice.hasOpenMeterReadingReview;
 
   List<({TenantInvoiceLine? line, int amount, bool serviceGroup})>
@@ -283,10 +292,11 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                           const SizedBox(height: 12),
                         _buildGrandTotalCard(),
                         const SizedBox(height: 16),
+                        if (_showsComplaintSection)
+                          _buildComplaintSection(context),
+                        if (_showsComplaintSection) const SizedBox(height: 16),
                         if (invoice.isRentType) _buildRentContextCard(),
                         if (invoice.isRentType) const SizedBox(height: 16),
-                        if (_isUtility) _buildComplaintSection(context),
-                        if (_isUtility) const SizedBox(height: 16),
                         _buildActions(context),
                       ],
                     ),
@@ -352,12 +362,12 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
   // ── Hero card ────────────────────────────────────────────────
 
   Widget _buildHeroCard() {
-    final heroIcon = _isUtility
+    final heroIcon = invoice.isUtilityType
         ? Icons.bolt_rounded
         : invoice.isRentType
         ? Icons.door_front_door_outlined
         : Icons.build_outlined;
-    final heroAccent = _isUtility
+    final heroAccent = invoice.isUtilityType
         ? AppColors.warning
         : invoice.isRentType
         ? AppColors.primaryLight
@@ -695,9 +705,9 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     final reviewLines = lines
         .where(
           (l) =>
-              l.lineType == 'ELECTRICITY' &&
-              l.reviewStatus.isNotEmpty &&
-              l.reviewStatus != 'NONE',
+              l.normalizedLineType == 'ELECTRICITY' &&
+              l.reviewStatus.trim().isNotEmpty &&
+              l.reviewStatus.trim().toUpperCase() != 'NONE',
         )
         .toList();
 
@@ -1162,7 +1172,7 @@ class _ReviewStatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = line.reviewStatus;
     final (bg, color, label, icon) = _statusInfo(status);
-    final isElec = line.lineType == 'ELECTRICITY';
+    final isElec = line.normalizedLineType == 'ELECTRICITY';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),

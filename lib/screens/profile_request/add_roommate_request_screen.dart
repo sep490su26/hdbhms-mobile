@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
@@ -11,9 +12,13 @@ class AddRoommateRequestScreen extends StatefulWidget {
   const AddRoommateRequestScreen({
     super.key,
     required this.contractId,
+    this.roomId,
+    this.roomCode = '',
     this.contractService = const LeaseContractService(),
   });
   final int contractId;
+  final int? roomId;
+  final String roomCode;
   final LeaseContractService contractService;
 
   @override
@@ -59,6 +64,14 @@ class _AddRoommateRequestScreenState extends State<AddRoommateRequestScreen> {
         context,
         message:
             'Yêu cầu thêm người ở cùng đã được gửi tới quản lý để xét duyệt.',
+        onViewRequests: () => Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => TenantRequestScreen(
+              roomId: widget.roomId,
+              roomCode: widget.roomCode,
+            ),
+          ),
+        ),
         onReturnToContract: () => Navigator.of(context).pop(),
       );
     } catch (error) {

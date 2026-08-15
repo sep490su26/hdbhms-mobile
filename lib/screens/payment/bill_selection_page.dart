@@ -53,6 +53,7 @@ class BillSelectionPage extends StatefulWidget {
 class _BillSelectionPageState extends State<BillSelectionPage> {
   _BillTypeFilter _activeTypeFilter = _BillTypeFilter.all;
   late Future<List<TenantInvoice>> _invoicesFuture;
+  RoomScope _roomScope = const RoomScope();
 
   @override
   void initState() {
@@ -122,8 +123,8 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => MaintenanceTicketListScreen(
-                roomId: widget.roomId,
-                roomCode: widget.roomCode,
+                roomId: _activeRoomId,
+                roomCode: _activeRoomCode,
               ),
             ),
           );
@@ -131,15 +132,18 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
         onProfileTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => const TenantProfileScreen(),
+              builder: (context) => TenantProfileScreen(
+                roomId: _activeRoomId,
+                roomCode: _activeRoomCode,
+              ),
             ),
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => TenantRequestScreen(
-              roomId: widget.roomId,
-              roomCode: widget.roomCode,
+              roomId: _activeRoomId,
+              roomCode: _activeRoomCode,
             ),
           ),
         ),
@@ -161,6 +165,7 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
       roomCode: widget.roomCode,
       currentRoomService: widget.currentRoomService,
     );
+    _roomScope = scope;
     if (!scope.hasRoom) return const [];
     return widget.invoiceService.fetchMyInvoices(
       roomId: scope.roomId,
@@ -174,12 +179,17 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
         builder: (context) => PaymentHistoryPage(
           invoiceService: widget.invoiceService,
           currentRoomService: widget.currentRoomService,
-          roomId: widget.roomId,
-          roomCode: widget.roomCode,
+          roomId: _activeRoomId,
+          roomCode: _activeRoomCode,
         ),
       ),
     );
   }
+
+  int? get _activeRoomId => _roomScope.roomId ?? widget.roomId;
+
+  String get _activeRoomCode =>
+      _roomScope.roomCode.isNotEmpty ? _roomScope.roomCode : widget.roomCode;
 
   void _openInvoicePreviewFlow(BuildContext context, TenantInvoice invoice) {
     final isUtility = invoice.invoiceType.toUpperCase() == 'UTILITY';

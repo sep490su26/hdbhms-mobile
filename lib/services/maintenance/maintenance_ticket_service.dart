@@ -162,15 +162,18 @@ class MaintenanceTicketService {
     List<MaintenanceAttachment> afterAttachments = const [],
   }) async {
     final normalizedPaidBy = paidBy == null ? null : _paidByValue(paidBy);
-    final chargeToTenant = normalizedPaidBy == 'TENANT' ||
+    final chargeToTenant =
+        normalizedPaidBy == 'TENANT' ||
         costResponsibility?.trim().toUpperCase() == 'TENANT';
     final attachmentIds = await _uploadAttachments(afterAttachments);
     await _postJson(_uri('/maintenance/tickets/$ticketId/complete'), {
       'completionNote': completionNote.trim(),
-      if (workerName?.trim().isNotEmpty == true) 'workerName': workerName!.trim(),
+      if (workerName?.trim().isNotEmpty == true)
+        'workerName': workerName!.trim(),
       if (repairmanPhone?.trim().isNotEmpty == true)
         'repairmanPhone': repairmanPhone!.trim(),
-      if (repairItems?.trim().isNotEmpty == true) 'repairItems': repairItems!.trim(),
+      if (repairItems?.trim().isNotEmpty == true)
+        'repairItems': repairItems!.trim(),
       if (rootCause?.trim().isNotEmpty == true) 'rootCause': rootCause!.trim(),
       if (costDescription?.trim().isNotEmpty == true)
         'costDescription': costDescription!.trim(),

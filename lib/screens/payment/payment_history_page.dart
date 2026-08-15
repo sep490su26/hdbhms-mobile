@@ -40,6 +40,7 @@ class PaymentHistoryPage extends StatefulWidget {
 class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
   final TextEditingController _searchController = TextEditingController();
   late Future<List<TenantInvoice>> _invoicesFuture;
+  RoomScope _roomScope = const RoomScope();
   DateTime? _selectedPaidMonth;
   _HistoryInvoiceTypeFilter _selectedTypeFilter = _HistoryInvoiceTypeFilter.all;
 
@@ -68,6 +69,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
       roomCode: widget.roomCode,
       currentRoomService: widget.currentRoomService,
     );
+    _roomScope = scope;
     if (!scope.hasRoom) return const [];
     return widget.invoiceService.fetchMyInvoices(
       roomId: scope.roomId,
@@ -169,8 +171,8 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => MaintenanceTicketListScreen(
-                roomId: widget.roomId,
-                roomCode: widget.roomCode,
+                roomId: _activeRoomId,
+                roomCode: _activeRoomCode,
               ),
             ),
           );
@@ -178,21 +180,29 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
         onProfileTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => const TenantProfileScreen(),
+              builder: (context) => TenantProfileScreen(
+                roomId: _activeRoomId,
+                roomCode: _activeRoomCode,
+              ),
             ),
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => TenantRequestScreen(
-              roomId: widget.roomId,
-              roomCode: widget.roomCode,
+              roomId: _activeRoomId,
+              roomCode: _activeRoomCode,
             ),
           ),
         ),
       ),
     );
   }
+
+  int? get _activeRoomId => _roomScope.roomId ?? widget.roomId;
+
+  String get _activeRoomCode =>
+      _roomScope.roomCode.isNotEmpty ? _roomScope.roomCode : widget.roomCode;
 
   List<TenantInvoice> _paidInvoices(List<TenantInvoice> invoices) {
     final result = invoices.where((invoice) => invoice.isPaid).toList()

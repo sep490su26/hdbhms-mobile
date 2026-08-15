@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:hdbhms_mobile/models/contract/lease_contract_model.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
@@ -87,6 +88,14 @@ class _RenewContractRequestScreenState
         context,
         message:
             'Yêu cầu gia hạn hợp đồng đã được gửi tới quản lý để xét duyệt.',
+        onViewRequests: () => Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => TenantRequestScreen(
+              roomId: widget.contract.room.id,
+              roomCode: widget.contract.room.roomCode,
+            ),
+          ),
+        ),
         onReturnToContract: () => Navigator.of(context).pop(),
       );
     } catch (error) {
