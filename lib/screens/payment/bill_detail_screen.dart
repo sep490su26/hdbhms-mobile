@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 
+import '../../models/payment/invoice_payment_presentation.dart';
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/contract/lease_contract_service.dart';
 import '../../services/payment/tenant_invoice_service.dart';
@@ -70,7 +71,8 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
   static const _lineIcons = <String, IconData>{
     'ELECTRICITY': Icons.bolt_rounded,
     'RENT': Icons.door_front_door_outlined,
-    'SERVICE': Icons.room_service_outlined,
+    'SERVICE': Icons.home_work_outlined,
+    'WATER': Icons.water_drop_outlined,
     'VIOLATION_FINE': Icons.gavel_rounded,
     'MAINTENANCE_COMPENSATION': Icons.build_rounded,
   };
@@ -79,6 +81,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     'ELECTRICITY': AppColors.warning,
     'RENT': AppColors.primary,
     'SERVICE': AppColors.actionCyan,
+    'WATER': AppColors.actionCyan,
     'VIOLATION_FINE': Color(0xFFEF4444),
     'MAINTENANCE_COMPENSATION': Color(0xFFF97316),
   };
@@ -109,21 +112,6 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
   static String _fmtReadingWithUnit(double? value, String lineType) {
     if (value == null) return '--';
     return '${_fmtReading(value)} ${_unitForLine(lineType)}';
-  }
-
-  static String _fmtQuantityWithUnit(TenantInvoiceLine line) {
-    if (line.normalizedLineType == 'ELECTRICITY' ||
-        line.normalizedLineType == 'WATER') {
-      return '${line.quantity} ${_unitForLine(line.lineType)}';
-    }
-    return line.quantity.toString();
-  }
-
-  static String _rentQuantityLabel(TenantInvoiceLine line) {
-    if (line.normalizedLineType == 'RENT') {
-      return '${line.quantity} tháng';
-    }
-    return _fmtQuantityWithUnit(line);
   }
 
   static String _formatBillingPeriod(String value) {
@@ -159,18 +147,26 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     return (line: line, cycle: cycle, people: line.quantity ~/ cycle);
   }
 
-  Widget _buildServiceFormula() {
+  Widget _buildServiceFormula(TenantInvoiceLine serviceLine) {
     final formula = _serviceFormula;
-    if (formula == null) {
-      return const Padding(
-        padding: EdgeInsets.only(top: 10),
-        child: Text(
-          'Khoản dịch vụ theo hóa đơn',
-          style: TextStyle(
-            color: AppColors.bodyText,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
+    if (formula == null || formula.line != serviceLine) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Column(
+          children: [
+            if (serviceLine.unitPrice > 0)
+              _CalculationRow(
+                label: 'Đơn giá',
+                value: '${_fmt(serviceLine.unitPrice)} / đơn vị',
+              ),
+            if (serviceLine.unitPrice > 0 && serviceLine.quantity > 0)
+              const SizedBox(height: 8),
+            if (serviceLine.quantity > 0)
+              _CalculationRow(
+                label: 'Số đơn vị',
+                value: serviceLine.quantity.toString(),
+              ),
+          ],
         ),
       );
     }
@@ -203,6 +199,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     'ELECTRICITY' => 'Tiền điện',
     'RENT' => 'Tiền phòng',
     'SERVICE' => 'Phí dịch vụ',
+    'WATER' => 'Tiền nước',
     'VIOLATION_FINE' => 'Phạt vi phạm',
     'MAINTENANCE_COMPENSATION' => 'Bồi thường bảo trì',
     _ => 'Khoản thanh toán',
@@ -223,37 +220,8 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
       _reviewLines.isNotEmpty || _hasComplainableLines;
   bool get _canPay => invoice.canPay && !invoice.hasOpenMeterReadingReview;
 
-  List<({TenantInvoiceLine? line, int amount, bool serviceGroup})>
-  _presentationLines() {
-    final waterAndService = invoice.lines
-        .where(
-          (line) =>
-              line.normalizedLineType == 'WATER' ||
-              line.normalizedLineType == 'SERVICE',
-        )
-        .toList(growable: false);
-    final groupedAmount = waterAndService.fold<int>(
-      0,
-      (sum, line) => sum + line.amount,
-    );
-    final visible =
-        <({TenantInvoiceLine? line, int amount, bool serviceGroup})>[
-          ...invoice.lines
-              .where(
-                (line) =>
-                    line.normalizedLineType != 'WATER' &&
-                    line.normalizedLineType != 'SERVICE',
-              )
-              .map(
-                (line) =>
-                    (line: line, amount: line.amount, serviceGroup: false),
-              ),
-        ];
-    if (waterAndService.isNotEmpty) {
-      visible.add((line: null, amount: groupedAmount, serviceGroup: true));
-    }
-    return visible;
-  }
+  List<TenantInvoiceLine> _presentationLines() =>
+      List.unmodifiable(invoice.lines);
 
   @override
   Widget build(BuildContext context) {
@@ -362,16 +330,9 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
   // ── Hero card ────────────────────────────────────────────────
 
   Widget _buildHeroCard() {
-    final heroIcon = invoice.isUtilityType
-        ? Icons.bolt_rounded
-        : invoice.isRentType
-        ? Icons.door_front_door_outlined
-        : Icons.build_outlined;
-    final heroAccent = invoice.isUtilityType
-        ? AppColors.warning
-        : invoice.isRentType
-        ? AppColors.primaryLight
-        : AppColors.accent;
+    final presentation = InvoicePaymentPresentation.fromInvoice(invoice);
+    final heroIcon = presentation.icon;
+    final heroAccent = presentation.accentColor;
     return Container(
       margin: EdgeInsets.zero,
       padding: const EdgeInsets.all(16),
@@ -403,7 +364,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      invoice.title,
+                      presentation.displayName,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 15,
@@ -496,15 +457,19 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Text(
-                  'Chi tiết các khoản',
-                  style: TextStyle(
-                    color: AppColors.inputText,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
+                const Expanded(
+                  child: Text(
+                    'Chi tiết các khoản',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AppColors.inputText,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
@@ -531,15 +496,12 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
           // Lines
           ...lines.asMap().entries.map((entry) {
             final idx = entry.key;
-            final displayLine = entry.value;
-            final line = displayLine.line;
-            final color = displayLine.serviceGroup
-                ? AppColors.actionCyan
-                : _lineColors[line!.normalizedLineType] ?? AppColors.bodyText;
-            final icon = displayLine.serviceGroup
-                ? Icons.home_work_outlined
-                : _lineIcons[line!.normalizedLineType] ??
-                      Icons.receipt_long_outlined;
+            final line = entry.value;
+            final normalizedType = line.normalizedLineType;
+            final isService = normalizedType == 'SERVICE';
+            final color = _lineColors[normalizedType] ?? AppColors.bodyText;
+            final icon =
+                _lineIcons[normalizedType] ?? Icons.receipt_long_outlined;
             final isLast = idx == lines.length - 1;
 
             return Column(
@@ -568,22 +530,27 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  displayLine.serviceGroup
-                                      ? 'Phí dịch vụ'
-                                      : line!.description.isEmpty
-                                      ? _typeLabel(line.normalizedLineType)
-                                      : line.description,
+                                  switch (normalizedType) {
+                                    'RENT' ||
+                                    'SERVICE' ||
+                                    'ELECTRICITY' ||
+                                    'WATER' => _typeLabel(normalizedType),
+                                    _ =>
+                                      line.description.isEmpty
+                                          ? _typeLabel(normalizedType)
+                                          : line.description,
+                                  },
                                   style: const TextStyle(
                                     color: AppColors.inputText,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                if (!displayLine.serviceGroup &&
-                                    line!.quantity > 0 &&
+                                if (!isService &&
+                                    line.quantity > 0 &&
                                     line.unitPrice > 0) ...[
                                   const SizedBox(height: 8),
-                                  if (line.normalizedLineType == 'RENT') ...[
+                                  if (normalizedType == 'RENT') ...[
                                     _CalculationRow(
                                       label: 'Đơn giá',
                                       value: '${_fmt(line.unitPrice)} / tháng',
@@ -593,21 +560,13 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                                       label: 'Số tháng',
                                       value: '${line.quantity} tháng',
                                     ),
-                                  ] else
-                                    Text(
-                                      '${_fmt(line.unitPrice)} × ${_rentQuantityLabel(line)}',
-                                      style: const TextStyle(
-                                        color: AppColors.bodyText,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
+                                  ],
                                 ],
                               ],
                             ),
                           ),
                           Text(
-                            _fmt(displayLine.amount),
+                            _fmt(line.amount),
                             style: TextStyle(
                               color: AppColors.inputText,
                               fontSize: 15,
@@ -616,10 +575,10 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                           ),
                         ],
                       ),
-                      if (displayLine.serviceGroup) _buildServiceFormula(),
+                      if (isService) _buildServiceFormula(line),
                       // Meter reading row (điện/nước)
-                      if (!displayLine.serviceGroup &&
-                          line!.previousValue != null &&
+                      if (!isService &&
+                          line.previousValue != null &&
                           line.currentValue != null) ...[
                         const SizedBox(height: 10),
                         Container(
@@ -638,7 +597,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                line.normalizedLineType == 'ELECTRICITY'
+                                normalizedType == 'ELECTRICITY'
                                     ? 'Chỉ số điện'
                                     : 'Chỉ số nước',
                                 style: TextStyle(
@@ -652,7 +611,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                                 label: 'Kỳ trước',
                                 value: _fmtReadingWithUnit(
                                   line.previousValue,
-                                  line.normalizedLineType,
+                                  normalizedType,
                                 ),
                               ),
                               const SizedBox(height: 6),
@@ -660,7 +619,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                                 label: 'Kỳ này',
                                 value: _fmtReadingWithUnit(
                                   line.currentValue,
-                                  line.normalizedLineType,
+                                  normalizedType,
                                 ),
                               ),
                               const SizedBox(height: 10),
@@ -668,14 +627,14 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                                 label: 'Tiêu thụ',
                                 value: _fmtReadingWithUnit(
                                   _usageForLine(line),
-                                  line.normalizedLineType,
+                                  normalizedType,
                                 ),
                               ),
                               const SizedBox(height: 6),
                               _CalculationRow(
                                 label: 'Đơn giá',
                                 value:
-                                    '${_fmt(line.unitPrice)} / ${_unitForLine(line.normalizedLineType)}',
+                                    '${_fmt(line.unitPrice)} / ${_unitForLine(normalizedType)}',
                               ),
                             ],
                           ),
@@ -949,12 +908,16 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                 ),
               ),
               const SizedBox(width: 10),
-              const Text(
-                'Thông tin kỳ thuê',
-                style: TextStyle(
-                  color: AppColors.inputText,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
+              const Expanded(
+                child: Text(
+                  'Thông tin kỳ thuê',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppColors.inputText,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],

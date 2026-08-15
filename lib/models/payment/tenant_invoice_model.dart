@@ -110,14 +110,30 @@ class TenantInvoice {
 
   bool get isOtherType => !isRentType && !isUtilityType;
 
+  /// Old utility invoices can contain a service fee from the taxonomy that
+  /// predated the current RENT + SERVICE_FEE composition. This is only used
+  /// to describe the response faithfully in the UI; it never moves or
+  /// changes a backend line.
+  bool get hasServiceLine =>
+      lines.any((line) => line.normalizedLineType == 'SERVICE');
+
+  bool get hasWaterLine =>
+      lines.any((line) => line.normalizedLineType == 'WATER');
+
+  bool get isLegacyUtilityWithService => isUtilityType && hasServiceLine;
+
+  bool get isLegacyUtilityWithWater => isUtilityType && hasWaterLine;
+
   /// Legacy responses did not return a subtotal. The total stays authoritative;
   /// this only supplies a presentation fallback for the discount summary.
   int get resolvedSubtotalAmount => subtotalAmount;
 
   String get invoiceTypeLabel {
     return switch (normalizedInvoiceType) {
-      'RENT' => 'Tiền phòng',
-      'UTILITY' => 'Tiền điện & dịch vụ',
+      'RENT' => 'Tiền phòng & dịch vụ',
+      'UTILITY' when isLegacyUtilityWithService => 'Tiền điện & dịch vụ',
+      'UTILITY' when isLegacyUtilityWithWater => 'Tiền điện & nước',
+      'UTILITY' => 'Tiền điện',
       _ => 'Khác',
     };
   }
@@ -147,11 +163,9 @@ class TenantInvoice {
     if (hasMaintenanceCompensation) {
       return 'Bồi thường chi phí bảo trì';
     }
-    if (isUtilityType) {
-      return 'Hóa đơn tiền điện & dịch vụ ${_periodLabel(billingPeriod)}';
-    }
-    if (isRentType) {
-      return 'Hóa đơn tiền phòng ${_periodLabel(billingPeriod)}';
+    if (isUtilityType || isRentType) {
+      final label = invoiceTypeLabel.toLowerCase();
+      return 'Hóa đơn $label ${_periodLabel(billingPeriod)}';
     }
     final period = _periodLabel(billingPeriod);
     return period.isEmpty ? 'Hóa đơn khác' : 'Hóa đơn khác $period';

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/payment/invoice_payment_presentation.dart';
 import '../models/payment/tenant_invoice_model.dart';
 import '../theme/app_colors.dart';
 
@@ -12,6 +13,7 @@ class PaidInvoiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final presentation = InvoicePaymentPresentation.fromInvoice(invoice);
     final amount = invoice.paidAmount > 0
         ? invoice.paidAmount
         : invoice.totalAmount;
@@ -41,11 +43,7 @@ class PaidInvoiceCard extends StatelessWidget {
             Container(
               width: 4,
               decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [AppColors.success, Color(0xFF059669)],
-                ),
+                color: AppColors.success,
                 borderRadius: BorderRadius.horizontal(
                   left: Radius.circular(AppColors.radiusLg),
                 ),
@@ -66,7 +64,7 @@ class PaidInvoiceCard extends StatelessWidget {
                       ),
                       child: Icon(
                         _invoiceIcon(invoice),
-                        color: AppColors.deepBlue,
+                        color: presentation.accentColor,
                         size: 22,
                       ),
                     ),
@@ -168,26 +166,33 @@ class _PaidStatusPill extends StatelessWidget {
         color: const Color(0xFFD7FBE4),
         borderRadius: BorderRadius.circular(AppColors.radiusPill),
       ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.check_circle_rounded,
-            color: AppColors.successText,
-            size: 12,
-          ),
-          SizedBox(width: 4),
-          Text(
-            'ĐÃ THANH TOÁN',
-            style: TextStyle(
-              color: Color(0xFF15803D),
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
-              height: 13 / 10,
-              letterSpacing: 0.4,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 130),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.check_circle_rounded,
+              color: AppColors.successText,
+              size: 12,
             ),
-          ),
-        ],
+            SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                'ĐÃ THANH TOÁN',
+                maxLines: 2,
+                style: TextStyle(
+                  color: Color(0xFF15803D),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  height: 13 / 10,
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -208,30 +213,35 @@ class _InvoiceTypePill extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppColors.radiusPill),
         border: Border.all(color: color.withValues(alpha: 0.18)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(_invoiceTypeIcon(invoice), size: 12, color: color),
-          const SizedBox(width: 4),
-          Text(
-            invoice.invoiceTypeLabel,
-            style: TextStyle(
-              color: color,
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
-              height: 14 / 10,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 160),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(_invoiceTypeIcon(invoice), size: 12, color: color),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                InvoicePaymentPresentation.fromInvoice(invoice).displayName,
+                maxLines: 2,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  height: 14 / 10,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
 IconData _invoiceTypeIcon(TenantInvoice invoice) {
-  if (invoice.isRentType) return Icons.apartment_rounded;
-  if (invoice.isUtilityType) return Icons.bolt_rounded;
-  return Icons.more_horiz_rounded;
+  return InvoicePaymentPresentation.fromInvoice(invoice).icon;
 }
 
 IconData _invoiceIcon(TenantInvoice invoice) {
@@ -246,9 +256,7 @@ IconData _invoiceIcon(TenantInvoice invoice) {
 }
 
 Color _invoiceTypeColor(TenantInvoice invoice) {
-  if (invoice.isRentType) return AppColors.deepBlue;
-  if (invoice.isUtilityType) return const Color(0xFF0EA5E9);
-  return const Color(0xFF64748B);
+  return InvoicePaymentPresentation.fromInvoice(invoice).accentColor;
 }
 
 String _formatDate(DateTime date) {

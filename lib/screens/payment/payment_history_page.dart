@@ -26,12 +26,14 @@ class PaymentHistoryPage extends StatefulWidget {
     this.currentRoomService = const CurrentRoomService(),
     this.roomId,
     this.roomCode = '',
+    this.notificationInitialUnreadCount,
   });
 
   final TenantInvoiceService invoiceService;
   final CurrentRoomService currentRoomService;
   final int? roomId;
   final String roomCode;
+  final int? notificationInitialUnreadCount;
 
   @override
   State<PaymentHistoryPage> createState() => _PaymentHistoryPageState();
@@ -91,7 +93,10 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: AppScreenShell(
-          header: const _HistoryHeader(),
+          header: _HistoryHeader(
+            notificationInitialUnreadCount:
+                widget.notificationInitialUnreadCount,
+          ),
           child: FutureBuilder<List<TenantInvoice>>(
             future: _invoicesFuture,
             builder: (context, snapshot) {
@@ -264,7 +269,9 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
 // ── Header ────────────────────────────────────────────────────────────────────
 
 class _HistoryHeader extends StatelessWidget {
-  const _HistoryHeader();
+  const _HistoryHeader({this.notificationInitialUnreadCount});
+
+  final int? notificationInitialUnreadCount;
 
   @override
   Widget build(BuildContext context) {
@@ -277,7 +284,9 @@ class _HistoryHeader extends StatelessWidget {
             builder: (context) => const NotificationListScreen(),
           ),
         ),
-        icon: const AppNotificationBell(),
+        icon: AppNotificationBell(
+          initialUnreadCount: notificationInitialUnreadCount,
+        ),
         tooltip: 'Thông báo',
       ),
     );
@@ -504,21 +513,21 @@ class _HistoryTypeFilterBar extends StatelessWidget {
       child: Row(
         children: [
           AppFilterChip(
-            label: 'Mọi loại',
-            icon: Icons.category_outlined,
+            label: 'Tất cả',
+            icon: Icons.grid_view_rounded,
             isActive: selectedFilter == _HistoryInvoiceTypeFilter.all,
             onTap: () => onChanged(_HistoryInvoiceTypeFilter.all),
           ),
           const SizedBox(width: 8),
           AppFilterChip(
-            label: 'Tiền phòng',
-            icon: Icons.apartment_rounded,
+            label: 'Tiền phòng & dịch vụ',
+            icon: Icons.home_work_outlined,
             isActive: selectedFilter == _HistoryInvoiceTypeFilter.rent,
             onTap: () => onChanged(_HistoryInvoiceTypeFilter.rent),
           ),
           const SizedBox(width: 8),
           AppFilterChip(
-            label: 'Tiền điện & dịch vụ',
+            label: 'Tiền điện',
             icon: Icons.bolt_rounded,
             isActive: selectedFilter == _HistoryInvoiceTypeFilter.utility,
             onTap: () => onChanged(_HistoryInvoiceTypeFilter.utility),
