@@ -332,6 +332,8 @@ class _CreateRequestGrid extends StatelessWidget {
     }
 
     if (type == TenantRequestType.terminateContract) {
+      final confirmed = await _confirmOpenTerminationForm(context);
+      if (!context.mounted || !confirmed) return;
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => TerminateContractScreen(
@@ -365,6 +367,93 @@ class _CreateRequestGrid extends StatelessWidget {
       );
       if (context.mounted) await onChanged();
     }
+  }
+
+  Future<bool> _confirmOpenTerminationForm(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppColors.radiusLg),
+        ),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        title: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.dangerSurface,
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
+              ),
+              child: const Icon(
+                Icons.warning_amber_rounded,
+                color: AppColors.danger,
+                size: 27,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Cảnh báo mất cọc',
+                style: TextStyle(
+                  color: AppColors.dangerText,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.dangerSurface,
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+            border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+          ),
+          child: const Text(
+            'Nếu thực hiện thanh lý khi hợp đồng còn dưới 1 tháng trước ngày hết hạn, bạn sẽ mất toàn bộ tiền cọc. Vui lòng cân nhắc trước khi tiếp tục.',
+            style: TextStyle(
+              color: AppColors.dangerText,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              height: 20 / 14,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.neutral,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            ),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
+              ),
+            ),
+            child: const Text('Tôi hiểu, tiếp tục'),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
   }
 
   @override
@@ -494,13 +583,16 @@ class _CreateRequestGrid extends StatelessWidget {
             crossAxisSpacing: 10,
             childAspectRatio: 1.55,
             children: [
-              AppActionTile(
-                icon: Icons.autorenew_rounded,
-                label: 'Gia hạn hợp đồng',
-                accentColor: AppColors.actionBlue,
-                onTap: () =>
-                    _openCreateForm(context, TenantRequestType.renewContract),
-              ),
+              if (contract.canRenew || contract.canRenewBlockedReason.trim().isEmpty)
+                AppActionTile(
+                  icon: Icons.autorenew_rounded,
+                  label: 'Gia hạn hợp đồng',
+                  accentColor: AppColors.actionBlue,
+                  onTap: () => _openCreateForm(
+                    context,
+                    TenantRequestType.renewContract,
+                  ),
+                ),
               AppActionTile(
                 icon: Icons.cancel_outlined,
                 label: 'Thanh lý hợp đồng',
@@ -525,6 +617,52 @@ class _CreateRequestGrid extends StatelessWidget {
                     _openCreateForm(context, TenantRequestType.addRoommate),
               ),
             ],
+          ),
+          if (!contract.canRenew && contract.canRenewBlockedReason.trim().isNotEmpty)
+            _RenewalBlockedNotice(reason: contract.canRenewBlockedReason),
+        ],
+      ),
+    );
+  }
+}
+
+class _RenewalBlockedNotice extends StatelessWidget {
+  const _RenewalBlockedNotice({required this.reason});
+
+  final String reason;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF4E5),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+        border: Border.all(color: const Color(0xFFF2B35D)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 1),
+            child: Icon(
+              Icons.warning_amber_rounded,
+              color: Color(0xFFB96B00),
+              size: 19,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              reason,
+              style: const TextStyle(
+                color: Color(0xFF7A4A00),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                height: 17 / 12,
+              ),
+            ),
           ),
         ],
       ),

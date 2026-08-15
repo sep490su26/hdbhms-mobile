@@ -1,6 +1,7 @@
 enum TenantRequestType {
   renewContract,
   terminateContract,
+  depositRefundRequest,
   changeRoom,
   addRoommate,
   utilityComplaint;
@@ -11,6 +12,8 @@ enum TenantRequestType {
         return 'Gia hạn HĐ';
       case TenantRequestType.terminateContract:
         return 'Thanh lý HĐ';
+      case TenantRequestType.depositRefundRequest:
+        return 'Hoàn cọc';
       case TenantRequestType.changeRoom:
         return 'Chuyển phòng';
       case TenantRequestType.addRoommate:
@@ -26,6 +29,8 @@ enum TenantRequestType {
         return 'Gia hạn hợp đồng';
       case TenantRequestType.terminateContract:
         return 'Thanh lý hợp đồng';
+      case TenantRequestType.depositRefundRequest:
+        return 'Yêu cầu hoàn cọc';
       case TenantRequestType.changeRoom:
         return 'Chuyển phòng';
       case TenantRequestType.addRoommate:
@@ -41,6 +46,8 @@ enum TenantRequestType {
         return 'Gia hạn thời gian thuê phòng';
       case TenantRequestType.terminateContract:
         return 'Chấm dứt hợp đồng trước hạn';
+      case TenantRequestType.depositRefundRequest:
+        return 'Theo dõi và xác nhận khoản hoàn cọc';
       case TenantRequestType.changeRoom:
         return 'Yêu cầu đổi sang phòng khác';
       case TenantRequestType.addRoommate:

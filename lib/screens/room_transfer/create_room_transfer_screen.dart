@@ -7,7 +7,7 @@ import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart'
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
-import 'package:hdbhms_mobile/widgets/app_date_picker.dart';
+import 'package:hdbhms_mobile/widgets/app_month_year_picker.dart';
 import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
@@ -144,16 +144,19 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
     if (selected != null && mounted) setState(() => _targetRoom = selected);
   }
 
-  Future<void> _pickDate() async {
+  Future<void> _pickTransferMonth() async {
     final today = DateTime.now();
-    final first = DateTime(today.year, today.month, today.day);
-    final picked = await AppDatePicker.show(
+    final currentMonth = DateTime(today.year, today.month);
+    final picked = await showAppMonthYearPicker(
       context: context,
-      initialDate: _transferDate ?? first,
-      firstDate: first,
-      lastDate: DateTime(first.year + 5),
+      selectedMonth: _transferDate ?? currentMonth,
+      title: 'Chọn tháng chuyển phòng',
+      firstMonth: currentMonth,
+      lastMonth: DateTime(today.year + 5, today.month),
     );
-    if (picked != null && mounted) setState(() => _transferDate = picked);
+    if (picked != null && mounted) {
+      setState(() => _transferDate = DateTime(picked.year, picked.month, 1));
+    }
   }
 
   Future<void> _submit() async {
@@ -336,17 +339,17 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
             const SizedBox(height: AppColors.space24),
             RequestFormSection(
               icon: Icons.calendar_today_outlined,
-              title: 'Ngày chuyển dự kiến',
+              title: 'Tháng chuyển dự kiến',
               accentColor: AppColors.actionCyan,
               child: FormField<DateTime>(
                 validator: (_) => _transferDate == null
-                    ? 'Vui lòng chọn ngày chuyển dự kiến.'
+                    ? 'Vui lòng chọn tháng chuyển dự kiến.'
                     : null,
                 builder: (field) => InkWell(
                   onTap: _submitting
                       ? null
                       : () async {
-                          await _pickDate();
+                          await _pickTransferMonth();
                           field.didChange(_transferDate);
                         },
                   borderRadius: BorderRadius.circular(AppColors.radiusSm),
@@ -361,8 +364,8 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
                         Expanded(
                           child: Text(
                             _transferDate == null
-                                ? 'Chọn ngày'
-                                : _date(_transferDate),
+                                ? 'Chọn tháng'
+                                : _monthWithStartDate(_transferDate),
                             style: _transferDate == null
                                 ? AppTypography.body
                                 : AppTypography.label,
@@ -665,6 +668,9 @@ class _LoadError extends StatelessWidget {
 String _date(DateTime? date) => date == null
     ? '--'
     : '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+String _monthWithStartDate(DateTime? date) => date == null
+    ? '--'
+    : 'Tháng ${date.month.toString().padLeft(2, '0')}/${date.year} (ngày 01)';
 String _dash(String value) => value.trim().isEmpty ? '--' : value;
 String _roomLabel(LeaseContract contract) => _dash(
   contract.room.roomName.isEmpty

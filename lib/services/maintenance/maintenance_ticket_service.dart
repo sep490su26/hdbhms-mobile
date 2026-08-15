@@ -96,6 +96,39 @@ class MaintenanceTicketService {
     });
   }
 
+  Future<void> decideRepair(
+    int ticketId, {
+    required bool approved,
+    String? reason,
+  }) async {
+    await _postJson(_uri('/maintenance/tickets/$ticketId/repair-decision'), {
+      'approved': approved,
+      if (reason?.trim().isNotEmpty == true) 'reason': reason!.trim(),
+    });
+  }
+
+  Future<void> updateRepairInfo(
+    int ticketId, {
+    required String workerName,
+    required String repairItems,
+    required num amount,
+    String? repairmanPhone,
+    String? rootCause,
+    String? costResponsibility,
+  }) async {
+    await _patchJson(_uri('/maintenance/tickets/$ticketId/repair-info'), {
+      'workerName': workerName.trim(),
+      'repairmanName': workerName.trim(),
+      'repairmanPhone': repairmanPhone?.trim(),
+      'rootCause': rootCause?.trim(),
+      'repairItems': repairItems.trim(),
+      'amount': amount.round(),
+      'actualCost': amount.round(),
+      'costDescription': repairItems.trim(),
+      'costResponsibility': costResponsibility,
+    });
+  }
+
   Future<void> updateProgress(
     int ticketId, {
     required String workerName,
@@ -116,24 +149,45 @@ class MaintenanceTicketService {
   Future<void> completeTicket(
     int ticketId, {
     required String completionNote,
-    required String costDescription,
-    required num amount,
-    required String paidBy,
+    String? workerName,
+    String? repairmanPhone,
+    String? repairItems,
+    String? rootCause,
+    String? costDescription,
+    num? amount,
+    String? paidBy,
+    String? costResponsibility,
+    String? collectionMethod,
+    String? billingPeriod,
     List<MaintenanceAttachment> afterAttachments = const [],
   }) async {
-    final normalizedPaidBy = _paidByValue(paidBy);
-    final chargeToTenant = normalizedPaidBy == 'TENANT';
+    final normalizedPaidBy = paidBy == null ? null : _paidByValue(paidBy);
+    final chargeToTenant = normalizedPaidBy == 'TENANT' ||
+        costResponsibility?.trim().toUpperCase() == 'TENANT';
     final attachmentIds = await _uploadAttachments(afterAttachments);
     await _postJson(_uri('/maintenance/tickets/$ticketId/complete'), {
       'completionNote': completionNote.trim(),
-      'costDescription': costDescription.trim(),
-      'amount': amount.round(),
-      'actualCost': amount.round(),
-      'paidBy': normalizedPaidBy,
-      'costResponsibility': chargeToTenant ? 'TENANT' : 'OWNER',
-      'chargeToTenant': chargeToTenant,
-      'lineType': chargeToTenant ? 'MAINTENANCE_COMPENSATION' : null,
-      'collectionMethod': chargeToTenant ? 'NO_CHARGE' : 'NO_CHARGE',
+      if (workerName?.trim().isNotEmpty == true) 'workerName': workerName!.trim(),
+      if (repairmanPhone?.trim().isNotEmpty == true)
+        'repairmanPhone': repairmanPhone!.trim(),
+      if (repairItems?.trim().isNotEmpty == true) 'repairItems': repairItems!.trim(),
+      if (rootCause?.trim().isNotEmpty == true) 'rootCause': rootCause!.trim(),
+      if (costDescription?.trim().isNotEmpty == true)
+        'costDescription': costDescription!.trim(),
+      if (amount != null) ...{
+        'amount': amount.round(),
+        'actualCost': amount.round(),
+      },
+      'paidBy': ?normalizedPaidBy,
+      if (costResponsibility?.trim().isNotEmpty == true)
+        'costResponsibility': costResponsibility!.trim().toUpperCase(),
+      if (paidBy != null || costResponsibility != null)
+        'chargeToTenant': chargeToTenant,
+      if (chargeToTenant) 'lineType': 'MAINTENANCE_COMPENSATION',
+      if (collectionMethod?.trim().isNotEmpty == true)
+        'collectionMethod': collectionMethod!.trim().toUpperCase(),
+      if (billingPeriod?.trim().isNotEmpty == true)
+        'billingPeriod': billingPeriod!.trim(),
       'attachmentPhase': 'AFTER',
       'attachmentIds': attachmentIds,
     });
@@ -221,6 +275,23 @@ class MaintenanceTicketService {
     try {
       final response = await client
           .post(uri, body: jsonEncode(_withoutNulls(body)))
+          .timeout(_timeout);
+      return _decodeResponse(response);
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
+
+  Future<Map<String, dynamic>> _patchJson(
+    Uri uri,
+    Map<String, dynamic> body,
+  ) async {
+    final client = _effectiveClient;
+    try {
+      final response = await client
+          .patch(uri, body: jsonEncode(_withoutNulls(body)))
           .timeout(_timeout);
       return _decodeResponse(response);
     } finally {
@@ -341,12 +412,13 @@ class MaintenanceTicketService {
   int _statusSortWeight(TicketStatus status) {
     return switch (status) {
       TicketStatus.pending => 0,
-      TicketStatus.inProgress => 1,
+      TicketStatus.waitingTenantDecision => 1,
       TicketStatus.accepted => 2,
-      TicketStatus.waitingConfirmation => 3,
-      TicketStatus.completed => 4,
-      TicketStatus.rejected => 5,
-      TicketStatus.cancelled => 6,
+      TicketStatus.inProgress => 3,
+      TicketStatus.waitingConfirmation => 4,
+      TicketStatus.completed => 5,
+      TicketStatus.rejected => 6,
+      TicketStatus.cancelled => 7,
     };
   }
 }

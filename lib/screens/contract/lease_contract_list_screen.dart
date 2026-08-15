@@ -923,5 +923,5 @@ String _fmtShort(DateTime date) {
 String _displayStatus(String status) {
   final trimmed = status.trim();
   if (trimmed.isEmpty) return 'Chưa cập nhật';
-  return trimmed.replaceAll('_', ' ');
+  return 'Chưa xác định';
 }

@@ -167,6 +167,33 @@ class _MaintenanceTicketDetailScreenState
     );
   }
 
+  Future<void> _submitRepairProposal() async {
+    final data = await showModalBottomSheet<_RepairProposalFormData>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => const _RepairProposalSheet(),
+    );
+    if (data == null) {
+      return;
+    }
+    await _runAction(
+      () => widget.ticketService.updateRepairInfo(
+        widget.ticketId,
+        workerName: data.workerName,
+        repairItems: data.repairItems,
+        amount: data.amount,
+        repairmanPhone: data.repairmanPhone,
+        rootCause: data.rootCause,
+        costResponsibility: data.costResponsibility,
+      ),
+      'Đã gửi phương án sửa chữa cho khách thuê',
+    );
+  }
+
   Future<void> _completeTicket() async {
     final data = await showModalBottomSheet<_CompleteFormData>(
       context: context,
@@ -175,7 +202,8 @@ class _MaintenanceTicketDetailScreenState
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (context) => _CompleteSheet(imagePicker: _imagePicker),
+      builder: (context) =>
+          _CompleteSheet(imagePicker: _imagePicker, detail: _detail),
     );
     if (data == null) {
       return;
@@ -184,6 +212,10 @@ class _MaintenanceTicketDetailScreenState
       () => widget.ticketService.completeTicket(
         widget.ticketId,
         completionNote: data.completionNote,
+        workerName: data.workerName,
+        repairmanPhone: data.repairmanPhone,
+        repairItems: data.repairItems,
+        rootCause: data.rootCause,
         costDescription: data.costDescription,
         amount: data.amount,
         paidBy: data.paidBy,
@@ -195,6 +227,41 @@ class _MaintenanceTicketDetailScreenState
 
   Future<void> _confirmTicket() async {
     await _openReviewScreen();
+  }
+
+  Future<void> _decideRepair(bool approved) async {
+    if (approved) {
+      final confirmed = await _showConfirmDialog(
+        title: 'Đồng ý sửa chữa',
+        content: 'Bạn đồng ý với phương án và chi phí sửa chữa này?',
+        confirmText: 'Đồng ý sửa',
+      );
+      if (confirmed != true) {
+        return;
+      }
+      await _runAction(
+        () =>
+            widget.ticketService.decideRepair(widget.ticketId, approved: true),
+        'Đã đồng ý phương án sửa chữa',
+      );
+      return;
+    }
+
+    final reason = await _showRejectDialog(
+      title: 'Không đồng ý sửa chữa',
+      reasonLabel: 'Lý do không đồng ý',
+    );
+    if (reason == null) {
+      return;
+    }
+    await _runAction(
+      () => widget.ticketService.decideRepair(
+        widget.ticketId,
+        approved: false,
+        reason: reason,
+      ),
+      'Đã gửi quyết định không sửa chữa',
+    );
   }
 
   Future<void> _reviewTicket() async {
@@ -221,74 +288,131 @@ class _MaintenanceTicketDetailScreenState
     required String title,
     required String content,
     required String confirmText,
-  }) {
-    return showDialog<bool>(
+  }) async {
+    final result = await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Text(title),
-          content: Text(content),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Hủy'),
-            ),
-            AppPrimaryGradientButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              height: 40,
-              borderRadius: 12,
-              child: Text(confirmText),
-            ),
-          ],
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(content),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        backgroundColor: AppColors.primaryLight,
+                        foregroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Hủy'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: AppPrimaryGradientButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      height: 48,
+                      borderRadius: 12,
+                      child: Text(confirmText),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         );
       },
     );
+    await _waitForDialogDismissal();
+    return result;
   }
 
-  Future<String?> _showRejectDialog() {
+  Future<String?> _showRejectDialog({
+    String title = 'Từ chối phiếu',
+    String reasonLabel = 'Lý do từ chối',
+  }) async {
     final formKey = GlobalKey<FormState>();
     final controller = TextEditingController();
-    return showDialog<String>(
+    final result = await showDialog<String>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Từ chối phiếu'),
-          content: Form(
-            key: formKey,
-            child: TextFormField(
-              controller: controller,
-              minLines: 3,
-              maxLines: 4,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Lý do từ chối',
-                border: OutlineInputBorder(),
+          title: Text(title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Form(
+                key: formKey,
+                child: TextFormField(
+                  controller: controller,
+                  minLines: 3,
+                  maxLines: 4,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: reasonLabel,
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Vui lòng nhập lý do từ chối'
+                      : null,
+                ),
               ),
-              validator: (value) => value == null || value.trim().isEmpty
-                  ? 'Vui lòng nhập lý do từ chối'
-                  : null,
-            ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        backgroundColor: AppColors.primaryLight,
+                        foregroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Hủy'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: AppPrimaryGradientButton(
+                      onPressed: () {
+                        if (formKey.currentState?.validate() != true) {
+                          return;
+                        }
+                        Navigator.of(context).pop(controller.text.trim());
+                      },
+                      height: 48,
+                      borderRadius: 12,
+                      child: const Text('Từ chối'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Hủy'),
-            ),
-            AppPrimaryGradientButton(
-              onPressed: () {
-                if (formKey.currentState?.validate() != true) {
-                  return;
-                }
-                Navigator.of(context).pop(controller.text.trim());
-              },
-              height: 40,
-              borderRadius: 12,
-              child: const Text('Từ chối'),
-            ),
-          ],
         );
       },
-    ).whenComplete(controller.dispose);
+    );
+    await _waitForDialogDismissal();
+    controller.dispose();
+    return result;
+  }
+
+  Future<void> _waitForDialogDismissal() async {
+    // Navigator.pop completes before the dialog exit animation removes its overlay.
+    await Future<void>.delayed(const Duration(milliseconds: 220));
   }
 
   void _showSnackBar(String message) {
@@ -415,9 +539,11 @@ class _MaintenanceTicketDetailScreenState
                             isLoading: _isActionLoading,
                             onAccept: _acceptTicket,
                             onReject: _rejectTicket,
+                            onSubmitRepairProposal: _submitRepairProposal,
                             onUpdateProgress: _updateProgress,
                             onComplete: _completeTicket,
                             onConfirm: _confirmTicket,
+                            onDecideRepair: _decideRepair,
                             onReview: _reviewTicket,
                           ),
                         ],
@@ -450,6 +576,12 @@ class _TicketStatusBanner extends StatelessWidget {
         AppColors.primary,
         AppColors.primaryLight,
         'Yêu cầu đã được tiếp nhận và sẽ sớm được xử lý.',
+      ),
+      TicketStatus.waitingTenantDecision => (
+        Icons.price_check_outlined,
+        const Color(0xFFB45309),
+        const Color(0xFFFFF7ED),
+        'Quản lý đã gửi phương án và chi phí. Vui lòng quyết định có sửa hay không.',
       ),
       TicketStatus.inProgress => (
         Icons.handyman_outlined,
@@ -574,7 +706,9 @@ class _RepairInfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final repair = detail.repairInfo;
     return _SectionCard(
-      title: 'Kết quả xử lý',
+      title: detail.status == TicketStatus.waitingTenantDecision
+          ? 'Phương án sửa chữa'
+          : 'Kết quả xử lý',
       icon: Icons.handyman_outlined,
       child: Column(
         children: [
@@ -588,7 +722,9 @@ class _RepairInfoCard extends StatelessWidget {
           const SizedBox(height: 20),
           _RepairLine(
             icon: Icons.payments_outlined,
-            label: 'Chi phí thực tế',
+            label: detail.status == TicketStatus.waitingTenantDecision
+                ? 'Chi phí dự kiến'
+                : 'Chi phí thực tế',
             value: repair?.totalCost == null
                 ? 'Chưa cập nhật'
                 : '${_formatCurrency(repair!.totalCost!)} VND',
@@ -605,6 +741,16 @@ class _RepairInfoCard extends StatelessWidget {
             label: 'Người xử lý',
             value: _fallback(repair?.workerName),
           ),
+          if (repair?.costResponsibility?.trim().isNotEmpty == true) ...[
+            const SizedBox(height: 20),
+            _RepairLine(
+              icon: Icons.account_balance_wallet_outlined,
+              label: 'Trách nhiệm',
+              value: maintenanceCostResponsibilityLabel(
+                repair!.costResponsibility,
+              ),
+            ),
+          ],
           if (repair?.completionNote?.trim().isNotEmpty == true) ...[
             const SizedBox(height: 20),
             _RepairLine(
@@ -791,9 +937,11 @@ class _ActionPanel extends StatelessWidget {
     required this.isLoading,
     required this.onAccept,
     required this.onReject,
+    required this.onSubmitRepairProposal,
     required this.onUpdateProgress,
     required this.onComplete,
     required this.onConfirm,
+    required this.onDecideRepair,
     required this.onReview,
   });
 
@@ -802,9 +950,11 @@ class _ActionPanel extends StatelessWidget {
   final bool isLoading;
   final VoidCallback onAccept;
   final VoidCallback onReject;
+  final VoidCallback onSubmitRepairProposal;
   final VoidCallback onUpdateProgress;
   final VoidCallback onComplete;
   final VoidCallback onConfirm;
+  final void Function(bool approved) onDecideRepair;
   final VoidCallback onReview;
 
   @override
@@ -816,6 +966,28 @@ class _ActionPanel extends StatelessWidget {
     }
     if (canRejectTicket(role, detail.status)) {
       actions.add(_SecondaryActionButton(label: 'Từ chối', onTap: onReject));
+    }
+    if (canSubmitRepairProposal(role, detail.status)) {
+      actions.add(
+        _PrimaryActionButton(
+          label: 'Lập phương án sửa chữa',
+          onTap: onSubmitRepairProposal,
+        ),
+      );
+    }
+    if (canDecideRepair(role, detail.status)) {
+      actions.add(
+        _PrimaryActionButton(
+          label: 'Đồng ý sửa chữa',
+          onTap: () => onDecideRepair(true),
+        ),
+      );
+      actions.add(
+        _SecondaryActionButton(
+          label: 'Không đồng ý sửa',
+          onTap: () => onDecideRepair(false),
+        ),
+      );
     }
     if (canCompleteTicket(role, detail.status)) {
       actions.add(
@@ -1200,6 +1372,134 @@ class _ErrorState extends StatelessWidget {
   }
 }
 
+class _RepairProposalSheet extends StatefulWidget {
+  const _RepairProposalSheet();
+
+  @override
+  State<_RepairProposalSheet> createState() => _RepairProposalSheetState();
+}
+
+class _RepairProposalSheetState extends State<_RepairProposalSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _workerController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _itemsController = TextEditingController();
+  final _amountController = TextEditingController();
+  final _rootCauseController = TextEditingController();
+  String _costResponsibility = 'OWNER';
+
+  @override
+  void dispose() {
+    _workerController.dispose();
+    _phoneController.dispose();
+    _itemsController.dispose();
+    _amountController.dispose();
+    _rootCauseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _BottomSheetFrame(
+      title: 'Lập phương án sửa chữa',
+      child: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            _SheetTextField(
+              label: 'Người sửa/thợ *',
+              controller: _workerController,
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? 'Vui lòng nhập người sửa.'
+                  : null,
+            ),
+            const SizedBox(height: 12),
+            _SheetTextField(
+              label: 'Số điện thoại người sửa',
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+            ),
+            const SizedBox(height: 12),
+            _SheetTextField(
+              label: 'Hạng mục dự kiến sửa *',
+              controller: _itemsController,
+              minLines: 2,
+              maxLines: 4,
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? 'Vui lòng nhập hạng mục dự kiến.'
+                  : null,
+            ),
+            const SizedBox(height: 12),
+            _SheetTextField(
+              label: 'Chi phí dự kiến (VNĐ) *',
+              controller: _amountController,
+              keyboardType: TextInputType.number,
+              validator: (value) {
+                final amount = num.tryParse(value?.trim() ?? '');
+                return amount == null || amount < 0
+                    ? 'Chi phí không hợp lệ.'
+                    : null;
+              },
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: _costResponsibility,
+              decoration: InputDecoration(
+                labelText: 'Người chịu chi phí',
+                filled: true,
+                fillColor: AppColors.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                ),
+              ),
+              items: const [
+                DropdownMenuItem(value: 'OWNER', child: Text('Chủ trọ chịu')),
+                DropdownMenuItem(
+                  value: 'TENANT',
+                  child: Text('Khách thuê chịu'),
+                ),
+                DropdownMenuItem(
+                  value: 'OPERATION',
+                  child: Text('Chi phí vận hành'),
+                ),
+              ],
+              onChanged: (value) => setState(() {
+                _costResponsibility = value ?? 'OWNER';
+              }),
+            ),
+            const SizedBox(height: 12),
+            _SheetTextField(
+              label: 'Nguyên nhân (nếu có)',
+              controller: _rootCauseController,
+              minLines: 2,
+              maxLines: 3,
+            ),
+            const SizedBox(height: 18),
+            _SheetSubmitButton(
+              label: 'Gửi phương án cho khách',
+              onPressed: () {
+                if (_formKey.currentState?.validate() != true) {
+                  return;
+                }
+                Navigator.of(context).pop(
+                  _RepairProposalFormData(
+                    workerName: _workerController.text,
+                    repairmanPhone: _phoneController.text,
+                    repairItems: _itemsController.text,
+                    amount: num.parse(_amountController.text.trim()),
+                    rootCause: _rootCauseController.text,
+                    costResponsibility: _costResponsibility,
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ProgressSheet extends StatefulWidget {
   const _ProgressSheet();
 
@@ -1279,10 +1579,50 @@ class _ProgressSheetState extends State<_ProgressSheet> {
   }
 }
 
+class _SavedRepairSummary extends StatelessWidget {
+  const _SavedRepairSummary({required this.detail});
+
+  final MaintenanceTicketDetail? detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final repair = detail?.repairInfo;
+    final amount = repair?.totalCost;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Thông tin sửa chữa đã lưu',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          Text('Người sửa: ${_fallback(repair?.workerName)}'),
+          Text('Hạng mục: ${_fallback(repair?.repairItems)}'),
+          Text(
+            'Chi phí: ${amount == null ? _fallback(null) : _formatCurrency(amount)}',
+          ),
+          Text(
+            'Trách nhiệm: ${maintenanceCostResponsibilityLabel(repair?.costResponsibility)}',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _CompleteSheet extends StatefulWidget {
-  const _CompleteSheet({required this.imagePicker});
+  const _CompleteSheet({required this.imagePicker, this.detail});
 
   final ImagePicker imagePicker;
+  final MaintenanceTicketDetail? detail;
 
   @override
   State<_CompleteSheet> createState() => _CompleteSheetState();
@@ -1291,14 +1631,40 @@ class _CompleteSheet extends StatefulWidget {
 class _CompleteSheetState extends State<_CompleteSheet> {
   final _formKey = GlobalKey<FormState>();
   final _noteController = TextEditingController();
+  final _workerController = TextEditingController();
+  final _repairmanPhoneController = TextEditingController();
+  final _repairItemsController = TextEditingController();
+  final _rootCauseController = TextEditingController();
   final _costDescriptionController = TextEditingController();
   final _amountController = TextEditingController();
   final _paidByController = TextEditingController();
+  bool _editRepairDetails = false;
   List<MaintenanceAttachment> _selectedFiles = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    final repair = widget.detail?.repairInfo;
+    _workerController.text = repair?.workerName ?? '';
+    _repairmanPhoneController.text = repair?.repairmanPhone ?? '';
+    _repairItemsController.text = repair?.repairItems ?? '';
+    _rootCauseController.text = repair?.rootCause ?? '';
+    _costDescriptionController.text =
+        repair?.costCategory ?? repair?.repairItems ?? '';
+    if (repair?.totalCost != null) {
+      _amountController.text = repair!.totalCost!.toString();
+    }
+    _paidByController.text =
+        repair?.costResponsibility ?? widget.detail?.payer ?? '';
+  }
 
   @override
   void dispose() {
     _noteController.dispose();
+    _workerController.dispose();
+    _repairmanPhoneController.dispose();
+    _repairItemsController.dispose();
+    _rootCauseController.dispose();
     _costDescriptionController.dispose();
     _amountController.dispose();
     _paidByController.dispose();
@@ -1349,21 +1715,61 @@ class _CompleteSheetState extends State<_CompleteSheet> {
                   : null,
             ),
             const SizedBox(height: 12),
-            _SheetTextField(
-              label: 'Hạng mục chi phí',
-              controller: _costDescriptionController,
-            ),
-            const SizedBox(height: 12),
-            _SheetTextField(
-              label: 'Số tiền',
-              controller: _amountController,
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 12),
-            _SheetTextField(
-              label: 'Người thanh toán',
-              controller: _paidByController,
-            ),
+            if (!_editRepairDetails) ...[
+              _SavedRepairSummary(detail: widget.detail),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () => setState(() => _editRepairDetails = true),
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('Chỉnh sửa thông tin thực tế'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(44),
+                  foregroundColor: AppColors.deepBlue,
+                  side: const BorderSide(color: AppColors.deepBlue),
+                ),
+              ),
+            ] else ...[
+              _SheetTextField(
+                label: 'Người sửa/thợ',
+                controller: _workerController,
+              ),
+              const SizedBox(height: 12),
+              _SheetTextField(
+                label: 'Số điện thoại người sửa',
+                controller: _repairmanPhoneController,
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 12),
+              _SheetTextField(
+                label: 'Hạng mục đã sửa',
+                controller: _repairItemsController,
+                minLines: 2,
+                maxLines: 4,
+              ),
+              const SizedBox(height: 12),
+              _SheetTextField(
+                label: 'Nguyên nhân',
+                controller: _rootCauseController,
+                minLines: 2,
+                maxLines: 3,
+              ),
+              const SizedBox(height: 12),
+              _SheetTextField(
+                label: 'Hạng mục chi phí',
+                controller: _costDescriptionController,
+              ),
+              const SizedBox(height: 12),
+              _SheetTextField(
+                label: 'Số tiền',
+                controller: _amountController,
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              _SheetTextField(
+                label: 'Người thanh toán',
+                controller: _paidByController,
+              ),
+            ],
             const SizedBox(height: 14),
             OutlinedButton.icon(
               onPressed: _pickAfterFiles,
@@ -1396,9 +1802,25 @@ class _CompleteSheetState extends State<_CompleteSheet> {
                 Navigator.of(context).pop(
                   _CompleteFormData(
                     completionNote: _noteController.text,
-                    costDescription: _costDescriptionController.text,
-                    amount: num.tryParse(_amountController.text.trim()) ?? 0,
-                    paidBy: _paidByController.text,
+                    workerName: _editRepairDetails
+                        ? _workerController.text
+                        : null,
+                    repairmanPhone: _editRepairDetails
+                        ? _repairmanPhoneController.text
+                        : null,
+                    repairItems: _editRepairDetails
+                        ? _repairItemsController.text
+                        : null,
+                    rootCause: _editRepairDetails
+                        ? _rootCauseController.text
+                        : null,
+                    costDescription: _editRepairDetails
+                        ? _costDescriptionController.text
+                        : null,
+                    amount: _editRepairDetails
+                        ? num.tryParse(_amountController.text.trim())
+                        : null,
+                    paidBy: _editRepairDetails ? _paidByController.text : null,
                     afterAttachments: _selectedFiles,
                   ),
                 );
@@ -1542,19 +1964,45 @@ class _ProgressFormData {
   final String note;
 }
 
+class _RepairProposalFormData {
+  const _RepairProposalFormData({
+    required this.workerName,
+    required this.repairmanPhone,
+    required this.repairItems,
+    required this.amount,
+    required this.rootCause,
+    required this.costResponsibility,
+  });
+
+  final String workerName;
+  final String repairmanPhone;
+  final String repairItems;
+  final num amount;
+  final String rootCause;
+  final String costResponsibility;
+}
+
 class _CompleteFormData {
   const _CompleteFormData({
     required this.completionNote,
-    required this.costDescription,
-    required this.amount,
-    required this.paidBy,
+    this.workerName,
+    this.repairmanPhone,
+    this.repairItems,
+    this.rootCause,
+    this.costDescription,
+    this.amount,
+    this.paidBy,
     required this.afterAttachments,
   });
 
   final String completionNote;
-  final String costDescription;
-  final num amount;
-  final String paidBy;
+  final String? workerName;
+  final String? repairmanPhone;
+  final String? repairItems;
+  final String? rootCause;
+  final String? costDescription;
+  final num? amount;
+  final String? paidBy;
   final List<MaintenanceAttachment> afterAttachments;
 }
 
@@ -1568,14 +2016,17 @@ bool _shouldShowAfterAttachments(MaintenanceTicketDetail detail) {
 bool _shouldShowRepairInfo(MaintenanceTicketDetail detail) {
   return detail.hasRepairData ||
       detail.status == TicketStatus.accepted ||
+      detail.status == TicketStatus.waitingTenantDecision ||
       detail.status == TicketStatus.inProgress ||
       detail.status == TicketStatus.waitingConfirmation ||
       detail.status == TicketStatus.completed;
 }
 
 bool _shouldShowBillingInfo(MaintenanceTicketDetail detail) {
-  return detail.billingStatus.isNotEmpty &&
-      (detail.status == TicketStatus.waitingConfirmation ||
+  return detail.status != TicketStatus.rejected &&
+      detail.billingStatus.isNotEmpty &&
+      (detail.status == TicketStatus.waitingTenantDecision ||
+          detail.status == TicketStatus.waitingConfirmation ||
           detail.status == TicketStatus.completed);
 }
 

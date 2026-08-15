@@ -1593,7 +1593,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
 
     rows.addAll([
       _InfoRow(
-        label: 'Ngày chuyển',
+        label: 'Tháng chuyển',
         value: _formatDate(transfer.requestedTransferDate),
       ),
       _InfoRow(

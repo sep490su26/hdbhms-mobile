@@ -26,13 +26,11 @@ class TransferHandoverScreen extends StatefulWidget {
 class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
   // ── Transfer-out (old room) ──────────────────────────────────────────
   final _outElectricityCtrl = TextEditingController();
-  final _outWaterCtrl = TextEditingController();
   final _outNoteCtrl = TextEditingController();
   DateTime? _outDate;
 
   // ── Transfer-in (new room) ───────────────────────────────────────────
   final _inElectricityCtrl = TextEditingController();
-  final _inWaterCtrl = TextEditingController();
   final _inNoteCtrl = TextEditingController();
   DateTime? _inDate;
 
@@ -55,10 +53,8 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
   @override
   void dispose() {
     _outElectricityCtrl.dispose();
-    _outWaterCtrl.dispose();
     _outNoteCtrl.dispose();
     _inElectricityCtrl.dispose();
-    _inWaterCtrl.dispose();
     _inNoteCtrl.dispose();
     super.dispose();
   }
@@ -90,23 +86,19 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
 
   TransferHandoverData? _buildHandoverData({
     required TextEditingController electricityCtrl,
-    required TextEditingController waterCtrl,
     required TextEditingController noteCtrl,
     DateTime? date,
   }) {
     final electricityRaw = electricityCtrl.text.trim();
-    final waterRaw = waterCtrl.text.trim();
 
-    // If both are empty, skip this handover entirely
-    if (electricityRaw.isEmpty && waterRaw.isEmpty) return null;
+    // Skip this handover when no electricity reading was entered.
+    if (electricityRaw.isEmpty) return null;
 
     final electricity = double.tryParse(electricityRaw) ?? 0;
-    final water = double.tryParse(waterRaw) ?? 0;
 
     return TransferHandoverData(
       handoverDate: date ?? DateTime.now(),
       electricity: MeterReadingData(currentValue: electricity),
-      water: MeterReadingData(currentValue: water),
       note: noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
     );
   }
@@ -115,19 +107,17 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
     // Validate at least one room has readings
     final outData = _buildHandoverData(
       electricityCtrl: _outElectricityCtrl,
-      waterCtrl: _outWaterCtrl,
       noteCtrl: _outNoteCtrl,
       date: _outDate,
     );
     final inData = _buildHandoverData(
       electricityCtrl: _inElectricityCtrl,
-      waterCtrl: _inWaterCtrl,
       noteCtrl: _inNoteCtrl,
       date: _inDate,
     );
 
     if (outData == null && inData == null) {
-      _snack('Vui lòng nhập ít nhất một chỉ số điện hoặc nước.');
+      _snack('Vui lòng nhập ít nhất một chỉ số điện.');
       return;
     }
 
@@ -394,7 +384,6 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
               : transfer.oldRoomCode,
           icon: Icons.logout_rounded,
           electricityCtrl: _outElectricityCtrl,
-          waterCtrl: _outWaterCtrl,
           noteCtrl: _outNoteCtrl,
           date: _outDate,
           onPickDate: () => _pickDate(true),
@@ -411,7 +400,6 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
               : transfer.targetRoomCode,
           icon: Icons.login_rounded,
           electricityCtrl: _inElectricityCtrl,
-          waterCtrl: _inWaterCtrl,
           noteCtrl: _inNoteCtrl,
           date: _inDate,
           onPickDate: () => _pickDate(false),
@@ -649,7 +637,6 @@ class _HandoverSection extends StatelessWidget {
     required this.subtitle,
     required this.icon,
     required this.electricityCtrl,
-    required this.waterCtrl,
     required this.noteCtrl,
     required this.date,
     required this.onPickDate,
@@ -660,7 +647,6 @@ class _HandoverSection extends StatelessWidget {
   final String subtitle;
   final IconData icon;
   final TextEditingController electricityCtrl;
-  final TextEditingController waterCtrl;
   final TextEditingController noteCtrl;
   final DateTime? date;
   final VoidCallback onPickDate;
@@ -771,28 +757,6 @@ class _HandoverSection extends StatelessWidget {
           ),
 
           const SizedBox(height: 12),
-
-          // Water reading
-          _FieldLabel('Chỉ số nước (m³)'),
-          const SizedBox(height: 6),
-          TextField(
-            controller: waterCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              hintText: 'Nhập chỉ số nước hiện tại',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(10)),
-                borderSide: BorderSide(color: AppColors.border),
-              ),
-              filled: true,
-              fillColor: AppColors.inputFill,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 12,
-              ),
-            ),
-            style: const TextStyle(color: AppColors.inputText, fontSize: 14),
-          ),
 
           const SizedBox(height: 12),
 

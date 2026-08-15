@@ -294,6 +294,18 @@ void main() {
     expect(noCharge.chargeToTenant, isFalse);
     expect(noCharge.billingStatusLabel, 'Không thu khách');
 
+    final rejected = MaintenanceTicketModel.fromJson(
+      _ticketJson(
+        status: 'REJECTED',
+        billingStatus: 'NOT_INVOICED',
+        billingStatusLabel: 'Chưa tạo hóa đơn',
+        chargeAmount: 333333,
+        chargeToTenant: true,
+      ),
+    );
+    expect(rejected.requiresTenantPayment, isFalse);
+    expect(rejected.primaryStatusLabel, rejected.status.label);
+
     final inProgress = MaintenanceTicketModel.fromJson(
       _ticketJson(status: 'IN_PROGRESS'),
     );
