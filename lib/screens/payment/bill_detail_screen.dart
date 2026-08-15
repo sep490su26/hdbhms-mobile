@@ -3,8 +3,10 @@ import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/payment/tenant_invoice_service.dart';
+import '../../services/notification/notification_service.dart';
 import '../../widgets/app_top_bar.dart';
 import 'qr_payment_page.dart';
+import 'invoice_total_summary.dart';
 import 'utility_complaint_screen.dart';
 
 /// Màn chi tiết hóa đơn: hiển thị breakdown từng dòng, trạng thái,
@@ -14,17 +16,19 @@ class BillDetailScreen extends StatelessWidget {
     super.key,
     required this.invoice,
     required this.invoiceService,
+    this.notificationService = const NotificationService(),
   });
 
   final TenantInvoice invoice;
   final TenantInvoiceService invoiceService;
+  final NotificationService notificationService;
 
   // ── Helpers ──────────────────────────────────────────────────
 
   static const _lineIcons = <String, IconData>{
     'ELECTRICITY': Icons.bolt_rounded,
     'RENT': Icons.apartment_rounded,
-    'SERVICE': Icons.room_service_outlined,
+    'SERVICE': Icons.home_work_outlined,
     'VIOLATION_FINE': Icons.gavel_rounded,
     'MAINTENANCE_COMPENSATION': Icons.build_rounded,
   };
@@ -32,7 +36,7 @@ class BillDetailScreen extends StatelessWidget {
   static const _lineColors = <String, Color>{
     'ELECTRICITY': AppColors.warning,
     'RENT': Color(0xFF6366F1),
-    'SERVICE': AppColors.success,
+    'SERVICE': AppColors.actionCyan,
     'VIOLATION_FINE': Color(0xFFEF4444),
     'MAINTENANCE_COMPENSATION': Color(0xFFF97316),
   };
@@ -317,7 +321,7 @@ class BillDetailScreen extends StatelessWidget {
 
   Widget _buildLineBreakdown() {
     final lines = _presentationLines();
-    if (lines.isEmpty) return const SizedBox.shrink();
+    if (lines.isEmpty) return InvoiceTotalSummary(invoice: invoice);
 
     return Container(
       width: double.infinity,
@@ -382,10 +386,10 @@ class BillDetailScreen extends StatelessWidget {
             final displayLine = entry.value;
             final line = displayLine.line;
             final color = displayLine.serviceGroup
-                ? AppColors.success
+                ? AppColors.actionCyan
                 : _lineColors[line!.lineType] ?? AppColors.bodyText;
             final icon = displayLine.serviceGroup
-                ? Icons.room_service_outlined
+                ? Icons.home_work_outlined
                 : _lineIcons[line!.lineType] ?? Icons.circle_outlined;
             final isLast = idx == lines.length - 1;
 
@@ -545,45 +549,7 @@ class BillDetailScreen extends StatelessWidget {
             );
           }),
 
-          // Total
-          Container(
-            margin: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.infoSurface, Color(0xFFF0FDF4)],
-              ),
-              borderRadius: BorderRadius.circular(AppColors.radiusSm),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.summarize_outlined,
-                  color: AppColors.primary,
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Tổng cộng',
-                  style: TextStyle(
-                    color: AppColors.inputText,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  _fmt(invoice.totalAmount),
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          InvoiceTotalSummary(invoice: invoice),
         ],
       ),
     );
@@ -821,6 +787,7 @@ class BillDetailScreen extends StatelessWidget {
                   builder: (context) => QrPaymentPage(
                     invoice: invoice,
                     invoiceService: invoiceService,
+                    notificationService: notificationService,
                   ),
                 ),
               ),

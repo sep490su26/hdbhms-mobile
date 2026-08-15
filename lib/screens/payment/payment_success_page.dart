@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
+import '../../models/payment/invoice_payment_presentation.dart';
 import '../../services/payment/tenant_invoice_service.dart';
-import '../../widgets/app_top_bar.dart';
 import '../home/home_screen.dart';
 import 'payment_history_page.dart';
 
@@ -105,63 +105,60 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage>
     );
     final theme = _SuccessTheme.fromInvoice(widget.invoice);
 
-    return Scaffold(
-      backgroundColor: theme.background,
-      body: Stack(
-        children: [
-          Positioned.fill(child: _SuccessBackground(theme: theme)),
-          SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 430),
-                child: CustomScrollView(
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: AppTopBar(
-                        title: 'Thanh toán thành công',
-                        onBack: () => Navigator.of(context).maybePop(),
-                      ),
-                    ),
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-                      sliver: SliverList.list(
-                        children: [
-                          _AnimatedSuccessHero(
-                            theme: theme,
-                            badgeScale: _badgeScale,
-                            haloScale: _haloScale,
-                            haloOpacity: _haloOpacity,
-                            checkProgress: _checkProgress,
-                          ),
-                          const SizedBox(height: 20),
-                          FadeTransition(
-                            opacity: _contentOpacity,
-                            child: SlideTransition(
-                              position: _contentOffset,
-                              child: Column(
-                                children: [
-                                  _TransactionCard(data: data, theme: theme),
-                                  const SizedBox(height: 16),
-                                  _ConfirmationNote(theme: theme),
-                                  const SizedBox(height: 20),
-                                  _SuccessActions(
-                                    theme: theme,
-                                    invoiceService: widget.invoiceService,
-                                    invoice: widget.invoice,
-                                  ),
-                                ],
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        backgroundColor: theme.background,
+        body: Stack(
+          children: [
+            Positioned.fill(child: _SuccessBackground(theme: theme)),
+            SafeArea(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 430),
+                  child: CustomScrollView(
+                    slivers: [
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 28, 16, 28),
+                        sliver: SliverList.list(
+                          children: [
+                            _AnimatedSuccessHero(
+                              theme: theme,
+                              badgeScale: _badgeScale,
+                              haloScale: _haloScale,
+                              haloOpacity: _haloOpacity,
+                              checkProgress: _checkProgress,
+                            ),
+                            const SizedBox(height: 20),
+                            FadeTransition(
+                              opacity: _contentOpacity,
+                              child: SlideTransition(
+                                position: _contentOffset,
+                                child: Column(
+                                  children: [
+                                    _TransactionCard(data: data, theme: theme),
+                                    const SizedBox(height: 16),
+                                    _ConfirmationNote(theme: theme),
+                                    const SizedBox(height: 20),
+                                    _SuccessActions(
+                                      theme: theme,
+                                      invoiceService: widget.invoiceService,
+                                      invoice: widget.invoice,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -486,25 +483,6 @@ class _TransactionCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: theme.softAccent,
-                  borderRadius: BorderRadius.circular(AppColors.radiusPill),
-                ),
-                child: Text(
-                  'ĐÃ THANH TOÁN',
-                  style: TextStyle(
-                    color: theme.primary,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 22),
@@ -565,7 +543,7 @@ class _TransactionCard extends StatelessWidget {
             child: Divider(height: 1, color: Color(0xFFE7EAEE)),
           ),
           Text(
-            'DANH SÁCH ĐÃ THANH TOÁN',
+            'CHI TIẾT THANH TOÁN',
             style: TextStyle(
               color: theme.mutedInk,
               fontSize: 11,
@@ -971,9 +949,7 @@ class _SuccessData {
       invoiceCode: invoice.invoiceCode.isEmpty
           ? 'Hóa đơn ${invoice.billingPeriod}'
           : 'Mã hóa đơn: ${invoice.invoiceCode}',
-      paymentTitle: invoice.invoiceType.toUpperCase() == 'RENT'
-          ? 'Tiền phòng'
-          : 'Tiền điện & dịch vụ',
+      paymentTitle: InvoicePaymentPresentation.fromInvoice(invoice).displayName,
       totalAmount: invoice.totalAmount,
       completedAt: completedAt ?? invoice.paidAt ?? DateTime.now().toLocal(),
       items: items,
@@ -1025,20 +1001,20 @@ class _SuccessTheme {
   final Color softSurface;
 
   factory _SuccessTheme.fromInvoice(TenantInvoice? invoice) {
-    final isRent = invoice?.invoiceType.toUpperCase() == 'RENT';
-    if (isRent) {
-      return const _SuccessTheme(
-        icon: Icons.apartment_rounded,
+    if (invoice != null) {
+      final presentation = InvoicePaymentPresentation.fromInvoice(invoice);
+      return _SuccessTheme(
+        icon: presentation.icon,
         background: AppColors.background,
         backgroundEnd: AppColors.background,
-        primary: AppColors.primary,
+        primary: presentation.accentColor,
         secondary: AppColors.accent,
         accent: AppColors.success,
         accentEnd: AppColors.success,
         checkColor: Colors.white,
         ink: AppColors.inputText,
         mutedInk: AppColors.bodyText,
-        softAccent: AppColors.successSurface,
+        softAccent: presentation.accentColor.withValues(alpha: .12),
         softSurface: AppColors.inputFill,
       );
     }

@@ -233,6 +233,7 @@ class LeaseRoom {
     this.propertyId,
     this.propertyName = '',
     this.currentStatus = '',
+    this.maxOccupants,
   });
 
   final int? id;
@@ -243,6 +244,7 @@ class LeaseRoom {
   final int? propertyId;
   final String propertyName;
   final String currentStatus;
+  final int? maxOccupants;
 
   factory LeaseRoom.fromJson(Map<String, dynamic> json) {
     return LeaseRoom(
@@ -272,6 +274,7 @@ class LeaseRoom {
         'roomStatus',
         'room_status',
       ]),
+      maxOccupants: _asInt(json['maxOccupants'] ?? json['max_occupants']),
     );
   }
 }

@@ -7,12 +7,14 @@ import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart'
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
-import 'package:hdbhms_mobile/widgets/app_month_year_picker.dart';
+import 'package:hdbhms_mobile/utils/user_facing_error_message.dart';
 import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 import 'package:hdbhms_mobile/widgets/request_form_widgets.dart';
 import 'package:hdbhms_mobile/widgets/room_picker_sheet.dart';
+
+DateTime firstDayOfNextMonth(DateTime now) => DateTime(now.year, now.month + 1);
 
 class CreateRoomTransferScreen extends StatefulWidget {
   const CreateRoomTransferScreen({
@@ -48,6 +50,7 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
   @override
   void initState() {
     super.initState();
+    _transferDate = firstDayOfNextMonth(DateTime.now());
     _load();
   }
 
@@ -82,7 +85,7 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
       setState(() {
         _loading = false;
         _error = error is LeaseContractException
-            ? error.message
+            ? toUserFacingMessage(error.message)
             : 'Không thể tải thông tin hợp đồng.';
       });
     }
@@ -144,21 +147,6 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
     if (selected != null && mounted) setState(() => _targetRoom = selected);
   }
 
-  Future<void> _pickTransferMonth() async {
-    final today = DateTime.now();
-    final currentMonth = DateTime(today.year, today.month);
-    final picked = await showAppMonthYearPicker(
-      context: context,
-      selectedMonth: _transferDate ?? currentMonth,
-      title: 'Chọn tháng chuyển phòng',
-      firstMonth: currentMonth,
-      lastMonth: DateTime(today.year + 5, today.month),
-    );
-    if (picked != null && mounted) {
-      setState(() => _transferDate = DateTime(picked.year, picked.month, 1));
-    }
-  }
-
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final contractId = _contract?.id;
@@ -199,7 +187,7 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
       setState(() {
         _submitting = false;
         _error = error is RoomTransferException
-            ? error.message
+            ? toUserFacingMessage(error.message)
             : 'Không thể gửi yêu cầu. Vui lòng thử lại.';
       });
     }
@@ -339,42 +327,67 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
             const SizedBox(height: AppColors.space24),
             RequestFormSection(
               icon: Icons.calendar_today_outlined,
-              title: 'Tháng chuyển dự kiến',
+              title: 'Ngày chuyển dự kiến',
               accentColor: AppColors.actionCyan,
               child: FormField<DateTime>(
                 validator: (_) => _transferDate == null
                     ? 'Vui lòng chọn tháng chuyển dự kiến.'
                     : null,
-                builder: (field) => InkWell(
-                  onTap: _submitting
-                      ? null
-                      : () async {
-                          await _pickTransferMonth();
-                          field.didChange(_transferDate);
-                        },
-                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                  child: InputDecorator(
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: AppColors.inputFill,
-                      errorText: field.errorText,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _transferDate == null
-                                ? 'Chọn tháng'
-                                : _monthWithStartDate(_transferDate),
-                            style: _transferDate == null
-                                ? AppTypography.body
-                                : AppTypography.label,
+                builder: (field) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    InputDecorator(
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: AppColors.inputFill,
+                        errorText: field.errorText,
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.calendar_today_outlined,
+                            color: AppColors.actionCyan,
+                            size: 20,
                           ),
-                        ),
-                        const Icon(Icons.calendar_today_outlined, size: 20),
-                      ],
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _transferDate == null
+                                  ? '--'
+                                  : _date(_transferDate),
+                              style: AppTypography.label,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.infoSurface,
+                        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                      ),
+                      child: const Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.info_outline_rounded,
+                            color: AppColors.primary,
+                            size: 18,
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Ngày chuyển phòng được hệ thống ấn định vào ngày 01 của tháng kế tiếp.',
+                              style: AppTypography.caption,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -668,9 +681,6 @@ class _LoadError extends StatelessWidget {
 String _date(DateTime? date) => date == null
     ? '--'
     : '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-String _monthWithStartDate(DateTime? date) => date == null
-    ? '--'
-    : 'Tháng ${date.month.toString().padLeft(2, '0')}/${date.year} (ngày 01)';
 String _dash(String value) => value.trim().isEmpty ? '--' : value;
 String _roomLabel(LeaseContract contract) => _dash(
   contract.room.roomName.isEmpty

@@ -32,6 +32,8 @@ class PaymentPreviewPage extends StatelessWidget {
     invoiceCode: 'RENT-DEMO-001',
     invoiceType: 'RENT',
     totalAmount: 4500000,
+    subtotalAmount: 5000000,
+    discountAmount: 500000,
     transferDescription: 'THANHTOAN RENT DEMO 001',
     lines: const [
       TenantInvoiceLine(
@@ -50,6 +52,8 @@ class PaymentPreviewPage extends StatelessWidget {
     invoiceCode: 'UTILITY-DEMO-001',
     invoiceType: 'UTILITY',
     totalAmount: 906000,
+    subtotalAmount: 956000,
+    discountAmount: 50000,
     transferDescription: 'THANHTOAN UTILITY DEMO 001',
     lines: const [
       TenantInvoiceLine(
@@ -70,6 +74,26 @@ class PaymentPreviewPage extends StatelessWidget {
         quantity: 1,
         unitPrice: 276000,
         amount: 276000,
+      ),
+    ],
+  );
+
+  static final TenantInvoice _maintenanceInvoice = _invoice(
+    id: -107,
+    invoiceCode: 'OTHER-DEMO-001',
+    invoiceType: 'OTHER',
+    totalAmount: 450000,
+    subtotalAmount: 500000,
+    discountAmount: 50000,
+    transferDescription: 'THANHTOAN OTHER DEMO 001',
+    lines: const [
+      TenantInvoiceLine(
+        id: -107,
+        lineType: 'MAINTENANCE_COMPENSATION',
+        description: 'Chi phí sửa chữa thiết bị',
+        quantity: 1,
+        unitPrice: 500000,
+        amount: 500000,
       ),
     ],
   );
@@ -374,6 +398,13 @@ class PaymentPreviewPage extends StatelessWidget {
                 subtitle: 'Kiểm tra form phản hồi chỉ số',
                 onTap: () => _openComplaint(context, _reviewableUtilityInvoice),
               ),
+              const SizedBox(height: 8),
+              _PreviewTile(
+                icon: Icons.handyman_rounded,
+                title: 'Chi tiết hóa đơn sửa chữa',
+                subtitle: 'Kiểm tra giảm giá và ngữ nghĩa chi phí sửa chữa',
+                onTap: () => _openBillDetail(context, _maintenanceInvoice),
+              ),
               const SizedBox(height: 20),
               const _PreviewSectionTitle('Thanh toán'),
               const SizedBox(height: 8),
@@ -392,6 +423,13 @@ class PaymentPreviewPage extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               _PreviewTile(
+                icon: Icons.handyman_rounded,
+                title: 'QR chi phí sửa chữa',
+                subtitle: 'Hóa đơn phát sinh từ phiếu sự cố',
+                onTap: () => _openQr(context, _maintenanceInvoice),
+              ),
+              const SizedBox(height: 8),
+              _PreviewTile(
                 icon: Icons.check_circle_outline_rounded,
                 title: 'Thanh toán thành công tiền phòng',
                 subtitle: 'Trạng thái hoàn tất của hóa đơn tiền phòng',
@@ -399,6 +437,18 @@ class PaymentPreviewPage extends StatelessWidget {
                   MaterialPageRoute(
                     builder: (context) =>
                         PaymentSuccessPage(invoice: _rentInvoice),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              _PreviewTile(
+                icon: Icons.check_circle_outline_rounded,
+                title: 'Thanh toán thành công — sửa chữa',
+                subtitle: 'Ngữ nghĩa hóa đơn phát sinh',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        PaymentSuccessPage(invoice: _maintenanceInvoice),
                   ),
                 ),
               ),
@@ -446,6 +496,13 @@ class PaymentPreviewPage extends StatelessWidget {
                 title: 'Mẫu QR tiền điện & dịch vụ',
                 subtitle: 'Xem trước ảnh QR có thể tải về',
                 onTap: () => _openReceiptPreview(context, _utilityInvoice),
+              ),
+              const SizedBox(height: 8),
+              _PreviewTile(
+                icon: Icons.download_rounded,
+                title: 'Mẫu QR chi phí sửa chữa',
+                subtitle: 'Ảnh QR của hóa đơn phát sinh',
+                onTap: () => _openReceiptPreview(context, _maintenanceInvoice),
               ),
             ],
           ),
@@ -579,6 +636,8 @@ class PaymentPreviewPage extends StatelessWidget {
     DateTime? paidAt,
     int? paidAmount,
     int? remainingAmount,
+    int? subtotalAmount,
+    int discountAmount = 0,
   }) {
     return TenantInvoice(
       id: id,
@@ -594,6 +653,8 @@ class PaymentPreviewPage extends StatelessWidget {
       issuedAt: issuedAt ?? DateTime(2026, 6, 22),
       paidAt: paidAt,
       totalAmount: totalAmount,
+      subtotalAmount: subtotalAmount,
+      discountAmount: discountAmount,
       paidAmount: paidAmount ?? 0,
       remainingAmount: remainingAmount ?? totalAmount,
       paymentIntentId: null,

@@ -14,6 +14,8 @@ class TenantInvoice {
     this.issueDate,
     required this.paidAt,
     required this.totalAmount,
+    int? subtotalAmount,
+    this.discountAmount = 0,
     required this.paidAmount,
     required this.remainingAmount,
     required this.paymentIntentId,
@@ -29,7 +31,7 @@ class TenantInvoice {
     required this.lines,
     required this.priceDifferenceSettlementType,
     this.hasOpenMeterReadingReview = false,
-  });
+  }) : subtotalAmount = subtotalAmount ?? totalAmount + discountAmount;
 
   final int? id;
   final String invoiceCode;
@@ -45,6 +47,8 @@ class TenantInvoice {
   final DateTime? issueDate;
   final DateTime? paidAt;
   final int totalAmount;
+  final int subtotalAmount;
+  final int discountAmount;
   final int paidAmount;
   final int remainingAmount;
   final int? paymentIntentId;
@@ -103,6 +107,10 @@ class TenantInvoice {
   bool get isUtilityType => normalizedInvoiceType == 'UTILITY';
 
   bool get isOtherType => !isRentType && !isUtilityType;
+
+  /// Legacy responses did not return a subtotal. The total stays authoritative;
+  /// this only supplies a presentation fallback for the discount summary.
+  int get resolvedSubtotalAmount => subtotalAmount;
 
   String get invoiceTypeLabel {
     return switch (normalizedInvoiceType) {
@@ -163,6 +171,10 @@ class TenantInvoice {
       ),
       paidAt: DateTime.tryParse(_firstString(json, ['paidAt'])),
       totalAmount: _intField(json, ['totalAmount']),
+      subtotalAmount: json.containsKey('subtotalAmount')
+          ? _intField(json, ['subtotalAmount'])
+          : null,
+      discountAmount: _intField(json, ['discountAmount']),
       paidAmount: _intField(json, ['paidAmount']),
       remainingAmount: _intField(json, ['remainingAmount']),
       paymentIntentId: int.tryParse(_firstString(json, ['paymentIntentId'])),

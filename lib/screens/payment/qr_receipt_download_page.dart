@@ -11,6 +11,7 @@ import 'package:gal/gal.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
+import '../../models/payment/invoice_payment_presentation.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/app_primary_gradient_button.dart';
 import '../../widgets/app_screen_shell.dart';
@@ -249,10 +250,9 @@ class QrReceiptTemplate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isRent = invoice.invoiceType.toUpperCase() == 'RENT';
-    final typeLabel = isRent
-        ? 'THANH TOÁN TIỀN PHÒNG'
-        : 'THANH TOÁN TIỀN ĐIỆN & DỊCH VỤ';
+    final typeLabel = InvoicePaymentPresentation.fromInvoice(
+      invoice,
+    ).receiptHeading;
 
     final infoRows = <({String label, String value, bool highlight})>[
       (label: 'Ngân hàng', value: invoice.bankShortName, highlight: false),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/models/room_transfer/room_transfer_model.dart';
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/utils/user_facing_error_message.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 
@@ -209,7 +210,7 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
         _snack(e.message);
       } catch (_) {
         if (!mounted) return;
-        _snack('Could not complete transfer. Please try again.');
+        _snack('Không thể hoàn tất chuyển phòng. Vui lòng thử lại.');
       } finally {
         if (mounted) setState(() => _submitting = false);
       }
@@ -286,7 +287,7 @@ class _TransferExecutionScreenState extends State<TransferExecutionScreen> {
   void _snack(String msg) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(msg)));
+      ..showSnackBar(SnackBar(content: Text(toUserFacingMessage(msg))));
   }
 
   void _showSuccessDialog() {
@@ -806,7 +807,7 @@ class _MoveOutContextRow extends StatelessWidget {
     final latest = _formatValue(latestValue);
     final handover = _formatValue(handoverValue);
     if (latest != null && handover != null && latest != handover) {
-      return '$latest • BG: $handover';
+      return '$latest • Bàn giao: $handover';
     }
     return handover ?? latest ?? 'Chưa có';
   }

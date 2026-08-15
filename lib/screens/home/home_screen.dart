@@ -20,10 +20,8 @@ import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 import 'package:hdbhms_mobile/widgets/app_skeleton.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
-import 'package:hdbhms_mobile/screens/payment/bill_detail_screen.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/payment/payment_preview_page.dart';
-import 'package:hdbhms_mobile/screens/payment/qr_payment_page.dart';
 import 'package:hdbhms_mobile/screens/contract/contract_hub_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
@@ -212,41 +210,15 @@ class _HomeScreenState extends State<HomeScreen> {
     if (invoices.isEmpty) {
       return;
     }
-
-    if (invoices.length == 1) {
-      final invoice = invoices.first;
-      final isUtility = invoice.invoiceType.toUpperCase() == 'UTILITY';
-      final canOpenQr =
-          invoice.canPay &&
-          (invoice.qrCode.isNotEmpty || invoice.transferDescription.isNotEmpty);
-
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) {
-            if (isUtility || !canOpenQr) {
-              return BillDetailScreen(
-                invoice: invoice,
-                invoiceService: widget.tenantInvoiceService,
-              );
-            }
-            return QrPaymentPage(
-              invoice: invoice,
-              invoiceService: widget.tenantInvoiceService,
-            );
-          },
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => BillSelectionPage(
+          invoiceService: widget.tenantInvoiceService,
+          roomId: _provider.selectedRoom?.roomId,
+          roomCode: _provider.selectedRoom?.roomCode ?? '',
         ),
-      );
-    } else {
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => BillSelectionPage(
-            invoiceService: widget.tenantInvoiceService,
-            roomId: _provider.selectedRoom?.roomId,
-            roomCode: _provider.selectedRoom?.roomCode ?? '',
-          ),
-        ),
-      );
-    }
+      ),
+    );
 
     if (mounted) {
       await _provider.load();
@@ -887,9 +859,7 @@ class _PaymentStatusCard extends StatelessWidget {
     final helperText = hasMultipleBills
         ? 'Có $unpaidCount hóa đơn đang chờ thanh toán. Chọn hóa đơn bạn muốn xử lý.'
         : null;
-    final actionLabel = hasMultipleBills
-        ? 'Chọn khoản thanh toán'
-        : 'Xem chi tiết hóa đơn';
+    const actionLabel = 'Xem các hóa đơn';
 
     final cardGradient = hasUnpaid
         ? const LinearGradient(
@@ -1253,9 +1223,6 @@ class _UtilityCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (activeTrend != null &&
-                    activeTrend.direction != UtilityTrendDirection.unavailable)
-                  _UtilityTrendBadge(trend: activeTrend),
               ],
             ),
             const SizedBox(height: 16),
@@ -1421,66 +1388,6 @@ class _UtilityReadingMetric extends StatelessWidget {
   }
 }
 
-class _UtilityTrendBadge extends StatelessWidget {
-  const _UtilityTrendBadge({required this.trend});
-
-  final UtilityInvoiceTrend trend;
-
-  @override
-  Widget build(BuildContext context) {
-    final (icon, color, background, label) = switch (trend.direction) {
-      UtilityTrendDirection.increase => (
-        Icons.trending_up_rounded,
-        AppColors.danger,
-        AppColors.dangerSurface,
-        'Tăng',
-      ),
-      UtilityTrendDirection.decrease => (
-        Icons.trending_down_rounded,
-        AppColors.success,
-        AppColors.successSurface,
-        'Giảm',
-      ),
-      UtilityTrendDirection.stable => (
-        Icons.trending_flat_rounded,
-        AppColors.darkBlue,
-        AppColors.primaryLight,
-        'Ổn định',
-      ),
-      UtilityTrendDirection.unavailable => (
-        Icons.remove_rounded,
-        AppColors.bodyText,
-        AppColors.surfaceMuted,
-        '',
-      ),
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(AppColors.radiusPill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 16),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              height: 16 / 12,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _UtilityTrendDescription extends StatelessWidget {
   const _UtilityTrendDescription({required this.trend, required this.unit});
 
@@ -1493,7 +1400,7 @@ class _UtilityTrendDescription extends StatelessWidget {
     if (activeTrend == null ||
         activeTrend.direction == UtilityTrendDirection.unavailable) {
       return Text(
-        'Lịch sử tiêu thụ điện',
+        'Xem mức tiêu thụ theo tháng',
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(
@@ -1518,7 +1425,7 @@ class _UtilityTrendDescription extends StatelessWidget {
       UtilityTrendDirection.decrease =>
         'Tiêu thụ giảm ${_formatUsageValue(difference!.abs())} $unit so với tháng trước',
       UtilityTrendDirection.stable => 'Tiêu thụ không đổi so với tháng trước',
-      UtilityTrendDirection.unavailable => 'Lịch sử tiêu thụ điện',
+      UtilityTrendDirection.unavailable => 'Xem mức tiêu thụ theo tháng',
     };
 
     return Text(

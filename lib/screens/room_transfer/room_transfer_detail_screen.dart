@@ -15,6 +15,7 @@ import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.da
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
+import 'package:hdbhms_mobile/utils/user_facing_error_message.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 
@@ -765,7 +766,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                   onPressed: () =>
                       Navigator.of(dialogContext).pop(selectedProfileId),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.deepBlue,
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                   ),
                   child: const Text('Xác nhận'),
@@ -1282,7 +1283,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
   void _snack(String msg) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(msg)));
+      ..showSnackBar(SnackBar(content: Text(toUserFacingMessage(msg))));
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
@@ -2100,7 +2101,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
         case TransferRequestStatus.waitingExecution:
           final message = _transfer!.canPayTransferOutUtility
               ? 'Cần thanh toán hóa đơn điện/nước chuyển phòng #${_transfer!.oldRoomFinalInvoiceId ?? ''} trước khi quản lý hoàn tất chuyển phòng.'
-              : 'Phiên chuyển phòng đang diễn ra. Quản lý hoàn tất check-in phòng mới rồi execute giao dịch.';
+              : 'Quá trình chuyển phòng đang diễn ra. Quản lý sẽ hoàn tất bàn giao phòng mới và thực hiện chuyển phòng.';
           actions.add(
             Container(
               width: double.infinity,
@@ -2626,6 +2627,8 @@ class _ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDanger = color == AppColors.danger;
+    final isSecondary = color == AppColors.deepBlue;
+    final actionColor = isDanger ? AppColors.danger : AppColors.primary;
     final iconWidget = busy
         ? SizedBox(
             width: 18,
@@ -2665,6 +2668,25 @@ class _ActionButton extends StatelessWidget {
                 ),
               ),
             )
+          : isSecondary
+          ? OutlinedButton.icon(
+              onPressed: busy || !enabled ? null : onTap,
+              icon: iconWidget,
+              label: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                ),
+              ),
+            )
           : ElevatedButton.icon(
               onPressed: busy || !enabled ? null : onTap,
               icon: iconWidget,
@@ -2676,9 +2698,9 @@ class _ActionButton extends StatelessWidget {
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: color,
+                backgroundColor: actionColor,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: color.withValues(alpha: 0.5),
+                disabledBackgroundColor: actionColor.withValues(alpha: 0.5),
                 disabledForegroundColor: Colors.white.withValues(alpha: 0.8),
                 elevation: 0,
                 shape: RoundedRectangleBorder(
@@ -2918,21 +2940,21 @@ class _TargetHolderApprovalCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _ApprovalButton(
-                  label: 'Đồng ý',
-                  icon: Icons.check_outlined,
-                  color: AppColors.primary,
-                  busy: busy,
-                  onTap: onApprove,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _ApprovalButton(
                   label: 'Từ chối',
                   icon: Icons.close_outlined,
                   color: AppColors.danger,
                   busy: busy,
                   onTap: onReject,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _ApprovalButton(
+                  label: 'Đồng ý',
+                  icon: Icons.check_outlined,
+                  color: AppColors.primary,
+                  busy: busy,
+                  onTap: onApprove,
                 ),
               ),
             ],

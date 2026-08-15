@@ -32,6 +32,7 @@ class _ForgotPasswordCodePageState extends State<ForgotPasswordCodePage> {
   late final List<TextEditingController> _controllers;
   late final List<FocusNode> _focusNodes;
   Timer? _cooldownTimer;
+  Timer? _successMessageTimer;
   late int _secondsRemaining;
   bool _isResending = false;
   String? _codeError;
@@ -52,6 +53,7 @@ class _ForgotPasswordCodePageState extends State<ForgotPasswordCodePage> {
   @override
   void dispose() {
     _cooldownTimer?.cancel();
+    _successMessageTimer?.cancel();
     for (final controller in _controllers) {
       controller.dispose();
     }
@@ -114,6 +116,12 @@ class _ForgotPasswordCodePageState extends State<ForgotPasswordCodePage> {
         _resendMessage = 'Đã gửi lại mã xác minh.';
         _secondsRemaining = 60;
       });
+      _successMessageTimer?.cancel();
+      if (!(MediaQuery.maybeOf(context)?.disableAnimations ?? false)) {
+        _successMessageTimer = Timer(const Duration(milliseconds: 2800), () {
+          if (mounted) setState(() => _resendMessage = null);
+        });
+      }
       _startCooldown();
     } on ForgotPasswordException catch (error) {
       if (mounted) setState(() => _resendError = error.message);
@@ -252,7 +260,7 @@ class _ForgotPasswordCodePageState extends State<ForgotPasswordCodePage> {
                   ),
                 ),
                 if (_resendMessage != null || _resendError != null) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 10),
                   AuthInlineMessage(
                     message: _resendMessage ?? _resendError!,
                     kind: _resendMessage != null

@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
+import '../../models/payment/invoice_payment_presentation.dart';
 import '../../services/notification/notification_service.dart';
 import '../../services/payment/tenant_invoice_service.dart';
 import '../../widgets/app_top_bar.dart';
@@ -20,12 +21,14 @@ class QrPaymentPage extends StatefulWidget {
     super.key,
     required this.invoice,
     this.invoiceService = const TenantInvoiceService(),
+    this.notificationService = const NotificationService(),
     this.pollInterval = const Duration(seconds: 4),
     this.onPaymentConfirmed,
   });
 
   final TenantInvoice invoice;
   final TenantInvoiceService invoiceService;
+  final NotificationService notificationService;
   final Duration pollInterval;
   final Future<void> Function()? onPaymentConfirmed;
 
@@ -39,7 +42,6 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
   bool _checking = false;
   bool _completed = false;
   bool _downloadingQr = false;
-  final NotificationService _notificationService = const NotificationService();
 
   @override
   void initState() {
@@ -66,7 +68,7 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
     final invoiceId = _invoice.id;
     if (invoiceId == null || invoiceId <= 0) return;
     try {
-      await _notificationService.markTargetAsRead(
+      await widget.notificationService.markTargetAsRead(
         targetType: 'INVOICE',
         targetId: invoiceId,
       );
@@ -937,33 +939,16 @@ class _PaymentVisualTheme {
   final Color softSurface;
 
   factory _PaymentVisualTheme.fromInvoice(TenantInvoice invoice) {
-    final isRent = invoice.invoiceType.toUpperCase() == 'RENT';
-    if (isRent) {
-      return const _PaymentVisualTheme(
-        title: 'Thanh toán tiền phòng',
-        subtitle: 'Khoản thuê phòng định kỳ',
-        icon: Icons.apartment_rounded,
-        background: AppColors.background,
-        backgroundEnd: AppColors.background,
-        primary: AppColors.primary,
-        secondary: AppColors.accent,
-        accent: AppColors.primary,
-        iconColor: Colors.white,
-        ink: AppColors.inputText,
-        mutedInk: AppColors.bodyText,
-        softAccent: AppColors.primaryLight,
-        softSurface: AppColors.inputFill,
-      );
-    }
-    return const _PaymentVisualTheme(
-      title: 'Thanh toán tiền điện & dịch vụ',
-      subtitle: 'Chi phí tiện ích trong kỳ',
-      icon: Icons.bolt_rounded,
+    final presentation = InvoicePaymentPresentation.fromInvoice(invoice);
+    return _PaymentVisualTheme(
+      title: presentation.paymentPageTitle,
+      subtitle: presentation.displayName,
+      icon: presentation.icon,
       background: AppColors.background,
       backgroundEnd: AppColors.background,
       primary: AppColors.primary,
       secondary: AppColors.accent,
-      accent: AppColors.primary,
+      accent: presentation.accentColor,
       iconColor: Colors.white,
       ink: AppColors.inputText,
       mutedInk: AppColors.bodyText,

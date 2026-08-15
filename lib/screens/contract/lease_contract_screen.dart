@@ -7,6 +7,7 @@ import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/contract/lease_contract_model.dart';
 import 'package:hdbhms_mobile/models/profile_request/tenant_request_model.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
+import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
 import 'package:hdbhms_mobile/utils/document_filename.dart';
@@ -29,10 +30,12 @@ class LeaseContractScreen extends StatefulWidget {
     super.key,
     this.contractId,
     this.contractService = const LeaseContractService(),
+    this.roomTransferService = const RoomTransferService(),
   });
 
   final int? contractId;
   final LeaseContractService contractService;
+  final RoomTransferService roomTransferService;
 
   @override
   State<LeaseContractScreen> createState() => _LeaseContractScreenState();
@@ -42,6 +45,7 @@ class _LeaseContractScreenState extends State<LeaseContractScreen> {
   late Future<LeaseContract> _contractFuture;
   int? _roomId;
   String _roomCode = '';
+  int? _resolvedMaxOccupants;
 
   @override
   void initState() {
@@ -54,8 +58,40 @@ class _LeaseContractScreenState extends State<LeaseContractScreen> {
     final contract = id != null
         ? await widget.contractService.getContractById(id)
         : await widget.contractService.getMyActiveContract();
+    await _resolveRoomCapacity(contract);
     _syncRoomScope(contract);
     return contract;
+  }
+
+  Future<void> _resolveRoomCapacity(LeaseContract contract) async {
+    final embeddedCapacity = contract.room.maxOccupants;
+    if (embeddedCapacity != null && embeddedCapacity > 0) {
+      _resolvedMaxOccupants = embeddedCapacity;
+      return;
+    }
+    final propertyId = contract.room.propertyId;
+    final roomId = contract.room.id;
+    if (propertyId == null ||
+        propertyId <= 0 ||
+        roomId == null ||
+        roomId <= 0) {
+      _resolvedMaxOccupants = null;
+      return;
+    }
+    try {
+      final rooms = await widget.roomTransferService.fetchAvailableRooms(
+        propertyId: propertyId,
+        size: 100,
+      );
+      final room = rooms.where((item) => item.id == roomId).firstOrNull;
+      _resolvedMaxOccupants = room != null && room.maxOccupants > 0
+          ? room.maxOccupants
+          : null;
+    } catch (_) {
+      // Capacity is a progressive enhancement. Leave the action enabled when
+      // the existing read-only room catalog cannot be resolved.
+      _resolvedMaxOccupants = null;
+    }
   }
 
   void _syncRoomScope(LeaseContract contract) {
@@ -126,6 +162,7 @@ class _LeaseContractScreenState extends State<LeaseContractScreen> {
                     child: _ContractContent(
                       contract: contract,
                       contractService: widget.contractService,
+                      resolvedMaxOccupants: _resolvedMaxOccupants,
                       onChanged: _refresh,
                     ),
                   );
@@ -231,11 +268,13 @@ class _ContractContent extends StatelessWidget {
   const _ContractContent({
     required this.contract,
     required this.contractService,
+    required this.resolvedMaxOccupants,
     required this.onChanged,
   });
 
   final LeaseContract contract;
   final LeaseContractService contractService;
+  final int? resolvedMaxOccupants;
   final Future<void> Function() onChanged;
 
   @override
@@ -265,6 +304,7 @@ class _ContractContent extends StatelessWidget {
           _CreateRequestGrid(
             contract: contract,
             contractService: contractService,
+            resolvedMaxOccupants: resolvedMaxOccupants,
             onChanged: onChanged,
           ),
         ],
@@ -277,15 +317,30 @@ class _CreateRequestGrid extends StatelessWidget {
   const _CreateRequestGrid({
     required this.contract,
     required this.contractService,
+    required this.resolvedMaxOccupants,
     required this.onChanged,
   });
 
   final LeaseContract contract;
   final LeaseContractService contractService;
+  final int? resolvedMaxOccupants;
   final Future<void> Function() onChanged;
 
   bool get _isCoOccupant =>
       contract.roleInContract.trim().toUpperCase() == 'CO_OCCUPANT';
+
+  int get _activeOccupantCount =>
+      contract.occupants.where((occupant) => occupant.isActive).length;
+
+  int? get _maxOccupants {
+    final capacity = resolvedMaxOccupants ?? contract.room.maxOccupants;
+    return capacity != null && capacity > 0 ? capacity : null;
+  }
+
+  bool get _isRoomFull {
+    final capacity = _maxOccupants;
+    return capacity != null && _activeOccupantCount >= capacity;
+  }
 
   Future<void> _submitOccupantIntention(
     BuildContext context,
@@ -583,15 +638,14 @@ class _CreateRequestGrid extends StatelessWidget {
             crossAxisSpacing: 10,
             childAspectRatio: 1.55,
             children: [
-              if (contract.canRenew || contract.canRenewBlockedReason.trim().isEmpty)
+              if (contract.canRenew ||
+                  contract.canRenewBlockedReason.trim().isEmpty)
                 AppActionTile(
                   icon: Icons.autorenew_rounded,
                   label: 'Gia hạn hợp đồng',
                   accentColor: AppColors.actionBlue,
-                  onTap: () => _openCreateForm(
-                    context,
-                    TenantRequestType.renewContract,
-                  ),
+                  onTap: () =>
+                      _openCreateForm(context, TenantRequestType.renewContract),
                 ),
               AppActionTile(
                 icon: Icons.cancel_outlined,
@@ -613,12 +667,21 @@ class _CreateRequestGrid extends StatelessWidget {
                 icon: Icons.person_add_outlined,
                 label: 'Thêm người ở cùng',
                 accentColor: AppColors.actionEmerald,
-                onTap: () =>
-                    _openCreateForm(context, TenantRequestType.addRoommate),
+                enabled: !_isRoomFull,
+                disabledReason: _isRoomFull
+                    ? 'Phòng đã đủ số người tối đa${_maxOccupants == null ? '' : ' ($_activeOccupantCount/$_maxOccupants)'}.'
+                    : null,
+                onTap: _isRoomFull
+                    ? null
+                    : () => _openCreateForm(
+                        context,
+                        TenantRequestType.addRoommate,
+                      ),
               ),
             ],
           ),
-          if (!contract.canRenew && contract.canRenewBlockedReason.trim().isNotEmpty)
+          if (!contract.canRenew &&
+              contract.canRenewBlockedReason.trim().isNotEmpty)
             _RenewalBlockedNotice(reason: contract.canRenewBlockedReason),
         ],
       ),

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
+import 'package:hdbhms_mobile/utils/user_facing_error_message.dart';
 import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
 
 class RequestSectionHeader extends StatelessWidget {
@@ -261,7 +262,7 @@ class RequestErrorBanner extends StatelessWidget {
         const SizedBox(width: AppColors.space8),
         Expanded(
           child: Text(
-            message,
+            toUserFacingMessage(message),
             style: AppTypography.body.copyWith(color: AppColors.dangerText),
           ),
         ),

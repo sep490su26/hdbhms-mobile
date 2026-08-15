@@ -220,7 +220,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Đang so sánh'), findsNothing);
-      expect(find.text('Lịch sử tiêu thụ điện'), findsOneWidget);
+      expect(find.text('Xem mức tiêu thụ theo tháng'), findsOneWidget);
     },
   );
 

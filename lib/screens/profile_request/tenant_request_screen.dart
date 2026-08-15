@@ -309,7 +309,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
   String _refundStatusLabel(String status) {
     return switch (status) {
       'APPROVED_WAITING_TENANT_CONFIRMATION' ||
-      'RECORDED_BY_MANAGER' => 'Chờ tenant xác nhận',
+      'RECORDED_BY_MANAGER' => 'Chờ người thuê xác nhận',
       'TENANT_CONFIRMED' => 'Đã xác nhận',
       'WAITING_OWNER_APPROVAL' => 'Chờ chủ trọ duyệt',
       'DISPUTED' => 'Đang phản hồi',
@@ -1941,6 +1941,13 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
     ChangeRequestType.rentPriceAdjustment => AppColors.primaryLight,
   };
 
+  /// Request progress is semantic: normal progression is green regardless of
+  /// the request category, while terminal failures remain danger-coloured.
+  Color get _progressAccentColor =>
+      widget.changeRequest.requestType == ChangeRequestType.roomTransfer
+      ? _accentColor
+      : AppColors.successText;
+
   Color get _statusColor => switch (widget.changeRequest.status) {
     ChangeRequestStatus.pending => const Color(0xFFD97706),
     ChangeRequestStatus.underReview => const Color(0xFF0284C7),
@@ -2280,7 +2287,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
         status == ChangeRequestStatus.rejected ||
             status == ChangeRequestStatus.cancelled
         ? AppColors.danger
-        : _accentColor;
+        : _progressAccentColor;
     return [
       for (var i = 0; i < steps.length; i++)
         _ProgressStepRow(
@@ -2363,7 +2370,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
           isLast: i == steps.length - 1,
           color: rejected || cancelled || disputed
               ? const Color(0xFFDC2626)
-              : _accentColor,
+              : _progressAccentColor,
         ),
     ];
   }
@@ -2412,7 +2419,9 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
           isDone: !rejected && !cancelled && currentIndex > i,
           isActive: currentIndex == i,
           isLast: i == steps.length - 1,
-          color: rejected || cancelled ? AppColors.danger : _accentColor,
+          color: rejected || cancelled
+              ? AppColors.danger
+              : _progressAccentColor,
         ),
     ];
   }

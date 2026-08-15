@@ -4,6 +4,7 @@ import 'package:hdbhms_mobile/widgets/app_date_picker.dart';
 import 'package:hdbhms_mobile/models/room_transfer/room_transfer_model.dart';
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/utils/user_facing_error_message.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 
@@ -122,14 +123,14 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
     }
 
     if (!_isCompletePhase && outData == null) {
-      _snack('Transfer checkout requires old-room readings.');
+      _snack('Cần nhập chỉ số điện phòng cũ trước khi hoàn tất bàn giao.');
       return;
     }
     if (_isCompletePhase &&
         widget.transferRequest.targetTransferType ==
             TargetTransferType.newContract &&
         inData == null) {
-      _snack('Transfer completion requires new-room readings.');
+      _snack('Cần nhập chỉ số điện phòng mới trước khi hoàn tất chuyển phòng.');
       return;
     }
 
@@ -202,7 +203,7 @@ class _TransferHandoverScreenState extends State<TransferHandoverScreen> {
   void _snack(String msg) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(msg)));
+      ..showSnackBar(SnackBar(content: Text(toUserFacingMessage(msg))));
   }
 
   void _showSuccessDialog() {

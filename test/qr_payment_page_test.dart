@@ -4,6 +4,7 @@ import 'package:hdbhms_mobile/models/payment/tenant_invoice_model.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_detail_screen.dart';
 import 'package:hdbhms_mobile/screens/payment/qr_payment_page.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
+import 'package:hdbhms_mobile/services/notification/notification_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 void main() {
@@ -87,6 +88,7 @@ void main() {
         home: BillDetailScreen(
           invoice: invoice,
           invoiceService: TenantInvoiceService(),
+          notificationService: _NoopNotificationService(),
         ),
       ),
     );
@@ -111,4 +113,14 @@ void main() {
     expect(find.text('Chi tiết hóa đơn'), findsOneWidget);
     expect(find.text('Xem chi tiết và thanh toán'), findsNothing);
   });
+}
+
+class _NoopNotificationService extends NotificationService {
+  const _NoopNotificationService();
+
+  @override
+  Future<void> markTargetAsRead({
+    required String targetType,
+    required int targetId,
+  }) async {}
 }
