@@ -3,11 +3,14 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/models/home/electricity_consumption_entry.dart';
+import 'package:hdbhms_mobile/services/notification/notification_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/widgets/app_list_state.dart';
+import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
+import 'package:hdbhms_mobile/screens/notification/notification_list_screen.dart';
 
 /// A chart-only point. Synthetic points are never added to invoice data or the
 /// detail list: they only make missing eligible months visually explicit.
@@ -115,11 +118,13 @@ class ElectricityConsumptionHistoryScreen extends StatelessWidget {
     required this.entries,
     required this.roomLabel,
     required this.occupancyStart,
+    this.notificationService = const NotificationService(),
   });
 
   final List<ElectricityConsumptionEntry> entries;
   final String roomLabel;
   final DateTime? occupancyStart;
+  final NotificationService notificationService;
 
   @override
   Widget build(BuildContext context) {
@@ -137,6 +142,21 @@ class ElectricityConsumptionHistoryScreen extends StatelessWidget {
           header: AppTopBar(
             title: 'Lịch sử tiêu thụ điện',
             onBack: () => Navigator.of(context).pop(),
+            trailing: IconButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const NotificationListScreen(),
+                ),
+              ),
+              constraints: const BoxConstraints.tightFor(
+                width: AppColors.minimumTouchTarget,
+                height: AppColors.minimumTouchTarget,
+              ),
+              icon: AppNotificationBell(
+                notificationService: notificationService,
+              ),
+              tooltip: 'Thông báo',
+            ),
           ),
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),

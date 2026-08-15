@@ -38,7 +38,7 @@ class PaymentPreviewPage extends StatelessWidget {
     lines: const [
       TenantInvoiceLine(
         id: -101,
-        lineType: 'RENT',
+        lineType: 'ROOM_RENT',
         description: 'Tiền phòng tháng 06/2026',
         quantity: 1,
         unitPrice: 4500000,
@@ -51,8 +51,8 @@ class PaymentPreviewPage extends StatelessWidget {
     id: -102,
     invoiceCode: 'UTILITY-DEMO-001',
     invoiceType: 'UTILITY',
-    totalAmount: 906000,
-    subtotalAmount: 956000,
+    totalAmount: 880000,
+    subtotalAmount: 930000,
     discountAmount: 50000,
     transferDescription: 'THANHTOAN UTILITY DEMO 001',
     lines: const [
@@ -69,11 +69,11 @@ class PaymentPreviewPage extends StatelessWidget {
       ),
       TenantInvoiceLine(
         id: -106,
-        lineType: 'SERVICE',
+        lineType: 'SERVICE_FEE',
         description: 'Phí dịch vụ',
-        quantity: 1,
-        unitPrice: 276000,
-        amount: 276000,
+        quantity: 6,
+        unitPrice: 50000,
+        amount: 300000,
       ),
     ],
   );
@@ -388,8 +388,7 @@ class PaymentPreviewPage extends StatelessWidget {
                 icon: Icons.receipt_long_rounded,
                 title: 'Chi tiết hóa đơn tiền điện & dịch vụ',
                 subtitle: 'Hiển thị chỉ số và quyền khiếu nại',
-                onTap: () =>
-                    _openBillDetail(context, _reviewableUtilityInvoice),
+                onTap: () => _openBillDetail(context, _utilityInvoice),
               ),
               const SizedBox(height: 8),
               _PreviewTile(
@@ -588,8 +587,10 @@ class PaymentPreviewPage extends StatelessWidget {
   void _openAllInvoicesPreview(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) =>
-            BillSelectionPage(previewInvoices: _allInvoicesPreview),
+        builder: (context) => BillSelectionPage(
+          previewInvoices: _allInvoicesPreview,
+          previewServicePaymentCycleMonths: 3,
+        ),
       ),
     );
   }
@@ -597,8 +598,13 @@ class PaymentPreviewPage extends StatelessWidget {
   void _openBillDetail(BuildContext context, TenantInvoice invoice) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) =>
-            BillDetailScreen(invoice: invoice, invoiceService: _invoiceService),
+        builder: (context) => BillDetailScreen(
+          invoice: invoice,
+          invoiceService: _invoiceService,
+          servicePaymentCycleMonths: invoice.id == _utilityInvoice.id
+              ? 3
+              : null,
+        ),
       ),
     );
   }

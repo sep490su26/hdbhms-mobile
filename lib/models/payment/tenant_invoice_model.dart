@@ -69,7 +69,9 @@ class TenantInvoice {
 
   List<TenantInvoiceLine> get utilityMeterLines => lines
       .where(
-        (line) => line.lineType == 'ELECTRICITY' || line.lineType == 'WATER',
+        (line) =>
+            line.normalizedLineType == 'ELECTRICITY' ||
+            line.normalizedLineType == 'WATER',
       )
       .toList(growable: false);
 
@@ -133,12 +135,14 @@ class TenantInvoice {
   }
 
   String get title {
-    final hasViolation = lines.any((line) => line.lineType == 'VIOLATION_FINE');
+    final hasViolation = lines.any(
+      (line) => line.normalizedLineType == 'VIOLATION_FINE',
+    );
     if (hasViolation) {
       return 'Phạt vi phạm nội quy';
     }
     final hasMaintenanceCompensation = lines.any(
-      (line) => line.lineType == 'MAINTENANCE_COMPENSATION',
+      (line) => line.normalizedLineType == 'MAINTENANCE_COMPENSATION',
     );
     if (hasMaintenanceCompensation) {
       return 'Bồi thường chi phí bảo trì';
@@ -237,6 +241,23 @@ class TenantInvoiceLine {
   final String reviewStatus;
   final int? openReviewId;
   final bool canComplain;
+
+  /// Presentation-only compatibility layer. Keep [lineType] unchanged because
+  /// it is the raw backend value used by existing API contracts.
+  String get normalizedLineType {
+    return switch (lineType.trim().toUpperCase()) {
+      'ROOM_RENT' || 'RENT' => 'RENT',
+      'SERVICE_FEE' || 'SERVICE' => 'SERVICE',
+      'ELECTRICITY' => 'ELECTRICITY',
+      'WATER' => 'WATER',
+      'MAINTENANCE_COMPENSATION' => 'MAINTENANCE_COMPENSATION',
+      'VIOLATION_FINE' => 'VIOLATION_FINE',
+      'TRANSFER_DIFFERENCE' => 'TRANSFER_DIFFERENCE',
+      'DEPOSIT_DEDUCTION' => 'DEPOSIT_DEDUCTION',
+      'MANUAL_ADJUSTMENT' => 'MANUAL_ADJUSTMENT',
+      _ => 'OTHER',
+    };
+  }
 
   bool get hasOpenReview =>
       openReviewId != null ||

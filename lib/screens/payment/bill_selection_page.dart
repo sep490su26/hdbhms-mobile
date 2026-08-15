@@ -28,6 +28,7 @@ class BillSelectionPage extends StatefulWidget {
     this.roomId,
     this.roomCode = '',
     this.previewInvoices,
+    this.previewServicePaymentCycleMonths,
     this.notificationInitialUnreadCount,
   });
 
@@ -38,6 +39,11 @@ class BillSelectionPage extends StatefulWidget {
 
   /// Local-only invoices used by the internal preview launcher.
   final List<TenantInvoice>? previewInvoices;
+
+  /// Local-only contract cycle used to render a demonstrably correct service
+  /// fee breakdown in the internal preview flow. Production screens load the
+  /// cycle from the invoice contract instead.
+  final int? previewServicePaymentCycleMonths;
   final int? notificationInitialUnreadCount;
 
   @override
@@ -189,6 +195,8 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
               builder: (context) => BillDetailScreen(
                 invoice: invoice,
                 invoiceService: widget.invoiceService,
+                servicePaymentCycleMonths:
+                    widget.previewServicePaymentCycleMonths,
               ),
             ),
           )

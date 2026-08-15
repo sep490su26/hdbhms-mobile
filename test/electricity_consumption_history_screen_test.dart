@@ -4,6 +4,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hdbhms_mobile/models/home/electricity_consumption_entry.dart';
 import 'package:hdbhms_mobile/models/payment/tenant_invoice_model.dart';
 import 'package:hdbhms_mobile/screens/home/electricity_consumption_history_screen.dart';
+import 'package:hdbhms_mobile/services/notification/notification_service.dart';
+import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
+
+class _FakeNotificationService extends NotificationService {
+  const _FakeNotificationService();
+
+  @override
+  Future<int> getUnreadCount() async => 3;
+}
 
 ElectricityConsumptionEntry _entry({
   required String period,
@@ -70,6 +79,7 @@ Widget _screen(List<ElectricityConsumptionEntry> entries) => MaterialApp(
     entries: entries,
     roomLabel: 'Phòng 103',
     occupancyStart: DateTime(2026, 5, 15),
+    notificationService: const _FakeNotificationService(),
   ),
 );
 
@@ -102,8 +112,11 @@ void main() {
 
   testWidgets('history empty state remains usable', (tester) async {
     await tester.pumpWidget(_screen(const []));
+    await tester.pump();
 
     expect(find.text('Lịch sử tiêu thụ điện'), findsOneWidget);
+    expect(find.byType(AppNotificationBell), findsOneWidget);
+    expect(find.text('3'), findsOneWidget);
     expect(find.text('Chưa có dữ liệu tiêu thụ điện'), findsOneWidget);
   });
 

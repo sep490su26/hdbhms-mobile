@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:hdbhms_mobile/models/home/home_summary_model.dart';
+import 'package:hdbhms_mobile/models/profile_request/tenant_profile_model.dart';
 import 'package:hdbhms_mobile/screens/tenant_overview/tenant_overview_screen.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
+import 'package:hdbhms_mobile/services/notification/notification_service.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
 import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 
@@ -54,6 +56,24 @@ class _FakeHomeService extends HomeService {
   }
 }
 
+class _FakeNotificationService extends NotificationService {
+  const _FakeNotificationService();
+
+  @override
+  Future<int> getUnreadCount() async => 2;
+}
+
+class _FakeProfileService extends TenantProfileService {
+  const _FakeProfileService();
+
+  @override
+  Future<TenantProfileResponse> getMyProfile() async =>
+      TenantProfileResponse.fromJson({
+        'tenantProfileId': 1,
+        'person': {'fullName': 'Tenant'},
+      });
+}
+
 class _FakeLeaseContractService extends LeaseContractService {
   const _FakeLeaseContractService();
 
@@ -90,8 +110,9 @@ void main() {
           authService: AuthService(),
           homeService: _FakeHomeService(),
           leaseContractService: _FakeLeaseContractService(),
-          profileService: TenantProfileService(),
+          profileService: _FakeProfileService(),
           tenantInvoiceService: TenantInvoiceService(),
+          notificationService: _FakeNotificationService(),
         ),
       ),
     );
