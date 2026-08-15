@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/utils/user_facing_error_message.dart';
@@ -459,6 +458,7 @@ class RequestFormScaffold extends StatelessWidget {
 Future<void> showRequestSuccessSheet(
   BuildContext context, {
   required String message,
+  required VoidCallback onViewRequests,
   required VoidCallback onReturnToContract,
 }) => showDialog<void>(
   context: context,
@@ -470,9 +470,7 @@ Future<void> showRequestSuccessSheet(
       message: message,
       onViewRequests: () {
         Navigator.of(dialogContext, rootNavigator: true).pop();
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const TenantRequestScreen()),
-        );
+        onViewRequests();
       },
       onReturnToContract: () {
         Navigator.of(dialogContext, rootNavigator: true).pop();

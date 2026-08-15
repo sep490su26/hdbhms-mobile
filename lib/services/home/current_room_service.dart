@@ -1,6 +1,11 @@
 import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 
+class CurrentRoomAmbiguousException extends LeaseContractException {
+  const CurrentRoomAmbiguousException()
+    : super('Không xác định được phòng đang thao tác khi có nhiều phòng.');
+}
+
 class CurrentRoomService {
   const CurrentRoomService({LeaseContractService? leaseContractService})
     : _leaseContractService = leaseContractService;
@@ -16,15 +21,13 @@ class CurrentRoomService {
       throw const LeaseContractNotFoundException();
     }
 
-    final room = rooms.firstWhere(
-      (item) => item.roomId > 0,
-      orElse: () => rooms.first,
-    );
-
-    if (room.roomId <= 0) {
+    final validRooms = rooms.where((item) => item.roomId > 0).toList();
+    if (validRooms.isEmpty) {
       throw const LeaseContractException('Không tìm thấy phòng đang thuê');
     }
+    if (validRooms.length > 1) throw const CurrentRoomAmbiguousException();
 
+    final room = validRooms.single;
     return CurrentRentedRoom(id: room.roomId, roomCode: room.roomCode);
   }
 }

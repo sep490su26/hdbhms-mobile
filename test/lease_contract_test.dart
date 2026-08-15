@@ -228,7 +228,7 @@ void main() {
           expect(request.method, 'GET');
           expect(request.url.path, '/api/v1/lease-contracts/me');
           expect(request.url.queryParameters['status'], 'ACTIVE');
-          expect(request.url.queryParameters['size'], '1');
+          expect(request.url.queryParameters['size'], '2');
 
           return http.Response(
             jsonEncode({

@@ -26,12 +26,14 @@ class PaymentHistoryPage extends StatefulWidget {
     this.currentRoomService = const CurrentRoomService(),
     this.roomId,
     this.roomCode = '',
+    this.notificationInitialUnreadCount,
   });
 
   final TenantInvoiceService invoiceService;
   final CurrentRoomService currentRoomService;
   final int? roomId;
   final String roomCode;
+  final int? notificationInitialUnreadCount;
 
   @override
   State<PaymentHistoryPage> createState() => _PaymentHistoryPageState();
@@ -40,6 +42,7 @@ class PaymentHistoryPage extends StatefulWidget {
 class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
   final TextEditingController _searchController = TextEditingController();
   late Future<List<TenantInvoice>> _invoicesFuture;
+  RoomScope _roomScope = const RoomScope();
   DateTime? _selectedPaidMonth;
   _HistoryInvoiceTypeFilter _selectedTypeFilter = _HistoryInvoiceTypeFilter.all;
 
@@ -68,6 +71,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
       roomCode: widget.roomCode,
       currentRoomService: widget.currentRoomService,
     );
+    _roomScope = scope;
     if (!scope.hasRoom) return const [];
     return widget.invoiceService.fetchMyInvoices(
       roomId: scope.roomId,
@@ -89,7 +93,10 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: AppScreenShell(
-          header: const _HistoryHeader(),
+          header: _HistoryHeader(
+            notificationInitialUnreadCount:
+                widget.notificationInitialUnreadCount,
+          ),
           child: FutureBuilder<List<TenantInvoice>>(
             future: _invoicesFuture,
             builder: (context, snapshot) {
@@ -169,8 +176,8 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => MaintenanceTicketListScreen(
-                roomId: widget.roomId,
-                roomCode: widget.roomCode,
+                roomId: _activeRoomId,
+                roomCode: _activeRoomCode,
               ),
             ),
           );
@@ -178,21 +185,29 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
         onProfileTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => const TenantProfileScreen(),
+              builder: (context) => TenantProfileScreen(
+                roomId: _activeRoomId,
+                roomCode: _activeRoomCode,
+              ),
             ),
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => TenantRequestScreen(
-              roomId: widget.roomId,
-              roomCode: widget.roomCode,
+              roomId: _activeRoomId,
+              roomCode: _activeRoomCode,
             ),
           ),
         ),
       ),
     );
   }
+
+  int? get _activeRoomId => _roomScope.roomId ?? widget.roomId;
+
+  String get _activeRoomCode =>
+      _roomScope.roomCode.isNotEmpty ? _roomScope.roomCode : widget.roomCode;
 
   List<TenantInvoice> _paidInvoices(List<TenantInvoice> invoices) {
     final result = invoices.where((invoice) => invoice.isPaid).toList()
@@ -254,7 +269,9 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
 // ── Header ────────────────────────────────────────────────────────────────────
 
 class _HistoryHeader extends StatelessWidget {
-  const _HistoryHeader();
+  const _HistoryHeader({this.notificationInitialUnreadCount});
+
+  final int? notificationInitialUnreadCount;
 
   @override
   Widget build(BuildContext context) {
@@ -267,7 +284,9 @@ class _HistoryHeader extends StatelessWidget {
             builder: (context) => const NotificationListScreen(),
           ),
         ),
-        icon: const AppNotificationBell(),
+        icon: AppNotificationBell(
+          initialUnreadCount: notificationInitialUnreadCount,
+        ),
         tooltip: 'Thông báo',
       ),
     );
@@ -494,21 +513,21 @@ class _HistoryTypeFilterBar extends StatelessWidget {
       child: Row(
         children: [
           AppFilterChip(
-            label: 'Mọi loại',
-            icon: Icons.category_outlined,
+            label: 'Tất cả',
+            icon: Icons.grid_view_rounded,
             isActive: selectedFilter == _HistoryInvoiceTypeFilter.all,
             onTap: () => onChanged(_HistoryInvoiceTypeFilter.all),
           ),
           const SizedBox(width: 8),
           AppFilterChip(
-            label: 'Tiền phòng',
-            icon: Icons.apartment_rounded,
+            label: 'Tiền phòng & dịch vụ',
+            icon: Icons.home_work_outlined,
             isActive: selectedFilter == _HistoryInvoiceTypeFilter.rent,
             onTap: () => onChanged(_HistoryInvoiceTypeFilter.rent),
           ),
           const SizedBox(width: 8),
           AppFilterChip(
-            label: 'Tiền điện & dịch vụ',
+            label: 'Tiền điện',
             icon: Icons.bolt_rounded,
             isActive: selectedFilter == _HistoryInvoiceTypeFilter.utility,
             onTap: () => onChanged(_HistoryInvoiceTypeFilter.utility),

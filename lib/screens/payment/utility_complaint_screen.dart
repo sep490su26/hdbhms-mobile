@@ -35,7 +35,7 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
   void initState() {
     super.initState();
     _lines = widget.invoice.reviewableUtilityLines
-        .where((line) => line.lineType == 'ELECTRICITY')
+        .where((line) => line.normalizedLineType == 'ELECTRICITY')
         .toList(growable: false);
     _selectedLine = _lines.isEmpty ? null : _lines.first;
   }
@@ -589,7 +589,7 @@ class _ReadingSnapshotCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isElec = line.lineType == 'ELECTRICITY';
+    final isElec = line.normalizedLineType == 'ELECTRICITY';
     final accentColor = isElec ? AppColors.warning : const Color(0xFF0EA5E9);
     final bgColor = isElec ? AppColors.warningSurface : AppColors.infoSurface;
     final unit = isElec ? 'kWh' : 'm³';

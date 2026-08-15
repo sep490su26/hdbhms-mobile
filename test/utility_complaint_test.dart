@@ -9,6 +9,8 @@ class _RecordingInvoiceService extends TenantInvoiceService {
 
   double? reportedCurrentValue;
   String? description;
+  int? invoiceId;
+  int? lineId;
 
   @override
   Future<void> submitMeterReadingReview({
@@ -17,19 +19,21 @@ class _RecordingInvoiceService extends TenantInvoiceService {
     required double reportedCurrentValue,
     required String description,
   }) async {
+    this.invoiceId = invoiceId;
+    this.lineId = lineId;
     this.reportedCurrentValue = reportedCurrentValue;
     this.description = description;
   }
 }
 
 TenantInvoice _invoice() => TenantInvoice(
-  id: 12,
+  id: 1203,
   invoiceCode: 'INV-12',
   invoiceType: 'UTILITY',
   billingPeriod: '2026-08',
   status: 'ISSUED',
-  roomId: 201,
-  roomCode: '201',
+  roomId: 103,
+  roomCode: '103',
   contractId: 9,
   contractCode: 'HD-201',
   dueDate: DateTime(2026, 8, 10),
@@ -50,7 +54,7 @@ TenantInvoice _invoice() => TenantInvoice(
   transferDescription: '',
   lines: const [
     TenantInvoiceLine(
-      id: 88,
+      id: 8803,
       lineType: 'ELECTRICITY',
       description: 'Điện tháng 08/2026',
       quantity: 50,
@@ -103,6 +107,8 @@ void main() {
     await tester.tap(submit);
     await tester.pumpAndSettle();
     expect(service.reportedCurrentValue, 130);
+    expect(service.invoiceId, 1203);
+    expect(service.lineId, 8803);
     expect(service.description, 'Chỉ số điện trên đồng hồ thực tế thấp hơn.');
   });
 }

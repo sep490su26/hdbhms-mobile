@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import '../../models/payment/invoice_payment_presentation.dart';
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/home/current_room_service.dart';
 import '../../services/payment/tenant_invoice_service.dart';
@@ -28,6 +29,7 @@ class BillSelectionPage extends StatefulWidget {
     this.roomId,
     this.roomCode = '',
     this.previewInvoices,
+    this.previewServicePaymentCycleMonths,
     this.notificationInitialUnreadCount,
   });
 
@@ -38,6 +40,11 @@ class BillSelectionPage extends StatefulWidget {
 
   /// Local-only invoices used by the internal preview launcher.
   final List<TenantInvoice>? previewInvoices;
+
+  /// Local-only contract cycle used to render a demonstrably correct service
+  /// fee breakdown in the internal preview flow. Production screens load the
+  /// cycle from the invoice contract instead.
+  final int? previewServicePaymentCycleMonths;
   final int? notificationInitialUnreadCount;
 
   @override
@@ -47,6 +54,7 @@ class BillSelectionPage extends StatefulWidget {
 class _BillSelectionPageState extends State<BillSelectionPage> {
   _BillTypeFilter _activeTypeFilter = _BillTypeFilter.all;
   late Future<List<TenantInvoice>> _invoicesFuture;
+  RoomScope _roomScope = const RoomScope();
 
   @override
   void initState() {
@@ -116,8 +124,8 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => MaintenanceTicketListScreen(
-                roomId: widget.roomId,
-                roomCode: widget.roomCode,
+                roomId: _activeRoomId,
+                roomCode: _activeRoomCode,
               ),
             ),
           );
@@ -125,15 +133,18 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
         onProfileTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => const TenantProfileScreen(),
+              builder: (context) => TenantProfileScreen(
+                roomId: _activeRoomId,
+                roomCode: _activeRoomCode,
+              ),
             ),
           );
         },
         onRequestsTap: () => Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => TenantRequestScreen(
-              roomId: widget.roomId,
-              roomCode: widget.roomCode,
+              roomId: _activeRoomId,
+              roomCode: _activeRoomCode,
             ),
           ),
         ),
@@ -155,6 +166,7 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
       roomCode: widget.roomCode,
       currentRoomService: widget.currentRoomService,
     );
+    _roomScope = scope;
     if (!scope.hasRoom) return const [];
     return widget.invoiceService.fetchMyInvoices(
       roomId: scope.roomId,
@@ -168,12 +180,17 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
         builder: (context) => PaymentHistoryPage(
           invoiceService: widget.invoiceService,
           currentRoomService: widget.currentRoomService,
-          roomId: widget.roomId,
-          roomCode: widget.roomCode,
+          roomId: _activeRoomId,
+          roomCode: _activeRoomCode,
         ),
       ),
     );
   }
+
+  int? get _activeRoomId => _roomScope.roomId ?? widget.roomId;
+
+  String get _activeRoomCode =>
+      _roomScope.roomCode.isNotEmpty ? _roomScope.roomCode : widget.roomCode;
 
   void _openInvoicePreviewFlow(BuildContext context, TenantInvoice invoice) {
     final isUtility = invoice.invoiceType.toUpperCase() == 'UTILITY';
@@ -189,6 +206,8 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
               builder: (context) => BillDetailScreen(
                 invoice: invoice,
                 invoiceService: widget.invoiceService,
+                servicePaymentCycleMonths:
+                    widget.previewServicePaymentCycleMonths,
               ),
             ),
           )
@@ -359,15 +378,11 @@ DateTime _invoiceCreatedDate(TenantInvoice invoice) {
 }
 
 IconData _invoiceTypeIcon(TenantInvoice invoice) {
-  if (invoice.isRentType) return Icons.apartment_rounded;
-  if (invoice.isUtilityType) return Icons.bolt_rounded;
-  return Icons.more_horiz_rounded;
+  return InvoicePaymentPresentation.fromInvoice(invoice).icon;
 }
 
 Color _invoiceTypeColor(TenantInvoice invoice) {
-  if (invoice.isRentType) return AppColors.deepBlue;
-  if (invoice.isUtilityType) return const Color(0xFF0EA5E9);
-  return const Color(0xFF64748B);
+  return InvoicePaymentPresentation.fromInvoice(invoice).accentColor;
 }
 
 class _InvoiceTypePill extends StatelessWidget {
@@ -385,21 +400,28 @@ class _InvoiceTypePill extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppColors.radiusPill),
         border: Border.all(color: color.withValues(alpha: 0.18)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(_invoiceTypeIcon(invoice), size: 12, color: color),
-          const SizedBox(width: 4),
-          Text(
-            invoice.invoiceTypeLabel,
-            style: TextStyle(
-              color: color,
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
-              height: 14 / 10,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 180),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(_invoiceTypeIcon(invoice), size: 12, color: color),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                InvoicePaymentPresentation.fromInvoice(invoice).displayName,
+                maxLines: 2,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  height: 14 / 10,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -472,14 +494,14 @@ class _BillFilterBar extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               AppFilterChip(
-                label: 'Tiền phòng',
-                icon: Icons.apartment_rounded,
+                label: 'Tiền phòng & dịch vụ',
+                icon: Icons.home_work_outlined,
                 isActive: activeType == _BillTypeFilter.rent,
                 onTap: () => onTypeChanged(_BillTypeFilter.rent),
               ),
               const SizedBox(width: 8),
               AppFilterChip(
-                label: 'Tiền điện & dịch vụ',
+                label: 'Tiền điện',
                 icon: Icons.bolt_rounded,
                 isActive: activeType == _BillTypeFilter.utility,
                 onTap: () => onTypeChanged(_BillTypeFilter.utility),
@@ -648,12 +670,8 @@ class _PendingBillCard extends StatelessWidget {
                 children: [
                   Container(
                     width: 4,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [AppColors.accentWarm, AppColors.primary],
-                      ),
+                    decoration: BoxDecoration(
+                      color: _invoiceTypeColor(invoice),
                       borderRadius: BorderRadius.horizontal(
                         left: Radius.circular(16),
                       ),
@@ -687,7 +705,7 @@ class _PendingBillCard extends StatelessWidget {
                                       : invoice.totalAmount,
                                 ),
                                 style: const TextStyle(
-                                  color: AppColors.deepBlue,
+                                  color: AppColors.primary,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w900,
                                   height: 21 / 16,

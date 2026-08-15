@@ -14,6 +14,7 @@ import 'package:hdbhms_mobile/models/payment/tenant_invoice_model.dart';
 import 'package:hdbhms_mobile/models/profile_request/tenant_profile_model.dart';
 import 'package:hdbhms_mobile/models/onboarding_action.dart';
 import 'package:hdbhms_mobile/screens/auth/change_password_page.dart';
+import 'package:hdbhms_mobile/screens/payment/qr_payment_page.dart';
 import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/auth/forgot_password_service.dart';
@@ -445,17 +446,54 @@ Future<void> loginAndOpenHome(WidgetTester tester) async {
 }
 
 Future<void> openBillsFromHomeCta(WidgetTester tester) async {
-  final cta =
-      find.text('Ch\u1ECDn kho\u1EA3n thanh to\u00E1n').evaluate().isNotEmpty
-      ? find.text('Ch\u1ECDn kho\u1EA3n thanh to\u00E1n')
-      : find.text('Xem chi ti\u1EBFt h\u00F3a \u0111\u01A1n');
+  final cta = find.text('Xem c\u00E1c h\u00F3a \u0111\u01A1n');
   await tester.ensureVisible(cta);
   await tester.pumpAndSettle();
   await tester.tap(cta);
   await tester.pumpAndSettle();
 }
 
-Future<void> scrollUntilTextVisible(WidgetTester tester, String text) async {
+Future<void> openQrFromBillSelection(WidgetTester tester) async {
+  await tester.tap(find.text('2.450.000\u0111').first);
+  await tester.pumpAndSettle();
+  expect(find.text('Chi ti\u1EBFt h\u00F3a \u0111\u01A1n'), findsOneWidget);
+  await scrollUntilTextVisible(tester, 'Thanh to\u00E1n ngay');
+  await tester.tap(find.text('Thanh to\u00E1n ngay'));
+  await tester.pump(const Duration(seconds: 1));
+  await tester.pump();
+}
+
+Future<void> scrollQrUntilTextVisible(WidgetTester tester, String text) async {
+  final finder = find.text(text);
+  if (finder.evaluate().isEmpty) {
+    await tester.scrollUntilVisible(
+      finder,
+      260,
+      scrollable: find
+          .descendant(
+            of: find.byType(CustomScrollView),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+  } else {
+    await tester.ensureVisible(finder);
+  }
+  await tester.pump();
+}
+
+Future<void> confirmQrPayment(WidgetTester tester) async {
+  _fakeTenantInvoiceService.markPaymentConfirmed();
+  await scrollQrUntilTextVisible(tester, 'Ki\u1EC3m tra l\u1EA1i');
+  await tester.tap(find.text('Ki\u1EC3m tra l\u1EA1i'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> scrollUntilTextVisible(
+  WidgetTester tester,
+  String text, {
+  bool settle = true,
+}) async {
   final finder = find.text(text);
   if (finder.evaluate().isEmpty) {
     await tester.scrollUntilVisible(
@@ -466,7 +504,11 @@ Future<void> scrollUntilTextVisible(WidgetTester tester, String text) async {
   } else {
     await tester.ensureVisible(finder);
   }
-  await tester.pumpAndSettle();
+  if (settle) {
+    await tester.pumpAndSettle();
+  } else {
+    await tester.pump();
+  }
 }
 
 Future<void> pumpTenantProfile(
@@ -524,10 +566,7 @@ void main() {
     await openBillsFromHomeCta(tester);
 
     expect(find.text('H\u00F3a \u0111\u01A1n'), findsWidgets);
-    expect(
-      find.text('H\u00D3A \u0110\u01A0N \u0110\u00C3 THANH TO\u00C1N'),
-      findsOneWidget,
-    );
+    expect(find.text('CH\u1EDC THANH TO\u00C1N'), findsWidgets);
     expect(find.byTooltip('L\u1ECBch s\u1EED thanh to\u00E1n'), findsOneWidget);
   });
 
@@ -543,7 +582,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('H\u00F3a \u0111\u01A1n'), findsWidgets);
-    expect(find.text('Ti\u1EC1n ph\u00F2ng'), findsWidgets);
+    expect(find.text('Ti\u1EC1n ph\u00F2ng & d\u1ECBch v\u1EE5'), findsWidgets);
     expect(find.byTooltip('L\u1ECBch s\u1EED thanh to\u00E1n'), findsOneWidget);
   });
 
@@ -557,21 +596,18 @@ void main() {
 
     await openBillsFromHomeCta(tester);
 
-    await tester.tap(find.text('2.450.000\u0111').first);
-    await tester.pumpAndSettle();
+    await openQrFromBillSelection(tester);
 
-    expect(find.text('Thanh to\u00E1n ti\u1EC1n ph\u00F2ng'), findsWidgets);
-    expect(find.text('2.450.000\u0111'), findsOneWidget);
-    await scrollUntilTextVisible(tester, 'RESIDENT_99283_JULY');
+    expect(find.byType(QrPaymentPage), findsOneWidget);
+    expect(find.text('2.450.000\u0111'), findsNWidgets(2));
+    await scrollQrUntilTextVisible(tester, 'RESIDENT_99283_JULY');
     expect(find.text('RESIDENT_99283_JULY'), findsOneWidget);
-    await scrollUntilTextVisible(
-      tester,
-      'T\u00F4i \u0111\u00E3 chuy\u1EC3n kho\u1EA3n',
-    );
     expect(
       find.text('T\u00F4i \u0111\u00E3 chuy\u1EC3n kho\u1EA3n'),
-      findsOneWidget,
+      findsNothing,
     );
+    await scrollQrUntilTextVisible(tester, 'Ki\u1EC3m tra l\u1EA1i');
+    expect(find.text('Ki\u1EC3m tra l\u1EA1i'), findsOneWidget);
   });
 
   testWidgets('opens payment success after confirming paid', (
@@ -584,16 +620,8 @@ void main() {
 
     await openBillsFromHomeCta(tester);
 
-    await tester.tap(find.text('2.450.000\u0111').first);
-    await tester.pumpAndSettle();
-
-    await scrollUntilTextVisible(
-      tester,
-      'T\u00F4i \u0111\u00E3 chuy\u1EC3n kho\u1EA3n',
-    );
-    _fakeTenantInvoiceService.markPaymentConfirmed();
-    await tester.tap(find.text('T\u00F4i \u0111\u00E3 chuy\u1EC3n kho\u1EA3n'));
-    await tester.pumpAndSettle();
+    await openQrFromBillSelection(tester);
+    await confirmQrPayment(tester);
 
     expect(find.text('Thanh to\u00E1n th\u00E0nh c\u00F4ng!'), findsOneWidget);
     expect(find.text('#TXN-882910'), findsOneWidget);
@@ -611,16 +639,8 @@ void main() {
 
     await openBillsFromHomeCta(tester);
 
-    await tester.tap(find.text('2.450.000\u0111').first);
-    await tester.pumpAndSettle();
-
-    await scrollUntilTextVisible(
-      tester,
-      'T\u00F4i \u0111\u00E3 chuy\u1EC3n kho\u1EA3n',
-    );
-    _fakeTenantInvoiceService.markPaymentConfirmed();
-    await tester.tap(find.text('T\u00F4i \u0111\u00E3 chuy\u1EC3n kho\u1EA3n'));
-    await tester.pumpAndSettle();
+    await openQrFromBillSelection(tester);
+    await confirmQrPayment(tester);
 
     await scrollUntilTextVisible(
       tester,
@@ -637,7 +657,6 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('T\u1EA5t c\u1EA3 th\u00E1ng'), findsOneWidget);
-    expect(find.text('S\u1EEDa t\u1EE7 l\u1EA1nh'), findsOneWidget);
   });
 
   testWidgets('opens payment history from bill selection', (

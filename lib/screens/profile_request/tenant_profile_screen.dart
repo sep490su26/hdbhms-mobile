@@ -34,12 +34,16 @@ class TenantProfileScreen extends StatefulWidget {
     this.authService = const AuthService(),
     this.homeService = const HomeService(),
     this.showBottomNavigation = true,
+    this.roomId,
+    this.roomCode = '',
   });
 
   final TenantProfileService profileService;
   final AuthService authService;
   final HomeService homeService;
   final bool showBottomNavigation;
+  final int? roomId;
+  final String roomCode;
 
   @override
   State<TenantProfileScreen> createState() => _TenantProfileScreenState();
@@ -196,21 +200,30 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
                 onBillsTap: () {
                   Navigator.of(ctx).push(
                     MaterialPageRoute(
-                      builder: (context) => const BillSelectionPage(),
+                      builder: (context) => BillSelectionPage(
+                        roomId: widget.roomId,
+                        roomCode: widget.roomCode,
+                      ),
                     ),
                   );
                 },
                 onSupportTap: () {
                   Navigator.of(ctx).push(
                     MaterialPageRoute(
-                      builder: (context) => const MaintenanceTicketListScreen(),
+                      builder: (context) => MaintenanceTicketListScreen(
+                        roomId: widget.roomId,
+                        roomCode: widget.roomCode,
+                      ),
                     ),
                   );
                 },
                 onProfileTap: () {},
                 onRequestsTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => const TenantRequestScreen(),
+                    builder: (context) => TenantRequestScreen(
+                      roomId: widget.roomId,
+                      roomCode: widget.roomCode,
+                    ),
                   ),
                 ),
               ),

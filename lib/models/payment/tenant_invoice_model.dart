@@ -69,7 +69,9 @@ class TenantInvoice {
 
   List<TenantInvoiceLine> get utilityMeterLines => lines
       .where(
-        (line) => line.lineType == 'ELECTRICITY' || line.lineType == 'WATER',
+        (line) =>
+            line.normalizedLineType == 'ELECTRICITY' ||
+            line.normalizedLineType == 'WATER',
       )
       .toList(growable: false);
 
@@ -108,14 +110,30 @@ class TenantInvoice {
 
   bool get isOtherType => !isRentType && !isUtilityType;
 
+  /// Old utility invoices can contain a service fee from the taxonomy that
+  /// predated the current RENT + SERVICE_FEE composition. This is only used
+  /// to describe the response faithfully in the UI; it never moves or
+  /// changes a backend line.
+  bool get hasServiceLine =>
+      lines.any((line) => line.normalizedLineType == 'SERVICE');
+
+  bool get hasWaterLine =>
+      lines.any((line) => line.normalizedLineType == 'WATER');
+
+  bool get isLegacyUtilityWithService => isUtilityType && hasServiceLine;
+
+  bool get isLegacyUtilityWithWater => isUtilityType && hasWaterLine;
+
   /// Legacy responses did not return a subtotal. The total stays authoritative;
   /// this only supplies a presentation fallback for the discount summary.
   int get resolvedSubtotalAmount => subtotalAmount;
 
   String get invoiceTypeLabel {
     return switch (normalizedInvoiceType) {
-      'RENT' => 'Tiền phòng',
-      'UTILITY' => 'Tiền điện & dịch vụ',
+      'RENT' => 'Tiền phòng & dịch vụ',
+      'UTILITY' when isLegacyUtilityWithService => 'Tiền điện & dịch vụ',
+      'UTILITY' when isLegacyUtilityWithWater => 'Tiền điện & nước',
+      'UTILITY' => 'Tiền điện',
       _ => 'Khác',
     };
   }
@@ -133,21 +151,21 @@ class TenantInvoice {
   }
 
   String get title {
-    final hasViolation = lines.any((line) => line.lineType == 'VIOLATION_FINE');
+    final hasViolation = lines.any(
+      (line) => line.normalizedLineType == 'VIOLATION_FINE',
+    );
     if (hasViolation) {
       return 'Phạt vi phạm nội quy';
     }
     final hasMaintenanceCompensation = lines.any(
-      (line) => line.lineType == 'MAINTENANCE_COMPENSATION',
+      (line) => line.normalizedLineType == 'MAINTENANCE_COMPENSATION',
     );
     if (hasMaintenanceCompensation) {
       return 'Bồi thường chi phí bảo trì';
     }
-    if (isUtilityType) {
-      return 'Hóa đơn tiền điện & dịch vụ ${_periodLabel(billingPeriod)}';
-    }
-    if (isRentType) {
-      return 'Hóa đơn tiền phòng ${_periodLabel(billingPeriod)}';
+    if (isUtilityType || isRentType) {
+      final label = invoiceTypeLabel.toLowerCase();
+      return 'Hóa đơn $label ${_periodLabel(billingPeriod)}';
     }
     final period = _periodLabel(billingPeriod);
     return period.isEmpty ? 'Hóa đơn khác' : 'Hóa đơn khác $period';
@@ -237,6 +255,23 @@ class TenantInvoiceLine {
   final String reviewStatus;
   final int? openReviewId;
   final bool canComplain;
+
+  /// Presentation-only compatibility layer. Keep [lineType] unchanged because
+  /// it is the raw backend value used by existing API contracts.
+  String get normalizedLineType {
+    return switch (lineType.trim().toUpperCase()) {
+      'ROOM_RENT' || 'RENT' => 'RENT',
+      'SERVICE_FEE' || 'SERVICE' => 'SERVICE',
+      'ELECTRICITY' => 'ELECTRICITY',
+      'WATER' => 'WATER',
+      'MAINTENANCE_COMPENSATION' => 'MAINTENANCE_COMPENSATION',
+      'VIOLATION_FINE' => 'VIOLATION_FINE',
+      'TRANSFER_DIFFERENCE' => 'TRANSFER_DIFFERENCE',
+      'DEPOSIT_DEDUCTION' => 'DEPOSIT_DEDUCTION',
+      'MANUAL_ADJUSTMENT' => 'MANUAL_ADJUSTMENT',
+      _ => 'OTHER',
+    };
+  }
 
   bool get hasOpenReview =>
       openReviewId != null ||

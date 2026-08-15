@@ -893,22 +893,16 @@ class _SuccessData {
     if (invoice == null) {
       return _SuccessData(
         transactionCode: transactionCode,
-        invoiceCode: 'Hóa đơn tiện ích tháng 12/2025',
-        paymentTitle: 'Tiền điện & dịch vụ',
+        invoiceCode: 'Hóa đơn tiền điện tháng 12/2025',
+        paymentTitle: 'Tiền điện',
         totalAmount: 800000,
         completedAt: completedAt ?? DateTime(2025, 12, 22, 14, 32, 5),
         items: const [
           _PaidItemData(
             icon: Icons.flash_on_rounded,
-            title: 'Điện',
+            title: 'Tiền điện',
             subtitle: 'Đã sử dụng: 215 kWh',
-            amount: 700000,
-          ),
-          _PaidItemData(
-            icon: Icons.water_drop_rounded,
-            title: 'Nước',
-            subtitle: 'Đã sử dụng: 5 m³',
-            amount: 100000,
+            amount: 800000,
           ),
         ],
       );
@@ -1043,7 +1037,8 @@ IconData _invoiceIcon(String invoiceType) {
 
 IconData _lineIcon(String type) {
   return switch (type.toUpperCase()) {
-    'RENT' => Icons.apartment_rounded,
+    'ROOM_RENT' || 'RENT' => Icons.apartment_rounded,
+    'SERVICE_FEE' || 'SERVICE' => Icons.home_work_outlined,
     'ELECTRICITY' => Icons.flash_on_rounded,
     'WATER' => Icons.water_drop_rounded,
     'VIOLATION_FINE' => Icons.gavel_rounded,
@@ -1053,10 +1048,11 @@ IconData _lineIcon(String type) {
 }
 
 String _lineTitle(TenantInvoiceLine line) {
-  return switch (line.lineType.toUpperCase()) {
+  return switch (line.normalizedLineType) {
     'RENT' => 'Tiền phòng',
-    'ELECTRICITY' => 'Điện',
-    'WATER' => 'Nước',
+    'SERVICE' => 'Phí dịch vụ',
+    'ELECTRICITY' => 'Tiền điện',
+    'WATER' => 'Tiền nước',
     'VIOLATION_FINE' => 'Phạt vi phạm nội quy',
     'MAINTENANCE_COMPENSATION' => 'Bồi thường bảo trì',
     _ => line.description.isEmpty ? 'Khoản thanh toán' : line.description,

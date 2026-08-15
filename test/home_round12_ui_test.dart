@@ -8,8 +8,10 @@ import 'package:hdbhms_mobile/models/profile_request/tenant_profile_model.dart';
 import 'package:hdbhms_mobile/screens/home/home_screen.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
+import 'package:hdbhms_mobile/services/notification/notification_service.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
 import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
+import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 
 class _HomeService extends HomeService {
   const _HomeService();
@@ -54,6 +56,13 @@ class _HomeService extends HomeService {
       ),
     ),
   );
+}
+
+class _NotificationService extends NotificationService {
+  const _NotificationService();
+
+  @override
+  Future<int> getUnreadCount() async => 2;
 }
 
 class _LeaseService extends LeaseContractService {
@@ -177,6 +186,7 @@ Widget _home({TenantInvoiceService invoiceService = const _InvoiceService()}) =>
         leaseContractService: const _LeaseService(),
         tenantInvoiceService: invoiceService,
         profileService: const _ProfileService(),
+        notificationService: const _NotificationService(),
       ),
     );
 
@@ -189,6 +199,14 @@ void main() {
       await tester.pumpWidget(_home());
       await tester.pumpAndSettle();
 
+      expect(find.byType(AppNotificationBell), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(AppNotificationBell),
+          matching: find.text('2'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('Thanh toán nhanh'), findsOneWidget);
       expect(find.text('Tổng tiền cần thanh toán'), findsOneWidget);
       expect(find.text('1.500.000đ'), findsOneWidget);

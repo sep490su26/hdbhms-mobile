@@ -10,6 +10,7 @@ import 'package:hdbhms_mobile/providers/home_provider.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
+import 'package:hdbhms_mobile/services/notification/notification_service.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
 import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
@@ -43,6 +44,7 @@ class HomeScreen extends StatefulWidget {
     this.profileService = const TenantProfileService(),
     this.leaseContractService = const LeaseContractService(),
     this.tenantInvoiceService = const TenantInvoiceService(),
+    this.notificationService = const NotificationService(),
     this.initialRoom,
   });
 
@@ -51,6 +53,7 @@ class HomeScreen extends StatefulWidget {
   final TenantProfileService profileService;
   final LeaseContractService leaseContractService;
   final TenantInvoiceService tenantInvoiceService;
+  final NotificationService notificationService;
   final ActiveRoomItem? initialRoom;
 
   @override
@@ -162,6 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
       header: _HomeHeader(
         summary: summary,
         provider: _provider,
+        notificationService: widget.notificationService,
         onChangeRoom: _openRoomOverview,
       ),
       child: RefreshIndicator(
@@ -189,6 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 electricityEntries: _provider.electricityConsumptionEntries,
                 roomLabel: _provider.electricityRoomLabel,
                 occupancyStart: _provider.electricityOccupancyStart,
+                notificationService: widget.notificationService,
               ),
               const SizedBox(height: 17),
               const _SectionHeading('Thao tác nhanh'),
@@ -290,11 +295,13 @@ class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
     required this.summary,
     required this.provider,
+    required this.notificationService,
     required this.onChangeRoom,
   });
 
   final HomeSummary summary;
   final HomeProvider provider;
+  final NotificationService notificationService;
   final VoidCallback onChangeRoom;
 
   @override
@@ -361,6 +368,8 @@ class _HomeHeader extends StatelessWidget {
               label: 'Th\u00F4ng b\u00E1o',
               child: AppNotificationBell(
                 initialUnreadCount: summary.notificationSummary.unreadCount,
+                refreshInitialUnreadCount: true,
+                notificationService: notificationService,
               ),
             ),
             tooltip: 'Thông báo',
@@ -1085,6 +1094,7 @@ class _UtilitiesSection extends StatelessWidget {
     required this.electricityEntries,
     required this.roomLabel,
     required this.occupancyStart,
+    required this.notificationService,
   });
 
   final UtilitySummary utilities;
@@ -1092,6 +1102,7 @@ class _UtilitiesSection extends StatelessWidget {
   final List<ElectricityConsumptionEntry> electricityEntries;
   final String roomLabel;
   final DateTime? occupancyStart;
+  final NotificationService notificationService;
 
   @override
   Widget build(BuildContext context) {
@@ -1103,6 +1114,7 @@ class _UtilitiesSection extends StatelessWidget {
           electricityEntries: electricityEntries,
           roomLabel: roomLabel,
           occupancyStart: occupancyStart,
+          notificationService: notificationService,
           title: 'Điện',
           unit: 'kWh',
           icon: Icons.bolt_rounded,
@@ -1121,6 +1133,7 @@ class _UtilityCard extends StatelessWidget {
     required this.electricityEntries,
     required this.roomLabel,
     required this.occupancyStart,
+    required this.notificationService,
     required this.title,
     required this.unit,
     required this.icon,
@@ -1133,6 +1146,7 @@ class _UtilityCard extends StatelessWidget {
   final List<ElectricityConsumptionEntry> electricityEntries;
   final String roomLabel;
   final DateTime? occupancyStart;
+  final NotificationService notificationService;
   final String title;
   final String unit;
   final IconData icon;
@@ -1276,6 +1290,7 @@ class _UtilityCard extends StatelessWidget {
                       entries: electricityEntries,
                       roomLabel: roomLabel,
                       occupancyStart: occupancyStart,
+                      notificationService: notificationService,
                     ),
                   ),
                 ),
@@ -1477,7 +1492,10 @@ class _QuickActions extends StatelessWidget {
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => const PropertyRulesScreen(),
+                builder: (context) => PropertyRulesScreen(
+                  roomId: roomId,
+                  roomCode: roomCode ?? '',
+                ),
               ),
             );
           },
@@ -1625,6 +1643,8 @@ class _HomeBottomNavigation extends StatelessWidget {
               authService: authService,
               homeService: homeService,
               profileService: profileService,
+              roomId: roomContext?.roomId,
+              roomCode: roomContext?.roomCode ?? '',
             ),
           ),
         );

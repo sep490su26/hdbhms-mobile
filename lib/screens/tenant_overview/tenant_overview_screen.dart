@@ -12,6 +12,7 @@ import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
+import 'package:hdbhms_mobile/services/notification/notification_service.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
 import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
@@ -28,6 +29,7 @@ class TenantOverviewScreen extends StatefulWidget {
     this.leaseContractService = const LeaseContractService(),
     this.profileService = const TenantProfileService(),
     this.tenantInvoiceService = const TenantInvoiceService(),
+    this.notificationService = const NotificationService(),
   });
 
   final AuthService authService;
@@ -35,6 +37,7 @@ class TenantOverviewScreen extends StatefulWidget {
   final LeaseContractService leaseContractService;
   final TenantProfileService profileService;
   final TenantInvoiceService tenantInvoiceService;
+  final NotificationService notificationService;
 
   @override
   State<TenantOverviewScreen> createState() => _TenantOverviewScreenState();
@@ -283,6 +286,7 @@ class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
             currentIndex: _imageIndex,
             tenantName: tenantName,
             unreadCount: summary.notificationSummary.unreadCount,
+            notificationService: widget.notificationService,
             phone: phone.isEmpty ? 'Chưa cập nhật số điện thoại' : phone,
             address: address,
             userName: _userName,
@@ -324,6 +328,7 @@ class _OverviewHero extends StatelessWidget {
     required this.currentIndex,
     required this.tenantName,
     required this.unreadCount,
+    required this.notificationService,
     required this.phone,
     required this.address,
     required this.userName,
@@ -336,6 +341,7 @@ class _OverviewHero extends StatelessWidget {
   final int currentIndex;
   final String tenantName;
   final int unreadCount;
+  final NotificationService notificationService;
   final String phone;
   final String address;
   final String userName;
@@ -390,6 +396,7 @@ class _OverviewHero extends StatelessWidget {
                 right: 14,
                 child: _HeroTopBar(
                   unreadCount: unreadCount,
+                  notificationService: notificationService,
                   userName: userName,
                   onProfileTap: onProfileTap,
                 ),
@@ -424,11 +431,13 @@ class _HeroTopBar extends StatelessWidget {
   const _HeroTopBar({
     required this.userName,
     required this.unreadCount,
+    required this.notificationService,
     required this.onProfileTap,
   });
 
   final String userName;
   final int unreadCount;
+  final NotificationService notificationService;
   final VoidCallback onProfileTap;
 
   @override
@@ -496,6 +505,8 @@ class _HeroTopBar extends StatelessWidget {
             color: Colors.white,
             size: 23,
             initialUnreadCount: unreadCount,
+            refreshInitialUnreadCount: true,
+            notificationService: notificationService,
           ),
           tooltip: 'Thông báo',
         ),

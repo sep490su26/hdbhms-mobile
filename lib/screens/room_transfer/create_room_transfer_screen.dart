@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:hdbhms_mobile/models/contract/lease_contract_model.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart';
 import 'package:hdbhms_mobile/models/room_transfer/room_transfer_model.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
@@ -180,6 +181,14 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
         context,
         message:
             'Yêu cầu chuyển sang ${target.displayName} đã được gửi tới quản lý để xét duyệt.',
+        onViewRequests: () => Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => TenantRequestScreen(
+              roomId: _contract?.room.id,
+              roomCode: _contract?.room.roomCode ?? '',
+            ),
+          ),
+        ),
         onReturnToContract: () => Navigator.of(context).pop(),
       );
     } catch (error) {

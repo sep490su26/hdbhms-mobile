@@ -12,18 +12,21 @@ class AppNotificationBell extends StatefulWidget {
     this.color = AppColors.topBarIconColor,
     this.size = 24,
     this.initialUnreadCount,
+    this.refreshInitialUnreadCount = false,
+    this.notificationService = const NotificationService(),
   });
 
   final Color color;
   final double size;
   final int? initialUnreadCount;
+  final bool refreshInitialUnreadCount;
+  final NotificationService notificationService;
 
   @override
   State<AppNotificationBell> createState() => _AppNotificationBellState();
 }
 
 class _AppNotificationBellState extends State<AppNotificationBell> {
-  final NotificationService _notificationService = const NotificationService();
   int _unreadCount = 0;
   StreamSubscription<void>? _readSubscription;
 
@@ -31,11 +34,13 @@ class _AppNotificationBellState extends State<AppNotificationBell> {
   void initState() {
     super.initState();
     _unreadCount = widget.initialUnreadCount ?? 0;
-    if (widget.initialUnreadCount == null) {
+    if (widget.initialUnreadCount == null || widget.refreshInitialUnreadCount) {
       _loadUnreadCount();
     }
     _readSubscription = NotificationService.readEvents.listen((_) {
-      if (mounted && widget.initialUnreadCount == null) {
+      if (mounted &&
+          (widget.initialUnreadCount == null ||
+              widget.refreshInitialUnreadCount)) {
         _loadUnreadCount();
       }
     });
@@ -47,6 +52,7 @@ class _AppNotificationBellState extends State<AppNotificationBell> {
     if (widget.initialUnreadCount != null &&
         widget.initialUnreadCount != oldWidget.initialUnreadCount) {
       setState(() => _unreadCount = widget.initialUnreadCount!);
+      if (widget.refreshInitialUnreadCount) _loadUnreadCount();
     }
   }
 
@@ -58,7 +64,7 @@ class _AppNotificationBellState extends State<AppNotificationBell> {
 
   Future<void> _loadUnreadCount() async {
     try {
-      final unreadCount = await _notificationService.getUnreadCount();
+      final unreadCount = await widget.notificationService.getUnreadCount();
       if (mounted) setState(() => _unreadCount = unreadCount);
     } catch (_) {
       // The bell stays usable when the count cannot be refreshed.

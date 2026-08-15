@@ -39,4 +39,44 @@ void main() {
 
     expect(invoice.issueDate, DateTime(2026, 8, 11, 9, 30));
   });
+
+  test('normalizes production and legacy rent/service line types', () {
+    const productionRent = TenantInvoiceLine(
+      id: 1,
+      lineType: 'ROOM_RENT',
+      description: '',
+      quantity: 1,
+      unitPrice: 1,
+      amount: 1,
+    );
+    const legacyRent = TenantInvoiceLine(
+      id: 2,
+      lineType: 'RENT',
+      description: '',
+      quantity: 1,
+      unitPrice: 1,
+      amount: 1,
+    );
+    const productionService = TenantInvoiceLine(
+      id: 3,
+      lineType: 'SERVICE_FEE',
+      description: '',
+      quantity: 1,
+      unitPrice: 1,
+      amount: 1,
+    );
+    const legacyService = TenantInvoiceLine(
+      id: 4,
+      lineType: 'SERVICE',
+      description: '',
+      quantity: 1,
+      unitPrice: 1,
+      amount: 1,
+    );
+
+    expect(productionRent.normalizedLineType, 'RENT');
+    expect(legacyRent.normalizedLineType, 'RENT');
+    expect(productionService.normalizedLineType, 'SERVICE');
+    expect(legacyService.normalizedLineType, 'SERVICE');
+  });
 }

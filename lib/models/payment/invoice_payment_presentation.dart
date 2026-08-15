@@ -26,18 +26,36 @@ class InvoicePaymentPresentation {
         .toSet();
     if (invoice.isRentType) {
       return const InvoicePaymentPresentation(
-        displayName: 'Tiền phòng',
-        paymentPageTitle: 'Thanh toán tiền phòng',
-        receiptHeading: 'THANH TOÁN TIỀN PHÒNG',
-        icon: Icons.apartment_rounded,
+        displayName: 'Tiền phòng & dịch vụ',
+        paymentPageTitle: 'Thanh toán tiền phòng & dịch vụ',
+        receiptHeading: 'THANH TOÁN TIỀN PHÒNG & DỊCH VỤ',
+        icon: Icons.home_work_outlined,
         accentColor: AppColors.primary,
       );
     }
     if (invoice.isUtilityType) {
+      if (invoice.isLegacyUtilityWithService) {
+        return const InvoicePaymentPresentation(
+          displayName: 'Tiền điện & dịch vụ',
+          paymentPageTitle: 'Thanh toán tiền điện & dịch vụ',
+          receiptHeading: 'THANH TOÁN TIỀN ĐIỆN & DỊCH VỤ',
+          icon: Icons.bolt_rounded,
+          accentColor: AppColors.actionOrange,
+        );
+      }
+      if (invoice.isLegacyUtilityWithWater) {
+        return const InvoicePaymentPresentation(
+          displayName: 'Tiền điện & nước',
+          paymentPageTitle: 'Thanh toán tiền điện & nước',
+          receiptHeading: 'THANH TOÁN TIỀN ĐIỆN & NƯỚC',
+          icon: Icons.bolt_rounded,
+          accentColor: AppColors.actionOrange,
+        );
+      }
       return const InvoicePaymentPresentation(
-        displayName: 'Tiền điện & dịch vụ',
-        paymentPageTitle: 'Thanh toán tiền điện & dịch vụ',
-        receiptHeading: 'THANH TOÁN TIỀN ĐIỆN & DỊCH VỤ',
+        displayName: 'Tiền điện',
+        paymentPageTitle: 'Thanh toán tiền điện',
+        receiptHeading: 'THANH TOÁN TIỀN ĐIỆN',
         icon: Icons.bolt_rounded,
         accentColor: AppColors.actionOrange,
       );

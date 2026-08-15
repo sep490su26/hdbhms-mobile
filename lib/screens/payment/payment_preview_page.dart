@@ -31,18 +31,26 @@ class PaymentPreviewPage extends StatelessWidget {
     id: -101,
     invoiceCode: 'RENT-DEMO-001',
     invoiceType: 'RENT',
-    totalAmount: 4500000,
-    subtotalAmount: 5000000,
+    totalAmount: 13300000,
+    subtotalAmount: 13800000,
     discountAmount: 500000,
     transferDescription: 'THANHTOAN RENT DEMO 001',
     lines: const [
       TenantInvoiceLine(
         id: -101,
-        lineType: 'RENT',
-        description: 'Tiền phòng tháng 06/2026',
-        quantity: 1,
+        lineType: 'ROOM_RENT',
+        description: 'Tiền phòng',
+        quantity: 3,
         unitPrice: 4500000,
-        amount: 4500000,
+        amount: 13500000,
+      ),
+      TenantInvoiceLine(
+        id: -105,
+        lineType: 'SERVICE_FEE',
+        description: 'Phí dịch vụ',
+        quantity: 6,
+        unitPrice: 50000,
+        amount: 300000,
       ),
     ],
   );
@@ -51,9 +59,9 @@ class PaymentPreviewPage extends StatelessWidget {
     id: -102,
     invoiceCode: 'UTILITY-DEMO-001',
     invoiceType: 'UTILITY',
-    totalAmount: 906000,
-    subtotalAmount: 956000,
-    discountAmount: 50000,
+    totalAmount: 600000,
+    subtotalAmount: 630000,
+    discountAmount: 30000,
     transferDescription: 'THANHTOAN UTILITY DEMO 001',
     lines: const [
       TenantInvoiceLine(
@@ -66,14 +74,7 @@ class PaymentPreviewPage extends StatelessWidget {
         previousValue: 1010,
         currentValue: 1190,
         usageAmount: 180,
-      ),
-      TenantInvoiceLine(
-        id: -106,
-        lineType: 'SERVICE',
-        description: 'Phí dịch vụ',
-        quantity: 1,
-        unitPrice: 276000,
-        amount: 276000,
+        canComplain: true,
       ),
     ],
   );
@@ -102,7 +103,7 @@ class PaymentPreviewPage extends StatelessWidget {
     id: -104,
     invoiceCode: 'UTILITY-DEMO-002',
     invoiceType: 'UTILITY',
-    totalAmount: 1037000,
+    totalAmount: 735000,
     transferDescription: 'THANHTOAN UTILITY DEMO 002',
     lines: const [
       TenantInvoiceLine(
@@ -117,14 +118,6 @@ class PaymentPreviewPage extends StatelessWidget {
         usageAmount: 210,
         canComplain: true,
         reviewStatus: 'NONE',
-      ),
-      TenantInvoiceLine(
-        id: -105,
-        lineType: 'SERVICE',
-        description: 'Phí dịch vụ',
-        quantity: 1,
-        unitPrice: 302000,
-        amount: 302000,
       ),
     ],
   );
@@ -379,17 +372,16 @@ class PaymentPreviewPage extends StatelessWidget {
               const SizedBox(height: 8),
               _PreviewTile(
                 icon: Icons.receipt_long_rounded,
-                title: 'Chi tiết hóa đơn tiền phòng',
+                title: 'Chi tiết Tiền phòng & dịch vụ',
                 subtitle: 'Kiểm tra loại, trạng thái và thanh toán',
                 onTap: () => _openBillDetail(context, _rentInvoice),
               ),
               const SizedBox(height: 8),
               _PreviewTile(
                 icon: Icons.receipt_long_rounded,
-                title: 'Chi tiết hóa đơn tiền điện & dịch vụ',
+                title: 'Chi tiết Tiền điện',
                 subtitle: 'Hiển thị chỉ số và quyền khiếu nại',
-                onTap: () =>
-                    _openBillDetail(context, _reviewableUtilityInvoice),
+                onTap: () => _openBillDetail(context, _utilityInvoice),
               ),
               const SizedBox(height: 8),
               _PreviewTile(
@@ -410,15 +402,15 @@ class PaymentPreviewPage extends StatelessWidget {
               const SizedBox(height: 8),
               _PreviewTile(
                 icon: Icons.qr_code_rounded,
-                title: 'QR tiền phòng',
-                subtitle: 'Hóa đơn tiền phòng',
+                title: 'QR Tiền phòng & dịch vụ',
+                subtitle: 'Hóa đơn Tiền phòng & dịch vụ',
                 onTap: () => _openQr(context, _rentInvoice),
               ),
               const SizedBox(height: 8),
               _PreviewTile(
                 icon: Icons.qr_code_rounded,
-                title: 'QR tiền điện & dịch vụ',
-                subtitle: 'Hóa đơn tiền điện & dịch vụ',
+                title: 'QR Tiền điện',
+                subtitle: 'Hóa đơn Tiền điện',
                 onTap: () => _openQr(context, _utilityInvoice),
               ),
               const SizedBox(height: 8),
@@ -431,8 +423,9 @@ class PaymentPreviewPage extends StatelessWidget {
               const SizedBox(height: 8),
               _PreviewTile(
                 icon: Icons.check_circle_outline_rounded,
-                title: 'Thanh toán thành công tiền phòng',
-                subtitle: 'Trạng thái hoàn tất của hóa đơn tiền phòng',
+                title: 'Thanh toán thành công — Tiền phòng & dịch vụ',
+                subtitle:
+                    'Trạng thái hoàn tất của hóa đơn Tiền phòng & dịch vụ',
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) =>
@@ -455,8 +448,8 @@ class PaymentPreviewPage extends StatelessWidget {
               const SizedBox(height: 8),
               _PreviewTile(
                 icon: Icons.check_circle_outline_rounded,
-                title: 'Thanh toán thành công tiền điện & dịch vụ',
-                subtitle: 'Trạng thái hoàn tất của hóa đơn tiền điện & dịch vụ',
+                title: 'Thanh toán thành công — Tiền điện',
+                subtitle: 'Trạng thái hoàn tất của hóa đơn Tiền điện',
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) =>
@@ -486,14 +479,14 @@ class PaymentPreviewPage extends StatelessWidget {
               const SizedBox(height: 8),
               _PreviewTile(
                 icon: Icons.download_rounded,
-                title: 'Mẫu QR tiền phòng',
+                title: 'Mẫu QR Tiền phòng & dịch vụ',
                 subtitle: 'Xem trước ảnh QR có thể tải về',
                 onTap: () => _openReceiptPreview(context, _rentInvoice),
               ),
               const SizedBox(height: 8),
               _PreviewTile(
                 icon: Icons.download_rounded,
-                title: 'Mẫu QR tiền điện & dịch vụ',
+                title: 'Mẫu QR Tiền điện',
                 subtitle: 'Xem trước ảnh QR có thể tải về',
                 onTap: () => _openReceiptPreview(context, _utilityInvoice),
               ),
@@ -588,8 +581,10 @@ class PaymentPreviewPage extends StatelessWidget {
   void _openAllInvoicesPreview(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) =>
-            BillSelectionPage(previewInvoices: _allInvoicesPreview),
+        builder: (context) => BillSelectionPage(
+          previewInvoices: _allInvoicesPreview,
+          previewServicePaymentCycleMonths: 3,
+        ),
       ),
     );
   }
@@ -597,8 +592,11 @@ class PaymentPreviewPage extends StatelessWidget {
   void _openBillDetail(BuildContext context, TenantInvoice invoice) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) =>
-            BillDetailScreen(invoice: invoice, invoiceService: _invoiceService),
+        builder: (context) => BillDetailScreen(
+          invoice: invoice,
+          invoiceService: _invoiceService,
+          servicePaymentCycleMonths: invoice.id == _rentInvoice.id ? 3 : null,
+        ),
       ),
     );
   }

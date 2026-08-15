@@ -4,6 +4,8 @@ import 'package:hdbhms_mobile/models/payment/invoice_payment_presentation.dart';
 import 'package:hdbhms_mobile/models/payment/tenant_invoice_model.dart';
 import 'package:hdbhms_mobile/screens/room_transfer/create_room_transfer_screen.dart';
 import 'package:hdbhms_mobile/screens/payment/payment_success_page.dart';
+import 'package:hdbhms_mobile/screens/payment/bill_detail_screen.dart';
+import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
 import 'package:hdbhms_mobile/utils/user_facing_error_message.dart';
 import 'package:hdbhms_mobile/widgets/app_action_tile.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
@@ -143,5 +145,45 @@ void main() {
       expect(find.text('Chi phí sửa chữa'), findsOneWidget);
       expect(find.text('ĐÃ THANH TOÁN'), findsNothing);
     });
+
+    testWidgets(
+      'invoice detail keeps one grand total without repeating the billing period',
+      (tester) async {
+        final invoice = _invoice(
+          type: 'RENT',
+          lines: const [
+            TenantInvoiceLine(
+              id: 4,
+              lineType: 'ROOM_RENT',
+              description: 'Tiền phòng',
+              quantity: 1,
+              unitPrice: 4500000,
+              amount: 4500000,
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: BillDetailScreen(
+              invoice: invoice,
+              invoiceService: const TenantInvoiceService(),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(find.text('Tổng cộng'), findsOneWidget);
+        expect(find.text('Đã thanh toán'), findsNothing);
+        expect(find.text('Còn phải trả'), findsNothing);
+        expect(find.text('Đơn giá'), findsOneWidget);
+        expect(find.text('Số tháng'), findsOneWidget);
+        expect(find.text('Cách tính'), findsNothing);
+        expect(find.text('4.500.000đ × 1 tháng'), findsNothing);
+        expect(find.text('Phòng P.101'), findsNothing);
+        expect(find.byIcon(Icons.meeting_room_outlined), findsOneWidget);
+        expect(find.byIcon(Icons.calendar_month_outlined), findsNothing);
+      },
+    );
   });
 }

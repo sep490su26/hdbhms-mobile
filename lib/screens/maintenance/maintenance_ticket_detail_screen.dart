@@ -818,7 +818,10 @@ class _BillingInfoCard extends StatelessWidget {
               child: AppPrimaryGradientButton(
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => const BillSelectionPage(),
+                    builder: (context) => BillSelectionPage(
+                      roomId: detail.roomId,
+                      roomCode: detail.roomCode,
+                    ),
                   ),
                 ),
                 height: 48,
