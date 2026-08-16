@@ -47,6 +47,7 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
   String? _error;
   String? _roomError;
   Set<int> _selectedTransferredProfileIds = {};
+  int? _replacementPrimaryTenantProfileId;
 
   @override
   void initState() {
@@ -73,11 +74,17 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
               widget.preloadedContractId!,
             );
       if (!mounted) return;
+      final selectedTransferredProfileIds = contract.mustTransferAllOccupants
+          ? _allActiveProfileIds(contract)
+          : _initialTransferredProfileIds(contract);
       setState(() {
         _contract = contract;
-        _selectedTransferredProfileIds = _initialTransferredProfileIds(
-          contract,
-        );
+        _selectedTransferredProfileIds = selectedTransferredProfileIds;
+        _replacementPrimaryTenantProfileId =
+            _replacementPrimaryTenantForSelection(
+              contract,
+              selectedTransferredProfileIds,
+            );
         _loading = false;
       });
       await _loadRooms(contract);
@@ -111,9 +118,7 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
       setState(() {
         _rooms = rooms
             .where(
-              (room) =>
-                  room.currentStatus == 'VACANT' ||
-                  room.currentStatus == 'SOON_VACANT',
+              (room) => room.currentStatus.trim().toUpperCase() == 'VACANT',
             )
             .toList(growable: false);
         _loadingRooms = false;
@@ -152,8 +157,16 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
     if (!_formKey.currentState!.validate()) return;
     final contractId = _contract?.id;
     final target = _targetRoom;
-    final date = _transferDate;
-    if (contractId == null || target == null || date == null) return;
+    final date = _transferDate ?? firstDayOfNextMonth(DateTime.now());
+    if (contractId == null || target == null) return;
+    if (_requiresReplacementPrimaryTenant &&
+        _replacementPrimaryTenantProfileId == null) {
+      setState(() {
+        _error =
+            'Vui lòng chọn người đứng tên mới cho những người tiếp tục ở phòng cũ.';
+      });
+      return;
+    }
     if (target.maxOccupants > 0 &&
         _selectedTransferredProfileIds.length > target.maxOccupants) {
       setState(() {
@@ -173,6 +186,7 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
         transferredTenantProfileIds: _selectedTransferredProfileIds.isEmpty
             ? null
             : _selectedTransferredProfileIds.toList(growable: false),
+        nominatedHolderProfileId: _replacementPrimaryTenantProfileId,
         reason: _reasonController.text,
       );
       if (!mounted) return;
@@ -218,11 +232,82 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
     return {};
   }
 
+  Set<int> _allActiveProfileIds(LeaseContract contract) => contract.occupants
+      .where(
+        (occupant) => occupant.isActive && occupant.tenantProfileId != null,
+      )
+      .map((occupant) => occupant.tenantProfileId!)
+      .toSet();
+
   List<LeaseContractOccupant> get _transferableOccupants {
     final occupants = _contract?.occupants ?? const [];
     return occupants
         .where((item) => item.isActive && item.tenantProfileId != null)
         .toList(growable: false);
+  }
+
+  int? get _sourcePrimaryProfileId {
+    for (final occupant in _transferableOccupants) {
+      if (occupant.isPrimary) return occupant.tenantProfileId;
+    }
+    return null;
+  }
+
+  List<LeaseContractOccupant> get _remainingOccupants => _transferableOccupants
+      .where(
+        (occupant) =>
+            !_selectedTransferredProfileIds.contains(occupant.tenantProfileId),
+      )
+      .toList(growable: false);
+
+  bool get _requiresReplacementPrimaryTenant {
+    final primaryProfileId = _sourcePrimaryProfileId;
+    return primaryProfileId != null &&
+        _selectedTransferredProfileIds.contains(primaryProfileId) &&
+        _remainingOccupants.isNotEmpty;
+  }
+
+  int? _replacementPrimaryTenantForSelection(
+    LeaseContract contract,
+    Set<int> selectedProfileIds,
+  ) {
+    LeaseContractOccupant? primaryOccupant;
+    for (final occupant in contract.occupants) {
+      if (occupant.isActive && occupant.isPrimary) {
+        primaryOccupant = occupant;
+        break;
+      }
+    }
+    final primaryProfileId = primaryOccupant?.tenantProfileId;
+    if (primaryProfileId == null ||
+        !selectedProfileIds.contains(primaryProfileId)) {
+      return null;
+    }
+    final remaining = contract.occupants
+        .where(
+          (occupant) =>
+              occupant.isActive &&
+              occupant.tenantProfileId != null &&
+              !selectedProfileIds.contains(occupant.tenantProfileId),
+        )
+        .toList(growable: false);
+    return remaining.length == 1 ? remaining.single.tenantProfileId : null;
+  }
+
+  void _syncReplacementPrimaryTenant() {
+    if (!_requiresReplacementPrimaryTenant) {
+      _replacementPrimaryTenantProfileId = null;
+      return;
+    }
+    final remainingIds = _remainingOccupants
+        .map((occupant) => occupant.tenantProfileId)
+        .whereType<int>()
+        .toSet();
+    if (remainingIds.length == 1) {
+      _replacementPrimaryTenantProfileId = remainingIds.single;
+    } else if (!remainingIds.contains(_replacementPrimaryTenantProfileId)) {
+      _replacementPrimaryTenantProfileId = null;
+    }
   }
 
   @override
@@ -313,6 +398,8 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
             ],
             if (_transferableOccupants.length > 1) ...[
               const SizedBox(height: AppColors.space24),
+              if (contract.mustTransferAllOccupants)
+                const _TransferAllOccupantsNotice(),
               RequestFormSection(
                 icon: Icons.groups_rounded,
                 title: 'Người chuyển cùng',
@@ -321,6 +408,7 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
                   occupants: _transferableOccupants,
                   currentTenantProfileId: contract.currentTenantProfileId,
                   selectedProfileIds: _selectedTransferredProfileIds,
+                  forceAll: contract.mustTransferAllOccupants,
                   onChanged: (profileId, selected) {
                     setState(() {
                       if (selected) {
@@ -328,7 +416,26 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
                       } else {
                         _selectedTransferredProfileIds.remove(profileId);
                       }
+                      _syncReplacementPrimaryTenant();
                     });
+                  },
+                ),
+              ),
+            ],
+            if (_requiresReplacementPrimaryTenant) ...[
+              const SizedBox(height: AppColors.space24),
+              RequestFormSection(
+                icon: Icons.person_outline_rounded,
+                title: 'Người đứng tên mới tại phòng cũ',
+                subtitle: 'Chọn người tiếp tục ở lại để đứng tên hợp đồng mới.',
+                accentColor: AppColors.actionViolet,
+                child: _ReplacementPrimaryTenantPicker(
+                  occupants: _remainingOccupants,
+                  selectedProfileId: _replacementPrimaryTenantProfileId,
+                  onChanged: (profileId) {
+                    setState(
+                      () => _replacementPrimaryTenantProfileId = profileId,
+                    );
                   },
                 ),
               ),
@@ -336,66 +443,34 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
             const SizedBox(height: AppColors.space24),
             RequestFormSection(
               icon: Icons.calendar_today_outlined,
-              title: 'Ngày chuyển dự kiến',
+              title: 'Tháng chuyển dự kiến',
               accentColor: AppColors.actionCyan,
-              child: FormField<DateTime>(
-                validator: (_) => _transferDate == null
-                    ? 'Vui lòng chọn tháng chuyển dự kiến.'
-                    : null,
-                builder: (field) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              child: InputDecorator(
+                decoration: const InputDecoration(
+                  filled: true,
+                  fillColor: AppColors.inputFill,
+                ),
+                child: Row(
                   children: [
-                    InputDecorator(
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: AppColors.inputFill,
-                        errorText: field.errorText,
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.calendar_today_outlined,
-                            color: AppColors.actionCyan,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              _transferDate == null
-                                  ? '--'
-                                  : _date(_transferDate),
-                              style: AppTypography.label,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.infoSurface,
-                        borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                      ),
-                      child: const Row(
+                    const Icon(Icons.calendar_today_outlined, size: 20),
+                    const SizedBox(width: AppColors.space12),
+                    Expanded(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            Icons.info_outline_rounded,
-                            color: AppColors.primary,
-                            size: 18,
+                          Text(
+                            _monthWithStartDate(_transferDate),
+                            style: AppTypography.label,
                           ),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Ngày chuyển phòng được hệ thống ấn định vào ngày 01 của tháng kế tiếp.',
-                              style: AppTypography.caption,
-                            ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Tự động chọn tháng kế tiếp, ngày chuyển là ngày 01.',
+                            style: AppTypography.caption,
                           ),
                         ],
                       ),
                     ),
+                    const Icon(Icons.lock_outline_rounded, size: 19),
                   ],
                 ),
               ),
@@ -427,17 +502,91 @@ class _CreateRoomTransferScreenState extends State<CreateRoomTransferScreen> {
   }
 }
 
+class _ReplacementPrimaryTenantPicker extends StatelessWidget {
+  const _ReplacementPrimaryTenantPicker({
+    required this.occupants,
+    required this.selectedProfileId,
+    required this.onChanged,
+  });
+
+  final List<LeaseContractOccupant> occupants;
+  final int? selectedProfileId;
+  final ValueChanged<int?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    if (occupants.length == 1) {
+      final occupant = occupants.single;
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(AppColors.space12),
+        decoration: BoxDecoration(
+          color: AppColors.infoSurface,
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
+          border: Border.all(color: AppColors.actionCyan.withValues(alpha: .3)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              Icons.auto_awesome_rounded,
+              color: AppColors.actionCyan,
+              size: 20,
+            ),
+            const SizedBox(width: AppColors.space8),
+            Expanded(
+              child: Text(
+                'Hệ thống tự động chọn ${occupant.displayName} làm người đứng tên mới vì phòng cũ chỉ còn một người ở lại.',
+                style: AppTypography.caption.copyWith(
+                  color: AppColors.bodyText,
+                  fontWeight: FontWeight.w600,
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return DropdownButtonFormField<int>(
+      initialValue: selectedProfileId,
+      isExpanded: true,
+      decoration: const InputDecoration(
+        labelText: 'Người đứng tên hợp đồng mới của phòng cũ',
+        filled: true,
+        fillColor: AppColors.inputFill,
+        border: OutlineInputBorder(),
+      ),
+      items: occupants
+          .map(
+            (occupant) => DropdownMenuItem<int>(
+              value: occupant.tenantProfileId,
+              child: Text(occupant.displayName),
+            ),
+          )
+          .toList(growable: false),
+      validator: (_) => selectedProfileId == null
+          ? 'Vui lòng chọn người đứng tên mới.'
+          : null,
+      onChanged: onChanged,
+    );
+  }
+}
+
 class _OccupantTransferPicker extends StatelessWidget {
   const _OccupantTransferPicker({
     required this.occupants,
     required this.currentTenantProfileId,
     required this.selectedProfileIds,
+    required this.forceAll,
     required this.onChanged,
   });
 
   final List<LeaseContractOccupant> occupants;
   final int? currentTenantProfileId;
   final Set<int> selectedProfileIds;
+  final bool forceAll;
   final void Function(int profileId, bool selected) onChanged;
 
   @override
@@ -455,7 +604,8 @@ class _OccupantTransferPicker extends StatelessWidget {
   Widget _buildTile(LeaseContractOccupant occupant) {
     final profileId = occupant.tenantProfileId!;
     final isCurrent = profileId == currentTenantProfileId;
-    final selected = selectedProfileIds.contains(profileId) || isCurrent;
+    final selected =
+        forceAll || selectedProfileIds.contains(profileId) || isCurrent;
     final subtitleParts = [
       if (occupant.isPrimary) 'Chủ hợp đồng' else 'Người ở cùng',
       if (isCurrent) 'Bạn',
@@ -467,7 +617,7 @@ class _OccupantTransferPicker extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       controlAffinity: ListTileControlAffinity.leading,
       value: selected,
-      onChanged: isCurrent
+      onChanged: isCurrent || forceAll
           ? null
           : (value) => onChanged(profileId, value ?? false),
       activeColor: AppColors.primary,
@@ -475,6 +625,39 @@ class _OccupantTransferPicker extends StatelessWidget {
       subtitle: Text(subtitleParts.join(' - '), style: AppTypography.caption),
     );
   }
+}
+
+class _TransferAllOccupantsNotice extends StatelessWidget {
+  const _TransferAllOccupantsNotice();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    margin: const EdgeInsets.only(bottom: AppColors.space12),
+    padding: const EdgeInsets.all(AppColors.space12),
+    decoration: BoxDecoration(
+      color: const Color(0xFFFFF4E5),
+      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+      border: Border.all(color: const Color(0xFFF2B35D)),
+    ),
+    child: const Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.warning_amber_rounded, color: Color(0xFFB96B00), size: 19),
+        SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            'Phòng đã có khách đặt trước nên bắt buộc chuyển toàn bộ người đang ở.',
+            style: TextStyle(
+              color: Color(0xFF7A4A00),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _RoomSelector extends StatelessWidget {
@@ -690,6 +873,9 @@ class _LoadError extends StatelessWidget {
 String _date(DateTime? date) => date == null
     ? '--'
     : '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+String _monthWithStartDate(DateTime? date) => date == null
+    ? '--'
+    : 'Tháng ${date.month.toString().padLeft(2, '0')}/${date.year} (ngày 01)';
 String _dash(String value) => value.trim().isEmpty ? '--' : value;
 String _roomLabel(LeaseContract contract) => _dash(
   contract.room.roomName.isEmpty

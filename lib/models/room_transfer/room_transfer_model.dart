@@ -8,7 +8,6 @@ enum TransferRequestStatus {
   waitingHolderResponse,
   waitingApproval,
   waitingNewContract,
-  waitingTargetHolderApproval,
   waitingTenantConfirmation,
   waitingPayment,
   waitingContractConfirmation,
@@ -32,15 +31,18 @@ enum TransferRequestStatus {
       case 'MANAGER_APPROVED':
         return TransferRequestStatus.managerApproved;
       case 'WAITING_HOLDER_RESPONSE':
-        return TransferRequestStatus.waitingHolderResponse;
+        // Legacy rows no longer pause for a replacement-holder response.
+        return TransferRequestStatus.waitingContractConfirmation;
       case 'WAITING_APPROVAL':
         return TransferRequestStatus.waitingApproval;
       case 'WAITING_NEW_CONTRACT':
         return TransferRequestStatus.waitingNewContract;
       case 'WAITING_TARGET_HOLDER_APPROVAL':
-        return TransferRequestStatus.waitingTargetHolderApproval;
+        // Legacy rows skip the removed tenant confirmation step.
+        return TransferRequestStatus.waitingContractConfirmation;
       case 'WAITING_TENANT_CONFIRMATION':
-        return TransferRequestStatus.waitingTenantConfirmation;
+        // Legacy rows skip the removed tenant confirmation step.
+        return TransferRequestStatus.waitingContractConfirmation;
       case 'WAITING_PAYMENT':
         return TransferRequestStatus.waitingPayment;
       case 'WAITING_CONTRACT_CONFIRMATION':
@@ -84,8 +86,6 @@ enum TransferRequestStatus {
         return 'WAITING_APPROVAL';
       case TransferRequestStatus.waitingNewContract:
         return 'WAITING_NEW_CONTRACT';
-      case TransferRequestStatus.waitingTargetHolderApproval:
-        return 'WAITING_TARGET_HOLDER_APPROVAL';
       case TransferRequestStatus.waitingTenantConfirmation:
         return 'WAITING_TENANT_CONFIRMATION';
       case TransferRequestStatus.waitingPayment:
@@ -129,12 +129,10 @@ enum TransferRequestStatus {
         return 'Chờ duyệt';
       case TransferRequestStatus.waitingNewContract:
         return 'Chờ đề cử / tạo hợp đồng';
-      case TransferRequestStatus.waitingTargetHolderApproval:
-        return 'Chờ chủ phòng đích duyệt';
       case TransferRequestStatus.waitingTenantConfirmation:
-        return 'Chờ xác nhận yêu cầu';
+        return 'Đang xử lý yêu cầu';
       case TransferRequestStatus.waitingPayment:
-        return 'Chờ xác nhận yêu cầu';
+        return 'Chờ thanh toán khoản chênh lệch';
       case TransferRequestStatus.waitingContractConfirmation:
         return 'Đang chuẩn bị hợp đồng';
       case TransferRequestStatus.waitingSigning:

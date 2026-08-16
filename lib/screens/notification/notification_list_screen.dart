@@ -36,6 +36,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
   bool _hasMore = true;
   bool _isLoadingMore = false;
   bool _didChangeReadState = false;
+  String _nextCursor = '0';
   String? _errorMessage;
 
   @override
@@ -51,6 +52,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
       _errorMessage = null;
       _items = [];
       _hasMore = true;
+      _nextCursor = '0';
     });
 
     try {
@@ -59,8 +61,9 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
         after: 0,
       );
       setState(() {
-        _items = response.items;
+        _items = _sortNewestFirst(response.items);
         _hasMore = response.hasMore;
+        _nextCursor = response.items.isNotEmpty ? response.items.last.id : '0';
       });
     } catch (e) {
       setState(() {
@@ -83,14 +86,16 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
     });
 
     try {
-      final lastId = _items.isNotEmpty ? int.tryParse(_items.last.id) ?? 0 : 0;
       final response = await _notificationService.getNotifications(
         limit: 20,
-        after: lastId,
+        after: int.tryParse(_nextCursor) ?? 0,
       );
       setState(() {
-        _items.addAll(response.items);
+        _items = _sortNewestFirst([..._items, ...response.items]);
         _hasMore = response.hasMore;
+        if (response.items.isNotEmpty) {
+          _nextCursor = response.items.last.id;
+        }
       });
     } catch (_) {
       // Ignore errors on load more
@@ -107,6 +112,22 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
       _NotifFilter.unread => _items.where((n) => !n.isRead).toList(),
       _NotifFilter.read => _items.where((n) => n.isRead).toList(),
     };
+  }
+
+  List<NotificationItem> _sortNewestFirst(
+    Iterable<NotificationItem> notifications,
+  ) {
+    final sorted = notifications.toList();
+    sorted.sort((a, b) {
+      final byCreatedAt = b.createdAt.compareTo(a.createdAt);
+      if (byCreatedAt != 0) return byCreatedAt;
+
+      final aId = int.tryParse(a.id);
+      final bId = int.tryParse(b.id);
+      if (aId != null && bId != null) return bId.compareTo(aId);
+      return b.id.compareTo(a.id);
+    });
+    return sorted;
   }
 
   int get _unreadCount => _items.where((n) => !n.isRead).length;

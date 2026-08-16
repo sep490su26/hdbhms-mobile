@@ -31,7 +31,12 @@ class _RoomPickerSheetState extends State<RoomPickerSheet> {
   @override
   void initState() {
     super.initState();
-    _selected = widget.initialSelection;
+    _selected =
+        widget.initialSelection != null &&
+            widget.initialSelection!.currentStatus.trim().toUpperCase() ==
+                'VACANT'
+        ? widget.initialSelection
+        : null;
   }
 
   @override
@@ -41,8 +46,12 @@ class _RoomPickerSheetState extends State<RoomPickerSheet> {
   }
 
   List<AvailableRoom> get _filtered => widget.rooms
+      .where((room) => room.currentStatus.trim().toUpperCase() == 'VACANT')
       .where((room) {
-        if (_filter != 'ALL' && room.currentStatus != _filter) return false;
+        if (_filter != 'ALL' &&
+            room.currentStatus.trim().toUpperCase() != _filter) {
+          return false;
+        }
         final query = _searchController.text.trim().toLowerCase();
         return query.isEmpty ||
             room.displayName.toLowerCase().contains(query) ||
@@ -124,11 +133,6 @@ class _RoomPickerSheetState extends State<RoomPickerSheet> {
                       label: 'Còn trống',
                       selected: _filter == 'VACANT',
                       onTap: () => setState(() => _filter = 'VACANT'),
-                    ),
-                    _FilterChip(
-                      label: 'Sắp trống',
-                      selected: _filter == 'SOON_VACANT',
-                      onTap: () => setState(() => _filter = 'SOON_VACANT'),
                     ),
                   ],
                 ),

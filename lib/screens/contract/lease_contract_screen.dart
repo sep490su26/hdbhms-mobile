@@ -25,6 +25,34 @@ import 'package:hdbhms_mobile/screens/contract/room_amenities_screen.dart';
 import 'package:hdbhms_mobile/widgets/app_action_tile.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 
+bool shouldWarnDepositForfeiture({
+  required DateTime? endDate,
+  required String tenantIntention,
+  DateTime? today,
+}) {
+  if (endDate == null) return false;
+
+  final intention = tenantIntention.trim().toUpperCase();
+  final hasTenantDecision = intention.isNotEmpty && intention != 'UNDECIDED';
+  if (hasTenantDecision) return false;
+
+  final currentDate = DateUtils.dateOnly(today ?? DateTime.now());
+  final contractEndDate = DateUtils.dateOnly(endDate);
+  final oneMonthBeforeEnd = _oneMonthBefore(contractEndDate);
+  return currentDate.isBefore(contractEndDate) &&
+      currentDate.isAfter(oneMonthBeforeEnd);
+}
+
+DateTime _oneMonthBefore(DateTime date) {
+  final year = date.month == DateTime.january ? date.year - 1 : date.year;
+  final month = date.month == DateTime.january
+      ? DateTime.december
+      : date.month - 1;
+  final lastDayOfMonth = DateTime(year, month + 1, 0).day;
+  final day = date.day > lastDayOfMonth ? lastDayOfMonth : date.day;
+  return DateTime(year, month, day);
+}
+
 class LeaseContractScreen extends StatefulWidget {
   const LeaseContractScreen({
     super.key,
@@ -427,6 +455,8 @@ class _CreateRequestGrid extends StatelessWidget {
   }
 
   Future<bool> _confirmOpenTerminationForm(BuildContext context) async {
+    if (!_shouldWarnDepositForfeiture) return true;
+
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -511,6 +541,13 @@ class _CreateRequestGrid extends StatelessWidget {
       ),
     );
     return confirmed == true;
+  }
+
+  bool get _shouldWarnDepositForfeiture {
+    return shouldWarnDepositForfeiture(
+      endDate: contract.endDate,
+      tenantIntention: contract.tenantIntention,
+    );
   }
 
   @override
@@ -598,6 +635,22 @@ class _CreateRequestGrid extends StatelessWidget {
       );
     }
 
+    final blockedReasons = <String>[];
+    void addBlockedReason(String reason) {
+      final normalized = reason.trim();
+      if (normalized.isNotEmpty && !blockedReasons.contains(normalized)) {
+        blockedReasons.add(normalized);
+      }
+    }
+
+    if (!contract.canRenew) addBlockedReason(contract.canRenewBlockedReason);
+    if (!contract.canLiquidate) {
+      addBlockedReason(contract.canLiquidateBlockedReason);
+    }
+    if (!contract.canAddCoOccupant) {
+      addBlockedReason(contract.canAddCoOccupantBlockedReason);
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -649,15 +702,17 @@ class _CreateRequestGrid extends StatelessWidget {
                   onTap: () =>
                       _openCreateForm(context, TenantRequestType.renewContract),
                 ),
-              AppActionTile(
-                icon: Icons.cancel_outlined,
-                label: 'Thanh lý hợp đồng',
-                accentColor: AppColors.actionRose,
-                onTap: () => _openCreateForm(
-                  context,
-                  TenantRequestType.terminateContract,
+              if (contract.canLiquidate ||
+                  contract.canLiquidateBlockedReason.trim().isEmpty)
+                AppActionTile(
+                  icon: Icons.cancel_outlined,
+                  label: 'Thanh lý hợp đồng',
+                  accentColor: AppColors.actionRose,
+                  onTap: () => _openCreateForm(
+                    context,
+                    TenantRequestType.terminateContract,
+                  ),
                 ),
-              ),
               AppActionTile(
                 icon: Icons.swap_horiz_rounded,
                 label: 'Chuyển phòng',
@@ -665,26 +720,28 @@ class _CreateRequestGrid extends StatelessWidget {
                 onTap: () =>
                     _openCreateForm(context, TenantRequestType.changeRoom),
               ),
-              AppActionTile(
-                icon: Icons.person_add_outlined,
-                label: 'Thêm người ở cùng',
-                accentColor: AppColors.actionEmerald,
-                enabled: !_isRoomFull,
-                disabledReason: _isRoomFull
-                    ? 'Phòng đã đủ số người tối đa${_maxOccupants == null ? '' : ' ($_activeOccupantCount/$_maxOccupants)'}.'
-                    : null,
-                onTap: _isRoomFull
-                    ? null
-                    : () => _openCreateForm(
-                        context,
-                        TenantRequestType.addRoommate,
-                      ),
-              ),
+              if (contract.canAddCoOccupant ||
+                  contract.canAddCoOccupantBlockedReason.trim().isEmpty)
+                AppActionTile(
+                  icon: Icons.person_add_outlined,
+                  label: 'Thêm người ở cùng',
+                  accentColor: AppColors.actionEmerald,
+                  enabled: !_isRoomFull,
+                  disabledReason: _isRoomFull
+                      ? 'Phòng đã đủ số người tối đa${_maxOccupants == null ? '' : ' ($_activeOccupantCount/$_maxOccupants)'}.'
+                      : null,
+                  onTap: _isRoomFull
+                      ? null
+                      : () => _openCreateForm(
+                          context,
+                          TenantRequestType.addRoommate,
+                        ),
+                ),
             ],
           ),
-          if (!contract.canRenew &&
-              contract.canRenewBlockedReason.trim().isNotEmpty)
-            _RenewalBlockedNotice(reason: contract.canRenewBlockedReason),
+          ...blockedReasons.map(
+            (reason) => _RenewalBlockedNotice(reason: reason),
+          ),
         ],
       ),
     );

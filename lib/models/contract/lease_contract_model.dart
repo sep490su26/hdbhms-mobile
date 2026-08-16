@@ -26,6 +26,11 @@ class LeaseContract {
     this.occupantIntentionRecordedAt,
     this.canRenew = false,
     this.canRenewBlockedReason = '',
+    this.canLiquidate = false,
+    this.canLiquidateBlockedReason = '',
+    this.canAddCoOccupant = false,
+    this.canAddCoOccupantBlockedReason = '',
+    this.mustTransferAllOccupants = false,
     this.signedAt,
   });
 
@@ -55,6 +60,11 @@ class LeaseContract {
   final DateTime? occupantIntentionRecordedAt;
   final bool canRenew;
   final String canRenewBlockedReason;
+  final bool canLiquidate;
+  final String canLiquidateBlockedReason;
+  final bool canAddCoOccupant;
+  final String canAddCoOccupantBlockedReason;
+  final bool mustTransferAllOccupants;
   final DateTime? signedAt;
 
   double get expectedServiceFeeTotal =>
@@ -158,6 +168,23 @@ class LeaseContract {
       canRenewBlockedReason: _firstString(json, const [
         'canRenewBlockedReason',
         'can_renew_blocked_reason',
+      ]),
+      canLiquidate: _firstBool(json, const ['canLiquidate', 'can_liquidate']),
+      canLiquidateBlockedReason: _firstString(json, const [
+        'canLiquidateBlockedReason',
+        'can_liquidate_blocked_reason',
+      ]),
+      canAddCoOccupant: _firstBool(json, const [
+        'canAddCoOccupant',
+        'can_add_co_occupant',
+      ]),
+      canAddCoOccupantBlockedReason: _firstString(json, const [
+        'canAddCoOccupantBlockedReason',
+        'can_add_co_occupant_blocked_reason',
+      ]),
+      mustTransferAllOccupants: _firstBool(json, const [
+        'mustTransferAllOccupants',
+        'must_transfer_all_occupants',
       ]),
       signedAt: _firstDate(json, const [
         'signedAt',

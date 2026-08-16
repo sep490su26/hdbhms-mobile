@@ -56,8 +56,6 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
   bool _transferLoadAttempted = false;
   String? _transferLoadError;
   bool _actionInProgress = false;
-  bool _checkingTargetHolderAccess = false;
-  bool _isVerifiedTargetHolder = false;
   bool _checkingHolderNominationAccess = false;
   bool _isVerifiedNominatedHolder = false;
   final TenantInvoiceService _tenantInvoiceService =
@@ -72,7 +70,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
   bool get _isResolvingScreenState =>
       _loadingTransfer ||
       (_transfer != null &&
-          (_checkingTargetHolderAccess || _checkingHolderNominationAccess));
+          _checkingHolderNominationAccess);
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -167,7 +165,6 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
         _transferLoadError = null;
       });
       unawaited(_markRoomTransferNotificationsRead(transfer.id));
-      await _resolveTargetHolderAccess(transfer);
       await _resolveHolderNominationAccess(transfer);
     } catch (_) {
       if (mounted) {
@@ -263,70 +260,6 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     return null;
   }
 
-  Future<void> _resolveTargetHolderAccess(RoomTransferRequest transfer) async {
-    if (!mounted) return;
-    if (transfer.status != TransferRequestStatus.waitingTargetHolderApproval ||
-        !_isExistingTargetContractFlow(transfer)) {
-      setState(() {
-        _checkingTargetHolderAccess = false;
-        _isVerifiedTargetHolder = false;
-      });
-      return;
-    }
-
-    setState(() {
-      _checkingTargetHolderAccess = true;
-      _isVerifiedTargetHolder = false;
-    });
-
-    try {
-      final pendingApprovals = await widget.transferService
-          .fetchPendingTargetHolderApprovals();
-      final isPendingForCurrentUser = pendingApprovals.any(
-        (item) => item.id == transfer.id,
-      );
-      if (!mounted) return;
-
-      if (isPendingForCurrentUser) {
-        setState(() {
-          _checkingTargetHolderAccess = false;
-          _isVerifiedTargetHolder = true;
-        });
-        return;
-      }
-    } catch (_) {
-      // Fall back to contract-role check below when pending list is unavailable.
-    }
-
-    if (transfer.targetContractId == null || transfer.targetContractId! <= 0) {
-      if (!mounted) return;
-      setState(() {
-        _checkingTargetHolderAccess = false;
-        _isVerifiedTargetHolder = false;
-      });
-      return;
-    }
-
-    try {
-      final contract = await widget.leaseContractService.getContractById(
-        transfer.targetContractId!,
-      );
-      if (!mounted) return;
-      setState(() {
-        _checkingTargetHolderAccess = false;
-        _isVerifiedTargetHolder =
-            contract.isPrimary ||
-            contract.roleInContract.toUpperCase() == 'PRIMARY';
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _checkingTargetHolderAccess = false;
-        _isVerifiedTargetHolder = false;
-      });
-    }
-  }
-
   // ── Actions ────────────────────────────────────────────────────────────────
 
   Future<void> _cancelTransfer() async {
@@ -357,106 +290,17 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     }
   }
 
-  Future<void> _confirmTenantSettlement() async {
-    if (_transfer == null) return;
-
-    final transfer = _transfer!;
-    if (!_canConfirmTenantTransfer(transfer)) {
-      _snack(
-        'Yêu cầu chưa đủ điều kiện xác nhận. Kiểm tra lý do chặn bên dưới.',
-      );
-      return;
-    }
-
-    final rentDifference = _rentDifference(transfer);
-    SettlementType? selectedSettlement = SettlementType.noDifference;
-
-    if (rentDifference != 0) {
-      selectedSettlement = await _showSettlementTypeDialog(rentDifference);
-      if (selectedSettlement == null) return;
-      if (!mounted) return;
-    }
-
-    setState(() => _actionInProgress = true);
-    final navigator = Navigator.of(context);
-    try {
-      await widget.transferService.confirmTenantTransfer(
-        requestId: transfer.id,
-        settlementType: selectedSettlement,
-      );
-      if (!mounted) return;
-      await _tryLoadTransfer();
-      if (!mounted) return;
-
-      if (selectedSettlement == SettlementType.tenantPayMore) {
-        _snack('Đã tạo hóa đơn chênh lệch. Đang chuyển sang màn thanh toán.');
-        await _openTransferDifferencePayment();
-        return;
-      }
-
-      _snack('Đã xác nhận yêu cầu chuyển phòng.');
-      navigator.pop(true);
-    } on RoomTransferException catch (e) {
-      if (!mounted) return;
-      _snack(e.message);
-    } catch (_) {
-      if (!mounted) return;
-      _snack('Không thể xác nhận. Vui lòng thử lại.');
-    } finally {
-      if (mounted) setState(() => _actionInProgress = false);
-    }
-  }
-
-  int _rentDifference(RoomTransferRequest transfer) {
-    return transfer.priceDifferenceAmount ?? transfer.priceDifferenceToPay ?? 0;
-  }
-
   bool _requiresHolderSelectionForConfirmation(RoomTransferRequest transfer) {
-    if (transfer.targetTransferType != TargetTransferType.newContract) {
-      return false;
-    }
-    if (transfer.canConfirmTenantTransfer) {
-      return false;
-    }
-    if (transfer.canNominateSourceHolder) {
-      return true;
-    }
-    if (transfer.sourceRoomWillBeEmptyAfterTransfer == true) {
-      return false;
-    }
-    final remainingOccupants = transfer.remainingOccupantCountAfterTransfer;
-    if (remainingOccupants != null && remainingOccupants <= 0) {
-      return false;
-    }
-    return transfer.sourceHolderCandidateProfileIds.any((id) => id > 0);
+    return false;
   }
 
   bool _canNominateSourceHolder(RoomTransferRequest transfer) {
-    if (!_isCurrentTenantTransferring(transfer)) return false;
-    if (transfer.canNominateSourceHolder) return true;
-    final isOpenStatus =
-        transfer.status == TransferRequestStatus.managerApproved ||
-        transfer.status == TransferRequestStatus.waitingNewContract;
-    final hasCandidate = transfer.sourceHolderCandidateProfileIds.any(
-      (id) => id > 0,
-    );
-    return isOpenStatus &&
-        hasCandidate &&
-        (transfer.nominatedHolderProfileId == null ||
-            transfer.nominatedHolderProfileId! <= 0);
+    return false;
   }
 
   bool _canEditConfirmationHolder(RoomTransferRequest transfer) {
     return _requiresHolderSelectionForConfirmation(transfer) &&
         _canNominateSourceHolder(transfer);
-  }
-
-  bool _canConfirmWithSelectedHolder(RoomTransferRequest transfer) {
-    if (!_requiresHolderSelectionForConfirmation(transfer)) {
-      return true;
-    }
-    final holderId = transfer.nominatedHolderProfileId;
-    return holderId != null && holderId > 0;
   }
 
   bool _isCurrentTenantNominatedHolder(RoomTransferRequest transfer) {
@@ -509,24 +353,6 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
         _isVerifiedNominatedHolder = _isCurrentTenantNominatedHolder(transfer);
       });
     }
-  }
-
-  bool _canConfirmTenantTransfer(RoomTransferRequest transfer) {
-    if (!_isCurrentTenantTransferring(transfer)) return false;
-    if (_isImmediateDifferencePaymentPending(transfer)) return false;
-    if (transfer.hasBackendActions && !transfer.canConfirmTenantTransfer) {
-      return false;
-    }
-    return _canConfirmWithSelectedHolder(transfer);
-  }
-
-  bool _isImmediateDifferencePaymentPending(RoomTransferRequest transfer) {
-    if ((transfer.priceDifferenceToPay ?? 0) <= 0) {
-      return false;
-    }
-    if (transfer.canPayTransferDifference) return true;
-    return transfer.priceDifferenceSettlementType.trim().toUpperCase() ==
-        SettlementType.tenantPayMore.backendValue;
   }
 
   bool _canActOnTransferContract(RoomTransferRequest transfer) {
@@ -930,239 +756,6 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     }
   }
 
-  Future<SettlementType?> _showSettlementTypeDialog(int difference) {
-    final isPositive = difference > 0;
-    final formattedDiff = _formatCurrency(difference.abs());
-    final choices = isPositive
-        ? const [SettlementType.tenantPayMore, SettlementType.addToNextInvoice]
-        : const [SettlementType.creditNextContract];
-    return showModalBottomSheet<SettlementType>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  isPositive
-                      ? 'Chọn phương thức thanh toán'
-                      : 'Chọn phương thức xử lý chênh lệch',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.inputText,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  isPositive
-                      ? 'Phòng mới có giá cao hơn, chênh lệch cần trả: $formattedDiff.'
-                      : 'Phòng mới có giá thấp hơn, chênh lệch cần xử lý: $formattedDiff.',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.bodyText,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                for (final choice in choices) ...[
-                  _SettlementChoiceTile(
-                    icon: _settlementIcon(choice),
-                    title: _settlementTitle(choice),
-                    subtitle: _settlementSubtitle(choice),
-                    onTap: () => Navigator.of(ctx).pop(choice),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.deepBlue,
-                      textStyle: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    child: const Text('Đóng'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  IconData _settlementIcon(SettlementType type) {
-    switch (type) {
-      case SettlementType.tenantPayMore:
-        return Icons.payment;
-      case SettlementType.addToNextInvoice:
-        return Icons.schedule;
-      case SettlementType.refundNow:
-        return Icons.account_balance_wallet_outlined;
-      case SettlementType.creditNextContract:
-        return Icons.receipt_long_outlined;
-      case SettlementType.noDifference:
-        return Icons.check_circle_outline;
-    }
-  }
-
-  String _settlementTitle(SettlementType type) {
-    switch (type) {
-      case SettlementType.tenantPayMore:
-        return 'Thanh toán ngay';
-      case SettlementType.addToNextInvoice:
-        return 'Cộng vào kỳ kế tiếp';
-      case SettlementType.refundNow:
-        return 'Hoàn tiền ngay';
-      case SettlementType.creditNextContract:
-        return 'Cấn trừ hợp đồng mới';
-      case SettlementType.noDifference:
-        return 'Không có chênh lệch';
-    }
-  }
-
-  String _settlementSubtitle(SettlementType type) {
-    switch (type) {
-      case SettlementType.tenantPayMore:
-        return 'Hệ thống tạo hóa đơn chênh lệch và tự chuyển tiếp sau khi thanh toán thành công.';
-      case SettlementType.addToNextInvoice:
-        return 'Xác nhận yêu cầu ngay và cộng khoản chênh lệch vào hóa đơn kỳ sau.';
-      case SettlementType.refundNow:
-        return 'Khoản chênh lệch giảm sẽ được hoàn tiền theo quy trình xử lý của quản lý.';
-      case SettlementType.creditNextContract:
-        return 'Khoản chênh lệch giảm sẽ được cấn trừ vào hợp đồng mới hoặc hóa đơn kỳ sau.';
-      case SettlementType.noDifference:
-        return 'Không phát sinh khoản chênh lệch cần xử lý.';
-    }
-  }
-
-  String _formatCurrency(int amount) {
-    final s = amount.toString();
-    final buffer = StringBuffer();
-    for (int i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) buffer.write('.');
-      buffer.write(s[i]);
-    }
-    return '$bufferđ';
-  }
-
-  Future<void> _rejectContract() async {
-    if (_transfer == null) return;
-    final isTenantConfirmation =
-        _transfer!.status == TransferRequestStatus.waitingTenantConfirmation;
-    final confirmed = await _confirmDialog(
-      title: isTenantConfirmation ? 'Từ chối yêu cầu' : 'Từ chối hợp đồng',
-      content: isTenantConfirmation
-          ? 'Bạn có chắc muốn từ chối yêu cầu chuyển phòng này?'
-          : 'Bạn có chắc muốn từ chối hợp đồng chuyển phòng này?',
-      confirmLabel: 'Từ chối',
-      isDestructive: true,
-    );
-    if (!confirmed) return;
-
-    setState(() => _actionInProgress = true);
-    try {
-      await widget.transferService.rejectTransferContract(_transfer!.id);
-      if (!mounted) return;
-      _snack(
-        isTenantConfirmation
-            ? 'Đã từ chối yêu cầu chuyển phòng.'
-            : 'Đã từ chối hợp đồng chuyển phòng.',
-      );
-      Navigator.of(context).pop(true);
-    } on RoomTransferException catch (e) {
-      if (!mounted) return;
-      _snack(e.message);
-    } catch (_) {
-      if (!mounted) return;
-      _snack('Không thể từ chối. Vui lòng thử lại.');
-    } finally {
-      if (mounted) setState(() => _actionInProgress = false);
-    }
-  }
-
-  // ── Target Holder Approval Actions ─────────────────────────────────────
-
-  Future<void> _approveTargetHolderTransfer() async {
-    if (_transfer == null) return;
-    final confirmed = await _confirmDialog(
-      title: 'Đồng ý chuyển phòng',
-      content:
-          'Bạn có chắc muốn chấp nhận yêu cầu chuyển phòng này vào phòng của bạn? Sau khi đồng ý, hợp đồng thỏa thuận sẽ được tạo.',
-      confirmLabel: 'Đồng ý',
-      isDestructive: false,
-    );
-    if (!confirmed) return;
-
-    setState(() => _actionInProgress = true);
-    try {
-      await widget.transferService.approveTargetHolderTransfer(_transfer!.id);
-      if (!mounted) return;
-      _snack('Đã đồng ý yêu cầu chuyển phòng.');
-      Navigator.of(context).pop(true);
-    } on RoomTransferException catch (e) {
-      if (!mounted) return;
-      _snack(e.message);
-    } catch (_) {
-      if (!mounted) return;
-      _snack('Không thể phê duyệt. Vui lòng thử lại.');
-    } finally {
-      if (mounted) setState(() => _actionInProgress = false);
-    }
-  }
-
-  Future<void> _rejectTargetHolderTransfer() async {
-    if (_transfer == null) return;
-    final confirmed = await _confirmDialog(
-      title: 'Từ chối chuyển phòng',
-      content: 'Bạn có chắc muốn từ chối yêu cầu chuyển phòng này?',
-      confirmLabel: 'Từ chối',
-      isDestructive: true,
-    );
-    if (!confirmed) return;
-
-    setState(() => _actionInProgress = true);
-    try {
-      await widget.transferService.rejectTargetHolderTransfer(_transfer!.id);
-      if (!mounted) return;
-      _snack('Đã từ chối yêu cầu chuyển phòng.');
-      Navigator.of(context).pop(true);
-    } on RoomTransferException catch (e) {
-      if (!mounted) return;
-      _snack(e.message);
-    } catch (_) {
-      if (!mounted) return;
-      _snack('Không thể từ chối. Vui lòng thử lại.');
-    } finally {
-      if (mounted) setState(() => _actionInProgress = false);
-    }
-  }
-
   Future<void> _acceptHolderNomination() async {
     if (_transfer == null) return;
     final confirmed = await _confirmDialog(
@@ -1217,20 +810,6 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     } finally {
       if (mounted) setState(() => _actionInProgress = false);
     }
-  }
-
-  bool _isExistingTargetContractFlow(RoomTransferRequest transfer) {
-    return transfer.targetTransferType == TargetTransferType.ownContract ||
-        transfer.targetTransferType == TargetTransferType.otherContract;
-  }
-
-  bool get _isTargetHolder {
-    if (_transfer == null) return false;
-    return !_checkingTargetHolderAccess &&
-        _isVerifiedTargetHolder &&
-        _transfer!.status ==
-            TransferRequestStatus.waitingTargetHolderApproval &&
-        _isExistingTargetContractFlow(_transfer!);
   }
 
   bool get _isNominatedHolder {
@@ -1314,11 +893,11 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
   }
 
   bool _canViewFullTransferFlow(RoomTransferRequest transfer) {
-    return _isCurrentTenantTransferring(transfer) || _isTargetHolder;
+    return _isCurrentTenantTransferring(transfer);
   }
 
   bool _canViewDestinationInfo(RoomTransferRequest transfer) {
-    return _isCurrentTenantTransferring(transfer) || _isTargetHolder;
+    return _isCurrentTenantTransferring(transfer);
   }
 
   bool _canViewTransferFinancials(RoomTransferRequest transfer) {
@@ -1330,13 +909,10 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
   }
 
   bool _shouldMaskOperationalStatus(RoomTransferRequest transfer) {
-    if (_canViewFullTransferFlow(transfer) ||
-        _isNominatedHolder ||
-        _isTargetHolder) {
+    if (_canViewFullTransferFlow(transfer) || _isNominatedHolder) {
       return false;
     }
     return switch (transfer.status) {
-      TransferRequestStatus.waitingTenantConfirmation ||
       TransferRequestStatus.waitingPayment ||
       TransferRequestStatus.waitingContractConfirmation ||
       TransferRequestStatus.waitingSigning ||
@@ -1678,13 +1254,8 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
         else if (_transfer != null && _canViewFullTransferFlow(_transfer!))
           _StatusTimeline(
             currentStatus: _transfer!.status,
-            targetTransferType: _transfer!.targetTransferType,
-            usesExistingTargetContract: _isExistingTargetContractFlow(
-              _transfer!,
-            ),
             remainingOccupantCountAfterTransfer:
                 _transfer!.remainingOccupantCountAfterTransfer,
-            nominatedHolderProfileId: _transfer!.nominatedHolderProfileId,
           )
         else if (_transfer == null && _transferLoadAttempted)
           _TransferLoadStateCard(
@@ -1794,8 +1365,8 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
               Text(
                 _transfer!.nominatedHolderProfileId != null &&
                         _transfer!.nominatedHolderProfileId! > 0
-                    ? 'Người đứng tên hợp đồng đã chọn: ${_selectedHolderDisplayName(_transfer!) ?? 'Người thuê #${_transfer!.nominatedHolderProfileId}'}. Sau bước này bạn mới xác nhận yêu cầu và chọn phương thức thanh toán.'
-                    : 'Bạn cần chọn người đứng tên hợp đồng trước. Sau khi chọn xong, mới được xác nhận yêu cầu và chọn phương thức thanh toán.',
+                    ? 'Người đứng tên hợp đồng đã chọn: ${_selectedHolderDisplayName(_transfer!) ?? 'Người thuê #${_transfer!.nominatedHolderProfileId}'}. Hệ thống sẽ tự động tiếp tục xử lý sau khi người này phản hồi.'
+                    : 'Bạn cần chọn người đứng tên hợp đồng trước để hệ thống tiếp tục xử lý yêu cầu.',
                 style: const TextStyle(
                   color: AppColors.bodyText,
                   fontSize: 13,
@@ -1816,42 +1387,6 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
                 onTap: _pickConfirmationHolder,
               ),
             ],
-          ),
-        ],
-
-        if (_transfer != null &&
-            _canActOnTransferContract(_transfer!) &&
-            _transfer!.status ==
-                TransferRequestStatus.waitingTenantConfirmation &&
-            (_transfer!.priceDifferenceToPay ?? 0) > 0 &&
-            _transfer!.transferDifferenceInvoiceId == null &&
-            _transfer!.priceDifferenceSettlementType.isEmpty) ...[
-          const SizedBox(height: 14),
-          _SectionCard(
-            title: 'Phương thức thanh toán',
-            icon: Icons.payments_outlined,
-            children: [
-              Text(
-                'Khi bấm xác nhận yêu cầu, hệ thống sẽ cho bạn chọn cách xử lý khoản chênh lệch ${_formatCurrency(_transfer!.priceDifferenceToPay ?? 0)}.',
-                style: const TextStyle(
-                  color: AppColors.bodyText,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  height: 1.45,
-                ),
-              ),
-            ],
-          ),
-        ],
-
-        // ── Target Holder Approval Section ─────────────────────────────
-        if (_transfer != null && _isTargetHolder) ...[
-          const SizedBox(height: 14),
-          _TargetHolderApprovalCard(
-            transfer: _transfer!,
-            onApprove: _approveTargetHolderTransfer,
-            onReject: _rejectTargetHolderTransfer,
-            busy: _actionInProgress,
           ),
         ],
 
@@ -1894,33 +1429,6 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
     if (_transfer != null) {
       switch (_transfer!.status) {
         case TransferRequestStatus.waitingTenantConfirmation:
-          if (!_canActOnTransferContract(_transfer!)) {
-            break;
-          }
-          if (_isImmediateDifferencePaymentPending(_transfer!)) {
-            _addTransferDifferencePaymentActions(actions, busy);
-            break;
-          }
-          actions.add(
-            _ActionButton(
-              label: 'Xác nhận yêu cầu',
-              icon: Icons.check_circle_outline,
-              color: AppColors.successText,
-              busy: busy,
-              enabled: _canConfirmTenantTransfer(_transfer!),
-              onTap: _confirmTenantSettlement,
-            ),
-          );
-          actions.add(const SizedBox(height: 10));
-          actions.add(
-            _ActionButton(
-              label: 'Từ chối yêu cầu',
-              icon: Icons.cancel_outlined,
-              color: AppColors.danger,
-              busy: busy,
-              onTap: _rejectContract,
-            ),
-          );
           break;
         case TransferRequestStatus.waitingPayment:
           if (!_canActOnTransferContract(_transfer!)) {
@@ -2094,10 +1602,6 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
             );
           }
           break;
-        case TransferRequestStatus.waitingTargetHolderApproval:
-          // Target holder approval is handled by the embedded card
-          // No action button needed here
-          break;
         case TransferRequestStatus.waitingExecution:
           final message = _transfer!.canPayTransferOutUtility
               ? 'Cần thanh toán hóa đơn điện/nước chuyển phòng #${_transfer!.oldRoomFinalInvoiceId ?? ''} trước khi quản lý hoàn tất chuyển phòng.'
@@ -2218,9 +1722,6 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
         TransferRequestStatus.waitingHolderResponse => const Color(0xFFD97706),
         TransferRequestStatus.waitingApproval => const Color(0xFFD97706),
         TransferRequestStatus.waitingNewContract => AppColors.deepBlue,
-        TransferRequestStatus.waitingTargetHolderApproval => const Color(
-          0xFFD97706,
-        ),
         TransferRequestStatus.waitingTenantConfirmation => AppColors.deepBlue,
         TransferRequestStatus.waitingContractConfirmation => AppColors.deepBlue,
         TransferRequestStatus.waitingPayment => const Color(0xFFD97706),
@@ -2292,8 +1793,6 @@ class _StatusBanner extends StatelessWidget {
           Icons.person_outline_rounded,
         TransferRequestStatus.waitingApproval => Icons.hourglass_empty,
         TransferRequestStatus.waitingNewContract => Icons.description_outlined,
-        TransferRequestStatus.waitingTargetHolderApproval =>
-          Icons.how_to_reg_outlined,
         TransferRequestStatus.waitingTenantConfirmation => Icons.task_outlined,
         TransferRequestStatus.waitingContractConfirmation =>
           Icons.task_outlined,
@@ -2333,9 +1832,6 @@ class _StatusBanner extends StatelessWidget {
         TransferRequestStatus.waitingHolderResponse => const Color(0xFFD97706),
         TransferRequestStatus.waitingApproval => const Color(0xFFD97706),
         TransferRequestStatus.waitingNewContract => AppColors.deepBlue,
-        TransferRequestStatus.waitingTargetHolderApproval => const Color(
-          0xFFD97706,
-        ),
         TransferRequestStatus.waitingTenantConfirmation => AppColors.deepBlue,
         TransferRequestStatus.waitingContractConfirmation => AppColors.deepBlue,
         TransferRequestStatus.waitingPayment => const Color(0xFFD97706),
@@ -2374,9 +1870,6 @@ class _StatusBanner extends StatelessWidget {
         TransferRequestStatus.waitingHolderResponse => const Color(0xFFFFF7ED),
         TransferRequestStatus.waitingApproval => const Color(0xFFFFF7ED),
         TransferRequestStatus.waitingNewContract => AppColors.primarySurface,
-        TransferRequestStatus.waitingTargetHolderApproval => const Color(
-          0xFFFFF7ED,
-        ),
         TransferRequestStatus.waitingTenantConfirmation => const Color(
           0xFFEFF1FF,
         ),
@@ -2478,8 +1971,6 @@ class _StatusBanner extends StatelessWidget {
           'Yêu cầu đang chờ quản lý phê duyệt.',
         TransferRequestStatus.waitingNewContract =>
           'Chờ chọn người đứng tên hoặc tạo hợp đồng mới.',
-        TransferRequestStatus.waitingTargetHolderApproval =>
-          'Đang chờ chủ phòng đích phê duyệt yêu cầu chuyển vào.',
         TransferRequestStatus.waitingTenantConfirmation =>
           'Chờ người thuê xác nhận phương án chuyển phòng.',
         TransferRequestStatus.waitingContractConfirmation =>
@@ -2870,200 +2361,19 @@ class _TransferActionLoadingCard extends StatelessWidget {
   }
 }
 
-// ── Target Holder Approval Card ────────────────────────────────────────────
-
-class _TargetHolderApprovalCard extends StatelessWidget {
-  const _TargetHolderApprovalCard({
-    required this.transfer,
-    required this.onApprove,
-    required this.onReject,
-    this.busy = false,
-  });
-
-  final RoomTransferRequest transfer;
-  final VoidCallback onApprove;
-  final VoidCallback onReject;
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.warningSurface,
-        borderRadius: BorderRadius.circular(AppColors.radiusMd),
-        border: Border.all(color: AppColors.warning, width: 1.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                ),
-                child: const Icon(
-                  Icons.person_add_outlined,
-                  color: Color(0xFFD97706),
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'Yêu cầu chuyển vào phòng bạn',
-                  style: TextStyle(
-                    color: AppColors.warningText,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Một người dùng đang yêu cầu chuyển vào phòng của bạn. Vui lòng xem xét và phê duyệt hoặc từ chối yêu cầu này.',
-            style: TextStyle(
-              color: AppColors.warningText,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _ApprovalButton(
-                  label: 'Từ chối',
-                  icon: Icons.close_outlined,
-                  color: AppColors.danger,
-                  busy: busy,
-                  onTap: onReject,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _ApprovalButton(
-                  label: 'Đồng ý',
-                  icon: Icons.check_outlined,
-                  color: AppColors.primary,
-                  busy: busy,
-                  onTap: onApprove,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ApprovalButton extends StatelessWidget {
-  const _ApprovalButton({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-    this.busy = false,
-  });
-
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDanger = color == AppColors.danger;
-    final iconWidget = busy
-        ? SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: isDanger ? AppColors.danger : Colors.white,
-            ),
-          )
-        : Icon(icon, size: 18);
-
-    return SizedBox(
-      height: 44,
-      child: isDanger
-          ? OutlinedButton.icon(
-              onPressed: busy ? null : onTap,
-              icon: iconWidget,
-              label: Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.danger,
-                backgroundColor: AppColors.dangerSurface,
-                disabledForegroundColor: AppColors.danger.withValues(
-                  alpha: 0.45,
-                ),
-                side: BorderSide(
-                  color: AppColors.danger.withValues(alpha: 0.65),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                ),
-              ),
-            )
-          : ElevatedButton.icon(
-              onPressed: busy ? null : onTap,
-              icon: iconWidget,
-              label: Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: color,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: color.withValues(alpha: 0.5),
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                ),
-              ),
-            ),
-    );
-  }
-}
-
 // ── Status Timeline ────────────────────────────────────────────────────────
 
 class _StatusTimeline extends StatelessWidget {
   const _StatusTimeline({
     required this.currentStatus,
-    required this.targetTransferType,
-    required this.usesExistingTargetContract,
     required this.remainingOccupantCountAfterTransfer,
-    required this.nominatedHolderProfileId,
   });
 
   final TransferRequestStatus currentStatus;
-  final TargetTransferType targetTransferType;
-  final bool usesExistingTargetContract;
   final int? remainingOccupantCountAfterTransfer;
-  final int? nominatedHolderProfileId;
 
   bool get _needsSourceHolderNomination {
-    return (remainingOccupantCountAfterTransfer ?? 0) > 0;
+    return false;
   }
 
   List<_TimelineStep> get _steps {
@@ -3098,36 +2408,16 @@ class _StatusTimeline extends StatelessWidget {
           icon: Icons.person_outline_rounded,
         ),
       );
-      steps.add(
-        _TimelineStep(
-          status: TransferRequestStatus.waitingHolderResponse,
-          aliases: const [TransferRequestStatus.waitingHolderResponse],
-          label: 'Chờ người đứng tên hợp đồng của phòng cũ phản hồi',
-          icon: Icons.schedule_outlined,
-        ),
-      );
-    }
-
-    if (usesExistingTargetContract) {
-      steps.add(
-        _TimelineStep(
-          status: TransferRequestStatus.waitingTargetHolderApproval,
-          aliases: const [TransferRequestStatus.waitingTargetHolderApproval],
-          label: 'Chủ phòng đích phê duyệt',
-          icon: Icons.how_to_reg_outlined,
-        ),
-      );
     }
 
     steps.add(
       _TimelineStep(
-        status: TransferRequestStatus.waitingTenantConfirmation,
+        status: TransferRequestStatus.waitingContractConfirmation,
         aliases: const [
-          TransferRequestStatus.waitingTenantConfirmation,
           TransferRequestStatus.waitingPayment,
           TransferRequestStatus.waitingContractConfirmation,
         ],
-        label: 'Chờ xác nhận yêu cầu',
+        label: 'Chuẩn bị hợp đồng',
         icon: Icons.task_outlined,
       ),
     );
@@ -3180,16 +2470,10 @@ class _StatusTimeline extends StatelessWidget {
     if (_needsSourceHolderNomination) {
       statuses.addAll([
         TransferRequestStatus.waitingNewContract,
-        TransferRequestStatus.waitingHolderResponse,
       ]);
     }
 
-    if (usesExistingTargetContract) {
-      statuses.add(TransferRequestStatus.waitingTargetHolderApproval);
-    }
-
     statuses.addAll([
-      TransferRequestStatus.waitingTenantConfirmation,
       TransferRequestStatus.waitingPayment,
       TransferRequestStatus.waitingContractConfirmation,
     ]);
@@ -3388,75 +2672,3 @@ class _TimelineStep {
   final IconData icon;
 }
 
-// ── Settlement Option Tile ─────────────────────────────────────────────────
-
-class _SettlementChoiceTile extends StatelessWidget {
-  const _SettlementChoiceTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppColors.radiusMd),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFFD1D5DB)),
-            borderRadius: BorderRadius.circular(AppColors.radiusMd),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.primarySurface,
-                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                ),
-                child: Icon(icon, color: AppColors.deepBlue, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.neutralStrong,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}

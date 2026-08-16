@@ -671,6 +671,15 @@ class LeaseContractService {
 
   String _messageForLifecycleRequestError(http.Response response) {
     final raw = _messageForError(response);
+    String? errorCode;
+    try {
+      errorCode = _decodeBody(response.body)['errorCode']?.toString();
+    } on FormatException {
+      errorCode = null;
+    }
+    if (errorCode == 'CONTRACT_OUTSTANDING_DEBT') {
+      return raw;
+    }
     if (response.statusCode == 409 || raw.contains('dang cho duyet')) {
       return 'Hợp đồng đã có yêu cầu đang chờ duyệt.';
     }

@@ -3,6 +3,7 @@ import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../models/payment/invoice_payment_presentation.dart';
+import '../../services/contract/lease_contract_service.dart';
 import '../../services/payment/tenant_invoice_service.dart';
 import '../home/home_screen.dart';
 import 'payment_history_page.dart';
@@ -775,7 +776,10 @@ class _SuccessActions extends StatelessWidget {
           child: OutlinedButton.icon(
             onPressed: () {
               Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const HomeScreen()),
+                MaterialPageRoute(
+                  builder: (context) =>
+                      HomeScreen(initialRoom: _roomContextFromInvoice(invoice)),
+                ),
                 (route) => false,
               );
             },
@@ -797,6 +801,21 @@ class _SuccessActions extends StatelessWidget {
       ],
     );
   }
+}
+
+ActiveRoomItem? _roomContextFromInvoice(TenantInvoice? invoice) {
+  if (invoice == null ||
+      ((invoice.roomId ?? 0) <= 0 && invoice.roomCode.trim().isEmpty)) {
+    return null;
+  }
+  return ActiveRoomItem(
+    contractId: invoice.contractId ?? 0,
+    contractCode: invoice.contractCode,
+    roomId: invoice.roomId ?? 0,
+    roomCode: invoice.roomCode,
+    roomName: invoice.roomCode.isEmpty ? 'Phòng' : 'Phòng ${invoice.roomCode}',
+    propertyName: '',
+  );
 }
 
 class _LightCard extends StatelessWidget {

@@ -26,13 +26,15 @@ class RoomTransferService {
   Future<int> createTransferRequest({
     required int sourceContractId,
     required int targetRoomId,
-    required DateTime requestedTransferDate,
+    DateTime? requestedTransferDate,
     List<int>? transferredTenantProfileIds,
+    int? nominatedHolderProfileId,
     String? reason,
   }) async {
+    final requestedMonth = requestedTransferDate ?? _nextTransferMonth();
     final transferMonth = DateTime(
-      requestedTransferDate.year,
-      requestedTransferDate.month,
+      requestedMonth.year,
+      requestedMonth.month,
       1,
     );
     final body = <String, dynamic>{
@@ -43,6 +45,7 @@ class RoomTransferService {
       if (transferredTenantProfileIds != null &&
           transferredTenantProfileIds.isNotEmpty)
         'transferredTenantProfileIds': transferredTenantProfileIds,
+      'nominatedHolderProfileId': nominatedHolderProfileId,
       if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
     };
     final json = await _postJson(_uri('/occupant-transfer-requests'), body);
@@ -53,6 +56,11 @@ class RoomTransferService {
       return _asInt(data['id']) ?? 0;
     }
     return 0;
+  }
+
+  DateTime _nextTransferMonth() {
+    final today = DateTime.now();
+    return DateTime(today.year, today.month + 1, 1);
   }
 
   // ── Cancel ────────────────────────────────────────────────────────────────
@@ -88,17 +96,6 @@ class RoomTransferService {
       return RoomTransferRequest.fromJson(data);
     }
     return RoomTransferRequest.fromJson(json);
-  }
-
-  // ── Pending approvals ─────────────────────────────────────────────────────
-
-  /// GET /occupant-transfer-requests/pending-target-holder-approvals
-  Future<List<RoomTransferRequest>> fetchPendingTargetHolderApprovals() async {
-    final json = await _getJson(
-      _uri('/occupant-transfer-requests/pending-target-holder-approvals'),
-    );
-    final list = _extractList(json);
-    return list.map(RoomTransferRequest.fromJson).toList(growable: false);
   }
 
   /// GET /occupant-transfer-requests/pending-holder-nominations
@@ -179,24 +176,6 @@ class RoomTransferService {
   Future<void> rejectTransferContract(int requestId) async {
     await _postJson(
       _uri('/occupant-transfer-requests/$requestId/contract/reject'),
-      {},
-    );
-  }
-
-  // ── Target holder approval ────────────────────────────────────────────────
-
-  /// POST /api/v1/occupant-transfer-requests/{id}/target-holder/approve
-  Future<void> approveTargetHolderTransfer(int requestId) async {
-    await _postJson(
-      _uri('/occupant-transfer-requests/$requestId/target-holder/approve'),
-      {},
-    );
-  }
-
-  /// POST /api/v1/occupant-transfer-requests/{id}/target-holder/reject
-  Future<void> rejectTargetHolderTransfer(int requestId) async {
-    await _postJson(
-      _uri('/occupant-transfer-requests/$requestId/target-holder/reject'),
       {},
     );
   }

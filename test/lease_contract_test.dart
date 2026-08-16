@@ -506,6 +506,54 @@ void main() {
     expect(find.text('Ngày thanh lý'), findsOneWidget);
   });
 
+  test(
+    'deposit forfeiture warning only applies to an undecided short term',
+    () {
+      final today = DateTime(2026, 8, 1);
+
+      expect(
+        shouldWarnDepositForfeiture(
+          endDate: DateTime(2026, 8, 20),
+          tenantIntention: '',
+          today: today,
+        ),
+        isTrue,
+      );
+      expect(
+        shouldWarnDepositForfeiture(
+          endDate: DateTime(2026, 8, 20),
+          tenantIntention: 'RENEW',
+          today: today,
+        ),
+        isFalse,
+      );
+      expect(
+        shouldWarnDepositForfeiture(
+          endDate: DateTime(2026, 8, 20),
+          tenantIntention: 'UNDECIDED',
+          today: today,
+        ),
+        isTrue,
+      );
+      expect(
+        shouldWarnDepositForfeiture(
+          endDate: DateTime(2026, 9, 1),
+          tenantIntention: '',
+          today: today,
+        ),
+        isFalse,
+      );
+      expect(
+        shouldWarnDepositForfeiture(
+          endDate: DateTime(2026, 9, 30),
+          tenantIntention: '',
+          today: today,
+        ),
+        isFalse,
+      );
+    },
+  );
+
   testWidgets('liquidation progress waits at approval for pending request', (
     tester,
   ) async {
