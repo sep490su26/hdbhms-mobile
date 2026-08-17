@@ -19,6 +19,7 @@ import 'package:hdbhms_mobile/utils/display_formatters.dart';
 import 'package:hdbhms_mobile/widgets/app_action_tile.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 import 'package:hdbhms_mobile/widgets/app_skeleton.dart';
+import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
@@ -137,6 +138,8 @@ class _HomeScreenState extends State<HomeScreen> {
       return _HomeErrorState(
         message: _provider.errorMessage!,
         onRetry: _provider.load,
+        title: _homeErrorTitle(_provider.selectedRoom),
+        onOpenRoomOverview: _openRoomOverview,
       );
     }
 
@@ -145,6 +148,8 @@ class _HomeScreenState extends State<HomeScreen> {
       return _HomeErrorState(
         message: 'Không tải được dữ liệu Home',
         onRetry: _provider.load,
+        title: _homeErrorTitle(_provider.selectedRoom),
+        onOpenRoomOverview: _openRoomOverview,
       );
     }
 
@@ -239,6 +244,7 @@ class _HomeScreenState extends State<HomeScreen> {
           leaseContractService: widget.leaseContractService,
           profileService: widget.profileService,
           tenantInvoiceService: widget.tenantInvoiceService,
+          notificationService: widget.notificationService,
         ),
       ),
     );
@@ -246,49 +252,79 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _HomeErrorState extends StatelessWidget {
-  const _HomeErrorState({required this.message, required this.onRetry});
+  const _HomeErrorState({
+    required this.message,
+    required this.onRetry,
+    required this.title,
+    required this.onOpenRoomOverview,
+  });
 
   final String message;
   final VoidCallback onRetry;
+  final String title;
+  final VoidCallback onOpenRoomOverview;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.cloud_off_rounded,
-              color: AppColors.deepBlue,
-              size: 42,
+    return AppScreenShell(
+      header: AppTopBar(
+        title: title,
+        trailing: Semantics(
+          button: true,
+          label: 'Danh sách phòng đang thuê',
+          child: IconButton(
+            onPressed: onOpenRoomOverview,
+            constraints: const BoxConstraints.tightFor(
+              width: AppColors.minimumTouchTarget,
+              height: AppColors.minimumTouchTarget,
             ),
-            const SizedBox(height: 14),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.inputText,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
+            icon: const Icon(Icons.home_rounded),
+            tooltip: 'Danh sách phòng đang thuê',
+          ),
+        ),
+      ),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.cloud_off_rounded,
+                color: AppColors.deepBlue,
+                size: 42,
               ),
-            ),
-            const SizedBox(height: 18),
-            ElevatedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Thử lại'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.deepBlue,
-                foregroundColor: Colors.white,
+              const SizedBox(height: 14),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.inputText,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 18),
+              ElevatedButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Thử lại'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.deepBlue,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+String _homeErrorTitle(ActiveRoomItem? room) {
+  final label = room?.displayLabel.trim() ?? '';
+  return label.isEmpty ? 'Tổng quan phòng' : label;
 }
 
 class _HomeHeader extends StatelessWidget {
@@ -1161,9 +1197,29 @@ class _UtilityCard extends StatelessWidget {
     final activeTrend = trend;
     final currentReading = activeTrend?.currentReading ?? usage?.value;
     final previousReading = activeTrend?.previousReading;
-    final period = activeTrend == null
-        ? ''
-        : _utilityPeriodLabel(activeTrend.invoice.billingPeriod);
+    final utilityPeriod = activeTrend == null
+        ? null
+        : _resolveUtilityPeriod(
+            readingPeriod: activeTrend.line.readingPeriod,
+            billingPeriod: activeTrend.invoice.billingPeriod,
+          );
+    final period =
+        utilityPeriod?.headerLabel ??
+        (activeTrend == null
+            ? ''
+            : _utilityPeriodLabel(activeTrend.invoice.billingPeriod));
+    final currentReadingLabel = utilityPeriod == null
+        ? 'Chỉ số hiện tại'
+        : 'Chỉ số ${utilityPeriod.monthLabel}';
+    final previousReadingLabel = utilityPeriod == null
+        ? 'Chỉ số tháng trước'
+        : 'Chỉ số ${utilityPeriod.previous.monthLabel}';
+    final consumptionLabel = utilityPeriod == null
+        ? 'Tiêu thụ kỳ này'
+        : 'Lượng điện tiêu thụ ${utilityPeriod.monthLabel}';
+    final amountLabel = utilityPeriod == null
+        ? 'Tiền điện kỳ này'
+        : 'Tiền điện ${utilityPeriod.monthLabel}';
     final fallbackStatus = usage?.status.isNotEmpty == true
         ? _utilityReadingStatusLabel(usage!.status)
         : currentReading == null
@@ -1174,8 +1230,10 @@ class _UtilityCard extends StatelessWidget {
 
     return Semantics(
       label:
-          '$title, chỉ số hiện tại '
-          '${currentReading == null ? 'chưa có dữ liệu' : '${_formatUsageValue(currentReading)} $displayUnit'}',
+          '$title, $currentReadingLabel '
+          '${currentReading == null ? 'chưa có dữ liệu' : '${_formatUsageValue(currentReading)} $displayUnit'}, '
+          '$previousReadingLabel '
+          '${previousReading == null ? 'chưa có dữ liệu' : '${_formatUsageValue(previousReading)} $displayUnit'}',
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
@@ -1244,7 +1302,7 @@ class _UtilityCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: _UtilityReadingMetric(
-                    label: 'Chỉ số hiện tại',
+                    label: currentReadingLabel,
                     value: currentReading,
                     unit: displayUnit,
                   ),
@@ -1253,7 +1311,7 @@ class _UtilityCard extends StatelessWidget {
                 const SizedBox(width: 16),
                 Expanded(
                   child: _UtilityReadingMetric(
-                    label: 'Chỉ số tháng trước',
+                    label: previousReadingLabel,
                     value: previousReading,
                     unit: displayUnit,
                   ),
@@ -1265,14 +1323,16 @@ class _UtilityCard extends StatelessWidget {
               Container(height: 1, color: AppColors.cardBorder),
               const SizedBox(height: 10),
               _ElectricityPeriodMetric(
-                label: 'Tiêu thụ kỳ này',
+                metricId: 'usage',
+                label: consumptionLabel,
                 value: activeTrend.currentUsage == null
                     ? '--'
                     : '${_formatUsageValue(activeTrend.currentUsage!)} $displayUnit',
               ),
               const SizedBox(height: 7),
               _ElectricityPeriodMetric(
-                label: 'Tiền điện kỳ này',
+                metricId: 'amount',
+                label: amountLabel,
                 value: activeTrend.line.amount == 0
                     ? '--'
                     : '${_formatAmount(activeTrend.line.amount)} đ',
@@ -1324,8 +1384,13 @@ class _UtilityCard extends StatelessWidget {
 }
 
 class _ElectricityPeriodMetric extends StatelessWidget {
-  const _ElectricityPeriodMetric({required this.label, required this.value});
+  const _ElectricityPeriodMetric({
+    required this.metricId,
+    required this.label,
+    required this.value,
+  });
 
+  final String metricId;
   final String label;
   final String value;
 
@@ -1335,7 +1400,7 @@ class _ElectricityPeriodMetric extends StatelessWidget {
       Expanded(child: Text(label, style: AppTypography.metaLabel)),
       Text(
         value,
-        key: ValueKey('electricity-period-value-$label'),
+        key: ValueKey('electricity-period-value-$metricId'),
         style: AppTypography.metaValue,
       ),
     ],
@@ -1362,8 +1427,7 @@ class _UtilityReadingMetric extends StatelessWidget {
       children: [
         Text(
           label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+          maxLines: 2,
           style: const TextStyle(
             color: AppColors.bodyText,
             fontSize: 12,
@@ -1691,11 +1755,44 @@ bool _isConfirmedUtilityReading(String? status) {
 
 String _utilityPeriodLabel(String value) {
   final period = value.trim();
-  if (RegExp(r'^\d{4}-\d{2}$').hasMatch(period)) {
-    final parts = period.split('-');
-    return 'Kỳ tháng ${parts[1]}/${parts[0]}';
-  }
+  final resolved = _UtilityPeriod.tryParse(period);
+  if (resolved != null) return resolved.headerLabel;
   return period.isEmpty ? '' : 'Kỳ $period';
+}
+
+_UtilityPeriod? _resolveUtilityPeriod({
+  required String readingPeriod,
+  required String billingPeriod,
+}) =>
+    _UtilityPeriod.tryParse(readingPeriod) ??
+    _UtilityPeriod.tryParse(billingPeriod);
+
+class _UtilityPeriod {
+  const _UtilityPeriod({required this.year, required this.month});
+
+  final int year;
+  final int month;
+
+  static _UtilityPeriod? tryParse(String value) {
+    final match = RegExp(r'^(\d{4})-(\d{2})$').firstMatch(value.trim());
+    if (match == null) return null;
+
+    final year = int.tryParse(match.group(1) ?? '');
+    final month = int.tryParse(match.group(2) ?? '');
+    if (year == null || month == null || month < 1 || month > 12) {
+      return null;
+    }
+    return _UtilityPeriod(year: year, month: month);
+  }
+
+  _UtilityPeriod get previous => month == 1
+      ? _UtilityPeriod(year: year - 1, month: 12)
+      : _UtilityPeriod(year: year, month: month - 1);
+
+  String get monthLabel => 'T$month/$year';
+
+  String get headerLabel =>
+      'Kỳ tháng ${month.toString().padLeft(2, '0')}/$year';
 }
 
 String _formatDate(DateTime date) {

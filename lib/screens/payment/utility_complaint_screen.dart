@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/utils/room_code_formatter.dart';
 import 'package:hdbhms_mobile/utils/user_facing_error_message.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
@@ -177,7 +178,9 @@ class _UtilityComplaintScreenState extends State<UtilityComplaintScreen> {
                                       _ReadOnlyField(
                                         value: widget.invoice.roomCode.isEmpty
                                             ? 'Chưa có thông tin phòng'
-                                            : 'Phòng ${widget.invoice.roomCode}',
+                                            : formatRoomCode(
+                                                widget.invoice.roomCode,
+                                              ),
                                         icon: Icons.apartment_rounded,
                                       ),
                                       const SizedBox(height: 16),
@@ -414,8 +417,8 @@ class _HeroCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   invoice.invoiceCode.isEmpty
-                      ? 'Phòng ${invoice.roomCode}'
-                      : '${invoice.invoiceCode} · Phòng ${invoice.roomCode}',
+                      ? formatRoomCode(invoice.roomCode)
+                      : '${invoice.invoiceCode} · ${formatRoomCode(invoice.roomCode)}',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.7),
                     fontSize: 11,

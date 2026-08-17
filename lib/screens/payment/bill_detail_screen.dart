@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/utils/room_code_formatter.dart';
 
 import '../../models/payment/invoice_payment_presentation.dart';
 import '../../models/payment/tenant_invoice_model.dart';
@@ -75,6 +76,9 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     'WATER': Icons.water_drop_outlined,
     'VIOLATION_FINE': Icons.gavel_rounded,
     'MAINTENANCE_COMPENSATION': Icons.build_rounded,
+    'TRANSFER_DIFFERENCE': Icons.swap_horiz_rounded,
+    'DEPOSIT_DEDUCTION': Icons.account_balance_wallet_outlined,
+    'MANUAL_ADJUSTMENT': Icons.tune_rounded,
   };
 
   static const _lineColors = <String, Color>{
@@ -82,8 +86,11 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     'RENT': AppColors.primary,
     'SERVICE': AppColors.actionCyan,
     'WATER': AppColors.actionCyan,
-    'VIOLATION_FINE': Color(0xFFEF4444),
-    'MAINTENANCE_COMPENSATION': Color(0xFFF97316),
+    'VIOLATION_FINE': AppColors.danger,
+    'MAINTENANCE_COMPENSATION': AppColors.actionOrange,
+    'TRANSFER_DIFFERENCE': AppColors.actionCyan,
+    'DEPOSIT_DEDUCTION': AppColors.warningText,
+    'MANUAL_ADJUSTMENT': AppColors.bodyText,
   };
 
   static String _fmt(int amount) {
@@ -147,44 +154,34 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     return (line: line, cycle: cycle, people: line.quantity ~/ cycle);
   }
 
-  Widget _buildServiceFormula(TenantInvoiceLine serviceLine) {
+  List<Widget> _serviceFactWidgets(TenantInvoiceLine serviceLine) {
     final formula = _serviceFormula;
     if (formula == null || formula.line != serviceLine) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 12),
-        child: Column(
-          children: [
-            if (serviceLine.unitPrice > 0)
-              _CalculationRow(
-                label: 'Đơn giá',
-                value: '${_fmt(serviceLine.unitPrice)} / đơn vị',
-              ),
-            if (serviceLine.unitPrice > 0 && serviceLine.quantity > 0)
-              const SizedBox(height: 8),
-            if (serviceLine.quantity > 0)
-              _CalculationRow(
-                label: 'Số đơn vị',
-                value: serviceLine.quantity.toString(),
-              ),
-          ],
-        ),
-      );
-    }
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Column(
-        children: [
+      return [
+        if (serviceLine.unitPrice > 0)
           _CalculationRow(
             label: 'Đơn giá',
-            value: '${_fmt(formula.line.unitPrice)} / người / tháng',
+            value: '${_fmt(serviceLine.unitPrice)} / đơn vị',
           ),
+        if (serviceLine.unitPrice > 0 && serviceLine.quantity > 0)
           const SizedBox(height: 8),
-          _CalculationRow(label: 'Chu kỳ', value: '${formula.cycle} tháng'),
-          const SizedBox(height: 8),
-          _CalculationRow(label: 'Số người', value: '${formula.people} người'),
-        ],
+        if (serviceLine.quantity > 0)
+          _CalculationRow(
+            label: 'Số đơn vị',
+            value: serviceLine.quantity.toString(),
+          ),
+      ];
+    }
+    return [
+      _CalculationRow(
+        label: 'Đơn giá',
+        value: '${_fmt(formula.line.unitPrice)} / người / tháng',
       ),
-    );
+      const SizedBox(height: 8),
+      _CalculationRow(label: 'Chu kỳ', value: '${formula.cycle} tháng'),
+      const SizedBox(height: 8),
+      _CalculationRow(label: 'Số người', value: '${formula.people} người'),
+    ];
   }
 
   static double? _usageForLine(TenantInvoiceLine line) {
@@ -202,8 +199,23 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     'WATER' => 'Tiền nước',
     'VIOLATION_FINE' => 'Phạt vi phạm',
     'MAINTENANCE_COMPENSATION' => 'Bồi thường bảo trì',
+    'TRANSFER_DIFFERENCE' => 'Chênh lệch chuyển phòng',
+    'DEPOSIT_DEDUCTION' => 'Khấu trừ tiền cọc',
+    'MANUAL_ADJUSTMENT' => 'Điều chỉnh',
     _ => 'Khoản thanh toán',
   };
+
+  static String _lineTitle(TenantInvoiceLine line) {
+    final normalizedType = line.normalizedLineType;
+    if (normalizedType == 'RENT' ||
+        normalizedType == 'SERVICE' ||
+        normalizedType == 'ELECTRICITY' ||
+        normalizedType == 'WATER') {
+      return _typeLabel(normalizedType);
+    }
+    final description = line.description.trim();
+    return description.isEmpty ? _typeLabel(normalizedType) : description;
+  }
 
   List<TenantInvoiceLine> get _electricityLines => invoice.lines
       .where((line) => line.normalizedLineType == 'ELECTRICITY')
@@ -227,55 +239,62 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Container(
-        color: AppColors.background,
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              AppTopBar(
-                title: 'Chi tiết hóa đơn',
-                onBack: () => Navigator.of(context).maybePop(),
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: Container(
-                  decoration: const BoxDecoration(color: Colors.transparent),
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.fromLTRB(
-                      16,
-                      16,
-                      16,
-                      32 + MediaQuery.paddingOf(context).bottom,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildHeroCard(),
-                        const SizedBox(height: 16),
-                        _buildLineBreakdown(),
-                        const SizedBox(height: 16),
-                        if (invoice.discountAmount > 0) _buildDiscountCard(),
-                        if (invoice.discountAmount > 0)
-                          const SizedBox(height: 12),
-                        _buildGrandTotalCard(),
-                        const SizedBox(height: 16),
-                        if (_showsComplaintSection)
-                          _buildComplaintSection(context),
-                        if (_showsComplaintSection) const SizedBox(height: 16),
-                        if (invoice.isRentType) _buildRentContextCard(),
-                        if (invoice.isRentType) const SizedBox(height: 16),
-                        _buildActions(context),
-                      ],
-                    ),
-                  ),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            AppTopBar(
+              title: 'Chi tiết hóa đơn',
+              onBack: () => Navigator.of(context).maybePop(),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  16,
+                  16,
+                  32 + MediaQuery.paddingOf(context).bottom,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: _buildSections(context),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  List<Widget> _buildSections(BuildContext context) {
+    final sections = <Widget>[_buildHeroCard()];
+
+    void addSection(Widget section, {double gap = 16}) {
+      sections.add(SizedBox(height: gap));
+      sections.add(section);
+    }
+
+    if (invoice.isRentType || invoice.isOtherType) {
+      addSection(_buildInvoiceContextCard());
+    }
+    if (_presentationLines().isNotEmpty) {
+      addSection(_buildLineBreakdown());
+    }
+    if (invoice.discountAmount > 0) {
+      addSection(_buildDiscountCard());
+      addSection(_buildGrandTotalCard(), gap: 12);
+    } else {
+      addSection(_buildGrandTotalCard());
+    }
+    if (_showsComplaintSection) {
+      addSection(_buildComplaintSection(context));
+    }
+    if (_canPay) {
+      addSection(_buildActions(context));
+    }
+
+    return sections;
   }
 
   // ── App bar ──────────────────────────────────────────────────
@@ -333,7 +352,10 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     final presentation = InvoicePaymentPresentation.fromInvoice(invoice);
     final heroIcon = presentation.icon;
     final heroAccent = presentation.accentColor;
+    final metadata = _heroMetadata();
     return Container(
+      key: const ValueKey('bill-detail-hero'),
+      width: double.infinity,
       margin: EdgeInsets.zero,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -347,16 +369,17 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 58,
-                height: 58,
+                key: const ValueKey('bill-detail-hero-icon'),
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   border: Border.all(
                     color: Colors.white.withValues(alpha: 0.18),
                   ),
                 ),
-                child: Icon(heroIcon, color: heroAccent, size: 36),
+                child: Icon(heroIcon, color: heroAccent, size: 23),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -365,6 +388,8 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                   children: [
                     Text(
                       presentation.displayName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 15,
@@ -375,7 +400,9 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                     if (invoice.invoiceCode.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
-                        'Mã hóa đơn: ${invoice.invoiceCode}',
+                        invoice.invoiceCode,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.78),
                           fontSize: 12,
@@ -383,27 +410,18 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                         ),
                       ),
                     ],
-                    if (invoice.roomCode.trim().isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.meeting_room_outlined,
-                            color: heroAccent,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              invoice.roomCode.trim(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
+                    if (metadata.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        metadata,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.84),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          height: 16 / 12,
+                        ),
                       ),
                     ],
                   ],
@@ -416,6 +434,18 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     );
   }
 
+  String _heroMetadata() {
+    final parts = <String>[];
+    final roomCode = invoice.roomCode.trim();
+    if (roomCode.isNotEmpty) parts.add(formatRoomCode(roomCode));
+
+    if (!invoice.isOtherType) {
+      final period = _formatBillingPeriod(invoice.billingPeriod);
+      if (period != 'Chưa cập nhật') parts.add(period);
+    }
+    return parts.join(' • ');
+  }
+
   // ── Invoice line breakdown ────────────────────────────────────
 
   Widget _buildLineBreakdown() {
@@ -423,22 +453,15 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     if (lines.isEmpty) return const SizedBox.shrink();
 
     return Container(
+      key: const ValueKey('bill-detail-breakdown'),
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppColors.radiusSm),
-        border: Border.all(color: const Color(0xFFE8EDF2)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.deepBlue.withValues(alpha: 0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(
         children: [
-          // Header
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
             child: Row(
@@ -491,24 +514,25 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
               ],
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFF0F4F8)),
-
-          // Lines
+          const Divider(height: 1, color: AppColors.cardBorder),
           ...lines.asMap().entries.map((entry) {
             final idx = entry.key;
             final line = entry.value;
             final normalizedType = line.normalizedLineType;
-            final isService = normalizedType == 'SERVICE';
             final color = _lineColors[normalizedType] ?? AppColors.bodyText;
             final icon =
                 _lineIcons[normalizedType] ?? Icons.receipt_long_outlined;
             final isLast = idx == lines.length - 1;
+            final facts = _factWidgetsForLine(line);
+            final detailBlock = _detailBlockForLine(line, color, facts);
 
             return Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                  key: ValueKey('bill-detail-line-$idx'),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -526,43 +550,16 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  switch (normalizedType) {
-                                    'RENT' ||
-                                    'SERVICE' ||
-                                    'ELECTRICITY' ||
-                                    'WATER' => _typeLabel(normalizedType),
-                                    _ =>
-                                      line.description.isEmpty
-                                          ? _typeLabel(normalizedType)
-                                          : line.description,
-                                  },
-                                  style: const TextStyle(
-                                    color: AppColors.inputText,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                if (!isService &&
-                                    line.quantity > 0 &&
-                                    line.unitPrice > 0) ...[
-                                  const SizedBox(height: 8),
-                                  if (normalizedType == 'RENT') ...[
-                                    _CalculationRow(
-                                      label: 'Đơn giá',
-                                      value: '${_fmt(line.unitPrice)} / tháng',
-                                    ),
-                                    const SizedBox(height: 6),
-                                    _CalculationRow(
-                                      label: 'Số tháng',
-                                      value: '${line.quantity} tháng',
-                                    ),
-                                  ],
-                                ],
-                              ],
+                            child: Text(
+                              _lineTitle(line),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.inputText,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                height: 18 / 14,
+                              ),
                             ),
                           ),
                           Text(
@@ -575,69 +572,11 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                           ),
                         ],
                       ),
-                      if (isService) _buildServiceFormula(line),
-                      // Meter reading row (điện/nước)
-                      if (!isService &&
-                          line.previousValue != null &&
-                          line.currentValue != null) ...[
-                        const SizedBox(height: 10),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.06),
-                            borderRadius: BorderRadius.circular(
-                              AppColors.radiusSm,
-                            ),
-                            border: Border.all(
-                              color: color.withValues(alpha: 0.18),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                normalizedType == 'ELECTRICITY'
-                                    ? 'Chỉ số điện'
-                                    : 'Chỉ số nước',
-                                style: TextStyle(
-                                  color: color,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              _CalculationRow(
-                                label: 'Kỳ trước',
-                                value: _fmtReadingWithUnit(
-                                  line.previousValue,
-                                  normalizedType,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              _CalculationRow(
-                                label: 'Kỳ này',
-                                value: _fmtReadingWithUnit(
-                                  line.currentValue,
-                                  normalizedType,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              _CalculationRow(
-                                label: 'Tiêu thụ',
-                                value: _fmtReadingWithUnit(
-                                  _usageForLine(line),
-                                  normalizedType,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              _CalculationRow(
-                                label: 'Đơn giá',
-                                value:
-                                    '${_fmt(line.unitPrice)} / ${_unitForLine(normalizedType)}',
-                              ),
-                            ],
-                          ),
+                      if (detailBlock != null) ...[
+                        const SizedBox(height: 12),
+                        KeyedSubtree(
+                          key: ValueKey('bill-detail-line-details-$idx'),
+                          child: detailBlock,
                         ),
                       ],
                     ],
@@ -646,11 +585,114 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                 if (!isLast)
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Divider(height: 1, color: Color(0xFFF0F4F8)),
+                    child: Divider(height: 1, color: AppColors.cardBorder),
                   ),
               ],
             );
           }),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _factWidgetsForLine(TenantInvoiceLine line) {
+    final type = line.normalizedLineType;
+    if (type == 'RENT') {
+      return [
+        if (line.unitPrice > 0)
+          _CalculationRow(
+            label: 'Đơn giá',
+            value: '${_fmt(line.unitPrice)} / tháng',
+          ),
+        if (line.unitPrice > 0 && line.quantity > 0) const SizedBox(height: 8),
+        if (line.quantity > 0)
+          _CalculationRow(label: 'Số tháng', value: '${line.quantity} tháng'),
+      ];
+    }
+    if (type == 'SERVICE') return _serviceFactWidgets(line);
+    if (type == 'ELECTRICITY' || type == 'WATER') return const [];
+
+    return [
+      if (line.unitPrice > 0)
+        _CalculationRow(label: 'Đơn giá', value: _fmt(line.unitPrice)),
+      if (line.unitPrice > 0 && line.quantity > 0) const SizedBox(height: 8),
+      if (line.quantity > 0)
+        _CalculationRow(label: 'Số lượng', value: line.quantity.toString()),
+    ];
+  }
+
+  Widget? _detailBlockForLine(
+    TenantInvoiceLine line,
+    Color color,
+    List<Widget> facts,
+  ) {
+    final meterBlock = _meterBlockForLine(line, color);
+    if (meterBlock != null) return meterBlock;
+    if (facts.isEmpty) return null;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: facts,
+      ),
+    );
+  }
+
+  Widget? _meterBlockForLine(TenantInvoiceLine line, Color color) {
+    final type = line.normalizedLineType;
+    if ((type != 'ELECTRICITY' && type != 'WATER') ||
+        (line.previousValue == null &&
+            line.currentValue == null &&
+            _usageForLine(line) == null)) {
+      return null;
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            type == 'ELECTRICITY' ? 'Chỉ số điện' : 'Chỉ số nước',
+            style: TextStyle(
+              color: color,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _CalculationRow(
+            label: 'Kỳ trước',
+            value: _fmtReadingWithUnit(line.previousValue, type),
+          ),
+          const SizedBox(height: 6),
+          _CalculationRow(
+            label: 'Kỳ này',
+            value: _fmtReadingWithUnit(line.currentValue, type),
+          ),
+          const SizedBox(height: 10),
+          _CalculationRow(
+            label: 'Tiêu thụ',
+            value: _fmtReadingWithUnit(_usageForLine(line), type),
+          ),
+          const SizedBox(height: 6),
+          _CalculationRow(
+            label: 'Đơn giá',
+            value: '${_fmt(line.unitPrice)} / ${_unitForLine(type)}',
+          ),
         ],
       ),
     );
@@ -672,22 +714,25 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
 
     if (reviewLines.isNotEmpty) {
       // Show review status cards
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(bottom: 10),
-            child: Text(
-              'Trạng thái khiếu nại',
-              style: TextStyle(
-                color: AppColors.inputText,
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
+      return KeyedSubtree(
+        key: const ValueKey('bill-detail-complaint'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(bottom: 10),
+              child: Text(
+                'Trạng thái khiếu nại',
+                style: TextStyle(
+                  color: AppColors.inputText,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
-          ),
-          ...reviewLines.map((line) => _ReviewStatusCard(line: line)),
-        ],
+            ...reviewLines.map((line) => _ReviewStatusCard(line: line)),
+          ],
+        ),
       );
     }
 
@@ -704,104 +749,111 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
       );
     }
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: openComplaint,
-        borderRadius: BorderRadius.circular(AppColors.radiusSm),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.warningSurface,
-            borderRadius: BorderRadius.circular(AppColors.radiusSm),
-            border: Border.all(color: const Color(0xFFFDE68A)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFBBF24).withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+    return KeyedSubtree(
+      key: const ValueKey('bill-detail-complaint'),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: openComplaint,
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.warningSurface,
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
+              border: Border.all(color: const Color(0xFFFDE68A)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFBBF24).withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                      ),
+                      child: const Icon(
+                        Icons.report_problem_outlined,
+                        color: AppColors.warning,
+                        size: 22,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.report_problem_outlined,
-                      color: AppColors.warning,
-                      size: 22,
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Chỉ số điện chưa chính xác?',
+                            style: TextStyle(
+                              color: AppColors.warningText,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              height: 18 / 14,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Gửi yêu cầu để quản lý kiểm tra lại chỉ số điện trên hóa đơn.',
+                            style: TextStyle(
+                              color: Color(0xFFA16207),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              height: 17 / 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                    border: Border.all(
+                      color: AppColors.warning.withValues(alpha: .72),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Chỉ số không chính xác?',
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.edit_note_rounded,
+                        color: AppColors.warningText,
+                        size: 20,
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Gửi khiếu nại số điện',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
                           style: TextStyle(
                             color: AppColors.warningText,
                             fontSize: 14,
                             fontWeight: FontWeight.w900,
-                            height: 18 / 14,
                           ),
                         ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Gửi khiếu nại để quản lý xem xét lại. Kết quả xử lý sẽ được gửi qua thông báo.',
-                          style: TextStyle(
-                            color: Color(0xFFA16207),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            height: 17 / 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Container(
-                width: double.infinity,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                  border: Border.all(
-                    color: AppColors.warning.withValues(alpha: .72),
-                  ),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.edit_note_rounded,
-                      color: AppColors.warningText,
-                      size: 20,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Gửi khiếu nại số điện',
-                      style: TextStyle(
-                        color: AppColors.warningText,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
                       ),
-                    ),
-                    SizedBox(width: 8),
-                    Icon(
-                      Icons.arrow_forward_rounded,
-                      color: AppColors.warningText,
-                      size: 18,
-                    ),
-                  ],
+                      SizedBox(width: 8),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        color: AppColors.warningText,
+                        size: 18,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -811,6 +863,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
   // ── Actions ──────────────────────────────────────────────────
 
   Widget _buildDiscountCard() => Container(
+    key: const ValueKey('bill-detail-discount'),
     width: double.infinity,
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     decoration: BoxDecoration(
@@ -849,11 +902,12 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
   );
 
   Widget _buildGrandTotalCard() => Container(
+    key: const ValueKey('bill-detail-total'),
     width: double.infinity,
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
       color: AppColors.surface,
-      borderRadius: BorderRadius.circular(AppColors.radiusMd),
+      borderRadius: BorderRadius.circular(AppColors.radiusSm),
       border: Border.all(color: AppColors.cardBorder),
     ),
     child: Row(
@@ -880,8 +934,10 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     ),
   );
 
-  Widget _buildRentContextCard() {
+  Widget _buildInvoiceContextCard() {
+    final isRent = invoice.isRentType;
     return Container(
+      key: const ValueKey('bill-detail-context'),
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -898,19 +954,21 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: AppColors.primaryLight,
+                  color: isRent
+                      ? AppColors.primaryLight
+                      : AppColors.infoSurface,
                   borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
-                child: const Icon(
-                  Icons.key_outlined,
+                child: Icon(
+                  isRent ? Icons.key_outlined : Icons.receipt_long_outlined,
                   color: AppColors.primary,
                   size: 18,
                 ),
               ),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Thông tin kỳ thuê',
+                  isRent ? 'Thông tin kỳ thuê' : 'Thông tin hóa đơn',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -924,11 +982,12 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
           ),
           const SizedBox(height: 14),
           _RentContextRow(label: 'Phòng', value: invoice.roomCode),
-          const SizedBox(height: 10),
-          _RentContextRow(
-            label: 'Kỳ hóa đơn',
-            value: _formatBillingPeriod(invoice.billingPeriod),
-          ),
+          if (!invoice.isOtherType) const SizedBox(height: 10),
+          if (!invoice.isOtherType)
+            _RentContextRow(
+              label: 'Kỳ hóa đơn',
+              value: _formatBillingPeriod(invoice.billingPeriod),
+            ),
           const SizedBox(height: 10),
           _RentContextRow(
             label: 'Hạn thanh toán',
@@ -945,46 +1004,39 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
   }
 
   Widget _buildActions(BuildContext context) {
-    return Column(
-      children: [
-        if (_canPay)
-          Container(
-            width: double.infinity,
-            height: 54,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [AppColors.deepBlue, AppColors.primary],
-              ),
-              borderRadius: BorderRadius.circular(AppColors.radiusSm),
-            ),
-            child: FilledButton.icon(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => QrPaymentPage(
-                    invoice: invoice,
-                    invoiceService: invoiceService,
-                    notificationService: notificationService,
-                  ),
-                ),
-              ),
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              icon: const Icon(Icons.qr_code_rounded, size: 20),
-              label: const Text('Thanh toán ngay'),
+    return Container(
+      key: const ValueKey('bill-detail-actions'),
+      width: double.infinity,
+      height: 54,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [AppColors.deepBlue, AppColors.primary],
+        ),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+      ),
+      child: FilledButton.icon(
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => QrPaymentPage(
+              invoice: invoice,
+              invoiceService: invoiceService,
+              notificationService: notificationService,
             ),
           ),
-      ],
+        ),
+        style: FilledButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
+          ),
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+        ),
+        icon: const Icon(Icons.qr_code_rounded, size: 20),
+        label: const Text('Thanh toán ngay'),
+      ),
     );
   }
 }
@@ -1006,17 +1058,22 @@ class _RentContextRow extends StatelessWidget {
             label,
             style: const TextStyle(
               color: AppColors.bodyText,
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
           ),
         ),
-        Text(
-          value.isEmpty ? 'Chưa cập nhật' : value,
-          style: const TextStyle(
-            color: AppColors.inputText,
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
+        Flexible(
+          child: Text(
+            value.isEmpty ? 'Chưa cập nhật' : value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.end,
+            style: const TextStyle(
+              color: AppColors.inputText,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
       ],

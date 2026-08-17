@@ -216,7 +216,7 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.byKey(const ValueKey('electricity-period-value-Tiêu thụ kỳ này')),
+        find.byKey(const ValueKey('electricity-period-value-usage')),
         findsOneWidget,
       );
 

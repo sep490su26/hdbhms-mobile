@@ -1226,6 +1226,8 @@ class _EmptyRoomsCard extends StatelessWidget {
   const _EmptyRoomsCard();
   @override
   Widget build(BuildContext context) => Container(
+    key: const ValueKey('tenant-overview-empty-rooms-card'),
+    width: double.infinity,
     padding: const EdgeInsets.all(18),
     decoration: BoxDecoration(
       color: AppColors.surface,

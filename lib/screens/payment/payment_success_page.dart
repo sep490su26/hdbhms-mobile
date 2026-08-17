@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/utils/room_code_formatter.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../models/payment/invoice_payment_presentation.dart';
@@ -795,7 +796,7 @@ class _SuccessActions extends StatelessWidget {
               ),
             ),
             icon: const Icon(Icons.home_outlined),
-            label: const Text('Quay lại trang chủ'),
+            label: const Text('Quay về Tổng quan'),
           ),
         ),
       ],
@@ -813,7 +814,7 @@ ActiveRoomItem? _roomContextFromInvoice(TenantInvoice? invoice) {
     contractCode: invoice.contractCode,
     roomId: invoice.roomId ?? 0,
     roomCode: invoice.roomCode,
-    roomName: invoice.roomCode.isEmpty ? 'Phòng' : 'Phòng ${invoice.roomCode}',
+    roomName: formatRoomCode(invoice.roomCode),
     propertyName: '',
   );
 }
@@ -934,7 +935,7 @@ class _SuccessData {
               title: invoice.title,
               subtitle: invoice.roomCode.isEmpty
                   ? invoice.billingPeriod
-                  : 'Phòng ${invoice.roomCode}',
+                  : formatRoomCode(invoice.roomCode),
               amount: invoice.totalAmount,
             ),
           ]

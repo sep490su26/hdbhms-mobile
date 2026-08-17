@@ -393,7 +393,7 @@ class PaymentPreviewPage extends StatelessWidget {
               const SizedBox(height: 8),
               _PreviewTile(
                 icon: Icons.handyman_rounded,
-                title: 'Chi tiết hóa đơn sửa chữa',
+                title: 'Chi tiết Chi phí sửa chữa',
                 subtitle: 'Kiểm tra giảm giá và ngữ nghĩa chi phí sửa chữa',
                 onTap: () => _openBillDetail(context, _maintenanceInvoice),
               ),

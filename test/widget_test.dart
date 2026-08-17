@@ -626,7 +626,7 @@ void main() {
     expect(find.text('Thanh to\u00E1n th\u00E0nh c\u00F4ng!'), findsOneWidget);
     expect(find.text('#TXN-882910'), findsOneWidget);
     expect(find.text('2.450.000 \u0111'), findsWidgets);
-    expect(find.text('Quay l\u1EA1i trang ch\u1EE7'), findsOneWidget);
+    expect(find.text('Quay v\u1EC1 T\u1ED5ng quan'), findsOneWidget);
   });
 
   testWidgets('opens payment history from success page', (

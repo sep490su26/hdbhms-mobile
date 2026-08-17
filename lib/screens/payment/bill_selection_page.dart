@@ -6,6 +6,7 @@ import '../../services/home/current_room_service.dart';
 import '../../services/payment/tenant_invoice_service.dart';
 import '../../theme/app_typography.dart';
 import '../../utils/room_scope.dart';
+import '../../utils/room_code_formatter.dart';
 import '../../widgets/tenant_bottom_navigation.dart';
 import '../../widgets/app_screen_shell.dart';
 import '../../widgets/app_notification_bell.dart';
@@ -756,7 +757,7 @@ class _PendingBillCard extends StatelessWidget {
                               Text(
                                 invoice.roomCode.isEmpty
                                     ? 'Chưa có phòng'
-                                    : 'Phòng ${invoice.roomCode}',
+                                    : formatRoomCode(invoice.roomCode),
                                 style: const TextStyle(
                                   color: AppColors.bodyText,
                                   fontSize: 12,

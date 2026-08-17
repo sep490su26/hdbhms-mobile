@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/payment/invoice_payment_presentation.dart';
 import '../models/payment/tenant_invoice_model.dart';
 import '../theme/app_colors.dart';
+import '../utils/room_code_formatter.dart';
 
 /// Shared paid-invoice card used by the bill list and payment history.
 class PaidInvoiceCard extends StatelessWidget {
@@ -88,7 +89,7 @@ class PaidInvoiceCard extends StatelessWidget {
                           Text(
                             [
                               if (invoice.roomCode.isNotEmpty)
-                                'Phòng ${invoice.roomCode}',
+                                formatRoomCode(invoice.roomCode),
                               _formatDate(createdDate),
                             ].join(' · '),
                             maxLines: 1,

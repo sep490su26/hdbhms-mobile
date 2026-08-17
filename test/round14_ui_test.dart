@@ -180,8 +180,8 @@ void main() {
         expect(find.text('Số tháng'), findsOneWidget);
         expect(find.text('Cách tính'), findsNothing);
         expect(find.text('4.500.000đ × 1 tháng'), findsNothing);
-        expect(find.text('Phòng P.101'), findsNothing);
-        expect(find.byIcon(Icons.meeting_room_outlined), findsOneWidget);
+        expect(find.textContaining('Phòng P.101'), findsOneWidget);
+        expect(find.byIcon(Icons.meeting_room_outlined), findsNothing);
         expect(find.byIcon(Icons.calendar_month_outlined), findsNothing);
       },
     );
