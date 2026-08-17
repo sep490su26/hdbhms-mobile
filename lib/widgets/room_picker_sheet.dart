@@ -119,24 +119,6 @@ class _RoomPickerSheetState extends State<RoomPickerSheet> {
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: Wrap(
-                  spacing: 8,
-                  children: [
-                    _FilterChip(
-                      label: 'Tất cả',
-                      selected: _filter == 'ALL',
-                      onTap: () => setState(() => _filter = 'ALL'),
-                    ),
-                    _FilterChip(
-                      label: 'Còn trống',
-                      selected: _filter == 'VACANT',
-                      onTap: () => setState(() => _filter = 'VACANT'),
-                    ),
-                  ],
-                ),
-              ),
               Expanded(
                 child: rooms.isEmpty
                     ? _EmptyRooms(
