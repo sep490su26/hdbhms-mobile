@@ -1,4 +1,4 @@
-import 'onboarding_action.dart';
+import 'package:hdbhms_mobile/models/onboarding_action.dart';
 
 class OnboardingState {
   const OnboardingState({
@@ -20,12 +20,12 @@ class OnboardingState {
               .toList()
         : <OnboardingAction>[];
     final completed =
-        json['on_boarding_completed'] == true ||
-        json['onBoardingCompleted'] == true;
+        json['onBoardingCompleted'] == true ||
+        json['on_boarding_completed'] == true;
 
     if (actions.isEmpty && !completed) {
       final legacyStep =
-          json['next_step']?.toString() ?? json['nextStep']?.toString();
+          json['nextStep']?.toString() ?? json['next_step']?.toString();
       if (legacyStep != null && legacyStep != home) {
         actions.add(
           OnboardingAction(
@@ -40,7 +40,7 @@ class OnboardingState {
 
     return OnboardingState(
       userId: int.tryParse(
-        (json['user_id'] ?? json['userId'])?.toString() ?? '',
+        json['userId']?.toString() ?? json['user_id']?.toString() ?? '',
       ),
       onBoardingCompleted: completed,
       actions: actions,

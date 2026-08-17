@@ -1,11 +1,15 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.sep490.hdbhms_mobile">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.sep490.hdbhmsMobile">
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Cần cho Android < 10 (API 28 trở xuống) để lưu ảnh vào bộ sưu tập -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
     <application
-        android:label="hdbhms_mobile"
+        android:label="Nhà Trọ Hải Đăng"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
-            android:name="com.sep490.hdbhms_mobile.MainActivity"
+            android:name="com.sep490.hdbhmsMobile.MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""

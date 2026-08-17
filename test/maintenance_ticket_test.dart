@@ -1,258 +1,520 @@
+// ignore_for_file: use_null_aware_elements
+
 import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hdbhms_mobile/models/file_metadata_model.dart';
-import 'package:hdbhms_mobile/models/maintenance_ticket_model.dart';
-import 'package:hdbhms_mobile/screens/maintenance_ticket_list_screen.dart';
+import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
+import 'package:hdbhms_mobile/screens/maintenance/create_maintenance_ticket_screen.dart';
+import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
+import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_detail_screen.dart';
 import 'package:hdbhms_mobile/services/file_service.dart';
-import 'package:hdbhms_mobile/services/maintenance_ticket_service.dart';
+import 'package:hdbhms_mobile/services/maintenance/maintenance_ticket_service.dart';
+import 'package:hdbhms_mobile/widgets/ticket_attachment_grid.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
-  test('MaintenanceTicketService calls tenant API with filters', () async {
-    final service = MaintenanceTicketService(
-      client: MockClient((request) async {
-        expect(request.method, 'GET');
-        expect(request.url.path, '/api/v1/maintenance/tickets/my');
-        expect(request.url.queryParameters['code'], '#SC-2825');
-        expect(request.url.queryParameters['status'], 'COMPLETED');
-        expect(request.url.queryParameters['category'], 'WATER');
-
-        return http.Response(
-          jsonEncode({
-            'currentPage': 1,
-            'totalPages': 1,
-            'pageSize': 100,
-            'totalElements': 1,
-            'data': [_ticketJson(id: 2825, code: '#SC-2825')],
-          }),
-          200,
-          headers: {'content-type': 'application/json; charset=utf-8'},
-        );
-      }),
-    );
-
-    final tickets = await service.getTickets(
-      keyword: '#SC-2825',
-      status: 'COMPLETED',
-      category: 'WATER',
-    );
-
-    expect(tickets, hasLength(1));
-    expect(tickets.single.code, '#SC-2825');
-    expect(tickets.single.status, TicketStatus.completed);
-  });
-
   test(
-    'MaintenanceTicketService creates ticket with uploaded image ids',
+    'MaintenanceTicketService loads tenant tickets from backend API',
     () async {
-      Map<String, dynamic>? requestBody;
       final service = MaintenanceTicketService(
-        fileService: const _FakeFileService(),
         client: MockClient((request) async {
-          expect(request.method, 'POST');
-          expect(request.url.path, '/api/v1/maintenance/tickets');
-          requestBody = jsonDecode(request.body) as Map<String, dynamic>;
-
-          return http.Response(
-            jsonEncode({
-              'code': 0,
-              'data': _ticketJson(id: 9, code: '#SC-0009'),
-            }),
-            200,
-            headers: {'content-type': 'application/json; charset=utf-8'},
-          );
+          expect(request.method, 'GET');
+          expect(request.url.path, endsWith('/api/v1/maintenance/tickets/my'));
+          expect(request.url.queryParameters['code'], 'SC-0001');
+          expect(request.url.queryParameters['status'], 'COMPLETED');
+          expect(request.url.queryParameters['category'], 'WATER');
+          return _jsonResponse(_ticketPage([_ticketJson()]));
         }),
       );
 
-      final created = await service.createTicket(
-        const CreateMaintenanceTicketRequest(
-          roomId: 1,
-          category: TicketCategory.water,
-          title: 'Vòi nước rò rỉ',
-          description: 'Vòi nước lavabo bị rò liên tục',
-          attachments: [
-            MaintenanceAttachment(
-              name: 'before.jpg',
-              path: 'before.jpg',
-              mimeType: 'image/jpeg',
-              sizeBytes: 3,
-              type: MaintenanceAttachmentType.image,
-              previewBytes: [1, 2, 3],
-            ),
-          ],
-        ),
+      final tickets = await service.getTickets(
+        keyword: '#SC-0001',
+        status: 'Hoàn tất',
+        category: 'Nước',
       );
 
-      expect(created.code, '#SC-0009');
-      expect(requestBody?['roomId'], 1);
-      expect(requestBody?['ticketScope'], 'TENANT_ROOM');
-      expect(requestBody?['attachmentIds'], [77]);
+      expect(tickets, hasLength(1));
+      expect(tickets.single.code, 'SC-0001');
+      expect(tickets.single.status, TicketStatus.completed);
+      expect(tickets.single.category, TicketCategory.water);
     },
   );
 
-  testWidgets('ticket list screen renders injected tickets and search filter', (
+  test('MaintenanceTicketService unwraps detail API response', () async {
+    final service = MaintenanceTicketService(
+      client: MockClient((request) async {
+        expect(request.method, 'GET');
+        expect(request.url.path, endsWith('/api/v1/maintenance/tickets/12'));
+        return _jsonResponse({'data': _ticketJson(id: 12)});
+      }),
+    );
+
+    final detail = await service.getTicketDetail(12);
+
+    expect(detail.id, 12);
+    expect(detail.ticketCode, 'SC-0001');
+    expect(detail.roomCode, '106');
+  });
+
+  test('TicketAttachment parses backend file aliases', () {
+    final attachment = TicketAttachment.fromJson({
+      'id': 7,
+      'file_id': 91,
+      'download_url': '/api/v1/files/download/91',
+      'mime_type': 'image/png',
+      'attachment_phase': 'AFTER',
+      'sort_order': 2,
+      'file_name': 'done.png',
+    });
+
+    expect(attachment.id, 7);
+    expect(attachment.fileId, 91);
+    expect(attachment.url, endsWith('/api/v1/files/download/91'));
+    expect(attachment.mimeType, 'image/png');
+    expect(attachment.phase, TicketAttachmentPhase.after);
+    expect(attachment.sortOrder, 2);
+    expect(attachment.name, 'done.png');
+  });
+
+  test('TicketAttachment gets file id from download URL fallback', () {
+    final attachment = TicketAttachment.fromJson({
+      'id': 7,
+      'url': '/api/v1/files/download/91',
+      'mimeType': 'image/png',
+    });
+
+    expect(attachment.fileId, 91);
+    expect(attachment.url, endsWith('/api/v1/files/download/91'));
+  });
+
+  testWidgets('attachment grid renders downloaded image bytes', (tester) async {
+    final fileService = _FakeFileService(_pngBytes);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TicketAttachmentGrid(
+            attachments: const [
+              TicketAttachment(
+                id: 7,
+                fileId: 91,
+                url: '',
+                mimeType: 'image/png',
+                phase: TicketAttachmentPhase.before,
+                sortOrder: 0,
+              ),
+            ],
+            emptyText: 'empty',
+            fileService: fileService,
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(fileService.downloadedFileId, 91);
+    expect(find.byType(Image), findsOneWidget);
+  });
+
+  testWidgets('ticket list screen renders API tickets and search filter', (
     tester,
   ) async {
+    final service = _ticketService();
+
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: MaintenanceTicketListScreen(
-          ticketService: _FakeMaintenanceTicketService(),
+          ticketService: service,
+          roomId: 106,
+          notificationInitialUnreadCount: 0,
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Danh sách phiếu sự cố'), findsOneWidget);
-    expect(_ticketCodeFinder('#SC-2825'), findsOneWidget);
-    expect(_ticketCodeFinder('#SC-2810'), findsOneWidget);
-    expect(_ticketCodeFinder('#SC-2805'), findsOneWidget);
+    expect(find.text('Danh sách sự cố'), findsOneWidget);
+    expect(_ticketCodeFinder('SC-0001'), findsOneWidget);
+    expect(_ticketCodeFinder('SC-0002'), findsOneWidget);
+    expect(_ticketCodeFinder('SC-0003'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextField), '#SC-2825');
+    await tester.enterText(find.byType(TextField), '#SC-0001');
     await tester.tap(find.text('Lọc'));
     await tester.pumpAndSettle();
 
-    expect(_ticketCodeFinder('#SC-2825'), findsOneWidget);
-    expect(_ticketCodeFinder('#SC-2810'), findsNothing);
-    expect(_ticketCodeFinder('#SC-2805'), findsNothing);
+    expect(_ticketCodeFinder('SC-0001'), findsOneWidget);
+    expect(_ticketCodeFinder('SC-0002'), findsNothing);
+    expect(_ticketCodeFinder('SC-0003'), findsNothing);
   });
 
-  testWidgets('ticket list screen can filter by category dropdown', (
-    tester,
-  ) async {
+  testWidgets('ticket list screen can filter by status picker', (tester) async {
+    final service = _ticketService();
+
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: MaintenanceTicketListScreen(
-          ticketService: _FakeMaintenanceTicketService(),
+          ticketService: service,
+          roomId: 106,
+          notificationInitialUnreadCount: 0,
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(DropdownButtonFormField<String>).at(1));
+    await tester.tap(find.byKey(const ValueKey('ticket-status-filter')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hoàn tất').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Lọc'));
+    await tester.pumpAndSettle();
+
+    expect(_ticketCodeFinder('SC-0001'), findsOneWidget);
+    expect(_ticketCodeFinder('SC-0002'), findsNothing);
+    expect(_ticketCodeFinder('SC-0003'), findsNothing);
+  });
+
+  testWidgets('ticket list screen can filter by category picker', (
+    tester,
+  ) async {
+    final service = _ticketService();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MaintenanceTicketListScreen(
+          ticketService: service,
+          roomId: 106,
+          notificationInitialUnreadCount: 0,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('ticket-category-filter')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Nước').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Lọc'));
     await tester.pumpAndSettle();
 
-    expect(_ticketCodeFinder('#SC-2805'), findsOneWidget);
-    expect(_ticketCodeFinder('#SC-2825'), findsNothing);
-    expect(_ticketCodeFinder('#SC-2810'), findsNothing);
+    expect(_ticketCodeFinder('SC-0001'), findsOneWidget);
+    expect(_ticketCodeFinder('SC-0002'), findsNothing);
+    expect(_ticketCodeFinder('SC-0003'), findsNothing);
+  });
+
+  testWidgets('ticket list passes selected room into create screen', (
+    tester,
+  ) async {
+    final service = MaintenanceTicketService(
+      client: MockClient((request) async {
+        if (request.method == 'GET') {
+          return _jsonResponse(_ticketPage([]));
+        }
+        fail('Unexpected ${request.method} ${request.url}');
+      }),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MaintenanceTicketListScreen(
+          ticketService: service,
+          roomId: 888,
+          roomCode: 'A-888',
+          notificationInitialUnreadCount: 0,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.add_rounded).first);
+    await tester.pumpAndSettle();
+
+    final createScreen = tester.widget<CreateMaintenanceTicketScreen>(
+      find.byType(CreateMaintenanceTicketScreen),
+    );
+    expect(createScreen.roomId, 888);
+    expect(createScreen.roomCode, 'A-888');
+    expect(find.textContaining('A-888'), findsOneWidget);
+  });
+
+  testWidgets(
+    'completed tenant charge prioritizes pending payment on ticket list',
+    (tester) async {
+      final service = MaintenanceTicketService(
+        client: MockClient(
+          (request) async => _jsonResponse(
+            _ticketPage([
+              _ticketJson(
+                billingStatus: 'PENDING_PAYMENT',
+                billingStatusLabel: 'Chờ thanh toán',
+                chargeAmount: 2000,
+                chargeToTenant: true,
+              ),
+            ]),
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MaintenanceTicketListScreen(
+            ticketService: service,
+            roomId: 106,
+            notificationInitialUnreadCount: 0,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Chờ thanh toán'), findsOneWidget);
+      expect(find.text('Cần thanh toán 2.000đ'), findsOneWidget);
+    },
+  );
+
+  test('completed paid and landlord-paid tickets keep billing semantics', () {
+    final paid = MaintenanceTicketModel.fromJson(
+      _ticketJson(
+        billingStatus: 'PAID',
+        billingStatusLabel: 'Đã thanh toán',
+        chargeToTenant: true,
+      ),
+    );
+    final noCharge = MaintenanceTicketModel.fromJson(
+      _ticketJson(
+        billingStatus: 'NO_CHARGE',
+        billingStatusLabel: 'Không thu khách',
+        payer: 'LANDLORD',
+      ),
+    );
+
+    expect(paid.requiresTenantPayment, isFalse);
+    expect(paid.billingStatusLabel, 'Đã thanh toán');
+    expect(noCharge.chargeToTenant, isFalse);
+    expect(noCharge.billingStatusLabel, 'Không thu khách');
+
+    final rejected = MaintenanceTicketModel.fromJson(
+      _ticketJson(
+        status: 'REJECTED',
+        billingStatus: 'NOT_INVOICED',
+        billingStatusLabel: 'Chưa tạo hóa đơn',
+        chargeAmount: 333333,
+        chargeToTenant: true,
+      ),
+    );
+    expect(rejected.requiresTenantPayment, isFalse);
+    expect(rejected.primaryStatusLabel, rejected.status.label);
+
+    final inProgress = MaintenanceTicketModel.fromJson(
+      _ticketJson(status: 'IN_PROGRESS'),
+    );
+    final violation = MaintenanceTicketModel.fromJson(
+      _ticketJson(
+        category: 'RULE_VIOLATION',
+        billingStatus: 'PENDING_PAYMENT',
+        billingStatusLabel: 'Chờ thanh toán',
+        chargeToTenant: true,
+        lineType: 'VIOLATION_FINE',
+      ),
+    );
+    final compensation = MaintenanceTicketModel.fromJson(
+      _ticketJson(lineType: 'MAINTENANCE_COMPENSATION'),
+    );
+
+    expect(inProgress.primaryStatusLabel, isNot('Hoàn tất xử lý'));
+    expect(violation.lineType, 'VIOLATION_FINE');
+    expect(violation.primaryStatusLabel, 'Chờ thanh toán');
+    expect(compensation.lineType, 'MAINTENANCE_COMPENSATION');
+  });
+
+  testWidgets('ticket detail shows incidental payment section and CTA', (
+    tester,
+  ) async {
+    final service = MaintenanceTicketService(
+      client: MockClient(
+        (request) async => _jsonResponse({
+          'data': _ticketJson(
+            billingStatus: 'PENDING_PAYMENT',
+            billingStatusLabel: 'Chờ thanh toán',
+            chargeAmount: 2000,
+            chargeToTenant: true,
+            invoiceId: 41,
+            invoiceCode: 'INV-MNT-4-0618094846',
+            lineType: 'MAINTENANCE_COMPENSATION',
+          ),
+        }),
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MaintenanceTicketDetailScreen(
+          ticketId: 1,
+          ticketService: service,
+          notificationInitialUnreadCount: 0,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Thanh toán phát sinh'), findsOneWidget);
+    expect(find.text('INV-MNT-4-0618094846'), findsOneWidget);
+    expect(find.text('Chờ thanh toán'), findsOneWidget);
+    expect(find.text('Xem hóa đơn / Thanh toán ngay'), findsOneWidget);
+  });
+
+  testWidgets('paid ticket detail hides payment CTA', (tester) async {
+    final service = MaintenanceTicketService(
+      client: MockClient(
+        (request) async => _jsonResponse({
+          'data': _ticketJson(
+            billingStatus: 'PAID',
+            billingStatusLabel: 'Đã thanh toán',
+            chargeAmount: 2000,
+            chargeToTenant: true,
+            invoiceId: 41,
+            invoiceCode: 'INV-MNT-4-0618094846',
+          ),
+        }),
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MaintenanceTicketDetailScreen(
+          ticketId: 1,
+          ticketService: service,
+          notificationInitialUnreadCount: 0,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Đã thanh toán'), findsOneWidget);
+    expect(find.text('Xem hóa đơn / Thanh toán ngay'), findsNothing);
   });
 }
 
-class _FakeFileService extends FileService {
-  const _FakeFileService();
-
-  @override
-  Future<FileMetadataResponse> uploadSingle({
-    required Uint8List bytes,
-    required String fileName,
-    FileCategory category = FileCategory.OTHER,
-    bool isSensitive = false,
-  }) async {
-    expect(category, FileCategory.TICKET_ATTACHMENT);
-    expect(bytes, isNotEmpty);
-    return const FileMetadataResponse(
-      fileId: 77,
-      originalFileName: 'before.jpg',
-      url: '/api/v1/files/download/77',
-      uploaded: true,
-    );
-  }
+MaintenanceTicketService _ticketService() {
+  return MaintenanceTicketService(
+    client: MockClient((request) async {
+      final query = request.url.queryParameters;
+      final code = query['code'];
+      final status = query['status'];
+      final category = query['category'];
+      final items =
+          [
+                _ticketJson(id: 1, code: 'SC-0001', status: 'COMPLETED'),
+                _ticketJson(
+                  id: 2,
+                  code: 'SC-0002',
+                  status: 'IN_PROGRESS',
+                  category: 'ELECTRICITY',
+                  title: 'Ổ điện gần bàn học lúc có lúc mất nguồn.',
+                ),
+                _ticketJson(
+                  id: 3,
+                  code: 'SC-0003',
+                  status: 'PENDING_ACCEPTANCE',
+                  category: 'AIR_CONDITIONER',
+                  title: 'Điều hòa phòng ngủ vẫn kêu to.',
+                ),
+              ]
+              .where((ticket) {
+                final matchesCode =
+                    code == null ||
+                    code.isEmpty ||
+                    ticket['ticket_code'].toString().contains(code);
+                final matchesStatus =
+                    status == null || ticket['status'].toString() == status;
+                final matchesCategory =
+                    category == null ||
+                    ticket['category'].toString() == category;
+                return matchesCode && matchesStatus && matchesCategory;
+              })
+              .toList(growable: false);
+      return _jsonResponse(_ticketPage(items));
+    }),
+  );
 }
 
-class _FakeMaintenanceTicketService extends MaintenanceTicketService {
-  const _FakeMaintenanceTicketService();
-
-  @override
-  Future<List<MaintenanceTicketModel>> getTickets({
-    String? keyword,
-    String? status,
-    String? category,
-  }) async {
-    final query = keyword?.trim().toLowerCase() ?? '';
-    final selectedStatus = status == null || status == 'Tất cả'
-        ? null
-        : TicketStatus.fromBackend(status);
-    final selectedCategory = category == null || category == 'Tất cả'
-        ? null
-        : TicketCategory.fromBackend(category);
-
-    return _tickets
-        .where((ticket) {
-          final matchesKeyword =
-              query.isEmpty || ticket.code.toLowerCase().contains(query);
-          final matchesStatus =
-              selectedStatus == null || ticket.status == selectedStatus;
-          final matchesCategory =
-              selectedCategory == null || ticket.category == selectedCategory;
-          return matchesKeyword && matchesStatus && matchesCategory;
-        })
-        .toList(growable: false);
-  }
+Map<String, dynamic> _ticketPage(List<Map<String, dynamic>> items) {
+  return {
+    'currentPage': 1,
+    'totalPages': 1,
+    'pageSize': 100,
+    'totalElements': items.length,
+    'data': items,
+  };
 }
 
-final _tickets = [
-  MaintenanceTicketModel(
-    id: 1,
-    code: '#SC-2825',
-    category: TicketCategory.electricity,
-    title: 'Máy lạnh không lạnh',
-    description: 'Máy lạnh phòng ngủ không lạnh',
-    createdDate: _createdDate,
-    status: TicketStatus.completed,
-    roomId: 1,
-    roomCode: '201',
-  ),
-  MaintenanceTicketModel(
-    id: 2,
-    code: '#SC-2810',
-    category: TicketCategory.other,
-    title: 'Sơn tường',
-    description: 'Sơn lại tường phòng khách',
-    createdDate: _createdDate,
-    status: TicketStatus.rejected,
-    roomId: 1,
-    roomCode: '201',
-  ),
-  MaintenanceTicketModel(
-    id: 3,
-    code: '#SC-2805',
-    category: TicketCategory.water,
-    title: 'Nước yếu',
-    description: 'Nước chảy yếu tại vòi sen',
-    createdDate: _createdDate,
-    status: TicketStatus.accepted,
-    roomId: 1,
-    roomCode: '201',
-  ),
-];
-
-final _createdDate = DateTime(2026, 6, 1);
-
-Map<String, dynamic> _ticketJson({required int id, required String code}) {
+Map<String, dynamic> _ticketJson({
+  int id = 1,
+  String code = 'SC-0001',
+  String status = 'COMPLETED',
+  String category = 'WATER',
+  String title = 'Nước chảy yếu tại vòi sen.',
+  String? billingStatus,
+  String? billingStatusLabel,
+  int? chargeAmount,
+  bool chargeToTenant = false,
+  String? payer,
+  int? invoiceId,
+  String? invoiceCode,
+  String? lineType,
+}) {
   return {
     'id': id,
     'ticket_code': code,
-    'room_id': 1,
-    'room_code': '201',
-    'category': 'WATER',
-    'title': 'Vòi nước rò rỉ',
-    'description': 'Vòi nước lavabo bị rò liên tục',
-    'priority': 'MEDIUM',
-    'status': 'COMPLETED',
-    'ticket_scope': 'ROOM',
-    'created_at': '2026-06-01T08:00:00',
+    'room_id': 106,
+    'room_code': '106',
+    'property_name': 'Nhà trọ Hải Đăng 1',
+    'category': category,
+    'title': title,
+    'description': title,
+    'status': status,
+    'severity': 'MEDIUM',
+    'scope': 'ROOM',
+    'created_at': '2026-06-12T21:00:00',
+    if (billingStatus != null) 'billing_status': billingStatus,
+    if (billingStatusLabel != null) 'billing_status_label': billingStatusLabel,
+    if (chargeAmount != null) 'charge_amount': chargeAmount,
+    'charge_to_tenant': chargeToTenant,
+    if (payer != null) 'payer': payer,
+    if (invoiceId != null) 'invoice_id': invoiceId,
+    if (invoiceCode != null) 'invoice_code': invoiceCode,
+    if (lineType != null) 'line_type': lineType,
   };
+}
+
+http.Response _jsonResponse(Object body, {int statusCode = 200}) {
+  return http.Response(
+    jsonEncode(body),
+    statusCode,
+    headers: {'content-type': 'application/json; charset=utf-8'},
+  );
 }
 
 Finder _ticketCodeFinder(String code) {
   return find.byWidgetPredicate(
     (widget) => widget is Text && widget.data == code,
   );
+}
+
+final Uint8List _pngBytes = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
+);
+
+class _FakeFileService extends FileService {
+  _FakeFileService(this.bytes) : super();
+
+  final Uint8List bytes;
+  int? downloadedFileId;
+
+  @override
+  Future<Uint8List> download(int fileId) async {
+    downloadedFileId = fileId;
+    return bytes;
+  }
 }

@@ -1,9 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
-import 'app.dart';
-import 'config/api_config.dart';
+import 'package:hdbhms_mobile/app.dart';
 
 void main() {
-  ApiConfig.logResolvedConfig();
   runApp(const App());
 }

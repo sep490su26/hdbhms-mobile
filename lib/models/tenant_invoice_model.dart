@@ -24,6 +24,7 @@ class TenantInvoice {
     required this.accountName,
     required this.transferDescription,
     required this.lines,
+    this.hasOpenMeterReadingReview = false,
   });
 
   final int? id;
@@ -50,8 +51,19 @@ class TenantInvoice {
   final String accountName;
   final String transferDescription;
   final List<TenantInvoiceLine> lines;
+  final bool hasOpenMeterReadingReview;
 
   bool get isPaid => status.toUpperCase() == 'PAID' || remainingAmount <= 0;
+
+  List<TenantInvoiceLine> get utilityMeterLines => lines
+      .where(
+        (line) => line.lineType == 'ELECTRICITY' || line.lineType == 'WATER',
+      )
+      .toList(growable: false);
+
+  List<TenantInvoiceLine> get reviewableUtilityLines => utilityMeterLines
+      .where((line) => line.canComplain && line.id != null)
+      .toList(growable: false);
 
   bool get isTenantVisible {
     final normalized = status.toUpperCase();
@@ -68,6 +80,30 @@ class TenantInvoice {
         normalized == 'OVERDUE';
   }
 
+  String get payosQrValue {
+    final value = qrCode.trim();
+    if (value.isNotEmpty) return value;
+    return checkoutUrl.trim();
+  }
+
+  bool get hasPayosQr => payosQrValue.isNotEmpty;
+
+  String get normalizedInvoiceType => invoiceType.trim().toUpperCase();
+
+  bool get isRentType => normalizedInvoiceType == 'RENT';
+
+  bool get isUtilityType => normalizedInvoiceType == 'UTILITY';
+
+  bool get isOtherType => !isRentType && !isUtilityType;
+
+  String get invoiceTypeLabel {
+    return switch (normalizedInvoiceType) {
+      'RENT' => 'Tiền phòng',
+      'UTILITY' => 'Tiền điện & dịch vụ',
+      _ => 'Khác',
+    };
+  }
+
   String get title {
     final hasViolation = lines.any((line) => line.lineType == 'VIOLATION_FINE');
     if (hasViolation) {
@@ -79,59 +115,48 @@ class TenantInvoice {
     if (hasMaintenanceCompensation) {
       return 'Bồi thường chi phí bảo trì';
     }
-    if (invoiceType == 'UTILITY') {
-      return 'Hóa đơn Điện & Nước ${_periodLabel(billingPeriod)}';
+    if (isUtilityType) {
+      return 'Hóa đơn tiền điện & dịch vụ ${_periodLabel(billingPeriod)}';
     }
-    if (invoiceType == 'RENT') {
+    if (isRentType) {
       return 'Hóa đơn tiền phòng ${_periodLabel(billingPeriod)}';
     }
     final period = _periodLabel(billingPeriod);
-    return period.isEmpty ? 'Hóa đơn phát sinh' : 'Hóa đơn $period';
+    return period.isEmpty ? 'Hóa đơn khác' : 'Hóa đơn khác $period';
   }
 
   factory TenantInvoice.fromJson(Map<String, dynamic> json) {
     return TenantInvoice(
       id: int.tryParse(json['id']?.toString() ?? ''),
-      invoiceCode: _firstString(json, ['invoiceCode', 'invoice_code']),
-      invoiceType: _firstString(json, ['invoiceType', 'invoice_type']),
-      billingPeriod: _firstString(json, ['billingPeriod', 'billing_period']),
+      invoiceCode: _firstString(json, ['invoiceCode']),
+      invoiceType: _firstString(json, ['invoiceType']),
+      billingPeriod: _firstString(json, ['billingPeriod']),
       status: _firstString(json, ['status']),
-      roomCode: _firstString(json, ['roomCode', 'room_code']),
-      contractCode: _firstString(json, ['contractCode', 'contract_code']),
-      dueDate: DateTime.tryParse(_firstString(json, ['dueDate', 'due_date'])),
-      issuedAt: DateTime.tryParse(
-        _firstString(json, ['issuedAt', 'issued_at']),
-      ),
-      paidAt: DateTime.tryParse(_firstString(json, ['paidAt', 'paid_at'])),
-      totalAmount: _intField(json, ['totalAmount', 'total_amount']),
-      paidAmount: _intField(json, ['paidAmount', 'paid_amount']),
-      remainingAmount: _intField(json, ['remainingAmount', 'remaining_amount']),
-      paymentIntentId: int.tryParse(
-        _firstString(json, ['paymentIntentId', 'payment_intent_id']),
-      ),
-      checkoutUrl: _firstString(json, [
-        'checkoutUrl',
-        'checkout_url',
-        'checkOutUrl',
-      ]),
-      qrCode: _firstString(json, ['qrCode', 'qr_code']),
-      providerOrderCode: _firstString(json, [
-        'providerOrderCode',
-        'provider_order_code',
-      ]),
-      paymentLinkId: _firstString(json, ['paymentLinkId', 'payment_link_id']),
-      bankBin: _firstString(json, ['bankBin', 'bank_bin']),
-      bankShortName: _firstString(json, ['bankShortName', 'bank_short_name']),
-      accountNumber: _firstString(json, ['accountNumber', 'account_number']),
-      accountName: _firstString(json, ['accountName', 'account_name']),
-      transferDescription: _firstString(json, [
-        'transferDescription',
-        'transfer_description',
-      ]),
+      roomCode: _firstString(json, ['roomCode']),
+      contractCode: _firstString(json, ['contractCode']),
+      dueDate: DateTime.tryParse(_firstString(json, ['dueDate'])),
+      issuedAt: DateTime.tryParse(_firstString(json, ['issuedAt'])),
+      paidAt: DateTime.tryParse(_firstString(json, ['paidAt'])),
+      totalAmount: _intField(json, ['totalAmount']),
+      paidAmount: _intField(json, ['paidAmount']),
+      remainingAmount: _intField(json, ['remainingAmount']),
+      paymentIntentId: int.tryParse(_firstString(json, ['paymentIntentId'])),
+      checkoutUrl: _firstString(json, ['checkoutUrl', 'checkOutUrl']),
+      qrCode: _firstString(json, ['qrCode', 'qrPayload']),
+      providerOrderCode: _firstString(json, ['providerOrderCode']),
+      paymentLinkId: _firstString(json, ['paymentLinkId']),
+      bankBin: _firstString(json, ['bankBin']),
+      bankShortName: _firstString(json, ['bankShortName']),
+      accountNumber: _firstString(json, ['accountNumber']),
+      accountName: _firstString(json, ['accountName']),
+      transferDescription: _firstString(json, ['transferDescription']),
       lines: (json['lines'] as List<dynamic>? ?? [])
           .whereType<Map<String, dynamic>>()
           .map(TenantInvoiceLine.fromJson)
           .toList(),
+      hasOpenMeterReadingReview: _boolField(json, [
+        'hasOpenMeterReadingReview',
+      ]),
     );
   }
 }
@@ -144,6 +169,16 @@ class TenantInvoiceLine {
     required this.quantity,
     required this.unitPrice,
     required this.amount,
+    this.meterReadingId,
+    this.meterType = '',
+    this.readingPeriod = '',
+    this.readingDate,
+    this.previousValue,
+    this.currentValue,
+    this.usageAmount,
+    this.reviewStatus = 'NONE',
+    this.openReviewId,
+    this.canComplain = false,
   });
 
   final int? id;
@@ -152,15 +187,41 @@ class TenantInvoiceLine {
   final int quantity;
   final int unitPrice;
   final int amount;
+  final int? meterReadingId;
+  final String meterType;
+  final String readingPeriod;
+  final DateTime? readingDate;
+  final double? previousValue;
+  final double? currentValue;
+  final double? usageAmount;
+  final String reviewStatus;
+  final int? openReviewId;
+  final bool canComplain;
+
+  bool get hasOpenReview =>
+      openReviewId != null ||
+      reviewStatus == 'PENDING' ||
+      reviewStatus == 'UNDER_REVIEW' ||
+      reviewStatus == 'PROCESSING';
 
   factory TenantInvoiceLine.fromJson(Map<String, dynamic> json) {
     return TenantInvoiceLine(
       id: int.tryParse(json['id']?.toString() ?? ''),
-      lineType: _firstString(json, ['lineType', 'line_type']),
+      lineType: _firstString(json, ['lineType']),
       description: _firstString(json, ['description']),
       quantity: _intField(json, ['quantity']),
-      unitPrice: _intField(json, ['unitPrice', 'unit_price']),
+      unitPrice: _intField(json, ['unitPrice']),
       amount: _intField(json, ['amount']),
+      meterReadingId: int.tryParse(_firstString(json, ['meterReadingId'])),
+      meterType: _firstString(json, ['meterType']),
+      readingPeriod: _firstString(json, ['readingPeriod']),
+      readingDate: DateTime.tryParse(_firstString(json, ['readingDate'])),
+      previousValue: _doubleField(json, ['previousValue']),
+      currentValue: _doubleField(json, ['currentValue']),
+      usageAmount: _doubleField(json, ['usageAmount']),
+      reviewStatus: _firstString(json, ['reviewStatus']),
+      openReviewId: int.tryParse(_firstString(json, ['openReviewId'])),
+      canComplain: _boolField(json, ['canComplain']),
     );
   }
 }
@@ -181,6 +242,28 @@ int _intField(Map<String, dynamic> json, List<String> keys) {
     if (parsed != null) return parsed;
   }
   return 0;
+}
+
+double? _doubleField(Map<String, dynamic> json, List<String> keys) {
+  for (final key in keys) {
+    final value = json[key];
+    if (value == null) continue;
+    final parsed = double.tryParse(value.toString());
+    if (parsed != null) return parsed;
+  }
+  return null;
+}
+
+bool _boolField(Map<String, dynamic> json, List<String> keys) {
+  for (final key in keys) {
+    final value = json[key];
+    if (value is bool) return value;
+    if (value == null) continue;
+    final normalized = value.toString().toLowerCase();
+    if (normalized == 'true') return true;
+    if (normalized == 'false') return false;
+  }
+  return false;
 }
 
 String _periodLabel(String value) {

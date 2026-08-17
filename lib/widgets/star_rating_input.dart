@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 class StarRatingInput extends StatelessWidget {
   const StarRatingInput({
@@ -77,7 +77,7 @@ class _RatingOption extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppColors.radiusSm),
       child: SizedBox(
         width: 58,
         child: Column(

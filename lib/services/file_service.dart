@@ -3,10 +3,10 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
-import '../config/api_config.dart';
-import '../models/api_response.dart';
-import '../models/file_metadata_model.dart';
-import 'authenticated_client.dart';
+import 'package:hdbhms_mobile/config/api_config.dart';
+import 'package:hdbhms_mobile/models/api_response.dart';
+import 'package:hdbhms_mobile/models/maintenance/file_metadata_model.dart';
+import 'package:hdbhms_mobile/services/authenticated_client.dart';
 
 class FileService {
   const FileService({http.Client? client}) : _client = client;
@@ -17,7 +17,7 @@ class FileService {
   Future<FileMetadataResponse> uploadSingle({
     required Uint8List bytes,
     required String fileName,
-    FileCategory category = FileCategory.OTHER,
+    FileCategory category = FileCategory.other,
     bool isSensitive = false,
   }) async {
     final client = _effectiveClient;
@@ -46,7 +46,7 @@ class FileService {
       );
       return apiResponse.data!;
     } else {
-      throw Exception('Failed to upload file: ${response.body}');
+      throw Exception('Không thể tải tệp lên.');
     }
   }
 
@@ -84,7 +84,7 @@ class FileService {
       );
       return apiResponse.data!;
     } else {
-      throw Exception('Failed to upload batch files: ${response.body}');
+      throw Exception('Không thể tải các tệp lên.');
     }
   }
 
@@ -99,7 +99,7 @@ class FileService {
       if (response.statusCode == 200) {
         return response.bodyBytes;
       } else {
-        throw Exception('Failed to download file: ${response.body}');
+        throw Exception('Không thể tải tệp về.');
       }
     } finally {
       if (_client == null) client.close();

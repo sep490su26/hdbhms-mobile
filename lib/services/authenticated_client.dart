@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../app.dart';
-import '../screens/login_page.dart';
+import 'package:hdbhms_mobile/app.dart';
+import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'auth_service.dart';
-import 'home_service.dart';
+import 'package:hdbhms_mobile/services/auth/auth_service.dart';
+import 'package:hdbhms_mobile/services/home/home_service.dart';
 
 class AuthenticatedClient extends http.BaseClient {
   AuthenticatedClient({
@@ -67,7 +67,7 @@ class AuthenticatedClient extends http.BaseClient {
       reasonPhrase: response.reasonPhrase,
     );
 
-    if (clonedResponse.statusCode == 401 || clonedResponse.statusCode == 403) {
+    if (clonedResponse.statusCode == 401) {
       final isRetryable = request is http.Request;
       if (!isRetryable) {
         // Cannot retry streams safely
@@ -87,6 +87,10 @@ class AuthenticatedClient extends http.BaseClient {
         _redirectToLogin();
         return clonedResponse;
       }
+    }
+
+    if (clonedResponse.statusCode == 403) {
+      return clonedResponse;
     }
 
     return clonedResponse;
@@ -144,5 +148,11 @@ class AuthenticatedClient extends http.BaseClient {
       return request;
     }
     return request;
+  }
+
+  @override
+  void close() {
+    _inner.close();
+    super.close();
   }
 }

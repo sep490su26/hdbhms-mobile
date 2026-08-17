@@ -1,11 +1,9 @@
-import 'dart:typed_data';
-
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../models/file_metadata_model.dart';
-import '../models/identity_image_file.dart';
-import 'file_service.dart';
+import 'package:hdbhms_mobile/models/maintenance/file_metadata_model.dart';
+import 'package:hdbhms_mobile/models/auth/identity_image_file.dart';
+import 'package:hdbhms_mobile/services/file_service.dart';
 
 abstract class FileUploadService {
   Future<IdentityImageFile> pickIdentityImage({
@@ -28,8 +26,8 @@ class ImagePickerFileUploadService implements FileUploadService {
     ImagePicker? picker,
     FileService? fileService,
     this.maxSizeInBytes = 10 * 1024 * 1024,
-  })  : _picker = picker ?? ImagePicker(),
-        _fileService = fileService ?? const FileService();
+  }) : _picker = picker ?? ImagePicker(),
+       _fileService = fileService ?? const FileService();
 
   final ImagePicker _picker;
   final FileService _fileService;
@@ -195,7 +193,7 @@ class MockFileUploadService implements FileUploadService {
       originalFileName: file.name,
       url: 'https://example.com/mock-file.jpg',
       uploaded: true,
-      message: 'Upload successful (Mock)',
+      message: 'Tải lên thành công (mô phỏng)',
     );
   }
 

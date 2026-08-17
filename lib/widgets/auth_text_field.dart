@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/theme/app_typography.dart';
 
 class AuthTextField extends StatefulWidget {
   const AuthTextField({
@@ -17,6 +18,8 @@ class AuthTextField extends StatefulWidget {
     this.prefixIconSize = 22,
     this.uppercaseLabel = true,
     this.enabled = true,
+    this.required = false,
+    this.validator,
   });
 
   final String label;
@@ -31,6 +34,8 @@ class AuthTextField extends StatefulWidget {
   final double prefixIconSize;
   final bool uppercaseLabel;
   final bool enabled;
+  final bool required;
+  final String? Function(String?)? validator;
 
   @override
   State<AuthTextField> createState() => _AuthTextFieldState();
@@ -50,37 +55,45 @@ class _AuthTextFieldState extends State<AuthTextField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          widget.uppercaseLabel ? widget.label.toUpperCase() : widget.label,
-          style: const TextStyle(
-            color: AppColors.bodyText,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            height: 16 / 12,
-            letterSpacing: 0.6,
+        Semantics(
+          label: widget.required ? '${widget.label}, bắt buộc' : widget.label,
+          child: Wrap(
+            spacing: 3,
+            runSpacing: 2,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                widget.uppercaseLabel
+                    ? widget.label.toUpperCase()
+                    : widget.label,
+                style: AppTypography.label,
+              ),
+              if (widget.required)
+                const Text(
+                  '*',
+                  style: TextStyle(
+                    color: AppColors.danger,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+            ],
           ),
         ),
-        const SizedBox(height: 4.5),
+        const SizedBox(height: 8),
         TextFormField(
           controller: widget.controller,
           enabled: widget.enabled,
           keyboardType: widget.keyboardType,
           obscureText: _isObscured,
           textInputAction: widget.textInputAction,
+          validator: widget.validator,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           cursorColor: AppColors.darkBlue,
-          style: const TextStyle(
-            color: AppColors.inputText,
-            fontSize: 16,
-            fontWeight: FontWeight.w400,
-            height: 24 / 16,
-          ),
+          style: AppTypography.bodyLarge.copyWith(color: AppColors.inputText),
           decoration: InputDecoration(
             hintText: widget.hintText,
-            hintStyle: TextStyle(
+            hintStyle: AppTypography.bodyLarge.copyWith(
               color: widget.hintColor,
-              fontSize: 16,
-              fontWeight: FontWeight.w400,
-              height: 24 / 16,
             ),
             filled: true,
             fillColor: AppColors.inputFill,
@@ -121,7 +134,10 @@ class _AuthTextFieldState extends State<AuthTextField> {
             border: _fieldBorder,
             enabledBorder: _fieldBorder,
             focusedBorder: _fieldBorder.copyWith(
-              borderSide: const BorderSide(color: AppColors.darkBlue),
+              borderSide: const BorderSide(
+                color: AppColors.primary,
+                width: 1.5,
+              ),
             ),
           ),
         ),
@@ -130,7 +146,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
   }
 
   static final OutlineInputBorder _fieldBorder = OutlineInputBorder(
-    borderRadius: BorderRadius.circular(8),
-    borderSide: BorderSide.none,
+    borderRadius: BorderRadius.circular(AppColors.radiusMd),
+    borderSide: const BorderSide(color: AppColors.border),
   );
 }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -5,16 +7,20 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:hdbhms_mobile/app.dart';
-import 'package:hdbhms_mobile/models/home_summary_model.dart';
-import 'package:hdbhms_mobile/models/login_response.dart';
+import 'package:hdbhms_mobile/models/home/home_summary_model.dart';
+import 'package:hdbhms_mobile/models/auth/login_response.dart';
 import 'package:hdbhms_mobile/models/onboarding_state.dart';
-import 'package:hdbhms_mobile/models/tenant_profile_model.dart';
+import 'package:hdbhms_mobile/models/payment/tenant_invoice_model.dart';
+import 'package:hdbhms_mobile/models/profile_request/tenant_profile_model.dart';
 import 'package:hdbhms_mobile/models/onboarding_action.dart';
-import 'package:hdbhms_mobile/screens/change_password_page.dart';
-import 'package:hdbhms_mobile/screens/tenant_profile_screen.dart';
-import 'package:hdbhms_mobile/services/auth_service.dart';
-import 'package:hdbhms_mobile/services/home_service.dart';
-import 'package:hdbhms_mobile/services/tenant_profile_service.dart';
+import 'package:hdbhms_mobile/screens/auth/change_password_page.dart';
+import 'package:hdbhms_mobile/screens/payment/qr_payment_page.dart';
+import 'package:hdbhms_mobile/screens/profile_request/tenant_profile_screen.dart';
+import 'package:hdbhms_mobile/services/auth/auth_service.dart';
+import 'package:hdbhms_mobile/services/auth/forgot_password_service.dart';
+import 'package:hdbhms_mobile/services/home/home_service.dart';
+import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
+import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 
 class _FakeAuthService extends AuthService {
   const _FakeAuthService();
@@ -24,6 +30,16 @@ class _FakeAuthService extends AuthService {
     required String phone,
     required String password,
   }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(AuthService.accessTokenKey, _homeLoginResponse.token);
+    await prefs.setString(
+      AuthService.sessionIdKey,
+      _homeLoginResponse.sessionId,
+    );
+    await prefs.setString(AuthService.roleKey, _homeLoginResponse.role);
+    if (_homeLoginResponse.onboarding != null) {
+      await AuthService.saveOnboarding(_homeLoginResponse.onboarding!);
+    }
     return _homeLoginResponse;
   }
 }
@@ -74,7 +90,7 @@ class _FakeHomeService extends HomeService {
   const _FakeHomeService();
 
   @override
-  Future<HomeSummary> fetchHomeSummary() async {
+  Future<HomeSummary> fetchHomeSummary({int? contractId}) async {
     return _homeSummary;
   }
 }
@@ -99,9 +115,76 @@ class _FakeTenantProfileService extends TenantProfileService {
   }
 }
 
-const _testApp = App(
-  authService: _FakeAuthService(),
-  homeService: _FakeHomeService(),
+class _FakeTenantInvoiceService extends TenantInvoiceService {
+  _FakeTenantInvoiceService();
+
+  bool _paymentConfirmed = false;
+
+  void reset() {
+    _paymentConfirmed = false;
+  }
+
+  void markPaymentConfirmed() {
+    _paymentConfirmed = true;
+  }
+
+  @override
+  Future<List<TenantInvoice>> fetchMyInvoices({
+    int? roomId,
+    String? roomCode,
+  }) async {
+    if (_paymentConfirmed) {
+      return _tenantInvoicesAfterPayment;
+    }
+    return _tenantInvoicesBeforePayment;
+  }
+}
+
+class _TitledTenantInvoice extends TenantInvoice {
+  _TitledTenantInvoice({
+    required String title,
+    required super.id,
+    required super.status,
+    required super.totalAmount,
+    required super.paidAmount,
+    required super.remainingAmount,
+    super.invoiceCode = '',
+    super.invoiceType = 'RENT',
+    super.billingPeriod = '2024-07',
+    super.dueDate,
+    super.issuedAt,
+    super.paidAt,
+    super.transferDescription = '',
+    super.qrCode = '000201010212',
+    super.lines = const [],
+    super.priceDifferenceSettlementType = '',
+  }) : _title = title,
+       super(
+         roomId: 1,
+         roomCode: '101',
+         contractId: 1,
+         contractCode: 'HD-TEST-001',
+         paymentIntentId: id,
+         checkoutUrl: '',
+         providerOrderCode: '',
+         paymentLinkId: '',
+         bankBin: '970422',
+         bankShortName: 'MB',
+         accountNumber: '123456789',
+         accountName: 'NGUYEN VAN A',
+       );
+
+  final String _title;
+
+  @override
+  String get title => _title;
+}
+
+final _fakeTenantInvoiceService = _FakeTenantInvoiceService();
+final _testApp = App(
+  authService: const _FakeAuthService(),
+  homeService: const _FakeHomeService(),
+  tenantInvoiceService: _fakeTenantInvoiceService,
 );
 const _homeOnboarding = OnboardingState(
   userId: 1,
@@ -149,14 +232,7 @@ final _homeSummary = HomeSummary(
     name: 'Phòng 101',
     currentStatus: 'OCCUPIED',
   ),
-  rooms: const [
-    HomeRoom(
-      id: 1,
-      roomCode: '101',
-      name: 'Phòng 101',
-      currentStatus: 'OCCUPIED',
-    ),
-  ],
+  rooms: const [],
   contract: HomeContract(
     id: 1,
     contractCode: 'HD-TEST-001',
@@ -188,6 +264,100 @@ final _homeSummary = HomeSummary(
   ),
   onboarding: _homeOnboarding,
 );
+
+final _unpaidRentInvoice = _TitledTenantInvoice(
+  title: 'Ti\u1EC1n ph\u00F2ng',
+  id: 1,
+  invoiceCode: 'INV-JULY',
+  status: 'ISSUED',
+  totalAmount: 2450000,
+  paidAmount: 0,
+  remainingAmount: 2450000,
+  dueDate: DateTime(2024, 7, 15),
+  issuedAt: DateTime(2024, 7, 1),
+  transferDescription: 'RESIDENT_99283_JULY',
+);
+
+final _unpaidUtilityInvoice = _TitledTenantInvoice(
+  title: '\u0110i\u1EC7n n\u01B0\u1EDBc',
+  id: 4,
+  invoiceCode: 'INV-JULY-UTILITY',
+  invoiceType: 'UTILITY',
+  status: 'ISSUED',
+  totalAmount: 350000,
+  paidAmount: 0,
+  remainingAmount: 350000,
+  dueDate: DateTime(2024, 7, 16),
+  issuedAt: DateTime(2024, 7, 1),
+  transferDescription: 'RESIDENT_99283_UTILITY',
+);
+
+final _paidRentInvoice = _TitledTenantInvoice(
+  title: 'Ti\u1EC1n ph\u00F2ng',
+  id: 2,
+  invoiceCode: 'INV-FEB-RENT',
+  status: 'PAID',
+  totalAmount: 800000,
+  paidAmount: 800000,
+  remainingAmount: 0,
+  billingPeriod: '2023-02',
+  dueDate: DateTime(2023, 2, 15),
+  issuedAt: DateTime(2023, 2, 1),
+  paidAt: DateTime(2023, 2, 6),
+);
+
+final _paidMaintenanceInvoice = _TitledTenantInvoice(
+  title: 'S\u1EEDa t\u1EE7 l\u1EA1nh',
+  id: 3,
+  invoiceCode: 'INV-FIX-FRIDGE',
+  invoiceType: 'MAINTENANCE',
+  billingPeriod: '2023-02',
+  status: 'PAID',
+  totalAmount: 800000,
+  paidAmount: 800000,
+  remainingAmount: 0,
+  dueDate: DateTime(2023, 2, 20),
+  issuedAt: DateTime(2023, 2, 10),
+  paidAt: DateTime(2023, 2, 18),
+  lines: const [
+    TenantInvoiceLine(
+      id: 31,
+      lineType: 'MAINTENANCE_COMPENSATION',
+      description: 'S\u1EEDa t\u1EE7 l\u1EA1nh',
+      quantity: 1,
+      unitPrice: 800000,
+      amount: 800000,
+    ),
+  ],
+);
+
+final _paidConfirmedRentInvoice = _TitledTenantInvoice(
+  title: 'Ti\u1EC1n ph\u00F2ng',
+  id: 1,
+  invoiceCode: 'INV-JULY',
+  status: 'PAID',
+  totalAmount: 2450000,
+  paidAmount: 2450000,
+  remainingAmount: 0,
+  dueDate: DateTime(2024, 7, 15),
+  issuedAt: DateTime(2024, 7, 1),
+  paidAt: DateTime(2024, 7, 8),
+  transferDescription: 'RESIDENT_99283_JULY',
+);
+
+final _tenantInvoicesBeforePayment = [
+  _unpaidRentInvoice,
+  _unpaidUtilityInvoice,
+  _paidRentInvoice,
+  _paidMaintenanceInvoice,
+];
+
+final _tenantInvoicesAfterPayment = [
+  _paidConfirmedRentInvoice,
+  _unpaidUtilityInvoice,
+  _paidRentInvoice,
+  _paidMaintenanceInvoice,
+];
 
 final _tenantProfile = TenantProfileResponse(
   tenantProfileId: 1,
@@ -269,12 +439,76 @@ Future<void> login(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> loginAndOpenHome(WidgetTester tester) async {
+  await login(tester);
+  await tester.tap(find.text('Ph\u00F2ng 101').last);
+  await tester.pumpAndSettle();
+}
+
 Future<void> openBillsFromHomeCta(WidgetTester tester) async {
-  final cta = find.text('Thanh to\u00E1n ngay');
+  final cta = find.text('Xem c\u00E1c h\u00F3a \u0111\u01A1n');
   await tester.ensureVisible(cta);
   await tester.pumpAndSettle();
   await tester.tap(cta);
   await tester.pumpAndSettle();
+}
+
+Future<void> openQrFromBillSelection(WidgetTester tester) async {
+  await tester.tap(find.text('2.450.000\u0111').first);
+  await tester.pumpAndSettle();
+  expect(find.text('Chi ti\u1EBFt h\u00F3a \u0111\u01A1n'), findsOneWidget);
+  await scrollUntilTextVisible(tester, 'Thanh to\u00E1n ngay');
+  await tester.tap(find.text('Thanh to\u00E1n ngay'));
+  await tester.pump(const Duration(seconds: 1));
+  await tester.pump();
+}
+
+Future<void> scrollQrUntilTextVisible(WidgetTester tester, String text) async {
+  final finder = find.text(text);
+  if (finder.evaluate().isEmpty) {
+    await tester.scrollUntilVisible(
+      finder,
+      260,
+      scrollable: find
+          .descendant(
+            of: find.byType(CustomScrollView),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+  } else {
+    await tester.ensureVisible(finder);
+  }
+  await tester.pump();
+}
+
+Future<void> confirmQrPayment(WidgetTester tester) async {
+  _fakeTenantInvoiceService.markPaymentConfirmed();
+  await scrollQrUntilTextVisible(tester, 'Ki\u1EC3m tra l\u1EA1i');
+  await tester.tap(find.text('Ki\u1EC3m tra l\u1EA1i'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> scrollUntilTextVisible(
+  WidgetTester tester,
+  String text, {
+  bool settle = true,
+}) async {
+  final finder = find.text(text);
+  if (finder.evaluate().isEmpty) {
+    await tester.scrollUntilVisible(
+      finder,
+      260,
+      scrollable: find.byType(Scrollable).first,
+    );
+  } else {
+    await tester.ensureVisible(finder);
+  }
+  if (settle) {
+    await tester.pumpAndSettle();
+  } else {
+    await tester.pump();
+  }
 }
 
 Future<void> pumpTenantProfile(
@@ -296,6 +530,7 @@ Future<void> pumpTenantProfile(
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    _fakeTenantInvoiceService.reset();
   });
 
   testWidgets('shows login screen', (WidgetTester tester) async {
@@ -312,12 +547,12 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await loginAndOpenHome(tester);
 
     expect(find.text('XIN CH\u00C0O,'), findsOneWidget);
     expect(find.text('Test User'), findsOneWidget);
-    expect(find.text('Test Tenant'), findsOneWidget);
-    expect(find.text('2.800.000'), findsOneWidget);
+    expect(find.text('Ph\u00F2ng 101'), findsWidgets);
+    expect(find.text('2.800.000\u0111'), findsOneWidget);
   });
 
   testWidgets('opens bill selection from payment CTA', (
@@ -326,16 +561,13 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await loginAndOpenHome(tester);
 
     await openBillsFromHomeCta(tester);
 
-    expect(find.text('H\u00F3a \u0111\u01A1n'), findsOneWidget);
-    expect(
-      find.text('H\u00D3A \u0110\u01A0N \u0110\u00C3 THANH TO\u00C1N'),
-      findsOneWidget,
-    );
-    expect(find.text('View All Historical Data'), findsOneWidget);
+    expect(find.text('H\u00F3a \u0111\u01A1n'), findsWidgets);
+    expect(find.text('CH\u1EDC THANH TO\u00C1N'), findsWidgets);
+    expect(find.byTooltip('L\u1ECBch s\u1EED thanh to\u00E1n'), findsOneWidget);
   });
 
   testWidgets('opens bill selection from bottom Bills tab', (
@@ -344,14 +576,14 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await loginAndOpenHome(tester);
 
-    await tester.tap(find.text('Bills'));
+    await tester.tap(find.text('H\u00F3a \u0111\u01A1n'));
     await tester.pumpAndSettle();
 
-    expect(find.text('H\u00F3a \u0111\u01A1n'), findsOneWidget);
-    expect(find.text('Ti\u1EC1n ph\u00F2ng'), findsNWidgets(2));
-    expect(find.text('View All Historical Data'), findsOneWidget);
+    expect(find.text('H\u00F3a \u0111\u01A1n'), findsWidgets);
+    expect(find.text('Ti\u1EC1n ph\u00F2ng & d\u1ECBch v\u1EE5'), findsWidgets);
+    expect(find.byTooltip('L\u1ECBch s\u1EED thanh to\u00E1n'), findsOneWidget);
   });
 
   testWidgets('opens QR payment from bill selection', (
@@ -360,17 +592,22 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await loginAndOpenHome(tester);
 
     await openBillsFromHomeCta(tester);
 
-    await tester.tap(find.text('Ti\u1EC1n ph\u00F2ng').first);
-    await tester.pumpAndSettle();
+    await openQrFromBillSelection(tester);
 
-    expect(find.text('Thanh to\u00E1n h\u00F3a \u0111\u01A1n'), findsOneWidget);
-    expect(find.text('2.450.000\u0111'), findsOneWidget);
+    expect(find.byType(QrPaymentPage), findsOneWidget);
+    expect(find.text('2.450.000\u0111'), findsNWidgets(2));
+    await scrollQrUntilTextVisible(tester, 'RESIDENT_99283_JULY');
     expect(find.text('RESIDENT_99283_JULY'), findsOneWidget);
-    expect(find.text('T\u00F4i \u0111\u00E3 thanh to\u00E1n'), findsOneWidget);
+    expect(
+      find.text('T\u00F4i \u0111\u00E3 chuy\u1EC3n kho\u1EA3n'),
+      findsNothing,
+    );
+    await scrollQrUntilTextVisible(tester, 'Ki\u1EC3m tra l\u1EA1i');
+    expect(find.text('Ki\u1EC3m tra l\u1EA1i'), findsOneWidget);
   });
 
   testWidgets('opens payment success after confirming paid', (
@@ -379,23 +616,17 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await loginAndOpenHome(tester);
 
     await openBillsFromHomeCta(tester);
 
-    await tester.tap(find.text('Ti\u1EC1n ph\u00F2ng').first);
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(
-      find.text('T\u00F4i \u0111\u00E3 thanh to\u00E1n'),
-    );
-    await tester.tap(find.text('T\u00F4i \u0111\u00E3 thanh to\u00E1n'));
-    await tester.pumpAndSettle();
+    await openQrFromBillSelection(tester);
+    await confirmQrPayment(tester);
 
     expect(find.text('Thanh to\u00E1n th\u00E0nh c\u00F4ng!'), findsOneWidget);
     expect(find.text('#TXN-882910'), findsOneWidget);
-    expect(find.text('800.000 \u0111'), findsOneWidget);
-    expect(find.text('Quay l\u1EA1i trang ch\u1EE7'), findsOneWidget);
+    expect(find.text('2.450.000 \u0111'), findsWidgets);
+    expect(find.text('Quay v\u1EC1 T\u1ED5ng quan'), findsOneWidget);
   });
 
   testWidgets('opens payment history from success page', (
@@ -404,27 +635,28 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await loginAndOpenHome(tester);
 
     await openBillsFromHomeCta(tester);
 
-    await tester.tap(find.text('Ti\u1EC1n ph\u00F2ng').first);
-    await tester.pumpAndSettle();
+    await openQrFromBillSelection(tester);
+    await confirmQrPayment(tester);
 
-    await tester.ensureVisible(
-      find.text('T\u00F4i \u0111\u00E3 thanh to\u00E1n'),
+    await scrollUntilTextVisible(
+      tester,
+      'Xem l\u1ECBch s\u1EED thanh to\u00E1n',
     );
-    await tester.tap(find.text('T\u00F4i \u0111\u00E3 thanh to\u00E1n'));
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(find.text('Xem l\u1ECBch s\u1EED'));
-    await tester.tap(find.text('Xem l\u1ECBch s\u1EED'));
+    await tester.tap(find.text('Xem l\u1ECBch s\u1EED thanh to\u00E1n'));
     await tester.pumpAndSettle();
 
     expect(find.text('L\u1ECBch s\u1EED thanh to\u00E1n'), findsOneWidget);
-    expect(find.text('T\u00ECm ki\u1EBFm..'), findsOneWidget);
-    expect(find.text('Th\u00E1ng 2 2023'), findsOneWidget);
-    expect(find.text('S\u1EEDa t\u1EE7 l\u1EA1nh'), findsOneWidget);
+    expect(
+      find.text(
+        'T\u00ECm theo m\u00E3 h\u00F3a \u0111\u01A1n, ph\u00F2ng, n\u1ED9i dung...',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('T\u1EA5t c\u1EA3 th\u00E1ng'), findsOneWidget);
   });
 
   testWidgets('opens payment history from bill selection', (
@@ -433,17 +665,21 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await loginAndOpenHome(tester);
 
-    await tester.tap(find.text('Bills'));
+    await tester.tap(find.text('H\u00F3a \u0111\u01A1n'));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('View All Historical Data'));
-    await tester.tap(find.text('View All Historical Data'));
+    await tester.tap(find.byTooltip('L\u1ECBch s\u1EED thanh to\u00E1n'));
     await tester.pumpAndSettle();
 
     expect(find.text('L\u1ECBch s\u1EED thanh to\u00E1n'), findsOneWidget);
-    expect(find.text('T\u00ECm ki\u1EBFm..'), findsOneWidget);
+    expect(
+      find.text(
+        'T\u00ECm theo m\u00E3 h\u00F3a \u0111\u01A1n, ph\u00F2ng, n\u1ED9i dung...',
+      ),
+      findsOneWidget,
+    );
     expect(find.text('S\u1EEDa t\u1EE7 l\u1EA1nh'), findsOneWidget);
   });
 
@@ -453,12 +689,12 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await loginAndOpenHome(tester);
 
-    await tester.tap(find.text('Bills'));
+    await tester.tap(find.text('H\u00F3a \u0111\u01A1n'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Home'));
+    await tester.tap(find.text('Tổng quan'));
     await tester.pumpAndSettle();
 
     expect(find.text('XIN CH\u00C0O,'), findsOneWidget);
@@ -471,16 +707,15 @@ void main() {
     await tester.pumpWidget(_testApp);
     await tester.pumpAndSettle();
 
-    await login(tester);
+    await loginAndOpenHome(tester);
 
-    await tester.tap(find.text('Bills'));
+    await tester.tap(find.text('H\u00F3a \u0111\u01A1n'));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('View All Historical Data'));
-    await tester.tap(find.text('View All Historical Data'));
+    await tester.tap(find.byTooltip('L\u1ECBch s\u1EED thanh to\u00E1n'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Home'));
+    await tester.tap(find.text('Tổng quan'));
     await tester.pumpAndSettle();
 
     expect(find.text('XIN CH\u00C0O,'), findsOneWidget);
@@ -629,6 +864,124 @@ void main() {
     expect(response.tenantId, 23);
     expect(response.propertyId, 7);
   });
+
+  test('mobile login response parses must change password flag', () {
+    final response = LoginResponse.fromJson(const {
+      'token': 'token',
+      'sessionId': 'session',
+      'role': 'TENANT',
+      'authorized': true,
+      'mustChangePassword': false,
+    });
+
+    expect(response.mustChangePassword, isFalse);
+  });
+
+  test(
+    'first password change marks cached onboarding step completed',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        AuthService.accessTokenKey: 'token',
+        AuthService.sessionIdKey: 'session',
+        AuthService.userIdKey: 1,
+        AuthService.onBoardingCompletedKey: false,
+        AuthService.onboardingActionsKey: '''
+        [
+          {
+            "actionKey": "CHANGE_PASSWORD",
+            "label": "Change temporary password",
+            "completed": false,
+            "priority": 1
+          },
+          {
+            "actionKey": "IDENTITY_VERIFICATION",
+            "label": "Upload identity documents",
+            "completed": false,
+            "priority": 2
+          }
+        ]
+        ''',
+      });
+      var requestCount = 0;
+      final service = AuthService(
+        client: MockClient((request) async {
+          requestCount++;
+          if (request.method == 'PATCH' &&
+              request.url.path.endsWith('/users/me/first-password')) {
+            final requestBody =
+                jsonDecode(request.body) as Map<String, dynamic>;
+            expect(requestBody['newPassword'], 'Changed123');
+            expect(requestBody.containsKey('new_password'), isFalse);
+            return http.Response('''
+            {
+              "code": 0,
+              "data": {
+                "id": 1,
+                "phone": "0900000000",
+                "email": "tenant@example.com",
+                "role": "TENANT",
+                "mustChangePassword": false,
+                "status": "ACTIVE"
+              }
+            }
+            ''', 200);
+          }
+
+          throw const AuthException('fetch failed');
+        }),
+      );
+
+      final onboarding = await service.changePassword(
+        newPassword: 'Changed123',
+        confirmPassword: 'Changed123',
+      );
+      final cached = await service.getCachedOnboarding();
+
+      expect(requestCount, 2);
+      expect(onboarding.mustChangePassword, isFalse);
+      expect(onboarding.nextStep, OnboardingState.identityVerification);
+      expect(cached?.mustChangePassword, isFalse);
+      expect(cached?.nextStep, OnboardingState.identityVerification);
+    },
+  );
+
+  test(
+    'reset password sends camel case payload and clears cached session',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        AuthService.accessTokenKey: 'old-token',
+        AuthService.sessionIdKey: 'old-session',
+        AuthService.onBoardingCompletedKey: false,
+        AuthService.onboardingActionsKey: '''
+        [
+          {
+            "actionKey": "CHANGE_PASSWORD",
+            "label": "Change temporary password",
+            "completed": false,
+            "priority": 1
+          }
+        ]
+        ''',
+      });
+      late Map<String, dynamic> requestBody;
+      final service = ForgotPasswordService(
+        client: MockClient((request) async {
+          requestBody = jsonDecode(request.body) as Map<String, dynamic>;
+          return http.Response('{"code":0}', 200);
+        }),
+      );
+
+      await service.resetPassword(token: '950638', newPassword: 'Changed123');
+      final prefs = await SharedPreferences.getInstance();
+
+      expect(requestBody['token'], '950638');
+      expect(requestBody['newPassword'], 'Changed123');
+      expect(requestBody.containsKey('new_password'), isFalse);
+      expect(prefs.getString(AuthService.accessTokenKey), isNull);
+      expect(prefs.getString(AuthService.sessionIdKey), isNull);
+      expect(prefs.getString(AuthService.onboardingActionsKey), isNull);
+    },
+  );
 
   test('mobile login saves tenant context for identity upload', () async {
     SharedPreferences.setMockInitialValues({});

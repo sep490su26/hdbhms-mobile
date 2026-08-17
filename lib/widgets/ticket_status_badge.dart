@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../models/maintenance_ticket_model.dart';
-import '../theme/app_colors.dart';
+import 'package:hdbhms_mobile/models/maintenance/maintenance_ticket_model.dart';
+import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 class TicketStatusBadge extends StatelessWidget {
   const TicketStatusBadge({
@@ -23,7 +23,7 @@ class TicketStatusBadge extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: colors.background,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
       ),
       child: Text(
         status.label,
@@ -63,6 +63,11 @@ TicketStatusColors ticketStatusColors(TicketStatus status) {
       background: Color(0xFFE9E7E4),
       foreground: Color(0xFF55565E),
       icon: Icons.schedule_rounded,
+    ),
+    TicketStatus.waitingTenantDecision => const TicketStatusColors(
+      background: Color(0xFFFFF7ED),
+      foreground: Color(0xFFB45309),
+      icon: Icons.price_check_outlined,
     ),
     TicketStatus.inProgress => const TicketStatusColors(
       background: Color(0xFFE4E7F5),

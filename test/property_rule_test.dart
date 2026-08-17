@@ -1,11 +1,11 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hdbhms_mobile/models/property_rule_model.dart';
-import 'package:hdbhms_mobile/screens/property_rules_screen.dart';
-import 'package:hdbhms_mobile/services/auth_service.dart';
-import 'package:hdbhms_mobile/services/property_rule_service.dart';
+import 'package:hdbhms_mobile/models/rules/property_rule_model.dart';
+import 'package:hdbhms_mobile/screens/rules/property_rules_screen.dart';
+import 'package:hdbhms_mobile/services/auth/auth_service.dart';
+import 'package:hdbhms_mobile/services/rules/property_rule_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,7 +16,7 @@ class _FakePropertyRuleService extends PropertyRuleService {
   final PropertyRulesResponse response;
 
   @override
-  Future<PropertyRulesResponse> getRules({int? tenantId}) async {
+  Future<PropertyRulesResponse> getRules({int? propertyId}) async {
     return response;
   }
 }
@@ -24,16 +24,16 @@ class _FakePropertyRuleService extends PropertyRuleService {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('PropertyRuleService uses saved tenant id and bearer token', () async {
+  test('PropertyRuleService uses saved property id and bearer token', () async {
     SharedPreferences.setMockInitialValues({
       AuthService.accessTokenKey: 'token-123',
-      AuthService.tenantIdKey: 23,
+      AuthService.propertyIdKey: 23,
     });
 
     final service = PropertyRuleService(
       client: MockClient((request) async {
         expect(request.method, 'GET');
-        expect(request.url.path, '/api/v1/tenants/23/rules');
+        expect(request.url.path, '/api/v1/properties/23/rules');
         expect(request.headers['Authorization'], 'Bearer token-123');
 
         return http.Response(
@@ -52,10 +52,31 @@ void main() {
     expect(response.items.last.category, RuleCategory.fine);
   });
 
+  test('PropertyRulesResponse parses backend data list envelope', () {
+    final response = PropertyRulesResponse.fromJson({
+      'code': 0,
+      'data': [
+        {
+          'id': 9,
+          'propertyId': 23,
+          'ruleCode': 'GENERAL_001',
+          'title': 'Giữ trật tự chung',
+          'description': 'Không gây ồn sau 22h.',
+          'sortOrder': 2,
+          'status': 'ACTIVE',
+        },
+      ],
+    });
+
+    expect(response.items, hasLength(1));
+    expect(response.items.single.ruleCode, 'GENERAL_001');
+    expect(response.items.single.title, 'Giữ trật tự chung');
+  });
+
   test('PropertyRuleService returns cached rules when network fails', () async {
     SharedPreferences.setMockInitialValues({
       AuthService.accessTokenKey: 'token-123',
-      AuthService.tenantIdKey: 23,
+      AuthService.propertyIdKey: 23,
       'property_rules_cache_23': jsonEncode(_rulesJson()),
     });
 

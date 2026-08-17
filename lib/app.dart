@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'config/app_config.dart';
-import 'models/onboarding_state.dart';
-import 'screens/change_password_page.dart';
-import 'screens/home_screen.dart';
-import 'screens/identity_verification_page.dart';
-import 'screens/login_page.dart';
-import 'services/auth_service.dart';
-import 'services/home_service.dart';
-import 'services/tenant_profile_service.dart';
-import 'screens/reset_password_page.dart';
-import 'services/deep_link_service.dart';
-import 'theme/app_theme.dart';
+import 'package:hdbhms_mobile/config/app_config.dart';
+import 'package:hdbhms_mobile/models/onboarding_state.dart';
+import 'package:hdbhms_mobile/screens/auth/change_password_page.dart';
+import 'package:hdbhms_mobile/screens/tenant_overview/tenant_overview_screen.dart';
+import 'package:hdbhms_mobile/screens/auth/identity_verification_page.dart';
+import 'package:hdbhms_mobile/screens/auth/login_page.dart';
+import 'package:hdbhms_mobile/services/auth/auth_service.dart';
+import 'package:hdbhms_mobile/services/home/home_service.dart';
+import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
+import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
+import 'package:hdbhms_mobile/screens/auth/reset_password_page.dart';
+import 'package:hdbhms_mobile/screens/splash/app_splash_screen.dart';
+import 'package:hdbhms_mobile/services/deep_link_service.dart';
+import 'package:hdbhms_mobile/theme/app_theme.dart';
 
 class App extends StatelessWidget {
   const App({
@@ -19,6 +23,7 @@ class App extends StatelessWidget {
     this.authService = const AuthService(),
     this.homeService = const HomeService(),
     this.profileService = const TenantProfileService(),
+    this.tenantInvoiceService = const TenantInvoiceService(),
   });
 
   static final GlobalKey<NavigatorState> navigatorKey =
@@ -27,18 +32,39 @@ class App extends StatelessWidget {
   final AuthService authService;
   final HomeService homeService;
   final TenantProfileService profileService;
+  final TenantInvoiceService tenantInvoiceService;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: AppConfig.appName,
       debugShowCheckedModeBanner: false,
+      locale: const Locale('vi', 'VN'),
+      supportedLocales: const [Locale('vi', 'VN')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       navigatorKey: App.navigatorKey,
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      // The mobile UI is currently authored against the light palette. Keep it
+      // stable until dark surfaces are implemented end-to-end.
+      themeMode: ThemeMode.light,
+      builder: (context, child) {
+        return DefaultTextHeightBehavior(
+          textHeightBehavior: const TextHeightBehavior(
+            leadingDistribution: TextLeadingDistribution.even,
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       home: _AppRoot(
         authService: authService,
         homeService: homeService,
         profileService: profileService,
+        tenantInvoiceService: tenantInvoiceService,
       ),
     );
   }
@@ -49,11 +75,13 @@ class _AppRoot extends StatefulWidget {
     required this.authService,
     required this.homeService,
     required this.profileService,
+    required this.tenantInvoiceService,
   });
 
   final AuthService authService;
   final HomeService homeService;
   final TenantProfileService profileService;
+  final TenantInvoiceService tenantInvoiceService;
 
   @override
   State<_AppRoot> createState() => _AppRootState();
@@ -89,40 +117,57 @@ class _AppRootState extends State<_AppRoot> {
   }
 
   Future<Widget> _resolveStartPage() async {
+    final minimumSplashTime = Future<void>.delayed(
+      const Duration(milliseconds: 1800),
+    );
+    final prefs = await SharedPreferences.getInstance();
     final token = await widget.authService.accessToken;
-    if (token == null || token.isEmpty) {
+    final sessionId = prefs.getString(AuthService.sessionIdKey);
+    final hasToken = token != null && token.isNotEmpty;
+    final hasSessionId = sessionId != null && sessionId.isNotEmpty;
+
+    if (!hasToken && !hasSessionId) {
+      await minimumSplashTime;
       return LoginPage(
         authService: widget.authService,
         homeService: widget.homeService,
+        tenantInvoiceService: widget.tenantInvoiceService,
       );
     }
 
     try {
       final onboarding = await widget.authService.fetchOnboarding();
+      await minimumSplashTime;
       return _pageFor(onboarding);
     } on SessionExpiredException {
+      await minimumSplashTime;
       return LoginPage(
         authService: widget.authService,
         homeService: widget.homeService,
+        tenantInvoiceService: widget.tenantInvoiceService,
       );
     } on AuthException {
       final cachedOnboarding = await widget.authService.getCachedOnboarding();
       if (cachedOnboarding != null) {
+        await minimumSplashTime;
         return _pageFor(cachedOnboarding);
       }
+      await minimumSplashTime;
       return LoginPage(
         authService: widget.authService,
         homeService: widget.homeService,
+        tenantInvoiceService: widget.tenantInvoiceService,
       );
     }
   }
 
   Widget _pageFor(OnboardingState onboarding) {
     if (onboarding.onBoardingCompleted) {
-      return HomeScreen(
+      return TenantOverviewScreen(
         authService: widget.authService,
         homeService: widget.homeService,
         profileService: widget.profileService,
+        tenantInvoiceService: widget.tenantInvoiceService,
       );
     }
 
@@ -138,10 +183,11 @@ class _AppRootState extends State<_AppRoot> {
         authService: widget.authService,
         homeService: widget.homeService,
       ),
-      _ => HomeScreen(
+      _ => TenantOverviewScreen(
         authService: widget.authService,
         homeService: widget.homeService,
         profileService: widget.profileService,
+        tenantInvoiceService: widget.tenantInvoiceService,
       ),
     };
   }
@@ -151,11 +197,11 @@ class _AppRootState extends State<_AppRoot> {
     return FutureBuilder<Widget>(
       future: _startPageFuture,
       builder: (context, snapshot) {
-        if (snapshot.hasData) {
-          return snapshot.data!;
+        if (!snapshot.hasData) {
+          return const AppSplashScreen();
         }
 
-        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        return snapshot.data!;
       },
     );
   }
