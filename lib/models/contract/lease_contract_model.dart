@@ -30,6 +30,8 @@ class LeaseContract {
     this.canLiquidateBlockedReason = '',
     this.canAddCoOccupant = false,
     this.canAddCoOccupantBlockedReason = '',
+    this.canChangeRoom = false,
+    this.canChangeRoomBlockedReason = '',
     this.mustTransferAllOccupants = false,
     this.signedAt,
   });
@@ -64,6 +66,8 @@ class LeaseContract {
   final String canLiquidateBlockedReason;
   final bool canAddCoOccupant;
   final String canAddCoOccupantBlockedReason;
+  final bool canChangeRoom;
+  final String canChangeRoomBlockedReason;
   final bool mustTransferAllOccupants;
   final DateTime? signedAt;
 
@@ -181,6 +185,14 @@ class LeaseContract {
       canAddCoOccupantBlockedReason: _firstString(json, const [
         'canAddCoOccupantBlockedReason',
         'can_add_co_occupant_blocked_reason',
+      ]),
+      canChangeRoom: _firstBool(json, const [
+        'canChangeRoom',
+        'can_change_room',
+      ]),
+      canChangeRoomBlockedReason: _firstString(json, const [
+        'canChangeRoomBlockedReason',
+        'can_change_room_blocked_reason',
       ]),
       mustTransferAllOccupants: _firstBool(json, const [
         'mustTransferAllOccupants',

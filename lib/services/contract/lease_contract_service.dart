@@ -216,7 +216,9 @@ class LeaseContractService {
         if (data == null) {
           throw const LeaseContractNotFoundException();
         }
-        return LeaseContract.fromJson(data);
+        final summary = LeaseContract.fromJson(data);
+        final contractId = summary.id;
+        return contractId == null ? summary : getContractById(contractId);
       }
       if (response.statusCode == 401 || response.statusCode == 403) {
         throw const LeaseContractForbiddenException();

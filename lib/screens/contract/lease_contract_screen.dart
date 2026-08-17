@@ -370,6 +370,69 @@ class _CreateRequestGrid extends StatelessWidget {
     return capacity != null && _activeOccupantCount >= capacity;
   }
 
+  String? _disabledReason({
+    required bool enabled,
+    required String reason,
+    required String fallback,
+  }) {
+    if (enabled) return null;
+    final normalized = reason.trim();
+    return normalized.isEmpty ? fallback : normalized;
+  }
+
+  String? get _renewDisabledReason => _disabledReason(
+    enabled: contract.canRenew,
+    reason: contract.canRenewBlockedReason,
+    fallback: 'Hợp đồng hiện không đủ điều kiện gia hạn.',
+  );
+
+  String? get _liquidationDisabledReason => _disabledReason(
+    enabled: contract.canLiquidate,
+    reason: contract.canLiquidateBlockedReason,
+    fallback: 'Hợp đồng hiện không đủ điều kiện thanh lý.',
+  );
+
+  bool get _canAddRoommate => contract.canAddCoOccupant && !_isRoomFull;
+
+  String? get _addRoommateDisabledReason {
+    if (!contract.canAddCoOccupant) {
+      return _disabledReason(
+        enabled: false,
+        reason: contract.canAddCoOccupantBlockedReason,
+        fallback: 'Hợp đồng hiện không đủ điều kiện thêm người ở cùng.',
+      );
+    }
+    if (_isRoomFull) {
+      final capacityText = _maxOccupants == null
+          ? ''
+          : ' ($_activeOccupantCount/$_maxOccupants)';
+      return 'Phòng đã đủ số người tối đa$capacityText.';
+    }
+    return null;
+  }
+
+  String? get _changeRoomDisabledReason => _disabledReason(
+    enabled: contract.canChangeRoom,
+    reason: contract.canChangeRoomBlockedReason,
+    fallback: 'Hợp đồng hiện không đủ điều kiện chuyển phòng.',
+  );
+
+  String? _blockedReasonFor(TenantRequestType type) {
+    switch (type) {
+      case TenantRequestType.renewContract:
+        return _renewDisabledReason;
+      case TenantRequestType.terminateContract:
+        return _liquidationDisabledReason;
+      case TenantRequestType.changeRoom:
+        return _changeRoomDisabledReason;
+      case TenantRequestType.addRoommate:
+        return _addRoommateDisabledReason;
+      case TenantRequestType.depositRefundRequest:
+      case TenantRequestType.utilityComplaint:
+        return null;
+    }
+  }
+
   Future<void> _submitOccupantIntention(
     BuildContext context,
     String intention,
@@ -401,6 +464,14 @@ class _CreateRequestGrid extends StatelessWidget {
   ) async {
     final contractId = contract.id;
     if (contractId == null) return;
+
+    final blockedReason = _blockedReasonFor(type);
+    if (blockedReason != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(blockedReason)));
+      return;
+    }
 
     if (type == TenantRequestType.addRoommate) {
       Navigator.of(context).push(
@@ -643,13 +714,10 @@ class _CreateRequestGrid extends StatelessWidget {
       }
     }
 
-    if (!contract.canRenew) addBlockedReason(contract.canRenewBlockedReason);
-    if (!contract.canLiquidate) {
-      addBlockedReason(contract.canLiquidateBlockedReason);
-    }
-    if (!contract.canAddCoOccupant) {
-      addBlockedReason(contract.canAddCoOccupantBlockedReason);
-    }
+    addBlockedReason(_renewDisabledReason ?? '');
+    addBlockedReason(_liquidationDisabledReason ?? '');
+    addBlockedReason(_changeRoomDisabledReason ?? '');
+    addBlockedReason(_addRoommateDisabledReason ?? '');
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -693,50 +761,56 @@ class _CreateRequestGrid extends StatelessWidget {
             crossAxisSpacing: 10,
             childAspectRatio: 1.55,
             children: [
-              if (contract.canRenew ||
-                  contract.canRenewBlockedReason.trim().isEmpty)
-                AppActionTile(
-                  icon: Icons.autorenew_rounded,
-                  label: 'Gia hạn hợp đồng',
-                  accentColor: AppColors.actionBlue,
-                  onTap: () =>
-                      _openCreateForm(context, TenantRequestType.renewContract),
-                ),
-              if (contract.canLiquidate ||
-                  contract.canLiquidateBlockedReason.trim().isEmpty)
-                AppActionTile(
-                  icon: Icons.cancel_outlined,
-                  label: 'Thanh lý hợp đồng',
-                  accentColor: AppColors.actionRose,
-                  onTap: () => _openCreateForm(
-                    context,
-                    TenantRequestType.terminateContract,
-                  ),
-                ),
+              AppActionTile(
+                icon: Icons.autorenew_rounded,
+                label: 'Gia hạn hợp đồng',
+                accentColor: AppColors.actionBlue,
+                enabled: contract.canRenew,
+                disabledReason: _renewDisabledReason,
+                onTap: contract.canRenew
+                    ? () => _openCreateForm(
+                        context,
+                        TenantRequestType.renewContract,
+                      )
+                    : null,
+              ),
+              AppActionTile(
+                icon: Icons.cancel_outlined,
+                label: 'Thanh lý hợp đồng',
+                accentColor: AppColors.actionRose,
+                enabled: contract.canLiquidate,
+                disabledReason: _liquidationDisabledReason,
+                onTap: contract.canLiquidate
+                    ? () => _openCreateForm(
+                        context,
+                        TenantRequestType.terminateContract,
+                      )
+                    : null,
+              ),
               AppActionTile(
                 icon: Icons.swap_horiz_rounded,
                 label: 'Chuyển phòng',
                 accentColor: AppColors.actionCyan,
-                onTap: () =>
-                    _openCreateForm(context, TenantRequestType.changeRoom),
+                enabled: contract.canChangeRoom,
+                disabledReason: _changeRoomDisabledReason,
+                onTap: contract.canChangeRoom
+                    ? () =>
+                          _openCreateForm(context, TenantRequestType.changeRoom)
+                    : null,
               ),
-              if (contract.canAddCoOccupant ||
-                  contract.canAddCoOccupantBlockedReason.trim().isEmpty)
-                AppActionTile(
-                  icon: Icons.person_add_outlined,
-                  label: 'Thêm người ở cùng',
-                  accentColor: AppColors.actionEmerald,
-                  enabled: !_isRoomFull,
-                  disabledReason: _isRoomFull
-                      ? 'Phòng đã đủ số người tối đa${_maxOccupants == null ? '' : ' ($_activeOccupantCount/$_maxOccupants)'}.'
-                      : null,
-                  onTap: _isRoomFull
-                      ? null
-                      : () => _openCreateForm(
-                          context,
-                          TenantRequestType.addRoommate,
-                        ),
-                ),
+              AppActionTile(
+                icon: Icons.person_add_outlined,
+                label: 'Thêm người ở cùng',
+                accentColor: AppColors.actionEmerald,
+                enabled: _canAddRoommate,
+                disabledReason: _addRoommateDisabledReason,
+                onTap: _canAddRoommate
+                    ? () => _openCreateForm(
+                        context,
+                        TenantRequestType.addRoommate,
+                      )
+                    : null,
+              ),
             ],
           ),
           ...blockedReasons.map(

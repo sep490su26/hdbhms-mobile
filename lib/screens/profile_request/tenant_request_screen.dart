@@ -2116,35 +2116,6 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
                                       ),
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 44,
-                              child: OutlinedButton(
-                                onPressed: _submittingRefund
-                                    ? null
-                                    : _disputeDepositRefund,
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.danger,
-                                  side: const BorderSide(
-                                    color: Color(0xFFFECACA),
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      AppColors.radiusSm,
-                                    ),
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Chưa nhận / Sai số tiền',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
                           ],
                         ),
                       ),

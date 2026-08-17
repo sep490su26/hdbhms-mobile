@@ -66,23 +66,6 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
       );
       return;
     }
-    if (_roommatesStay) {
-      if (_activeCoOccupants.isEmpty) {
-        setState(() => _submitError = 'Không có người ở cùng đang hoạt động.');
-        return;
-      }
-      if (_stayingProfileIds.isEmpty) {
-        setState(() => _submitError = 'Vui lòng chọn ít nhất một người ở lại.');
-        return;
-      }
-      if (_replacementPrimaryTenantProfileId == null ||
-          !_stayingProfileIds.contains(_replacementPrimaryTenantProfileId)) {
-        setState(
-          () => _submitError = 'Vui lòng chọn người đứng tên hợp đồng mới.',
-        );
-        return;
-      }
-    }
     setState(() {
       _submitting = true;
       _submitError = null;
@@ -95,13 +78,13 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
         liquidationMode: _roommatesStay
             ? _kHolderReplacementLiquidationMode
             : null,
-        leavingProfileIds: _leavingProfileIds(),
-        stayingProfileIds: _roommatesStay
-            ? _stayingProfileIds.toList(growable: false)
-            : const [],
-        replacementPrimaryTenantProfileId: _roommatesStay
-            ? _replacementPrimaryTenantProfileId
-            : null,
+        // leavingProfileIds: _leavingProfileIds(),
+        // stayingProfileIds: _roommatesStay
+        //     ? _stayingProfileIds.toList(growable: false)
+        //     : const [],
+        // replacementPrimaryTenantProfileId: _roommatesStay
+        //     ? _replacementPrimaryTenantProfileId
+        //     : null,
       );
       if (!mounted) return;
       setState(() => _submitting = false);
@@ -285,110 +268,6 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
                     ),
                   ),
                 ),
-                if (_activeCoOccupants.isNotEmpty) ...[
-                  const SizedBox(height: AppColors.space16),
-                  RequestFormSection(
-                    icon: Icons.groups_rounded,
-                    title: 'Người ở cùng',
-                    accentColor: AppColors.actionViolet,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SwitchListTile.adaptive(
-                          contentPadding: EdgeInsets.zero,
-                          value: _roommatesStay,
-                          onChanged: _submitting
-                              ? null
-                              : (value) {
-                                  setState(() {
-                                    _roommatesStay = value;
-                                    if (!value) {
-                                      _stayingProfileIds.clear();
-                                      _replacementPrimaryTenantProfileId = null;
-                                    } else {
-                                      _syncStayingSelection();
-                                    }
-                                  });
-                                },
-                          title: Text(
-                            'Người ở cùng tiếp tục ở lại',
-                            style: AppTypography.label,
-                          ),
-                          subtitle: Text(
-                            'Dùng khi người đứng tên rời đi nhưng phòng vẫn còn người thuê.',
-                            style: AppTypography.caption,
-                          ),
-                        ),
-                        if (_roommatesStay) ...[
-                          const SizedBox(height: AppColors.space8),
-                          Text('Chọn người ở lại', style: AppTypography.label),
-                          for (final occupant in _activeCoOccupants)
-                            CheckboxListTile(
-                              contentPadding: EdgeInsets.zero,
-                              dense: true,
-                              controlAffinity: ListTileControlAffinity.leading,
-                              value: _stayingProfileIds.contains(
-                                occupant.tenantProfileId,
-                              ),
-                              onChanged:
-                                  _submitting ||
-                                      occupant.tenantProfileId == null
-                                  ? null
-                                  : (selected) => _toggleStayingProfile(
-                                      occupant.tenantProfileId!,
-                                      selected ?? false,
-                                    ),
-                              title: Text(
-                                occupant.displayName,
-                                style: AppTypography.label,
-                              ),
-                              subtitle: _OccupantSubtitle(occupant: occupant),
-                            ),
-                          if (_stayingProfileIds.isNotEmpty) ...[
-                            const Divider(height: AppColors.space24),
-                            Text(
-                              'Người đứng tên hợp đồng mới',
-                              style: AppTypography.label,
-                            ),
-                            RadioGroup<int>(
-                              groupValue: _replacementPrimaryTenantProfileId,
-                              onChanged: _submitting
-                                  ? (_) {}
-                                  : (value) => setState(() {
-                                      _replacementPrimaryTenantProfileId =
-                                          value;
-                                    }),
-                              child: Column(
-                                children: [
-                                  for (final occupant
-                                      in _activeCoOccupants.where(
-                                        (occupant) => _stayingProfileIds
-                                            .contains(occupant.tenantProfileId),
-                                      ))
-                                    RadioListTile<int>(
-                                      contentPadding: EdgeInsets.zero,
-                                      dense: true,
-                                      enabled: !_submitting,
-                                      controlAffinity:
-                                          ListTileControlAffinity.leading,
-                                      value: occupant.tenantProfileId!,
-                                      title: Text(
-                                        occupant.displayName,
-                                        style: AppTypography.label,
-                                      ),
-                                      subtitle: _OccupantSubtitle(
-                                        occupant: occupant,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
                 if (_submitError != null) ...[
                   const SizedBox(height: AppColors.space16),
                   RequestErrorBanner(message: _submitError!),
