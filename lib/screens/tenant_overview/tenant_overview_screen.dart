@@ -44,6 +44,8 @@ class TenantOverviewScreen extends StatefulWidget {
 }
 
 class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
+  static const _fallbackPropertyPhone = '0846 557 999';
+
   final PageController _imageController = PageController();
   Timer? _imageTimer;
   HomeSummary? _summary;
@@ -206,6 +208,7 @@ class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
           authService: widget.authService,
           homeService: widget.homeService,
           profileService: widget.profileService,
+          leaseContractService: widget.leaseContractService,
           showBottomNavigation: false,
         ),
       ),
@@ -267,7 +270,8 @@ class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
     final tenantName = tenant?.name.trim().isNotEmpty == true
         ? formatPropertyName(tenant!.name.trim())
         : 'Nhà trọ của tôi';
-    final phone = tenant?.propertyPhone.trim() ?? '';
+    final rawPhone = tenant?.propertyPhone.trim() ?? '';
+    final phone = rawPhone.isEmpty ? _fallbackPropertyPhone : rawPhone;
     final address = tenant?.address.trim().isNotEmpty == true
         ? tenant!.address.trim()
         : 'Chưa cập nhật địa chỉ';
@@ -287,7 +291,7 @@ class _TenantOverviewScreenState extends State<TenantOverviewScreen> {
             tenantName: tenantName,
             unreadCount: summary.notificationSummary.unreadCount,
             notificationService: widget.notificationService,
-            phone: phone.isEmpty ? 'Chưa cập nhật số điện thoại' : phone,
+            phone: phone,
             address: address,
             userName: _userName,
             onProfileTap: _openProfile,

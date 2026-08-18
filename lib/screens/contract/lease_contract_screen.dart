@@ -58,11 +58,13 @@ class LeaseContractScreen extends StatefulWidget {
     super.key,
     this.contractId,
     this.contractService = const LeaseContractService(),
+    this.notificationInitialUnreadCount,
     this.roomTransferService = const RoomTransferService(),
   });
 
   final int? contractId;
   final LeaseContractService contractService;
+  final int? notificationInitialUnreadCount;
   final RoomTransferService roomTransferService;
 
   @override
@@ -162,7 +164,11 @@ class _LeaseContractScreenState extends State<LeaseContractScreen> {
             final contract = snapshot.data;
             final contractId = contract?.id ?? widget.contractId;
             return AppScreenShell(
-              header: _ContractHeader(contractId: contractId),
+              header: _ContractHeader(
+                contractId: contractId,
+                notificationInitialUnreadCount:
+                    widget.notificationInitialUnreadCount,
+              ),
               child: Builder(
                 builder: (context) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -209,9 +215,10 @@ class _LeaseContractScreenState extends State<LeaseContractScreen> {
 }
 
 class _ContractHeader extends StatelessWidget {
-  const _ContractHeader({this.contractId});
+  const _ContractHeader({this.contractId, this.notificationInitialUnreadCount});
 
   final int? contractId;
+  final int? notificationInitialUnreadCount;
 
   @override
   Widget build(BuildContext context) {
@@ -280,9 +287,10 @@ class _ContractHeader extends StatelessWidget {
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const AppNotificationBell(
+            icon: AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: 24,
+              initialUnreadCount: notificationInitialUnreadCount,
             ),
             tooltip: 'Thông báo',
           ),
@@ -317,8 +325,6 @@ class _ContractContent extends StatelessWidget {
           _RoomHeroCard(contract: contract),
           const SizedBox(height: 12),
           _ContractInfoGrid(contract: contract),
-          const SizedBox(height: 12),
-          _TermsSection(terms: contract.terms),
           const SizedBox(height: 12),
           _DocumentSection(
             contractFileUrl: contract.contractFileUrl,
@@ -1260,70 +1266,6 @@ class _InfoGridItem extends StatelessWidget {
   }
 }
 
-class _TermsSection extends StatelessWidget {
-  const _TermsSection({required this.terms});
-
-  final List<String> terms;
-
-  @override
-  Widget build(BuildContext context) {
-    return _SectionCard(
-      title: 'Điều khoản chính',
-      icon: Icons.gavel_rounded,
-      child: terms.isEmpty
-          ? const _MutedText('Chưa có điều khoản hợp đồng')
-          : Column(
-              children: [
-                for (var i = 0; i < terms.length; i++) ...[
-                  if (i > 0) const SizedBox(height: 10),
-                  _TermTile(text: terms[i]),
-                ],
-              ],
-            ),
-    );
-  }
-}
-
-class _TermTile extends StatelessWidget {
-  const _TermTile({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F0F0),
-        borderRadius: BorderRadius.circular(AppColors.radiusSm),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.check_circle_outline_rounded,
-            color: AppColors.deepBlue,
-            size: 18,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                color: AppColors.bodyText,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                height: 17 / 12,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _DocumentSection extends StatelessWidget {
   const _DocumentSection({
     required this.contractFileUrl,
@@ -1353,11 +1295,10 @@ class _DocumentSection extends StatelessWidget {
 }
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.child, this.icon});
+  const _SectionCard({required this.title, required this.child});
 
   final String title;
   final Widget child;
-  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -1372,24 +1313,14 @@ class _SectionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              if (icon != null) ...[
-                Icon(icon, color: AppColors.deepBlue, size: 19),
-                const SizedBox(width: 7),
-              ],
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    color: AppColors.inputText,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    height: 20 / 16,
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.inputText,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              height: 20 / 16,
+            ),
           ),
           const SizedBox(height: 14),
           child,

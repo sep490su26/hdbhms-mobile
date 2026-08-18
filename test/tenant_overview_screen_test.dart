@@ -12,7 +12,9 @@ import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
 import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 
 class _FakeHomeService extends HomeService {
-  const _FakeHomeService();
+  const _FakeHomeService({this.propertyPhone = '0912345678'});
+
+  final String propertyPhone;
 
   @override
   Future<HomeSummary> fetchHomeSummary({int? contractId}) async {
@@ -24,11 +26,11 @@ class _FakeHomeService extends HomeService {
         email: 'tenant@example.com',
         role: 'TENANT',
       ),
-      tenant: const HomeTenant(
+      tenant: HomeTenant(
         id: 17,
         name: 'Nha tro Hai Dang 1',
         address: '123 Le Loi',
-        propertyPhone: '0912345678',
+        propertyPhone: propertyPhone,
         imageUrls: ['https://example.com/property.jpg'],
       ),
       room: const HomeRoom(
@@ -100,6 +102,26 @@ class _FakeLeaseContractService extends LeaseContractService {
   }
 }
 
+Future<void> _pumpOverview(
+  WidgetTester tester, {
+  required String propertyPhone,
+}) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      home: TenantOverviewScreen(
+        authService: const AuthService(),
+        homeService: _FakeHomeService(propertyPhone: propertyPhone),
+        leaseContractService: const _FakeLeaseContractService(),
+        profileService: const _FakeProfileService(),
+        tenantInvoiceService: const TenantInvoiceService(),
+        notificationService: const _FakeNotificationService(),
+      ),
+    ),
+  );
+  await tester.pump();
+  await tester.pump();
+}
+
 void main() {
   testWidgets('tenant overview shows liquidation date for pending move out', (
     tester,
@@ -127,5 +149,23 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
+  });
+
+  testWidgets('tenant overview falls back to the official property phone', (
+    tester,
+  ) async {
+    await _pumpOverview(tester, propertyPhone: '');
+
+    expect(find.text('0846 557 999'), findsOneWidget);
+    expect(find.text('Chưa cập nhật số điện thoại'), findsNothing);
+  });
+
+  testWidgets('tenant overview prioritizes a property phone from backend', (
+    tester,
+  ) async {
+    await _pumpOverview(tester, propertyPhone: '0912 345 678');
+
+    expect(find.text('0912 345 678'), findsOneWidget);
+    expect(find.text('0846 557 999'), findsNothing);
   });
 }

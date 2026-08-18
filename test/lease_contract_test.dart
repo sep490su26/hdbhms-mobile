@@ -459,6 +459,7 @@ void main() {
       MaterialApp(
         home: LeaseContractScreen(
           contractService: _FakeLeaseContractService(contract: contract),
+          notificationInitialUnreadCount: 0,
         ),
       ),
     );
@@ -468,7 +469,8 @@ void main() {
     expect(find.text('HĐ sắp hết hạn, vui lòng phản hồi'), findsOneWidget);
     expect(find.text('Phòng 201'), findsOneWidget);
     expect(find.text('2.200.000đ/tháng'), findsOneWidget);
-    expect(find.text('Điều khoản chính'), findsOneWidget);
+    expect(find.text('Điều khoản chính'), findsNothing);
+    expect(find.text('Chưa có điều khoản hợp đồng'), findsNothing);
     expect(find.text('Quản lý tài liệu'), findsOneWidget);
   });
 

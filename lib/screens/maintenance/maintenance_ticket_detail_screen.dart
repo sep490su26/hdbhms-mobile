@@ -102,6 +102,11 @@ class _MaintenanceTicketDetailScreenState
       }
       _showSnackBar(successMessage);
       await _loadDetail();
+    } on MaintenanceTicketException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      _showSnackBar(error.message);
     } catch (_) {
       if (!mounted) {
         return;

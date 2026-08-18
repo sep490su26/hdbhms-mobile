@@ -49,7 +49,9 @@ class _CreateMaintenanceTicketScreenState
   static const _maxVideoBytes = 20 * 1024 * 1024;
 
   final _formKey = GlobalKey<FormState>();
+  final _descriptionFieldKey = GlobalKey<FormFieldState<String>>();
   late final TextEditingController _descriptionController;
+  late final FocusNode _descriptionFocusNode;
 
   TicketCategory? _selectedCategory;
   CurrentRentedRoom? _currentRoom;
@@ -64,12 +66,14 @@ class _CreateMaintenanceTicketScreenState
   void initState() {
     super.initState();
     _descriptionController = TextEditingController();
+    _descriptionFocusNode = FocusNode();
     _loadCurrentRoom();
   }
 
   @override
   void dispose() {
     _descriptionController.dispose();
+    _descriptionFocusNode.dispose();
     super.dispose();
   }
 
@@ -244,7 +248,15 @@ class _CreateMaintenanceTicketScreenState
 
     final isValid = _formKey.currentState?.validate() ?? false;
     if (!isValid) {
-      _showSnackBar('Vui lòng hoàn thành các trường bắt buộc');
+      final descriptionError = _validateDescription(
+        _descriptionController.text,
+      );
+      if (descriptionError != null) {
+        _focusInvalidDescription();
+        _showSnackBar(descriptionError);
+      } else {
+        _showSnackBar('Vui lòng hoàn thành các trường bắt buộc');
+      }
       return;
     }
     final room = _currentRoom;
@@ -275,6 +287,11 @@ class _CreateMaintenanceTicketScreenState
         return;
       }
       await _showSuccessDialog(ticket);
+    } on MaintenanceTicketException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      _showSnackBar(error.message);
     } catch (_) {
       if (!mounted) {
         return;
@@ -311,6 +328,32 @@ class _CreateMaintenanceTicketScreenState
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String? _validateDescription(String? value) {
+    final description = value?.trim() ?? '';
+    if (description.isEmpty) {
+      return 'Vui lòng mô tả vấn đề';
+    }
+    if (description.length < 10) {
+      return 'Mô tả sự cố phải có tối thiểu 10 ký tự';
+    }
+    return null;
+  }
+
+  void _focusInvalidDescription() {
+    _descriptionFocusNode.requestFocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final fieldContext = _descriptionFieldKey.currentContext;
+      if (fieldContext != null) {
+        Scrollable.ensureVisible(
+          fieldContext,
+          alignment: 0.22,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
   }
 
   Widget _buildHeader() {
@@ -426,7 +469,9 @@ class _CreateMaintenanceTicketScreenState
                         const _FieldLabel('Mô tả chi tiết', required: true),
                         const SizedBox(height: 6),
                         TextFormField(
+                          key: _descriptionFieldKey,
                           controller: _descriptionController,
+                          focusNode: _descriptionFocusNode,
                           enabled: !_isSubmitting,
                           minLines: 5,
                           maxLines: 7,
@@ -437,10 +482,7 @@ class _CreateMaintenanceTicketScreenState
                             fontWeight: FontWeight.w600,
                             height: 18 / 13,
                           ),
-                          validator: (value) =>
-                              value == null || value.trim().isEmpty
-                              ? 'Vui lòng mô tả vấn đề'
-                              : null,
+                          validator: _validateDescription,
                           decoration: _inputDecoration(
                             hintText:
                                 'Mô tả chi tiết vấn đề (ví dụ: vị trí, âm thanh, mức độ khẩn cấp)...',

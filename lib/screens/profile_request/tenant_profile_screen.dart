@@ -11,7 +11,9 @@ import 'package:hdbhms_mobile/screens/profile_request/tenant_request_screen.dart
 import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/profile_request/tenant_profile_model.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
+import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/home/home_service.dart';
+import 'package:hdbhms_mobile/services/notification/notification_service.dart';
 import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
@@ -33,6 +35,8 @@ class TenantProfileScreen extends StatefulWidget {
     this.profileService = const TenantProfileService(),
     this.authService = const AuthService(),
     this.homeService = const HomeService(),
+    this.leaseContractService = const LeaseContractService(),
+    this.notificationService = const NotificationService(),
     this.showBottomNavigation = true,
     this.roomId,
     this.roomCode = '',
@@ -41,6 +45,8 @@ class TenantProfileScreen extends StatefulWidget {
   final TenantProfileService profileService;
   final AuthService authService;
   final HomeService homeService;
+  final LeaseContractService leaseContractService;
+  final NotificationService notificationService;
   final bool showBottomNavigation;
   final int? roomId;
   final String roomCode;
@@ -51,15 +57,28 @@ class TenantProfileScreen extends StatefulWidget {
 
 class _TenantProfileScreenState extends State<TenantProfileScreen> {
   late Future<TenantProfileResponse> _profileFuture;
+  bool _hasActiveRental = false;
 
   @override
   void initState() {
     super.initState();
     _profileFuture = _loadProfile();
+    _loadActiveRental();
   }
 
   Future<TenantProfileResponse> _loadProfile() {
     return widget.profileService.getMyProfile();
+  }
+
+  Future<void> _loadActiveRental() async {
+    try {
+      final rooms = await widget.leaseContractService.fetchMyActiveRooms();
+      if (mounted) {
+        setState(() => _hasActiveRental = rooms.isNotEmpty);
+      }
+    } catch (_) {
+      // Contract context is optional on Profile; retain the conservative state.
+    }
   }
 
   Future<void> _refresh() async {
@@ -67,6 +86,7 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
     setState(() {
       _profileFuture = future;
     });
+    _loadActiveRental();
     await future;
   }
 
@@ -113,6 +133,7 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
         child: Column(
           children: [
             _ProfileHeader(
+              notificationService: widget.notificationService,
               onBack: widget.showBottomNavigation
                   ? null
                   : () => Navigator.of(context).maybePop(),
@@ -165,6 +186,7 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
                               onRefresh: _refresh,
                               child: _ProfileContent(
                                 profile: profile,
+                                showContractEntry: _hasActiveRental,
                                 onProfileUpdated: _refresh,
                               ),
                             );
@@ -234,8 +256,9 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
 }
 
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({this.onBack});
+  const _ProfileHeader({required this.notificationService, this.onBack});
 
+  final NotificationService notificationService;
   final VoidCallback? onBack;
 
   @override
@@ -250,7 +273,7 @@ class _ProfileHeader extends StatelessWidget {
             builder: (context) => const NotificationListScreen(),
           ),
         ),
-        icon: const AppNotificationBell(),
+        icon: AppNotificationBell(notificationService: notificationService),
         tooltip: 'Thông báo',
       ),
     );
@@ -313,10 +336,12 @@ class _LegacyProfileHeader extends StatelessWidget {
 class _ProfileContent extends StatelessWidget {
   const _ProfileContent({
     required this.profile,
+    required this.showContractEntry,
     required this.onProfileUpdated,
   });
 
   final TenantProfileResponse profile;
+  final bool showContractEntry;
   final Future<void> Function() onProfileUpdated;
 
   @override
@@ -328,8 +353,10 @@ class _ProfileContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _ProfileSummaryCard(profile: profile),
-          const SizedBox(height: 16),
-          const _ContractEntrySection(),
+          if (showContractEntry) ...[
+            const SizedBox(height: 16),
+            const _ContractEntrySection(),
+          ],
           const SizedBox(height: 16),
           _InfoSectionCard(
             icon: Icons.badge_outlined,
