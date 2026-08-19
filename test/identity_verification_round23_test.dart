@@ -12,6 +12,14 @@ import 'package:hdbhms_mobile/screens/auth/identity_verification_page.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/auth/identity_service.dart';
 import 'package:hdbhms_mobile/services/file_upload_service.dart';
+import 'package:hdbhms_mobile/utils/identity_profile_validators.dart'
+    show
+        formatIdentityIssuedDate,
+        validateIdentityDocumentNumber,
+        validateIdentityIssuedDate,
+        validateIdentityIssuedPlace,
+        validatePermanentAddress,
+        validateProfileEmail;
 
 class _ImmediateIdentityFiles implements FileUploadService {
   const _ImmediateIdentityFiles();
@@ -205,12 +213,19 @@ Future<void> _fillValidIdentityInfo(WidgetTester tester) async {
     _input('identity-issued-place-field'),
     'Cục Cảnh sát quản lý hành chính về trật tự xã hội',
   );
+  await tester.enterText(
+    _input('identity-permanent-address-field'),
+    '12 Nguyễn Trãi, Hà Nội',
+  );
+  await tester.enterText(_input('identity-email-field'), 'tenant@example.com');
 }
 
 void main() {
   group('Round 23 identity verification', () {
     test('identity flow has five explicit steps and validates metadata', () {
       expect(IdentityDocumentStep.values, hasLength(5));
+      expect(IdentityDocumentStep.values[3], IdentityDocumentStep.identityInfo);
+      expect(IdentityDocumentStep.identityInfo.title, 'Th\u00F4ng tin');
       expect(
         validateIdentityDocumentNumber('12345678901'),
         'Số CCCD phải gồm đúng 12 chữ số',
@@ -229,6 +244,18 @@ void main() {
         validateIdentityIssuedPlace('a' * 256),
         'Nơi cấp không được vượt quá 255 ký tự',
       );
+      expect(validatePermanentAddress(''), 'Vui lòng nhập địa chỉ thường trú');
+      expect(validatePermanentAddress('a' * 1000), isNull);
+      expect(
+        validatePermanentAddress('a' * 1001),
+        'Địa chỉ thường trú không được vượt quá 1000 ký tự',
+      );
+      expect(validateProfileEmail('abc'), 'Địa chỉ email không đúng định dạng');
+      expect(validateProfileEmail('tenant@example.com'), isNull);
+      expect(
+        validateProfileEmail('a' * 245 + '@example.com'),
+        'Email không được vượt quá 255 ký tự',
+      );
     });
 
     testWidgets('back image advances to metadata, which validates inline', (
@@ -237,10 +264,23 @@ void main() {
       await _pumpIdentity(tester);
       await _reachIdentityInfo(tester);
 
+      expect(find.text('Th\u00F4ng tin CCCD'), findsOneWidget);
+      expect(
+        find.text('Th\u00F4ng tin li\u00EAn h\u1EC7 & c\u01B0 tr\u00FA'),
+        findsOneWidget,
+      );
+      expect(_input('identity-doc-number-field'), findsOneWidget);
+      expect(_input('identity-issued-date-field'), findsOneWidget);
+      expect(_input('identity-issued-place-field'), findsOneWidget);
+      expect(_input('identity-permanent-address-field'), findsOneWidget);
+      expect(_input('identity-email-field'), findsOneWidget);
+
       await _continue(tester);
       expect(find.text('Vui lòng nhập số CCCD'), findsOneWidget);
       expect(find.text('Vui lòng chọn ngày cấp'), findsOneWidget);
       expect(find.text('Vui lòng nhập nơi cấp'), findsOneWidget);
+      expect(find.text('Vui lòng nhập địa chỉ thường trú'), findsOneWidget);
+      expect(find.text('Vui lòng nhập email'), findsOneWidget);
       expect(find.byKey(const ValueKey('identity-review-info')), findsNothing);
 
       final docNumberInput = _input('identity-doc-number-field');
@@ -261,6 +301,16 @@ void main() {
         find.text('Nơi cấp không được vượt quá 255 ký tự'),
         findsOneWidget,
       );
+      expect(find.text('Vui lòng nhập địa chỉ thường trú'), findsOneWidget);
+      expect(find.text('Vui lòng nhập email'), findsOneWidget);
+
+      await tester.enterText(
+        _input('identity-permanent-address-field'),
+        '12 Nguyễn Trãi, Hà Nội',
+      );
+      await tester.enterText(_input('identity-email-field'), 'abc');
+      await _continue(tester);
+      expect(find.text('Địa chỉ email không đúng định dạng'), findsOneWidget);
     });
 
     testWidgets('metadata persists through back, review and edit', (
@@ -282,6 +332,20 @@ void main() {
             .text,
         '079123456789',
       );
+      expect(
+        tester
+            .widget<TextFormField>(_input('identity-permanent-address-field'))
+            .controller!
+            .text,
+        '12 Nguyễn Trãi, Hà Nội',
+      );
+      expect(
+        tester
+            .widget<TextFormField>(_input('identity-email-field'))
+            .controller!
+            .text,
+        'tenant@example.com',
+      );
       await _continue(tester);
 
       expect(find.text('Xác nhận hồ sơ'), findsOneWidget);
@@ -301,16 +365,24 @@ void main() {
         find.byKey(const ValueKey('identity-review-info')),
         findsOneWidget,
       );
+      expect(
+        find.byKey(const ValueKey('identity-review-info-edit')),
+        findsOneWidget,
+      );
       expect(find.text('079123456789'), findsOneWidget);
       expect(
         find.text(formatIdentityIssuedDate(DateTime.now())),
         findsOneWidget,
       );
       expect(find.text('Nơi cấp'), findsOneWidget);
+      expect(find.text('Địa chỉ thường trú'), findsOneWidget);
+      expect(find.text('Email'), findsOneWidget);
       expect(
         find.text('Cục Cảnh sát quản lý hành chính về trật tự xã hội'),
         findsOneWidget,
       );
+      expect(find.text('12 Nguyễn Trãi, Hà Nội'), findsOneWidget);
+      expect(find.text('tenant@example.com'), findsOneWidget);
 
       await tester.tap(find.text('Trở về'));
       await tester.pumpAndSettle();
@@ -334,6 +406,13 @@ void main() {
             .text,
         'Cục Cảnh sát quản lý hành chính về trật tự xã hội',
       );
+      expect(
+        tester
+            .widget<TextFormField>(_input('identity-email-field'))
+            .controller!
+            .text,
+        'tenant@example.com',
+      );
     });
 
     testWidgets('five-step metadata form stays usable at target phone sizes', (
@@ -351,6 +430,7 @@ void main() {
         await _reachIdentityInfo(tester);
         expect(find.byKey(const ValueKey('identity-stepper')), findsOneWidget);
         expect(find.text('Thông tin CCCD'), findsWidgets);
+        expect(find.text('Thông tin liên hệ & cư trú'), findsOneWidget);
         expect(tester.takeException(), isNull);
       }
       addTearDown(() => tester.binding.setSurfaceSize(null));

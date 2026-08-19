@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,25 +12,47 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/profile_request/tenant_profile_model.dart';
 import 'package:hdbhms_mobile/services/auth/auth_service.dart';
+import 'package:hdbhms_mobile/services/notification/notification_service.dart';
 import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
+import 'package:hdbhms_mobile/utils/identity_profile_validators.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
 
 /// Dữ liệu được pre-fill từ TenantProfileResponse truyền vào.
 class UpdateProfileScreen extends StatefulWidget {
-  const UpdateProfileScreen({super.key, required this.profile});
+  const UpdateProfileScreen({
+    super.key,
+    required this.profile,
+    this.profileService = const TenantProfileService(),
+    this.notificationService = const NotificationService(),
+  });
 
   final TenantProfileResponse profile;
+  final TenantProfileService profileService;
+  final NotificationService notificationService;
 
   @override
   State<UpdateProfileScreen> createState() => _UpdateProfileScreenState();
 }
 
 class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
+  final _formKey = GlobalKey<FormState>();
+
   // ── Thông tin liên hệ ───────────────────────────────────────────────
   late final TextEditingController _phoneController;
   late final TextEditingController _emailController;
+
+  // ── Thông tin định danh & cư trú (UI-first, chưa có PUT support) ───
+  late final TextEditingController _permanentAddressController;
+  late final TextEditingController _docNumberController;
+  late final TextEditingController _issuedDateController;
+  late final TextEditingController _issuedPlaceController;
+  DateTime? _issuedDate;
+  late final String _originalPermanentAddress;
+  late final String _originalDocNumber;
+  late final DateTime? _originalIssuedDate;
+  late final String _originalIssuedPlace;
 
   // ── Thông tin liên hệ người thân ────────────────────────────────────
   late final TextEditingController _relativeName;
@@ -47,6 +70,19 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     final p = widget.profile;
     _phoneController = TextEditingController(text: p.person.phone);
     _emailController = TextEditingController(text: p.person.email);
+    _originalPermanentAddress = p.person.permanentAddress.trim();
+    _originalDocNumber = p.identityDocument?.docNumber.trim() ?? '';
+    _originalIssuedDate = p.identityDocument?.issuedDate;
+    _originalIssuedPlace = p.identityDocument?.issuedPlace.trim() ?? '';
+    _permanentAddressController = TextEditingController(
+      text: _originalPermanentAddress,
+    );
+    _docNumberController = TextEditingController(text: _originalDocNumber);
+    _issuedDate = _originalIssuedDate;
+    _issuedDateController = TextEditingController(
+      text: _issuedDate == null ? '' : formatIdentityIssuedDate(_issuedDate!),
+    );
+    _issuedPlaceController = TextEditingController(text: _originalIssuedPlace);
 
     final firstContact = p.emergencyContacts.isNotEmpty
         ? p.emergencyContacts.first
@@ -70,6 +106,10 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
   void dispose() {
     _phoneController.dispose();
     _emailController.dispose();
+    _permanentAddressController.dispose();
+    _docNumberController.dispose();
+    _issuedDateController.dispose();
+    _issuedPlaceController.dispose();
     _relativeName.dispose();
     _relativePhone.dispose();
     for (final v in _vehicles) {
@@ -106,6 +146,53 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     });
   }
 
+  bool get _hasUnsupportedMetadataChanges =>
+      _permanentAddressController.text.trim() != _originalPermanentAddress ||
+      _docNumberController.text.trim() != _originalDocNumber ||
+      !_isSameDate(_issuedDate, _originalIssuedDate) ||
+      _issuedPlaceController.text.trim() != _originalIssuedPlace;
+
+  bool _isSameDate(DateTime? left, DateTime? right) {
+    if (left == null || right == null) return left == right;
+    return left.year == right.year &&
+        left.month == right.month &&
+        left.day == right.day;
+  }
+
+  String? _validateUnsupportedTextField(
+    String? value, {
+    required String originalValue,
+    required String? Function(String?) validator,
+  }) {
+    final currentValue = value?.trim() ?? '';
+    if (originalValue.isEmpty && currentValue.isEmpty) {
+      return null;
+    }
+    return validator(value);
+  }
+
+  String? _validateIssuedDate() {
+    if (_originalIssuedDate == null && _issuedDate == null) {
+      return null;
+    }
+    return validateIdentityIssuedDate(_issuedDate);
+  }
+
+  Future<void> _pickIssuedDate() async {
+    final now = DateTime.now();
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: _issuedDate ?? now,
+      firstDate: DateTime(1900),
+      lastDate: DateTime(now.year, now.month, now.day),
+    );
+    if (selected == null || !mounted) return;
+    setState(() {
+      _issuedDate = selected;
+      _issuedDateController.text = formatIdentityIssuedDate(selected);
+    });
+  }
+
   Future<void> _handleSave() async {
     if (_isLoading) return;
 
@@ -114,10 +201,20 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     final relName = _relativeName.text.trim();
     final relPhone = _relativePhone.text.trim();
 
-    if (phone.isEmpty || email.isEmpty) {
+    final isValid = _formKey.currentState?.validate() ?? false;
+    if (!isValid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng kiểm tra lại thông tin hồ sơ')),
+      );
+      return;
+    }
+
+    if (_hasUnsupportedMetadataChanges) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Vui lòng nhập đủ số điện thoại và email'),
+          content: Text(
+            'Các thay đổi về địa chỉ và CCCD chưa thể lưu vì hệ thống chưa hỗ trợ cập nhật các trường này.',
+          ),
         ),
       );
       return;
@@ -126,7 +223,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final service = const TenantProfileService();
+      final service = widget.profileService;
 
       final vehiclesData = <Map<String, dynamic>>[];
       for (final v in _vehicles) {
@@ -201,22 +298,27 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
           child: Column(
             children: [
               Expanded(
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildContactInfoSection(),
-                      const SizedBox(height: 15),
-                      _buildRelativeSection(),
-                      const SizedBox(height: 15),
-                      _buildVehicleSection(),
-                      if (_vehicles.length < _maxVehicles) ...[
+                child: Form(
+                  key: _formKey,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildContactInfoSection(),
                         const SizedBox(height: 15),
-                        _buildAddVehicleButton(),
+                        _buildIdentityAndResidenceSection(),
+                        const SizedBox(height: 15),
+                        _buildRelativeSection(),
+                        const SizedBox(height: 15),
+                        _buildVehicleSection(),
+                        if (_vehicles.length < _maxVehicles) ...[
+                          const SizedBox(height: 15),
+                          _buildAddVehicleButton(),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -260,9 +362,10 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
             onPressed: () {},
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const AppNotificationBell(
+            icon: AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: AppColors.topBarIconSize,
+              notificationService: widget.notificationService,
             ),
             tooltip: 'Thông báo',
           ),
@@ -282,18 +385,86 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
           label: 'SỐ ĐIỆN THOẠI',
           controller: _phoneController,
           keyboardType: TextInputType.phone,
+          validator: (value) => value?.trim().isEmpty ?? true
+              ? 'Vui lòng nhập số điện thoại'
+              : null,
         ),
         const SizedBox(height: 16),
         _EditableField(
           label: 'EMAIL',
           controller: _emailController,
           keyboardType: TextInputType.emailAddress,
+          fieldKey: const ValueKey('update-profile-email'),
+          validator: validateProfileEmail,
         ),
       ],
     );
   }
 
-  // ── 2. Thông tin liên hệ người thân ───────────────────────────────────
+  // ── 2. Thông tin định danh & cư trú ──────────────────────────────────
+
+  Widget _buildIdentityAndResidenceSection() {
+    return _SectionCard(
+      icon: Icons.badge_outlined,
+      title: 'Thông tin định danh & cư trú',
+      children: [
+        _EditableField(
+          label: 'ĐỊA CHỈ THƯỜNG TRÚ',
+          controller: _permanentAddressController,
+          fieldKey: const ValueKey('update-profile-permanent-address'),
+          keyboardType: TextInputType.streetAddress,
+          minLines: 2,
+          maxLines: 4,
+          maxLength: 1000,
+          validator: (value) => _validateUnsupportedTextField(
+            value,
+            originalValue: _originalPermanentAddress,
+            validator: validatePermanentAddress,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _EditableField(
+          label: 'SỐ CCCD',
+          controller: _docNumberController,
+          fieldKey: const ValueKey('update-profile-doc-number'),
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          maxLength: 12,
+          validator: (value) => _validateUnsupportedTextField(
+            value,
+            originalValue: _originalDocNumber,
+            validator: validateIdentityDocumentNumber,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _EditableField(
+          label: 'NGÀY CẤP',
+          controller: _issuedDateController,
+          fieldKey: const ValueKey('update-profile-issued-date'),
+          readOnly: true,
+          onTap: _pickIssuedDate,
+          suffixIcon: const Icon(Icons.calendar_today_outlined, size: 20),
+          validator: (_) => _validateIssuedDate(),
+        ),
+        const SizedBox(height: 16),
+        _EditableField(
+          label: 'NƠI CẤP',
+          controller: _issuedPlaceController,
+          fieldKey: const ValueKey('update-profile-issued-place'),
+          minLines: 1,
+          maxLines: 3,
+          maxLength: 255,
+          validator: (value) => _validateUnsupportedTextField(
+            value,
+            originalValue: _originalIssuedPlace,
+            validator: validateIdentityIssuedPlace,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── 3. Thông tin liên hệ người thân ───────────────────────────────────
 
   Widget _buildRelativeSection() {
     return _SectionCard(
@@ -311,7 +482,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     );
   }
 
-  // ── 3. Thông tin phương tiện ───────────────────────────────────────────
+  // ── 4. Thông tin phương tiện ───────────────────────────────────────────
 
   Widget _buildVehicleSection() {
     return _SectionCard(
@@ -375,7 +546,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                     color: buttonColor,
                     size: 20,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
                   const Text(
                     'Thêm phương tiện',
                     style: TextStyle(
@@ -409,6 +580,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         width: double.infinity,
         height: 56,
         child: ElevatedButton.icon(
+          key: const ValueKey('update-profile-save'),
           onPressed: _isLoading ? null : _handleSave,
           icon: _isLoading
               ? const SizedBox(
@@ -527,12 +699,30 @@ class _EditableField extends StatelessWidget {
   const _EditableField({
     required this.label,
     required this.controller,
+    this.fieldKey,
     this.keyboardType,
+    this.validator,
+    this.minLines,
+    this.maxLines = 1,
+    this.maxLength,
+    this.inputFormatters,
+    this.readOnly = false,
+    this.onTap,
+    this.suffixIcon,
   });
 
   final String label;
   final TextEditingController controller;
+  final Key? fieldKey;
   final TextInputType? keyboardType;
+  final String? Function(String?)? validator;
+  final int? minLines;
+  final int? maxLines;
+  final int? maxLength;
+  final List<TextInputFormatter>? inputFormatters;
+  final bool readOnly;
+  final VoidCallback? onTap;
+  final Widget? suffixIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -550,9 +740,17 @@ class _EditableField extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        TextField(
+        TextFormField(
+          key: fieldKey,
           controller: controller,
           keyboardType: keyboardType,
+          validator: validator,
+          minLines: minLines,
+          maxLines: maxLines,
+          maxLength: maxLength,
+          inputFormatters: inputFormatters,
+          readOnly: readOnly,
+          onTap: onTap,
           style: const TextStyle(
             color: AppColors.inputText,
             fontSize: 16,
@@ -581,6 +779,7 @@ class _EditableField extends StatelessWidget {
                 width: 1.5,
               ),
             ),
+            suffixIcon: suffixIcon,
           ),
         ),
       ],

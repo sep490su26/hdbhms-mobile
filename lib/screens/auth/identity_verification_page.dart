@@ -9,6 +9,14 @@ import 'package:hdbhms_mobile/services/home/home_service.dart';
 import 'package:hdbhms_mobile/services/auth/identity_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
+import 'package:hdbhms_mobile/utils/identity_profile_validators.dart'
+    show
+        formatIdentityIssuedDate,
+        validateIdentityDocumentNumber,
+        validateIdentityIssuedDate,
+        validateIdentityIssuedPlace,
+        validatePermanentAddress,
+        validateProfileEmail;
 import 'package:hdbhms_mobile/screens/tenant_overview/tenant_overview_screen.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 import 'package:hdbhms_mobile/widgets/request_form_widgets.dart';
@@ -29,7 +37,7 @@ enum IdentityDocumentStep {
       case IdentityDocumentStep.backId:
         return 'CCCD m\u1EB7t sau';
       case IdentityDocumentStep.identityInfo:
-        return 'Th\u00F4ng tin CCCD';
+        return 'Th\u00F4ng tin';
       case IdentityDocumentStep.confirm:
         return 'X\u00E1c nh\u1EADn';
     }
@@ -44,41 +52,6 @@ enum IdentityDocumentStep {
       IdentityDocumentStep.confirm => 'X\u00E1c nh\u1EADn',
     };
   }
-}
-
-String? validateIdentityDocumentNumber(String? value) {
-  final number = value?.trim() ?? '';
-  if (number.isEmpty) return 'Vui l\u00F2ng nh\u1EADp s\u1ED1 CCCD';
-  if (!RegExp(r'^\d{12}$').hasMatch(number)) {
-    return 'S\u1ED1 CCCD ph\u1EA3i g\u1ED3m \u0111\u00FAng 12 ch\u1EEF s\u1ED1';
-  }
-  return null;
-}
-
-String? validateIdentityIssuedDate(DateTime? value, {DateTime? today}) {
-  if (value == null) return 'Vui l\u00F2ng ch\u1ECDn ng\u00E0y c\u1EA5p';
-  final now = today ?? DateTime.now();
-  final dateOnly = DateTime(value.year, value.month, value.day);
-  final todayOnly = DateTime(now.year, now.month, now.day);
-  if (dateOnly.isAfter(todayOnly)) {
-    return 'Ng\u00E0y c\u1EA5p kh\u00F4ng \u0111\u01B0\u1EE3c \u1EDF t\u01B0\u01A1ng lai';
-  }
-  return null;
-}
-
-String? validateIdentityIssuedPlace(String? value) {
-  final place = value?.trim() ?? '';
-  if (place.isEmpty) return 'Vui l\u00F2ng nh\u1EADp n\u01A1i c\u1EA5p';
-  if (place.length > 255) {
-    return 'N\u01A1i c\u1EA5p kh\u00F4ng \u0111\u01B0\u1EE3c v\u01B0\u1EE3t qu\u00E1 255 k\u00FD t\u1EF1';
-  }
-  return null;
-}
-
-String formatIdentityIssuedDate(DateTime date) {
-  final day = date.day.toString().padLeft(2, '0');
-  final month = date.month.toString().padLeft(2, '0');
-  return '$day/$month/${date.year}';
 }
 
 class CompleteProfileUploadScreen extends IdentityVerificationPage {
@@ -126,14 +99,20 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
   final _docNumberFieldKey = GlobalKey<FormFieldState<String>>();
   final _issuedDateFieldKey = GlobalKey<FormFieldState<String>>();
   final _issuedPlaceFieldKey = GlobalKey<FormFieldState<String>>();
+  final _permanentAddressFieldKey = GlobalKey<FormFieldState<String>>();
+  final _emailFieldKey = GlobalKey<FormFieldState<String>>();
   late final FileUploadService _fileUploadService;
   late final IdentityService _identityService;
   late final TextEditingController _docNumberController;
   late final TextEditingController _issuedDateController;
   late final TextEditingController _issuedPlaceController;
+  late final TextEditingController _permanentAddressController;
+  late final TextEditingController _emailController;
   late final FocusNode _docNumberFocusNode;
   late final FocusNode _issuedDateFocusNode;
   late final FocusNode _issuedPlaceFocusNode;
+  late final FocusNode _permanentAddressFocusNode;
+  late final FocusNode _emailFocusNode;
   DateTime? _issuedDate;
   bool _isSubmitting = false;
 
@@ -143,7 +122,9 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
   bool get _hasValidIdentityInfo =>
       validateIdentityDocumentNumber(_docNumberController.text) == null &&
       validateIdentityIssuedDate(_issuedDate) == null &&
-      validateIdentityIssuedPlace(_issuedPlaceController.text) == null;
+      validateIdentityIssuedPlace(_issuedPlaceController.text) == null &&
+      validatePermanentAddress(_permanentAddressController.text) == null &&
+      validateProfileEmail(_emailController.text) == null;
 
   bool get _canContinue {
     if (_loadingStep != null || _isSubmitting) {
@@ -167,9 +148,13 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
     _docNumberController = TextEditingController();
     _issuedDateController = TextEditingController();
     _issuedPlaceController = TextEditingController();
+    _permanentAddressController = TextEditingController();
+    _emailController = TextEditingController();
     _docNumberFocusNode = FocusNode();
     _issuedDateFocusNode = FocusNode();
     _issuedPlaceFocusNode = FocusNode();
+    _permanentAddressFocusNode = FocusNode();
+    _emailFocusNode = FocusNode();
   }
 
   @override
@@ -177,9 +162,13 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
     _docNumberController.dispose();
     _issuedDateController.dispose();
     _issuedPlaceController.dispose();
+    _permanentAddressController.dispose();
+    _emailController.dispose();
     _docNumberFocusNode.dispose();
     _issuedDateFocusNode.dispose();
     _issuedPlaceFocusNode.dispose();
+    _permanentAddressFocusNode.dispose();
+    _emailFocusNode.dispose();
     super.dispose();
   }
 
@@ -307,12 +296,18 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
           docNumberFieldKey: _docNumberFieldKey,
           issuedDateFieldKey: _issuedDateFieldKey,
           issuedPlaceFieldKey: _issuedPlaceFieldKey,
+          permanentAddressFieldKey: _permanentAddressFieldKey,
+          emailFieldKey: _emailFieldKey,
           docNumberController: _docNumberController,
           issuedDateController: _issuedDateController,
           issuedPlaceController: _issuedPlaceController,
+          permanentAddressController: _permanentAddressController,
+          emailController: _emailController,
           docNumberFocusNode: _docNumberFocusNode,
           issuedDateFocusNode: _issuedDateFocusNode,
           issuedPlaceFocusNode: _issuedPlaceFocusNode,
+          permanentAddressFocusNode: _permanentAddressFocusNode,
+          emailFocusNode: _emailFocusNode,
           issuedDate: _issuedDate,
           onPickIssuedDate: _pickIssuedDate,
         );
@@ -324,6 +319,8 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
           docNumber: _docNumberController.text.trim(),
           issuedDate: _issuedDate,
           issuedPlace: _issuedPlaceController.text.trim(),
+          permanentAddress: _permanentAddressController.text.trim(),
+          email: _emailController.text.trim(),
           onEditStep: _selectStep,
         );
     }
@@ -584,13 +581,23 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
         ? _docNumberFocusNode
         : validateIdentityIssuedDate(_issuedDate) != null
         ? _issuedDateFocusNode
-        : _issuedPlaceFocusNode;
+        : validateIdentityIssuedPlace(_issuedPlaceController.text) != null
+        ? _issuedPlaceFocusNode
+        : validatePermanentAddress(_permanentAddressController.text) != null
+        ? _permanentAddressFocusNode
+        : _emailFocusNode;
     focusNode.requestFocus();
-    final fieldContext = focusNode == _docNumberFocusNode
-        ? _docNumberFieldKey.currentContext
-        : focusNode == _issuedDateFocusNode
-        ? _issuedDateFieldKey.currentContext
-        : _issuedPlaceFieldKey.currentContext;
+    final fieldContext = switch (focusNode) {
+      _ when focusNode == _docNumberFocusNode =>
+        _docNumberFieldKey.currentContext,
+      _ when focusNode == _issuedDateFocusNode =>
+        _issuedDateFieldKey.currentContext,
+      _ when focusNode == _issuedPlaceFocusNode =>
+        _issuedPlaceFieldKey.currentContext,
+      _ when focusNode == _permanentAddressFocusNode =>
+        _permanentAddressFieldKey.currentContext,
+      _ => _emailFieldKey.currentContext,
+    };
     if (fieldContext != null) {
       Scrollable.ensureVisible(
         fieldContext,
@@ -1059,12 +1066,18 @@ class _IdentityInfoStepCard extends StatelessWidget {
     required this.docNumberFieldKey,
     required this.issuedDateFieldKey,
     required this.issuedPlaceFieldKey,
+    required this.permanentAddressFieldKey,
+    required this.emailFieldKey,
     required this.docNumberController,
     required this.issuedDateController,
     required this.issuedPlaceController,
+    required this.permanentAddressController,
+    required this.emailController,
     required this.docNumberFocusNode,
     required this.issuedDateFocusNode,
     required this.issuedPlaceFocusNode,
+    required this.permanentAddressFocusNode,
+    required this.emailFocusNode,
     required this.issuedDate,
     required this.onPickIssuedDate,
   });
@@ -1073,12 +1086,18 @@ class _IdentityInfoStepCard extends StatelessWidget {
   final GlobalKey<FormFieldState<String>> docNumberFieldKey;
   final GlobalKey<FormFieldState<String>> issuedDateFieldKey;
   final GlobalKey<FormFieldState<String>> issuedPlaceFieldKey;
+  final GlobalKey<FormFieldState<String>> permanentAddressFieldKey;
+  final GlobalKey<FormFieldState<String>> emailFieldKey;
   final TextEditingController docNumberController;
   final TextEditingController issuedDateController;
   final TextEditingController issuedPlaceController;
+  final TextEditingController permanentAddressController;
+  final TextEditingController emailController;
   final FocusNode docNumberFocusNode;
   final FocusNode issuedDateFocusNode;
   final FocusNode issuedPlaceFocusNode;
+  final FocusNode permanentAddressFocusNode;
+  final FocusNode emailFocusNode;
   final DateTime? issuedDate;
   final VoidCallback onPickIssuedDate;
 
@@ -1104,7 +1123,7 @@ class _IdentityInfoStepCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Th\u00F4ng tin CCCD',
+              'Th\u00F4ng tin',
               style: TextStyle(
                 color: AppColors.darkBlue,
                 fontSize: 16,
@@ -1113,6 +1132,11 @@ class _IdentityInfoStepCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 14),
+            const Text(
+              'Th\u00F4ng tin CCCD',
+              style: AppTypography.sectionTitle,
+            ),
+            const SizedBox(height: 10),
             const _InstructionBox(
               instruction:
                   'Nh\u1EADp ch\u00EDnh x\u00E1c th\u00F4ng tin \u0111\u01B0\u1EE3c in tr\u00EAn c\u0103n c\u01B0\u1EDBc c\u00F4ng d\u00E2n.',
@@ -1171,6 +1195,63 @@ class _IdentityInfoStepCard extends StatelessWidget {
                   labelText: 'N\u01A1i c\u1EA5p',
                   hintText: 'Nh\u1EADp n\u01A1i c\u1EA5p tr\u00EAn CCCD',
                 ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceMuted,
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                border: Border.all(color: AppColors.cardBorder),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Thông tin liên hệ & cư trú',
+                    style: AppTypography.sectionTitle,
+                  ),
+                  const SizedBox(height: 14),
+                  KeyedSubtree(
+                    key: const ValueKey('identity-permanent-address-field'),
+                    child: TextFormField(
+                      key: permanentAddressFieldKey,
+                      controller: permanentAddressController,
+                      focusNode: permanentAddressFocusNode,
+                      keyboardType: TextInputType.streetAddress,
+                      textInputAction: TextInputAction.next,
+                      minLines: 2,
+                      maxLines: 4,
+                      maxLength: 1000,
+                      maxLengthEnforcement: MaxLengthEnforcement.none,
+                      validator: validatePermanentAddress,
+                      decoration: const InputDecoration(
+                        labelText: 'Địa chỉ thường trú',
+                        hintText: 'Nhập địa chỉ thường trú',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  KeyedSubtree(
+                    key: const ValueKey('identity-email-field'),
+                    child: TextFormField(
+                      key: emailFieldKey,
+                      controller: emailController,
+                      focusNode: emailFocusNode,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.done,
+                      maxLength: 255,
+                      maxLengthEnforcement: MaxLengthEnforcement.none,
+                      validator: validateProfileEmail,
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        hintText: 'tenant@example.com',
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -1320,6 +1401,8 @@ class _ReviewStepCard extends StatelessWidget {
     required this.docNumber,
     required this.issuedDate,
     required this.issuedPlace,
+    required this.permanentAddress,
+    required this.email,
     required this.onEditStep,
   });
 
@@ -1329,6 +1412,8 @@ class _ReviewStepCard extends StatelessWidget {
   final String docNumber;
   final DateTime? issuedDate;
   final String issuedPlace;
+  final String permanentAddress;
+  final String email;
   final ValueChanged<IdentityDocumentStep> onEditStep;
 
   @override
@@ -1384,6 +1469,8 @@ class _ReviewStepCard extends StatelessWidget {
             docNumber: docNumber,
             issuedDate: issuedDate,
             issuedPlace: issuedPlace,
+            permanentAddress: permanentAddress,
+            email: email,
             onEdit: () => onEditStep(IdentityDocumentStep.identityInfo),
           ),
         ],
@@ -1397,12 +1484,16 @@ class _ReviewIdentityInfoRow extends StatelessWidget {
     required this.docNumber,
     required this.issuedDate,
     required this.issuedPlace,
+    required this.permanentAddress,
+    required this.email,
     required this.onEdit,
   });
 
   final String docNumber;
   final DateTime? issuedDate;
   final String issuedPlace;
+  final String permanentAddress;
+  final String email;
   final VoidCallback onEdit;
 
   @override
@@ -1416,59 +1507,63 @@ class _ReviewIdentityInfoRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppColors.radiusSm),
         border: Border.all(color: AppColors.cardBorder),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.check_circle_rounded,
-            color: AppColors.successText,
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.infoSurface,
-              borderRadius: BorderRadius.circular(AppColors.radiusSm),
-            ),
-            child: const Icon(
-              Icons.badge_outlined,
-              color: AppColors.primary,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Th\u00F4ng tin CCCD',
-                  style: AppTypography.cardTitle,
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.infoSurface,
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
-                const SizedBox(height: 6),
-                _ReviewIdentityValue(label: 'S\u1ED1 CCCD', value: docNumber),
-                const SizedBox(height: 5),
-                _ReviewIdentityValue(
-                  label: 'Ng\u00E0y c\u1EA5p',
-                  value: issuedDate == null
-                      ? ''
-                      : formatIdentityIssuedDate(issuedDate!),
+                child: const Icon(
+                  Icons.badge_outlined,
+                  color: AppColors.primary,
+                  size: 20,
                 ),
-                const SizedBox(height: 5),
-                _ReviewIdentityValue(
-                  label: 'N\u01A1i c\u1EA5p',
-                  value: issuedPlace,
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text('Thông tin', style: AppTypography.cardTitle),
+              ),
+              TextButton(
+                key: const ValueKey('identity-review-info-edit'),
+                onPressed: onEdit,
+                child: const Text('Sửa'),
+              ),
+            ],
           ),
-          TextButton(
-            key: const ValueKey('identity-review-info-edit'),
-            onPressed: onEdit,
-            child: const Text('S\u1EEDa'),
+          const SizedBox(height: 14),
+          const Text('THÔNG TIN CCCD', style: AppTypography.metaLabel),
+          const SizedBox(height: 8),
+          _ReviewIdentityValue(label: 'Số CCCD', value: docNumber),
+          const SizedBox(height: 8),
+          _ReviewIdentityValue(
+            label: 'Ngày cấp',
+            value: issuedDate == null
+                ? ''
+                : formatIdentityIssuedDate(issuedDate!),
           ),
+          const SizedBox(height: 8),
+          _ReviewIdentityValue(label: 'Nơi cấp', value: issuedPlace),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 14),
+            child: Divider(height: 1, color: AppColors.cardBorder),
+          ),
+          const Text(
+            'THÔNG TIN LIÊN HỆ & CƯ TRÚ',
+            style: AppTypography.metaLabel,
+          ),
+          const SizedBox(height: 8),
+          _ReviewIdentityValue(
+            label: 'Địa chỉ thường trú',
+            value: permanentAddress,
+          ),
+          const SizedBox(height: 8),
+          _ReviewIdentityValue(label: 'Email', value: email),
         ],
       ),
     );
