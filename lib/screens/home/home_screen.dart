@@ -18,6 +18,7 @@ import 'package:hdbhms_mobile/theme/app_typography.dart';
 import 'package:hdbhms_mobile/utils/display_formatters.dart';
 import 'package:hdbhms_mobile/widgets/app_action_tile.dart';
 import 'package:hdbhms_mobile/widgets/app_notification_bell.dart';
+import 'package:hdbhms_mobile/widgets/app_primary_gradient_button.dart';
 import 'package:hdbhms_mobile/widgets/app_skeleton.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
@@ -135,7 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (_provider.errorMessage != null && _provider.summary == null) {
-      return _HomeErrorState(
+      return HomeAccessErrorState(
         message: _provider.errorMessage!,
         onRetry: _provider.load,
         title: _homeErrorTitle(_provider.selectedRoom),
@@ -145,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final summary = _provider.summary;
     if (summary == null) {
-      return _HomeErrorState(
+      return HomeAccessErrorState(
         message: 'Không tải được dữ liệu Home',
         onRetry: _provider.load,
         title: _homeErrorTitle(_provider.selectedRoom),
@@ -251,8 +252,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _HomeErrorState extends StatelessWidget {
-  const _HomeErrorState({
+class HomeAccessErrorState extends StatelessWidget {
+  const HomeAccessErrorState({
+    super.key,
     required this.message,
     required this.onRetry,
     required this.title,
@@ -263,6 +265,24 @@ class _HomeErrorState extends StatelessWidget {
   final VoidCallback onRetry;
   final String title;
   final VoidCallback onOpenRoomOverview;
+
+  bool get _isRoomAccessUnavailable {
+    final normalized = message.toLowerCase();
+    return normalized.contains('quyền') ||
+        normalized.contains('truy cập') ||
+        normalized.contains('phòng này') ||
+        normalized.contains('phong nay') ||
+        normalized.contains('403') ||
+        normalized.contains('forbidden');
+  }
+
+  String get _headline => _isRoomAccessUnavailable
+      ? 'Quyền truy cập phòng đã kết thúc'
+      : 'Không tải được thông tin phòng';
+
+  String get _supportingText => _isRoomAccessUnavailable
+      ? 'Phòng này không còn trong danh sách phòng bạn đang thuê. Điều này có thể xảy ra sau khi thanh lý hoặc chuyển phòng.'
+      : 'Kiểm tra kết nối của bạn rồi thử tải lại thông tin phòng.';
 
   @override
   Widget build(BuildContext context) {
@@ -283,38 +303,132 @@ class _HomeErrorState extends StatelessWidget {
           ),
         ),
       ),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.cloud_off_rounded,
-                color: AppColors.deepBlue,
-                size: 42,
-              ),
-              const SizedBox(height: 14),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.inputText,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 32, 16, 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 440),
+          child: Center(
+            child: Container(
+              key: const ValueKey('home-error-card'),
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppColors.radiusLg),
+                border: Border.all(
+                  color: _isRoomAccessUnavailable
+                      ? AppColors.warning.withValues(alpha: 0.32)
+                      : AppColors.cardBorder,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.deepBlue.withValues(alpha: 0.06),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
-              const SizedBox(height: 18),
-              ElevatedButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Thử lại'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.deepBlue,
-                  foregroundColor: Colors.white,
-                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 84,
+                    height: 84,
+                    decoration: BoxDecoration(
+                      color: _isRoomAccessUnavailable
+                          ? AppColors.warningSurface
+                          : AppColors.infoSurface,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: _isRoomAccessUnavailable
+                            ? AppColors.warning.withValues(alpha: 0.35)
+                            : AppColors.primary.withValues(alpha: 0.24),
+                        width: 2,
+                      ),
+                    ),
+                    child: Icon(
+                      _isRoomAccessUnavailable
+                          ? Icons.no_meeting_room_rounded
+                          : Icons.cloud_off_rounded,
+                      color: _isRoomAccessUnavailable
+                          ? AppColors.warningText
+                          : AppColors.primary,
+                      size: 44,
+                      semanticLabel: _headline,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    _headline,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.pageTitle.copyWith(
+                      color: AppColors.inputText,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    _supportingText,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.body,
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: _isRoomAccessUnavailable
+                          ? AppColors.warningSurface
+                          : AppColors.inputFill,
+                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.info_outline_rounded,
+                          color: _isRoomAccessUnavailable
+                              ? AppColors.warningText
+                              : AppColors.primary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            message,
+                            key: const ValueKey('home-error-message'),
+                            style: AppTypography.body.copyWith(
+                              color: AppColors.inputText,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: AppPrimaryGradientButton(
+                      key: const ValueKey('home-error-open-rooms'),
+                      onPressed: onOpenRoomOverview,
+                      child: const Text('Chọn phòng khác'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    key: const ValueKey('home-error-retry'),
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh_rounded, size: 20),
+                    label: const Text('Thử lại'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      minimumSize: const Size.fromHeight(48),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

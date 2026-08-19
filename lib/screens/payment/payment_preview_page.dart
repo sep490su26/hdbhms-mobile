@@ -15,6 +15,7 @@ import 'bill_detail_screen.dart';
 import 'bill_selection_page.dart';
 import 'payment_success_page.dart';
 import 'payment_history_page.dart';
+import 'post_liquidation_home_access_preview_screen.dart';
 import 'qr_payment_page.dart';
 import 'qr_receipt_download_page.dart';
 import 'utility_complaint_screen.dart';
@@ -367,6 +368,21 @@ class PaymentPreviewPage extends StatelessWidget {
               const _PreviewSectionTitle('Yêu cầu đang xử lý'),
               const SizedBox(height: 8),
               ..._buildRequestPreviewTiles(context),
+              const SizedBox(height: 20),
+              const _PreviewSectionTitle('Trạng thái phòng'),
+              const SizedBox(height: 8),
+              _PreviewTile(
+                icon: Icons.cloud_off_rounded,
+                title: 'Home: không còn quyền truy cập phòng',
+                subtitle:
+                    'Xem đúng trạng thái lỗi đang hiển thị trên Home sau thanh lý',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        const PostLiquidationHomeAccessPreviewScreen(),
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
               const _PreviewSectionTitle('Hóa đơn'),
               const SizedBox(height: 8),

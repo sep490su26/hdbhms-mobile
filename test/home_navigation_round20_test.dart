@@ -17,17 +17,22 @@ import 'package:hdbhms_mobile/services/profile_request/tenant_profile_service.da
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 
 class _HomeFixtureService extends HomeService {
-  _HomeFixtureService({this.failuresBeforeSuccess = 0, this.emptyRoom = false});
+  _HomeFixtureService({
+    this.failuresBeforeSuccess = 0,
+    this.emptyRoom = false,
+    this.errorMessage = 'Bạn không có quyền thực hiện thao tác này',
+  });
 
   final int failuresBeforeSuccess;
   final bool emptyRoom;
+  final String errorMessage;
   int calls = 0;
 
   @override
   Future<HomeSummary> fetchHomeSummary({int? contractId}) async {
     calls += 1;
     if (calls <= failuresBeforeSuccess) {
-      throw const HomeException('Bạn không có quyền thực hiện thao tác này');
+      throw HomeException(errorMessage);
     }
     return _homeSummary(emptyRoom: emptyRoom);
   }
@@ -293,11 +298,122 @@ void main() {
     await tester.pumpWidget(_home(homeService: homeService));
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.text('Thử lại'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.text('Thử lại'));
     await tester.pumpAndSettle();
 
     expect(homeService.calls, 2);
     expect(find.text('Thanh toán nhanh'), findsOneWidget);
+  });
+
+  testWidgets('home room-access error explains the recovery path', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    const errorMessage =
+        'Bạn không còn quyền truy cập phòng này. Vui lòng chọn lại phòng đang thuê.';
+    await tester.pumpWidget(
+      _home(
+        homeService: _HomeFixtureService(
+          failuresBeforeSuccess: 10,
+          errorMessage: errorMessage,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final card = find.byKey(const ValueKey('home-error-card'));
+    final message = find.byKey(const ValueKey('home-error-message'));
+    expect(card, findsOneWidget);
+    expect(message, findsOneWidget);
+    expect(tester.getSize(card).width, closeTo(288, 0.1));
+    expect(tester.getSize(message).height, greaterThan(24));
+    expect(
+      find.descendant(
+        of: card,
+        matching: find.byKey(const ValueKey('home-error-retry')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: card,
+        matching: find.byKey(const ValueKey('home-error-open-rooms')),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Quyền truy cập phòng đã kết thúc'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: card,
+        matching: find.byTooltip('Danh sách phòng đang thuê'),
+      ),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'home access state remains clear for an old room after transfer',
+    (tester) async {
+      await tester.pumpWidget(
+        _home(
+          homeService: _HomeFixtureService(
+            failuresBeforeSuccess: 10,
+            errorMessage:
+                'Bạn không còn quyền truy cập phòng này vì đã chuyển phòng.',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Quyền truy cập phòng đã kết thúc'), findsOneWidget);
+      expect(
+        find.textContaining('sau khi thanh lý hoặc chuyển phòng'),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('home-error-open-rooms')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('home error card stays responsive at supported phone widths', (
+    tester,
+  ) async {
+    const sizes = <Size>[
+      Size(320, 640),
+      Size(360, 800),
+      Size(390, 844),
+      Size(430, 932),
+    ];
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    for (final size in sizes) {
+      await tester.binding.setSurfaceSize(size);
+      await tester.pumpWidget(
+        _home(
+          homeService: _HomeFixtureService(
+            failuresBeforeSuccess: 10,
+            errorMessage:
+                'Bạn không còn quyền truy cập phòng này. Vui lòng chọn lại phòng đang thuê.',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final card = find.byKey(const ValueKey('home-error-card'));
+      expect(card, findsOneWidget);
+      expect(tester.getSize(card).width, closeTo(size.width - 32, 0.1));
+      expect(find.byKey(const ValueKey('home-error-retry')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
   });
 
   testWidgets('empty room card fills the overview content width', (

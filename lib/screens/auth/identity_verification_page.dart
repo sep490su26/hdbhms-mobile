@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:hdbhms_mobile/models/auth/identity_image_file.dart';
 import 'package:hdbhms_mobile/models/onboarding_state.dart';
@@ -16,6 +17,7 @@ enum IdentityDocumentStep {
   portrait,
   frontId,
   backId,
+  identityInfo,
   confirm;
 
   String get title {
@@ -26,10 +28,57 @@ enum IdentityDocumentStep {
         return 'CCCD m\u1EB7t tr\u01B0\u1EDBc';
       case IdentityDocumentStep.backId:
         return 'CCCD m\u1EB7t sau';
+      case IdentityDocumentStep.identityInfo:
+        return 'Th\u00F4ng tin CCCD';
       case IdentityDocumentStep.confirm:
         return 'X\u00E1c nh\u1EADn';
     }
   }
+
+  String get stepperLabel {
+    return switch (this) {
+      IdentityDocumentStep.portrait => 'Ảnh chân dung',
+      IdentityDocumentStep.frontId => 'CCCD mặt trước',
+      IdentityDocumentStep.backId => 'CCCD mặt sau',
+      IdentityDocumentStep.identityInfo => 'Th\u00F4ng tin',
+      IdentityDocumentStep.confirm => 'X\u00E1c nh\u1EADn',
+    };
+  }
+}
+
+String? validateIdentityDocumentNumber(String? value) {
+  final number = value?.trim() ?? '';
+  if (number.isEmpty) return 'Vui l\u00F2ng nh\u1EADp s\u1ED1 CCCD';
+  if (!RegExp(r'^\d{12}$').hasMatch(number)) {
+    return 'S\u1ED1 CCCD ph\u1EA3i g\u1ED3m \u0111\u00FAng 12 ch\u1EEF s\u1ED1';
+  }
+  return null;
+}
+
+String? validateIdentityIssuedDate(DateTime? value, {DateTime? today}) {
+  if (value == null) return 'Vui l\u00F2ng ch\u1ECDn ng\u00E0y c\u1EA5p';
+  final now = today ?? DateTime.now();
+  final dateOnly = DateTime(value.year, value.month, value.day);
+  final todayOnly = DateTime(now.year, now.month, now.day);
+  if (dateOnly.isAfter(todayOnly)) {
+    return 'Ng\u00E0y c\u1EA5p kh\u00F4ng \u0111\u01B0\u1EE3c \u1EDF t\u01B0\u01A1ng lai';
+  }
+  return null;
+}
+
+String? validateIdentityIssuedPlace(String? value) {
+  final place = value?.trim() ?? '';
+  if (place.isEmpty) return 'Vui l\u00F2ng nh\u1EADp n\u01A1i c\u1EA5p';
+  if (place.length > 255) {
+    return 'N\u01A1i c\u1EA5p kh\u00F4ng \u0111\u01B0\u1EE3c v\u01B0\u1EE3t qu\u00E1 255 k\u00FD t\u1EF1';
+  }
+  return null;
+}
+
+String formatIdentityIssuedDate(DateTime date) {
+  final day = date.day.toString().padLeft(2, '0');
+  final month = date.month.toString().padLeft(2, '0');
+  return '$day/$month/${date.year}';
 }
 
 class CompleteProfileUploadScreen extends IdentityVerificationPage {
@@ -73,12 +122,28 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
   IdentityImageFile? _frontIdImage;
   IdentityImageFile? _backIdImage;
   IdentityDocumentStep? _loadingStep;
+  final _identityInfoFormKey = GlobalKey<FormState>();
+  final _docNumberFieldKey = GlobalKey<FormFieldState<String>>();
+  final _issuedDateFieldKey = GlobalKey<FormFieldState<String>>();
+  final _issuedPlaceFieldKey = GlobalKey<FormFieldState<String>>();
   late final FileUploadService _fileUploadService;
   late final IdentityService _identityService;
+  late final TextEditingController _docNumberController;
+  late final TextEditingController _issuedDateController;
+  late final TextEditingController _issuedPlaceController;
+  late final FocusNode _docNumberFocusNode;
+  late final FocusNode _issuedDateFocusNode;
+  late final FocusNode _issuedPlaceFocusNode;
+  DateTime? _issuedDate;
   bool _isSubmitting = false;
 
   bool get _hasAllImages =>
       _portraitImage != null && _frontIdImage != null && _backIdImage != null;
+
+  bool get _hasValidIdentityInfo =>
+      validateIdentityDocumentNumber(_docNumberController.text) == null &&
+      validateIdentityIssuedDate(_issuedDate) == null &&
+      validateIdentityIssuedPlace(_issuedPlaceController.text) == null;
 
   bool get _canContinue {
     if (_loadingStep != null || _isSubmitting) {
@@ -88,7 +153,8 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
       IdentityDocumentStep.portrait => _portraitImage != null,
       IdentityDocumentStep.frontId => _frontIdImage != null,
       IdentityDocumentStep.backId => _backIdImage != null,
-      IdentityDocumentStep.confirm => _hasAllImages,
+      IdentityDocumentStep.identityInfo => true,
+      IdentityDocumentStep.confirm => _hasAllImages && _hasValidIdentityInfo,
     };
   }
 
@@ -98,6 +164,23 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
     _fileUploadService =
         widget.fileUploadService ?? ImagePickerFileUploadService();
     _identityService = widget.identityService ?? const IdentityService();
+    _docNumberController = TextEditingController();
+    _issuedDateController = TextEditingController();
+    _issuedPlaceController = TextEditingController();
+    _docNumberFocusNode = FocusNode();
+    _issuedDateFocusNode = FocusNode();
+    _issuedPlaceFocusNode = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    _docNumberController.dispose();
+    _issuedDateController.dispose();
+    _issuedPlaceController.dispose();
+    _docNumberFocusNode.dispose();
+    _issuedDateFocusNode.dispose();
+    _issuedPlaceFocusNode.dispose();
+    super.dispose();
   }
 
   @override
@@ -133,7 +216,7 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
                           portraitDone: _portraitImage != null,
                           frontDone: _frontIdImage != null,
                           backDone: _backIdImage != null,
-                          onStepSelected: _selectStep,
+                          identityInfoDone: _hasValidIdentityInfo,
                         ),
                         const SizedBox(height: 18),
                         _buildCurrentStepCard(),
@@ -217,11 +300,30 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
             IdentityImageSource.gallery,
           ),
         );
+      case IdentityDocumentStep.identityInfo:
+        return _IdentityInfoStepCard(
+          key: const ValueKey('identity-info-step'),
+          formKey: _identityInfoFormKey,
+          docNumberFieldKey: _docNumberFieldKey,
+          issuedDateFieldKey: _issuedDateFieldKey,
+          issuedPlaceFieldKey: _issuedPlaceFieldKey,
+          docNumberController: _docNumberController,
+          issuedDateController: _issuedDateController,
+          issuedPlaceController: _issuedPlaceController,
+          docNumberFocusNode: _docNumberFocusNode,
+          issuedDateFocusNode: _issuedDateFocusNode,
+          issuedPlaceFocusNode: _issuedPlaceFocusNode,
+          issuedDate: _issuedDate,
+          onPickIssuedDate: _pickIssuedDate,
+        );
       case IdentityDocumentStep.confirm:
         return _ReviewStepCard(
           portraitImage: _portraitImage,
           frontIdImage: _frontIdImage,
           backIdImage: _backIdImage,
+          docNumber: _docNumberController.text.trim(),
+          issuedDate: _issuedDate,
+          issuedPlace: _issuedPlaceController.text.trim(),
           onEditStep: _selectStep,
         );
     }
@@ -238,7 +340,8 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
       IdentityDocumentStep.portrait => null,
       IdentityDocumentStep.frontId => IdentityDocumentStep.portrait,
       IdentityDocumentStep.backId => IdentityDocumentStep.frontId,
-      IdentityDocumentStep.confirm => IdentityDocumentStep.backId,
+      IdentityDocumentStep.identityInfo => IdentityDocumentStep.backId,
+      IdentityDocumentStep.confirm => IdentityDocumentStep.identityInfo,
     };
 
     if (previousStep == null) {
@@ -285,6 +388,7 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
             _frontIdImage = image;
           case IdentityDocumentStep.backId:
             _backIdImage = image;
+          case IdentityDocumentStep.identityInfo:
           case IdentityDocumentStep.confirm:
             break;
         }
@@ -313,6 +417,18 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
   }
 
   Future<void> _handleContinue() async {
+    if (_currentStep == IdentityDocumentStep.identityInfo) {
+      final isValid = _identityInfoFormKey.currentState?.validate() ?? false;
+      if (!isValid) {
+        _focusFirstInvalidIdentityField();
+        return;
+      }
+      setState(() {
+        _currentStep = IdentityDocumentStep.confirm;
+      });
+      return;
+    }
+
     final validationMessage = _currentStep == IdentityDocumentStep.confirm
         ? _validateImages()
         : _validateCurrentStep();
@@ -328,11 +444,24 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
       return;
     }
 
+    if (!_hasValidIdentityInfo) {
+      setState(() {
+        _currentStep = IdentityDocumentStep.identityInfo;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _identityInfoFormKey.currentState?.validate();
+        _focusFirstInvalidIdentityField();
+      });
+      return;
+    }
+
     setState(() {
       _isSubmitting = true;
     });
 
     try {
+      // TODO: Send CCCD metadata when identity-verification supports
+      // docNumber, issuedDate, and issuedPlace multipart fields.
       final result = await _identityService.uploadIdentity(
         portrait: _portraitImage!,
         frontId: _frontIdImage!,
@@ -401,7 +530,8 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
     return switch (_currentStep) {
       IdentityDocumentStep.portrait => IdentityDocumentStep.frontId,
       IdentityDocumentStep.frontId => IdentityDocumentStep.backId,
-      IdentityDocumentStep.backId => IdentityDocumentStep.confirm,
+      IdentityDocumentStep.backId => IdentityDocumentStep.identityInfo,
+      IdentityDocumentStep.identityInfo => IdentityDocumentStep.confirm,
       IdentityDocumentStep.confirm => IdentityDocumentStep.confirm,
     };
   }
@@ -414,6 +544,7 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
         _frontIdImage == null ? 'Vui lòng thêm CCCD mặt trước' : null,
       IdentityDocumentStep.backId =>
         _backIdImage == null ? 'Vui lòng thêm CCCD mặt sau' : null,
+      IdentityDocumentStep.identityInfo => null,
       IdentityDocumentStep.confirm => _validateImages(),
     };
   }
@@ -429,6 +560,45 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
       return 'Vui lòng tải lên đủ ảnh chân dung và 2 mặt CCCD';
     }
     return null;
+  }
+
+  Future<void> _pickIssuedDate() async {
+    final now = DateTime.now();
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: _issuedDate ?? now,
+      firstDate: DateTime(1900),
+      lastDate: DateTime(now.year, now.month, now.day),
+    );
+    if (selectedDate == null || !mounted) return;
+    setState(() {
+      _issuedDate = selectedDate;
+      _issuedDateController.text = formatIdentityIssuedDate(selectedDate);
+    });
+    _issuedDateFieldKey.currentState?.validate();
+  }
+
+  void _focusFirstInvalidIdentityField() {
+    final focusNode =
+        validateIdentityDocumentNumber(_docNumberController.text) != null
+        ? _docNumberFocusNode
+        : validateIdentityIssuedDate(_issuedDate) != null
+        ? _issuedDateFocusNode
+        : _issuedPlaceFocusNode;
+    focusNode.requestFocus();
+    final fieldContext = focusNode == _docNumberFocusNode
+        ? _docNumberFieldKey.currentContext
+        : focusNode == _issuedDateFocusNode
+        ? _issuedDateFieldKey.currentContext
+        : _issuedPlaceFieldKey.currentContext;
+    if (fieldContext != null) {
+      Scrollable.ensureVisible(
+        fieldContext,
+        alignment: 0.2,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      );
+    }
   }
 
   void _showMessage(String message) {
@@ -473,46 +643,69 @@ class _IdentityStepper extends StatelessWidget {
     required this.portraitDone,
     required this.frontDone,
     required this.backDone,
-    required this.onStepSelected,
+    required this.identityInfoDone,
   });
 
   final IdentityDocumentStep currentStep;
   final bool portraitDone;
   final bool frontDone;
   final bool backDone;
-  final ValueChanged<IdentityDocumentStep> onStepSelected;
+  final bool identityInfoDone;
 
   @override
   Widget build(BuildContext context) {
     final steps = IdentityDocumentStep.values;
 
     return Container(
+      key: const ValueKey('identity-stepper'),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppColors.radiusMd),
         border: Border.all(color: AppColors.border),
       ),
-      child: Row(
-        children: [
-          for (var index = 0; index < steps.length; index++) ...[
-            Expanded(
-              child: _StepPill(
-                step: steps[index],
-                status: _statusFor(steps[index]),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 340;
+          final currentIndex = steps.indexOf(currentStep) + 1;
+          return Column(
+            children: [
+              Row(
+                children: [
+                  for (var index = 0; index < steps.length; index++) ...[
+                    Expanded(
+                      child: _StepPill(
+                        step: steps[index],
+                        status: _statusFor(steps[index]),
+                        showLabel: !compact,
+                      ),
+                    ),
+                    if (index != steps.length - 1)
+                      Container(
+                        width: compact ? 6 : 10,
+                        height: 2,
+                        color: _connectorColor(
+                          _statusFor(steps[index]),
+                          _statusFor(steps[index + 1]),
+                        ),
+                      ),
+                  ],
+                ],
               ),
-            ),
-            if (index != steps.length - 1)
-              Container(
-                width: 10,
-                height: 2,
-                color: _connectorColor(
-                  _statusFor(steps[index]),
-                  _statusFor(steps[index + 1]),
+              if (compact) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Bước $currentIndex/${steps.length} • ${currentStep.title}',
+                  textAlign: TextAlign.center,
+                  style: AppTypography.caption.copyWith(
+                    color: AppColors.bodyText,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-          ],
-        ],
+              ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -526,8 +719,10 @@ class _IdentityStepper extends StatelessWidget {
         return frontDone ? _StepStatus.done : _StepStatus.pending;
       case IdentityDocumentStep.backId:
         return backDone ? _StepStatus.done : _StepStatus.pending;
+      case IdentityDocumentStep.identityInfo:
+        return identityInfoDone ? _StepStatus.done : _StepStatus.pending;
       case IdentityDocumentStep.confirm:
-        return portraitDone && frontDone && backDone
+        return portraitDone && frontDone && backDone && identityInfoDone
             ? _StepStatus.done
             : _StepStatus.pending;
     }
@@ -547,10 +742,15 @@ class _IdentityStepper extends StatelessWidget {
 enum _StepStatus { active, done, pending }
 
 class _StepPill extends StatelessWidget {
-  const _StepPill({required this.step, required this.status});
+  const _StepPill({
+    required this.step,
+    required this.status,
+    required this.showLabel,
+  });
 
   final IdentityDocumentStep step;
   final _StepStatus status;
+  final bool showLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -583,23 +783,24 @@ class _StepPill extends StatelessWidget {
             size: isDone ? 17 : 8,
           ),
         ),
-        const SizedBox(height: 6),
-        Text(
-          step.title,
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: isDone
-                ? AppColors.successText
-                : isActive
-                ? AppColors.primary
-                : AppColors.bodyText,
-            fontSize: 10,
-            fontWeight: isActive ? FontWeight.w900 : FontWeight.w700,
-            height: 13 / 10,
+        if (showLabel) ...[
+          const SizedBox(height: 6),
+          Text(
+            step.stepperLabel,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            style: TextStyle(
+              color: isDone
+                  ? AppColors.successText
+                  : isActive
+                  ? AppColors.primary
+                  : AppColors.bodyText,
+              fontSize: 10,
+              fontWeight: isActive ? FontWeight.w900 : FontWeight.w700,
+              height: 13 / 10,
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -851,6 +1052,134 @@ class _InstructionBox extends StatelessWidget {
   }
 }
 
+class _IdentityInfoStepCard extends StatelessWidget {
+  const _IdentityInfoStepCard({
+    super.key,
+    required this.formKey,
+    required this.docNumberFieldKey,
+    required this.issuedDateFieldKey,
+    required this.issuedPlaceFieldKey,
+    required this.docNumberController,
+    required this.issuedDateController,
+    required this.issuedPlaceController,
+    required this.docNumberFocusNode,
+    required this.issuedDateFocusNode,
+    required this.issuedPlaceFocusNode,
+    required this.issuedDate,
+    required this.onPickIssuedDate,
+  });
+
+  final GlobalKey<FormState> formKey;
+  final GlobalKey<FormFieldState<String>> docNumberFieldKey;
+  final GlobalKey<FormFieldState<String>> issuedDateFieldKey;
+  final GlobalKey<FormFieldState<String>> issuedPlaceFieldKey;
+  final TextEditingController docNumberController;
+  final TextEditingController issuedDateController;
+  final TextEditingController issuedPlaceController;
+  final FocusNode docNumberFocusNode;
+  final FocusNode issuedDateFocusNode;
+  final FocusNode issuedPlaceFocusNode;
+  final DateTime? issuedDate;
+  final VoidCallback onPickIssuedDate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Form(
+        key: formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Th\u00F4ng tin CCCD',
+              style: TextStyle(
+                color: AppColors.darkBlue,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                height: 22 / 16,
+              ),
+            ),
+            const SizedBox(height: 14),
+            const _InstructionBox(
+              instruction:
+                  'Nh\u1EADp ch\u00EDnh x\u00E1c th\u00F4ng tin \u0111\u01B0\u1EE3c in tr\u00EAn c\u0103n c\u01B0\u1EDBc c\u00F4ng d\u00E2n.',
+            ),
+            const SizedBox(height: 16),
+            KeyedSubtree(
+              key: const ValueKey('identity-doc-number-field'),
+              child: TextFormField(
+                key: docNumberFieldKey,
+                controller: docNumberController,
+                focusNode: docNumberFocusNode,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.next,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(12),
+                ],
+                validator: validateIdentityDocumentNumber,
+                decoration: const InputDecoration(
+                  labelText: 'S\u1ED1 CCCD',
+                  hintText: '079xxxxxxxxx',
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            KeyedSubtree(
+              key: const ValueKey('identity-issued-date-field'),
+              child: TextFormField(
+                key: issuedDateFieldKey,
+                controller: issuedDateController,
+                focusNode: issuedDateFocusNode,
+                readOnly: true,
+                onTap: onPickIssuedDate,
+                validator: (_) => validateIdentityIssuedDate(issuedDate),
+                decoration: const InputDecoration(
+                  labelText: 'Ng\u00E0y c\u1EA5p',
+                  hintText: 'dd/MM/yyyy',
+                  suffixIcon: Icon(Icons.calendar_today_outlined, size: 20),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            KeyedSubtree(
+              key: const ValueKey('identity-issued-place-field'),
+              child: TextFormField(
+                key: issuedPlaceFieldKey,
+                controller: issuedPlaceController,
+                focusNode: issuedPlaceFocusNode,
+                textInputAction: TextInputAction.done,
+                minLines: 1,
+                maxLines: 2,
+                maxLength: 255,
+                maxLengthEnforcement: MaxLengthEnforcement.none,
+                validator: validateIdentityIssuedPlace,
+                decoration: const InputDecoration(
+                  labelText: 'N\u01A1i c\u1EA5p',
+                  hintText: 'Nh\u1EADp n\u01A1i c\u1EA5p tr\u00EAn CCCD',
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _PortraitPreview extends StatelessWidget {
   const _PortraitPreview();
 
@@ -988,12 +1317,18 @@ class _ReviewStepCard extends StatelessWidget {
     required this.portraitImage,
     required this.frontIdImage,
     required this.backIdImage,
+    required this.docNumber,
+    required this.issuedDate,
+    required this.issuedPlace,
     required this.onEditStep,
   });
 
   final IdentityImageFile? portraitImage;
   final IdentityImageFile? frontIdImage;
   final IdentityImageFile? backIdImage;
+  final String docNumber;
+  final DateTime? issuedDate;
+  final String issuedPlace;
   final ValueChanged<IdentityDocumentStep> onEditStep;
 
   @override
@@ -1021,6 +1356,7 @@ class _ReviewStepCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _ReviewRow(
+            key: const ValueKey('identity-review-portrait'),
             title: '\u1EA2nh ch\u00E2n dung',
             image: portraitImage,
             isPortrait: true,
@@ -1028,6 +1364,7 @@ class _ReviewStepCard extends StatelessWidget {
             onEdit: () => onEditStep(IdentityDocumentStep.portrait),
           ),
           _ReviewRow(
+            key: const ValueKey('identity-review-front-id'),
             title: 'CCCD m\u1EB7t tr\u01B0\u1EDBc',
             image: frontIdImage,
             isPortrait: false,
@@ -1035,11 +1372,19 @@ class _ReviewStepCard extends StatelessWidget {
             onEdit: () => onEditStep(IdentityDocumentStep.frontId),
           ),
           _ReviewRow(
+            key: const ValueKey('identity-review-back-id'),
             title: 'CCCD m\u1EB7t sau',
             image: backIdImage,
             isPortrait: false,
             isReady: backIdImage != null,
             onEdit: () => onEditStep(IdentityDocumentStep.backId),
+          ),
+          const SizedBox(height: 4),
+          _ReviewIdentityInfoRow(
+            docNumber: docNumber,
+            issuedDate: issuedDate,
+            issuedPlace: issuedPlace,
+            onEdit: () => onEditStep(IdentityDocumentStep.identityInfo),
           ),
         ],
       ),
@@ -1047,8 +1392,111 @@ class _ReviewStepCard extends StatelessWidget {
   }
 }
 
+class _ReviewIdentityInfoRow extends StatelessWidget {
+  const _ReviewIdentityInfoRow({
+    required this.docNumber,
+    required this.issuedDate,
+    required this.issuedPlace,
+    required this.onEdit,
+  });
+
+  final String docNumber;
+  final DateTime? issuedDate;
+  final String issuedPlace;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey('identity-review-info'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.check_circle_rounded,
+            color: AppColors.successText,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.infoSurface,
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
+            ),
+            child: const Icon(
+              Icons.badge_outlined,
+              color: AppColors.primary,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Th\u00F4ng tin CCCD',
+                  style: AppTypography.cardTitle,
+                ),
+                const SizedBox(height: 6),
+                _ReviewIdentityValue(label: 'S\u1ED1 CCCD', value: docNumber),
+                const SizedBox(height: 5),
+                _ReviewIdentityValue(
+                  label: 'Ng\u00E0y c\u1EA5p',
+                  value: issuedDate == null
+                      ? ''
+                      : formatIdentityIssuedDate(issuedDate!),
+                ),
+                const SizedBox(height: 5),
+                _ReviewIdentityValue(
+                  label: 'N\u01A1i c\u1EA5p',
+                  value: issuedPlace,
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            key: const ValueKey('identity-review-info-edit'),
+            onPressed: onEdit,
+            child: const Text('S\u1EEDa'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReviewIdentityValue extends StatelessWidget {
+  const _ReviewIdentityValue({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: AppTypography.metaLabel),
+        const SizedBox(height: 1),
+        Text(value, style: AppTypography.metaValue),
+      ],
+    );
+  }
+}
+
 class _ReviewRow extends StatelessWidget {
   const _ReviewRow({
+    super.key,
     required this.title,
     required this.image,
     required this.isPortrait,
@@ -1224,6 +1672,7 @@ class _BottomActionBar extends StatelessWidget {
             Expanded(
               flex: 2,
               child: ElevatedButton(
+                key: const ValueKey('identity-action-continue'),
                 onPressed: isEnabled ? onContinue : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.actionBlue,
