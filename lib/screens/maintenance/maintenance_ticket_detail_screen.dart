@@ -710,59 +710,70 @@ class _RepairInfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repair = detail.repairInfo;
+    final repairItems = _firstNonBlank(
+      repair?.repairItems,
+      repair?.costCategory,
+    );
+    final completionNote = repair?.completionNote;
+    final repairLines = <Widget>[
+      _RepairLine(
+        icon: Icons.task_alt_rounded,
+        label: 'Trạng thái xử lý',
+        value: detail.ticketStatusLabel.isNotEmpty
+            ? detail.ticketStatusLabel
+            : detail.status.label,
+      ),
+      if (repair?.rootCause?.trim().isNotEmpty == true)
+        _RepairLine(
+          icon: Icons.search_rounded,
+          label: 'Nguyên nhân',
+          value: repair!.rootCause!,
+        ),
+      _RepairLine(
+        icon: Icons.fact_check_outlined,
+        label: _repairItemsLabel(detail.status),
+        value: repairItems ?? 'Chưa cập nhật',
+      ),
+      _RepairLine(
+        icon: Icons.engineering_outlined,
+        label: 'Người sửa/thợ',
+        value: _fallback(repair?.workerName),
+      ),
+      if (repair?.repairmanPhone?.trim().isNotEmpty == true)
+        _RepairLine(
+          icon: Icons.phone_outlined,
+          label: 'Số điện thoại người sửa',
+          value: repair!.repairmanPhone!.trim(),
+        ),
+      _RepairLine(
+        icon: Icons.payments_outlined,
+        label: _repairCostLabel(detail.status),
+        value: repair?.totalCost == null
+            ? 'Chưa cập nhật'
+            : '${_formatCurrency(repair!.totalCost!)} VND',
+      ),
+      if (repair?.costResponsibility?.trim().isNotEmpty == true)
+        _RepairLine(
+          icon: Icons.account_balance_wallet_outlined,
+          label: 'Trách nhiệm',
+          value: maintenanceCostResponsibilityLabel(repair!.costResponsibility),
+        ),
+      if (completionNote?.trim().isNotEmpty == true &&
+          completionNote!.trim() != repairItems?.trim())
+        _RepairLine(
+          icon: Icons.notes_rounded,
+          label: 'Ghi chú hoàn tất',
+          value: completionNote,
+        ),
+    ];
     return _SectionCard(
-      title: detail.status == TicketStatus.waitingTenantDecision
-          ? 'Phương án sửa chữa'
-          : 'Kết quả xử lý',
+      title: _repairCardTitle(detail.status),
       icon: Icons.handyman_outlined,
       child: Column(
         children: [
-          _RepairLine(
-            icon: Icons.task_alt_rounded,
-            label: 'Trạng thái xử lý',
-            value: detail.ticketStatusLabel.isNotEmpty
-                ? detail.ticketStatusLabel
-                : detail.status.label,
-          ),
-          const SizedBox(height: 20),
-          _RepairLine(
-            icon: Icons.payments_outlined,
-            label: detail.status == TicketStatus.waitingTenantDecision
-                ? 'Chi phí dự kiến'
-                : 'Chi phí thực tế',
-            value: repair?.totalCost == null
-                ? 'Chưa cập nhật'
-                : '${_formatCurrency(repair!.totalCost!)} VND',
-          ),
-          const SizedBox(height: 20),
-          _RepairLine(
-            icon: Icons.fact_check_outlined,
-            label: 'Hạng mục',
-            value: _fallback(repair?.repairItems ?? repair?.costCategory),
-          ),
-          const SizedBox(height: 20),
-          _RepairLine(
-            icon: Icons.engineering_outlined,
-            label: 'Người xử lý',
-            value: _fallback(repair?.workerName),
-          ),
-          if (repair?.costResponsibility?.trim().isNotEmpty == true) ...[
-            const SizedBox(height: 20),
-            _RepairLine(
-              icon: Icons.account_balance_wallet_outlined,
-              label: 'Trách nhiệm',
-              value: maintenanceCostResponsibilityLabel(
-                repair!.costResponsibility,
-              ),
-            ),
-          ],
-          if (repair?.completionNote?.trim().isNotEmpty == true) ...[
-            const SizedBox(height: 20),
-            _RepairLine(
-              icon: Icons.notes_rounded,
-              label: 'Ghi chú hoàn tất',
-              value: repair!.completionNote!.trim(),
-            ),
+          for (var index = 0; index < repairLines.length; index++) ...[
+            repairLines[index],
+            if (index < repairLines.length - 1) const SizedBox(height: 20),
           ],
         ],
       ),
@@ -2023,11 +2034,49 @@ bool _shouldShowAfterAttachments(MaintenanceTicketDetail detail) {
 
 bool _shouldShowRepairInfo(MaintenanceTicketDetail detail) {
   return detail.hasRepairData ||
-      detail.status == TicketStatus.accepted ||
       detail.status == TicketStatus.waitingTenantDecision ||
       detail.status == TicketStatus.inProgress ||
       detail.status == TicketStatus.waitingConfirmation ||
       detail.status == TicketStatus.completed;
+}
+
+String _repairCardTitle(TicketStatus status) {
+  return switch (status) {
+    TicketStatus.accepted ||
+    TicketStatus.waitingTenantDecision => 'Phương án sửa chữa',
+    TicketStatus.inProgress => 'Thông tin sửa chữa',
+    TicketStatus.waitingConfirmation ||
+    TicketStatus.completed => 'Kết quả xử lý',
+    TicketStatus.pending ||
+    TicketStatus.rejected ||
+    TicketStatus.cancelled => 'Thông tin sửa chữa',
+  };
+}
+
+String _repairItemsLabel(TicketStatus status) {
+  return switch (status) {
+    TicketStatus.accepted ||
+    TicketStatus.waitingTenantDecision => 'Hạng mục dự kiến sửa',
+    TicketStatus.inProgress => 'Hạng mục sửa chữa',
+    TicketStatus.waitingConfirmation ||
+    TicketStatus.completed => 'Hạng mục đã sửa',
+    TicketStatus.pending ||
+    TicketStatus.rejected ||
+    TicketStatus.cancelled => 'Hạng mục sửa chữa',
+  };
+}
+
+String _repairCostLabel(TicketStatus status) {
+  return switch (status) {
+    TicketStatus.accepted ||
+    TicketStatus.waitingTenantDecision => 'Chi phí dự kiến',
+    TicketStatus.waitingConfirmation ||
+    TicketStatus.completed => 'Chi phí thực tế',
+    TicketStatus.pending ||
+    TicketStatus.inProgress ||
+    TicketStatus.rejected ||
+    TicketStatus.cancelled => 'Chi phí',
+  };
 }
 
 bool _shouldShowBillingInfo(MaintenanceTicketDetail detail) {
@@ -2045,6 +2094,15 @@ bool _shouldShowReview(MaintenanceTicketDetail detail) {
 String _fallback(String? value) {
   final trimmed = value?.trim() ?? '';
   return trimmed.isEmpty ? 'Chưa cập nhật' : trimmed;
+}
+
+String? _firstNonBlank(String? primary, String? fallback) {
+  final primaryText = primary?.trim() ?? '';
+  if (primaryText.isNotEmpty) {
+    return primary;
+  }
+  final fallbackText = fallback?.trim() ?? '';
+  return fallbackText.isEmpty ? null : fallback;
 }
 
 String _formatDateTime(DateTime date) {

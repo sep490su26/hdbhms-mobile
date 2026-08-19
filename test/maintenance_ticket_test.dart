@@ -394,6 +394,196 @@ void main() {
     expect(find.text('Đã thanh toán'), findsOneWidget);
     expect(find.text('Xem hóa đơn / Thanh toán ngay'), findsNothing);
   });
+
+  test('ticket detail preserves manager repair proposal fields', () {
+    final detail = MaintenanceTicketDetail.fromJson(
+      _ticketJson(
+        status: 'WAITING_TENANT_DECISION',
+        rootCause: 'Ống cấp bị nứt',
+        repairItems: 'Thay ống cấp mới',
+        repairmanName: 'Nguyễn Văn Sửa',
+        repairmanPhone: '0901 234 567',
+        actualCost: 250000,
+        costResponsibility: 'OWNER',
+      ),
+    );
+
+    expect(detail.repairInfo?.rootCause, 'Ống cấp bị nứt');
+    expect(detail.repairInfo?.repairItems, 'Thay ống cấp mới');
+    expect(detail.repairInfo?.workerName, 'Nguyễn Văn Sửa');
+    expect(detail.repairInfo?.repairmanPhone, '0901 234 567');
+  });
+
+  testWidgets('waiting tenant decision shows the manager repair proposal', (
+    tester,
+  ) async {
+    await _pumpTicketDetail(
+      tester,
+      _ticketJson(
+        status: 'WAITING_TENANT_DECISION',
+        rootCause: 'Ống cấp bị nứt',
+        repairItems: 'Thay ống cấp mới',
+        repairmanName: 'Nguyễn Văn Sửa',
+        repairmanPhone: '0901 234 567',
+        actualCost: 250000,
+        costResponsibility: 'OWNER',
+      ),
+    );
+
+    expect(find.text('Phương án sửa chữa'), findsOneWidget);
+    expect(find.text('Nguyên nhân'), findsOneWidget);
+    expect(find.text('Ống cấp bị nứt'), findsOneWidget);
+    expect(find.text('Hạng mục dự kiến sửa'), findsOneWidget);
+    expect(find.text('Thay ống cấp mới'), findsOneWidget);
+    expect(find.text('Người sửa/thợ'), findsOneWidget);
+    expect(find.text('Nguyễn Văn Sửa'), findsOneWidget);
+    expect(find.text('Số điện thoại người sửa'), findsOneWidget);
+    expect(find.text('0901 234 567'), findsOneWidget);
+    expect(find.text('Chi phí dự kiến'), findsOneWidget);
+    expect(find.text('Ghi chú gửi khách'), findsNothing);
+  });
+
+  testWidgets('repair proposal omits empty optional root cause and phone', (
+    tester,
+  ) async {
+    await _pumpTicketDetail(
+      tester,
+      _ticketJson(
+        status: 'WAITING_TENANT_DECISION',
+        rootCause: '',
+        repairItems: 'Thay van nước',
+        repairmanName: 'Thợ sửa',
+        repairmanPhone: '',
+        actualCost: 250000,
+      ),
+    );
+
+    expect(find.text('Nguyên nhân'), findsNothing);
+    expect(find.text('Số điện thoại người sửa'), findsNothing);
+    expect(find.text('Hạng mục dự kiến sửa'), findsOneWidget);
+    expect(find.text('Thay van nước'), findsOneWidget);
+  });
+
+  testWidgets('legacy repair item fallback is not duplicated as a note', (
+    tester,
+  ) async {
+    await _pumpTicketDetail(
+      tester,
+      _ticketJson(
+        status: 'WAITING_TENANT_DECISION',
+        repairItems: '',
+        costDescription: 'Thay van nước',
+        actualCost: 250000,
+      ),
+    );
+
+    expect(find.text('Hạng mục dự kiến sửa'), findsOneWidget);
+    expect(find.text('Thay van nước'), findsOneWidget);
+    expect(find.text('Ghi chú hoàn tất'), findsNothing);
+  });
+
+  testWidgets('accepted ticket without repair data has no empty repair card', (
+    tester,
+  ) async {
+    await _pumpTicketDetail(tester, _ticketJson(status: 'ACCEPTED'));
+
+    expect(find.text('Phương án sửa chữa'), findsNothing);
+    expect(find.text('Thông tin sửa chữa'), findsNothing);
+    expect(find.text('Kết quả xử lý'), findsNothing);
+  });
+
+  testWidgets('in-progress ticket retains cause and repair items', (
+    tester,
+  ) async {
+    await _pumpTicketDetail(
+      tester,
+      _ticketJson(
+        status: 'IN_PROGRESS',
+        rootCause: 'Ống cấp bị nứt',
+        repairItems: 'Thay ống cấp mới',
+        actualCost: 250000,
+      ),
+    );
+
+    expect(find.text('Thông tin sửa chữa'), findsOneWidget);
+    expect(find.text('Nguyên nhân'), findsOneWidget);
+    expect(find.text('Hạng mục sửa chữa'), findsOneWidget);
+    expect(find.text('Hạng mục dự kiến sửa'), findsNothing);
+  });
+
+  testWidgets('confirmation and completed tickets show repair results', (
+    tester,
+  ) async {
+    for (final status in ['WAITING_CONFIRMATION', 'COMPLETED']) {
+      await _pumpTicketDetail(
+        tester,
+        _ticketJson(
+          status: status,
+          rootCause: 'Ống cấp bị nứt',
+          repairItems: 'Thay ống cấp mới',
+          completionNote: 'Đã kiểm tra và hoàn tất.',
+          actualCost: 250000,
+        ),
+      );
+
+      expect(find.text('Kết quả xử lý'), findsOneWidget);
+      expect(find.text('Nguyên nhân'), findsOneWidget);
+      expect(find.text('Hạng mục đã sửa'), findsOneWidget);
+      expect(find.text('Ghi chú hoàn tất'), findsOneWidget);
+    }
+  });
+
+  testWidgets('long repair proposal text wraps at supported widths', (
+    tester,
+  ) async {
+    const rootCause =
+        'Đường ống cấp nước đã cũ và nên nó bị nứt tại vị trí nằm ẩn sau tủ bếp.';
+    const repairItems =
+        'Thay mới toàn bộ đoạn ống cấp nước, gia cố các điểm nối và kiểm tra áp suất sau khi hoàn tất.';
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    for (final size in const [
+      Size(320, 640),
+      Size(360, 800),
+      Size(390, 844),
+      Size(430, 932),
+    ]) {
+      await tester.binding.setSurfaceSize(size);
+      await _pumpTicketDetail(
+        tester,
+        _ticketJson(
+          status: 'WAITING_TENANT_DECISION',
+          rootCause: rootCause,
+          repairItems: repairItems,
+          actualCost: 250000,
+        ),
+      );
+      await tester.ensureVisible(find.text(rootCause));
+      expect(find.text(rootCause), findsOneWidget);
+      expect(find.text(repairItems), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
+  });
+}
+
+Future<void> _pumpTicketDetail(
+  WidgetTester tester,
+  Map<String, dynamic> ticket,
+) async {
+  final service = MaintenanceTicketService(
+    client: MockClient((request) async => _jsonResponse({'data': ticket})),
+  );
+
+  await tester.pumpWidget(
+    MaterialApp(
+      home: MaintenanceTicketDetailScreen(
+        ticketId: 1,
+        ticketService: service,
+        notificationInitialUnreadCount: 0,
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
 }
 
 MaintenanceTicketService _ticketService() {
@@ -463,6 +653,14 @@ Map<String, dynamic> _ticketJson({
   int? invoiceId,
   String? invoiceCode,
   String? lineType,
+  String? rootCause,
+  String? repairItems,
+  String? repairmanName,
+  String? repairmanPhone,
+  String? completionNote,
+  String? costDescription,
+  int? actualCost,
+  String? costResponsibility,
 }) {
   return {
     'id': id,
@@ -485,6 +683,14 @@ Map<String, dynamic> _ticketJson({
     if (invoiceId != null) 'invoice_id': invoiceId,
     if (invoiceCode != null) 'invoice_code': invoiceCode,
     if (lineType != null) 'line_type': lineType,
+    if (rootCause != null) 'rootCause': rootCause,
+    if (repairItems != null) 'repairItems': repairItems,
+    if (repairmanName != null) 'repairmanName': repairmanName,
+    if (repairmanPhone != null) 'repairmanPhone': repairmanPhone,
+    if (completionNote != null) 'completionNote': completionNote,
+    if (costDescription != null) 'costDescription': costDescription,
+    if (actualCost != null) 'actualCost': actualCost,
+    if (costResponsibility != null) 'costResponsibility': costResponsibility,
   };
 }
 
