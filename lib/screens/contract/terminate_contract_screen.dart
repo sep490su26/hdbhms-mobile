@@ -10,9 +10,6 @@ import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 import 'package:hdbhms_mobile/widgets/request_form_widgets.dart';
 
-const String _kHolderReplacementLiquidationMode =
-    'PRIMARY_LEAVES_CO_OCCUPANT_STAYS';
-
 class TerminateContractScreen extends StatefulWidget {
   const TerminateContractScreen({
     super.key,
@@ -34,9 +31,6 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
   DateTime? _liquidationDate;
   bool _submitting = false;
   String? _submitError;
-  bool _roommatesStay = false;
-  final Set<int> _stayingProfileIds = <int>{};
-  int? _replacementPrimaryTenantProfileId;
 
   @override
   void dispose() {
@@ -75,16 +69,6 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
         contractId: id,
         liquidationDate: _liquidationDate,
         reason: _reasonController.text,
-        liquidationMode: _roommatesStay
-            ? _kHolderReplacementLiquidationMode
-            : null,
-        // leavingProfileIds: _leavingProfileIds(),
-        // stayingProfileIds: _roommatesStay
-        //     ? _stayingProfileIds.toList(growable: false)
-        //     : const [],
-        // replacementPrimaryTenantProfileId: _roommatesStay
-        //     ? _replacementPrimaryTenantProfileId
-        //     : null,
       );
       if (!mounted) return;
       setState(() => _submitting = false);
@@ -111,56 +95,6 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
             : 'Không thể gửi yêu cầu. Vui lòng thử lại.';
       });
     }
-  }
-
-  List<LeaseContractOccupant> get _activeOccupants => widget.contract.occupants
-      .where(
-        (occupant) => occupant.isActive && occupant.tenantProfileId != null,
-      )
-      .toList(growable: false);
-
-  List<LeaseContractOccupant> get _activeCoOccupants => _activeOccupants
-      .where((occupant) => !occupant.isPrimary)
-      .toList(growable: false);
-
-  List<int> _leavingProfileIds() {
-    final stayingIds = _roommatesStay ? _stayingProfileIds : const <int>{};
-    return _activeOccupants
-        .where((occupant) {
-          final profileId = occupant.tenantProfileId;
-          return profileId != null && !stayingIds.contains(profileId);
-        })
-        .map((occupant) => occupant.tenantProfileId!)
-        .toList(growable: false);
-  }
-
-  void _syncStayingSelection() {
-    final validIds = _activeCoOccupants
-        .map((occupant) => occupant.tenantProfileId)
-        .whereType<int>()
-        .toSet();
-    _stayingProfileIds.removeWhere(
-      (profileId) => !validIds.contains(profileId),
-    );
-    if (_stayingProfileIds.isEmpty) {
-      _replacementPrimaryTenantProfileId = null;
-      return;
-    }
-    if (_replacementPrimaryTenantProfileId == null ||
-        !_stayingProfileIds.contains(_replacementPrimaryTenantProfileId)) {
-      _replacementPrimaryTenantProfileId = _stayingProfileIds.first;
-    }
-  }
-
-  void _toggleStayingProfile(int profileId, bool selected) {
-    setState(() {
-      if (selected) {
-        _stayingProfileIds.add(profileId);
-      } else {
-        _stayingProfileIds.remove(profileId);
-      }
-      _syncStayingSelection();
-    });
   }
 
   @override
@@ -279,24 +213,6 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
       ),
     ),
   );
-}
-
-class _OccupantSubtitle extends StatelessWidget {
-  const _OccupantSubtitle({required this.occupant});
-
-  final LeaseContractOccupant occupant;
-
-  @override
-  Widget build(BuildContext context) {
-    final details = <String>[
-      if (occupant.phone.trim().isNotEmpty) occupant.phone.trim(),
-      if (occupant.email.trim().isNotEmpty) occupant.email.trim(),
-    ];
-    if (details.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    return Text(details.join(' | '), style: AppTypography.caption);
-  }
 }
 
 DateTime _dateOnly(DateTime value) =>

@@ -1108,7 +1108,6 @@ String maintenanceBillingStatusLabel(String status, String label) {
     'DRAFT': 'Chờ phát hành',
     'ISSUED': 'Chờ thanh toán',
     'PENDING_PAYMENT': 'Chờ thanh toán',
-    'PARTIALLY_PAID': 'Thanh toán một phần',
     'PAID': 'Đã thanh toán',
     'OVERDUE': 'Quá hạn',
     'VOIDED': 'Đã hủy',
@@ -1131,7 +1130,6 @@ String _maintenanceDisplayText(String value) {
       .replaceAll('SCHEDULE_FAILED', 'Lỗi lên lịch hóa đơn')
       .replaceAll('SCHEDULED', 'Đã lên lịch gộp hóa đơn đầu tháng')
       .replaceAll('DRAFT', 'Chờ chủ trọ phát hành')
-      .replaceAll('PARTIALLY_PAID', 'Thanh toán một phần')
       .replaceAll('VOIDED', 'Đã hủy')
       .replaceAll('PENDING_PAYMENT', 'Chờ thanh toán')
       .replaceAll('PAID', 'Đã thanh toán')

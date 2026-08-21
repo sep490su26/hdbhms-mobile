@@ -19,6 +19,72 @@ class IdentityException implements Exception {
   final String message;
 }
 
+class CccdOcrIdentity {
+  const CccdOcrIdentity({
+    this.idNumber,
+    this.fullName,
+    this.dob,
+    this.gender,
+    this.address,
+    this.issuedDate,
+    this.issuedPlace,
+    this.oldIdNumber,
+  });
+
+  final String? idNumber;
+  final String? fullName;
+  final String? dob;
+  final String? gender;
+  final String? address;
+  final String? issuedDate;
+  final String? issuedPlace;
+  final String? oldIdNumber;
+
+  factory CccdOcrIdentity.fromJson(Map<String, dynamic> json) {
+    String? value(List<String> keys) {
+      for (final key in keys) {
+        final raw = json[key]?.toString().trim();
+        if (raw != null && raw.isNotEmpty) return raw;
+      }
+      return null;
+    }
+
+    return CccdOcrIdentity(
+      idNumber: value(['idNumber', 'id_number']),
+      fullName: value(['fullName', 'full_name']),
+      dob: value(['dob', 'dateOfBirth', 'date_of_birth']),
+      gender: value(['gender']),
+      address: value(['address']),
+      issuedDate: value(['issuedDate', 'issued_date']),
+      issuedPlace: value(['issuedPlace', 'issued_place']),
+      oldIdNumber: value(['oldIdNumber', 'old_id_number']),
+    );
+  }
+
+  bool get hasAnyValue => [
+    idNumber,
+    fullName,
+    dob,
+    gender,
+    address,
+    issuedDate,
+    issuedPlace,
+    oldIdNumber,
+  ].any((value) => value?.isNotEmpty == true);
+}
+
+class CccdOcrResult {
+  const CccdOcrResult({
+    required this.success,
+    required this.message,
+    this.extractedIdentity,
+  });
+
+  final bool success;
+  final String message;
+  final CccdOcrIdentity? extractedIdentity;
+}
+
 class IdentityUploadResult {
   const IdentityUploadResult({
     required this.identityCompleted,
@@ -46,6 +112,69 @@ class IdentityService {
 
   final http.Client? _client;
   static const _timeout = Duration(seconds: 30);
+
+  Future<CccdOcrResult> extractCccd({
+    required IdentityImageFile frontImage,
+    required IdentityImageFile backImage,
+  }) async {
+    // Avoid redirecting to login when the local session is unavailable.
+    if (_client == null) {
+      SharedPreferences prefs;
+      try {
+        prefs = await SharedPreferences.getInstance().timeout(
+          const Duration(seconds: 1),
+        );
+      } on TimeoutException {
+        return const CccdOcrResult(success: false, message: '');
+      } on Exception {
+        return const CccdOcrResult(success: false, message: '');
+      }
+      final hasToken =
+          prefs.getString(AuthService.accessTokenKey)?.isNotEmpty == true;
+      final hasSession =
+          prefs.getString(AuthService.sessionIdKey)?.isNotEmpty == true;
+      if (!hasToken && !hasSession) {
+        return const CccdOcrResult(success: false, message: '');
+      }
+    }
+
+    final client = _client ?? AuthenticatedClient();
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiConfig.baseUrl}/identity-verification/cccd/extract'),
+      );
+      request.files.add(await _multipartFile('frontImage', frontImage));
+      request.files.add(await _multipartFile('backImage', backImage));
+
+      final streamedResponse = await client.send(request).timeout(_timeout);
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final body = _responsePayload(_decodeBody(response.body));
+        final rawIdentity = body['extractedIdentity'];
+        return CccdOcrResult(
+          success: body['success'] == true,
+          message: body['message']?.toString() ?? '',
+          extractedIdentity: rawIdentity is Map
+              ? CccdOcrIdentity.fromJson(Map<String, dynamic>.from(rawIdentity))
+              : null,
+        );
+      }
+
+      throw IdentityException(_messageForOcrError(response));
+    } on TimeoutException {
+      throw const IdentityException('Quét OCR quá lâu, vui lòng thử lại');
+    } on http.ClientException {
+      throw const IdentityException('Không kết nối được dịch vụ OCR');
+    } on FormatException {
+      throw const IdentityException('Phản hồi OCR không hợp lệ');
+    } finally {
+      if (_client == null) {
+        client.close();
+      }
+    }
+  }
 
   Future<IdentityUploadResult> uploadIdentityVerification({
     required int tenantId,
@@ -252,6 +381,16 @@ class IdentityService {
           : 'Vui lòng tải lên đủ ảnh chân dung và 2 mặt CCCD';
     }
     return 'Tải lên thất bại, vui lòng thử lại';
+  }
+
+  String _messageForOcrError(http.Response response) {
+    if (response.statusCode == 401) {
+      return 'Phiên đăng nhập không hợp lệ';
+    }
+    if (response.statusCode == 422) {
+      return 'Ảnh CCCD không hợp lệ hoặc không đủ rõ để quét OCR';
+    }
+    return 'Không thể kết nối dịch vụ OCR';
   }
 
   String _readBackendMessage(String body) {

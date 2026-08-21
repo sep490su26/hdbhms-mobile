@@ -65,7 +65,7 @@ class TenantInvoice {
   final String? priceDifferenceSettlementType;
   final bool hasOpenMeterReadingReview;
 
-  bool get isPaid => status.toUpperCase() == 'PAID' || remainingAmount <= 0;
+  bool get isPaid => remainingAmount <= 0;
 
   List<TenantInvoiceLine> get utilityMeterLines => lines
       .where(
@@ -82,7 +82,6 @@ class TenantInvoice {
   bool get isTenantVisible {
     final normalized = status.toUpperCase();
     return normalized == 'ISSUED' ||
-        normalized == 'PARTIALLY_PAID' ||
         normalized == 'PAID' ||
         normalized == 'OVERDUE';
   }
@@ -90,7 +89,6 @@ class TenantInvoice {
   bool get canPay {
     final normalized = status.toUpperCase();
     return normalized == 'ISSUED' ||
-        normalized == 'PARTIALLY_PAID' ||
         normalized == 'OVERDUE';
   }
 

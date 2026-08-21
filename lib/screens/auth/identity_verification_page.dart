@@ -115,6 +115,9 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
   late final FocusNode _emailFocusNode;
   DateTime? _issuedDate;
   bool _isSubmitting = false;
+  bool _isExtractingOcr = false;
+  bool _ocrApplied = false;
+  String? _ocrMessage;
 
   bool get _hasAllImages =>
       _portraitImage != null && _frontIdImage != null && _backIdImage != null;
@@ -127,7 +130,7 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
       validateProfileEmail(_emailController.text) == null;
 
   bool get _canContinue {
-    if (_loadingStep != null || _isSubmitting) {
+    if (_loadingStep != null || _isSubmitting || _isExtractingOcr) {
       return false;
     }
     return switch (_currentStep) {
@@ -216,7 +219,7 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
                 _BottomActionBar(
                   showBackButton: _currentStep != IdentityDocumentStep.portrait,
                   isEnabled: _canContinue,
-                  isLoading: _isSubmitting,
+                  isLoading: _isSubmitting || _isExtractingOcr,
                   actionLabel: _currentStep == IdentityDocumentStep.confirm
                       ? 'Xác nhận'
                       : 'Tiếp tục',
@@ -309,6 +312,8 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
           permanentAddressFocusNode: _permanentAddressFocusNode,
           emailFocusNode: _emailFocusNode,
           issuedDate: _issuedDate,
+          ocrApplied: _ocrApplied,
+          ocrMessage: _ocrMessage,
           onPickIssuedDate: _pickIssuedDate,
         );
       case IdentityDocumentStep.confirm:
@@ -383,8 +388,12 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
             _portraitImage = image;
           case IdentityDocumentStep.frontId:
             _frontIdImage = image;
+            _ocrApplied = false;
+            _ocrMessage = null;
           case IdentityDocumentStep.backId:
             _backIdImage = image;
+            _ocrApplied = false;
+            _ocrMessage = null;
           case IdentityDocumentStep.identityInfo:
           case IdentityDocumentStep.confirm:
             break;
@@ -435,6 +444,10 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
     }
 
     if (_currentStep != IdentityDocumentStep.confirm) {
+      if (_currentStep == IdentityDocumentStep.backId) {
+        await _extractCccdInfo();
+        if (!mounted) return;
+      }
       setState(() {
         _currentStep = _nextStepAfterCurrent();
       });
@@ -521,6 +534,86 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
         });
       }
     }
+  }
+
+  Future<void> _extractCccdInfo() async {
+    final frontImage = _frontIdImage;
+    final backImage = _backIdImage;
+    if (frontImage == null || backImage == null) return;
+
+    setState(() {
+      _isExtractingOcr = true;
+      _ocrApplied = false;
+      _ocrMessage = null;
+    });
+
+    try {
+      final result = await _identityService.extractCccd(
+        frontImage: frontImage,
+        backImage: backImage,
+      );
+      final identity = result.extractedIdentity;
+      if (identity == null || !identity.hasAnyValue) {
+        _ocrApplied = false;
+        _ocrMessage =
+            '\u004B\u0068\u00F4\u006E\u0067 \u0074\u0068\u1EC3 \u0074\u1EF1 \u0111\u1ECD\u0063 CCCD, vui l\u00F2\u006E\u0067 nh\u1EAD\u0070 th\u1EE7 c\u00F4\u006E\u0067';
+        return;
+      }
+
+      _applyCccdOcrIdentity(identity);
+      _ocrApplied = true;
+      _ocrMessage = null;
+    } on IdentityException catch (error) {
+      _ocrApplied = false;
+      _ocrMessage = '${error.message}. Vui lòng nhập thủ công.';
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isExtractingOcr = false;
+        });
+      }
+    }
+  }
+
+  void _applyCccdOcrIdentity(CccdOcrIdentity identity) {
+    if (identity.idNumber != null) {
+      _docNumberController.text = identity.idNumber!;
+    }
+
+    final issuedDate = _parseOcrDate(identity.issuedDate);
+    if (issuedDate != null) {
+      _issuedDate = issuedDate;
+      _issuedDateController.text = formatIdentityIssuedDate(issuedDate);
+    }
+
+    if (identity.issuedPlace != null) {
+      _issuedPlaceController.text = identity.issuedPlace!;
+    }
+  }
+
+  DateTime? _parseOcrDate(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) return null;
+
+    final isoDate = DateTime.tryParse(text);
+    if (isoDate != null) {
+      return DateTime(isoDate.year, isoDate.month, isoDate.day);
+    }
+
+    final match = RegExp(
+      r'^(\d{1,2})[/.\\-](\d{1,2})[/.\\-](\d{4})$',
+    ).firstMatch(text);
+    if (match == null) return null;
+
+    final day = int.tryParse(match.group(1)!);
+    final month = int.tryParse(match.group(2)!);
+    final year = int.tryParse(match.group(3)!);
+    if (day == null || month == null || year == null) return null;
+
+    final parsed = DateTime(year, month, day);
+    return parsed.year == year && parsed.month == month && parsed.day == day
+        ? parsed
+        : null;
   }
 
   IdentityDocumentStep _nextStepAfterCurrent() {
@@ -1079,6 +1172,8 @@ class _IdentityInfoStepCard extends StatelessWidget {
     required this.permanentAddressFocusNode,
     required this.emailFocusNode,
     required this.issuedDate,
+    required this.ocrApplied,
+    required this.ocrMessage,
     required this.onPickIssuedDate,
   });
 
@@ -1099,6 +1194,8 @@ class _IdentityInfoStepCard extends StatelessWidget {
   final FocusNode permanentAddressFocusNode;
   final FocusNode emailFocusNode;
   final DateTime? issuedDate;
+  final bool ocrApplied;
+  final String? ocrMessage;
   final VoidCallback onPickIssuedDate;
 
   @override
@@ -1141,6 +1238,78 @@ class _IdentityInfoStepCard extends StatelessWidget {
               instruction:
                   'Nh\u1EADp ch\u00EDnh x\u00E1c th\u00F4ng tin \u0111\u01B0\u1EE3c in tr\u00EAn c\u0103n c\u01B0\u1EDBc c\u00F4ng d\u00E2n.',
             ),
+            if (ocrApplied) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.successSurface,
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                  border: Border.all(
+                    color: AppColors.success.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.auto_awesome_rounded,
+                      color: AppColors.successText,
+                      size: 18,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '\u0110\u00E3 t\u1EF1 \u0111\u1ED9ng \u0111i\u1EC1n th\u00F4ng tin t\u1EEB OCR. Vui l\u00F2ng ki\u1EC3m tra v\u00E0 ch\u1EC9nh s\u1EEDa n\u1EBFu c\u1EA7n.',
+                        style: TextStyle(
+                          color: AppColors.successText,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          height: 18 / 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (ocrMessage != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.warningSurface,
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                  border: Border.all(
+                    color: AppColors.warning.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.info_outline_rounded,
+                      color: AppColors.warningText,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        ocrMessage!,
+                        style: const TextStyle(
+                          color: AppColors.warningText,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          height: 18 / 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             KeyedSubtree(
               key: const ValueKey('identity-doc-number-field'),

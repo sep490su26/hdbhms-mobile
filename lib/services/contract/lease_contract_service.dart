@@ -458,6 +458,7 @@ class LeaseContractService {
     required int contractId,
     DateTime? liquidationDate,
     String reason = '',
+    // Kept for source compatibility with older clients; the current UI does not send these.
     String? liquidationMode,
     List<int> leavingProfileIds = const [],
     List<int> stayingProfileIds = const [],
@@ -681,6 +682,12 @@ class LeaseContractService {
     }
     if (errorCode == 'CONTRACT_OUTSTANDING_DEBT') {
       return raw;
+    }
+    if (errorCode == 'LEASE_ROOM_PREBOOKED_BY_OTHER_TENANT' ||
+        errorCode == 'LEASE_RENEWAL_ROOM_RESERVED_BY_OTHER_TENANT' ||
+        raw.contains('LEASE_ROOM_PREBOOKED_BY_OTHER_TENANT') ||
+        raw.contains('LEASE_RENEWAL_ROOM_RESERVED_BY_OTHER_TENANT')) {
+      return 'Phòng đã có khách khác đặt cọc/giữ chỗ, không thể gia hạn. Vui lòng liên hệ quản lý.';
     }
     if (response.statusCode == 409 || raw.contains('dang cho duyet')) {
       return 'Hợp đồng đã có yêu cầu đang chờ duyệt.';

@@ -146,11 +146,15 @@ class _LeaseContractScreenState extends State<LeaseContractScreen> {
   }
 
   Future<void> _refresh() async {
+    await _refreshContract();
+  }
+
+  Future<LeaseContract> _refreshContract() async {
     final future = _loadContract();
     setState(() {
       _contractFuture = future;
     });
-    await future;
+    return future;
   }
 
   @override
@@ -198,6 +202,7 @@ class _LeaseContractScreenState extends State<LeaseContractScreen> {
                       contractService: widget.contractService,
                       resolvedMaxOccupants: _resolvedMaxOccupants,
                       onChanged: _refresh,
+                      onReload: _refreshContract,
                     ),
                   );
                 },
@@ -306,12 +311,14 @@ class _ContractContent extends StatelessWidget {
     required this.contractService,
     required this.resolvedMaxOccupants,
     required this.onChanged,
+    required this.onReload,
   });
 
   final LeaseContract contract;
   final LeaseContractService contractService;
   final int? resolvedMaxOccupants;
   final Future<void> Function() onChanged;
+  final Future<LeaseContract> Function() onReload;
 
   @override
   Widget build(BuildContext context) {
@@ -340,6 +347,7 @@ class _ContractContent extends StatelessWidget {
             contractService: contractService,
             resolvedMaxOccupants: resolvedMaxOccupants,
             onChanged: onChanged,
+            onReload: onReload,
           ),
         ],
       ),
@@ -353,12 +361,14 @@ class _CreateRequestGrid extends StatelessWidget {
     required this.contractService,
     required this.resolvedMaxOccupants,
     required this.onChanged,
+    required this.onReload,
   });
 
   final LeaseContract contract;
   final LeaseContractService contractService;
   final int? resolvedMaxOccupants;
   final Future<void> Function() onChanged;
+  final Future<LeaseContract> Function() onReload;
 
   bool get _isCoOccupant =>
       contract.roleInContract.trim().toUpperCase() == 'CO_OCCUPANT';
@@ -439,6 +449,7 @@ class _CreateRequestGrid extends StatelessWidget {
     }
   }
 
+  // ignore: unused_element
   Future<void> _submitOccupantIntention(
     BuildContext context,
     String intention,
@@ -519,10 +530,44 @@ class _CreateRequestGrid extends StatelessWidget {
     }
 
     if (type == TenantRequestType.renewContract) {
+      LeaseContract latestContract;
+      try {
+        latestContract = await onReload();
+      } on LeaseContractException catch (error) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+        return;
+      } catch (_) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Không thể kiểm tra trạng thái gia hạn. Vui lòng thử lại.',
+            ),
+          ),
+        );
+        return;
+      }
+      if (!context.mounted) return;
+      if (!latestContract.canRenew) {
+        final latestReason = latestContract.canRenewBlockedReason.trim();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              latestReason.isEmpty
+                  ? 'Hợp đồng hiện không đủ điều kiện gia hạn.'
+                  : latestReason,
+            ),
+          ),
+        );
+        return;
+      }
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => RenewContractRequestScreen(
-            contract: contract,
+            contract: latestContract,
             contractService: contractService,
           ),
         ),
@@ -630,7 +675,8 @@ class _CreateRequestGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (_isCoOccupant) {
-      final currentIntention = switch (contract.occupantIntention) {
+      return const SizedBox.shrink();
+      /* final currentIntention = switch (contract.occupantIntention) {
         'FOLLOW_PRIMARY_MOVE_OUT' => 'Rời phòng theo người đứng tên',
         'JOIN_RENEWAL' => 'Tiếp tục ở nếu tái ký',
         _ => 'Chưa phản hồi',
@@ -709,13 +755,21 @@ class _CreateRequestGrid extends StatelessWidget {
             ],
           ],
         ),
-      );
+      ); */
     }
 
     final blockedReasons = <String>[];
     void addBlockedReason(String reason) {
       final normalized = reason.trim();
-      if (normalized.isNotEmpty && !blockedReasons.contains(normalized)) {
+      final normalizedLower = normalized.toLowerCase();
+      final isLegacyOccupantRenewalMessage =
+          normalizedLower.contains(
+            'hợp đồng phòng cũ không ở trạng thái đang hiệu lực',
+          ) &&
+          normalizedLower.contains('người yêu cầu không phải là người ở');
+      if (normalized.isNotEmpty &&
+          !isLegacyOccupantRenewalMessage &&
+          !blockedReasons.contains(normalized)) {
         blockedReasons.add(normalized);
       }
     }
