@@ -245,11 +245,16 @@ class _MaintenanceTicketListScreenState
       trailing: IconButton(
         onPressed: () => Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => const NotificationListScreen(),
+            builder: (context) => NotificationListScreen(
+              roomId: _activeRoomId,
+              roomCode: _activeRoomCode,
+            ),
           ),
         ),
         icon: AppNotificationBell(
           initialUnreadCount: widget.notificationInitialUnreadCount,
+          roomId: _activeRoomId,
+          roomCode: _activeRoomCode,
         ),
         tooltip: 'Thông báo',
       ),

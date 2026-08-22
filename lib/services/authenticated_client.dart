@@ -22,12 +22,13 @@ class AuthenticatedClient extends http.BaseClient {
     final token = await authService.accessToken;
     final sessionId = await _getSessionId();
 
-    if (token == null && sessionId == null) {
+    if ((token == null || token.isEmpty) &&
+        (sessionId == null || sessionId.isEmpty)) {
       _redirectToLogin();
       return _empty401Response(request);
     }
 
-    if (token != null) {
+    if (token != null && token.isNotEmpty) {
       request.headers['Authorization'] = 'Bearer $token';
     }
     request.headers['Accept'] = 'application/json';
@@ -77,10 +78,21 @@ class AuthenticatedClient extends http.BaseClient {
       }
 
       try {
-        final newLoginData = await authService.refreshToken();
+        // Another request may have refreshed the token while this request was
+        // in flight. Reuse it before starting another refresh.
+        final currentToken = await authService.accessToken;
+        final newToken =
+            currentToken != null &&
+                currentToken.isNotEmpty &&
+                currentToken != token
+            ? currentToken
+            : (await authService.refreshToken()).token;
+        if (newToken.isEmpty) {
+          throw const SessionExpiredException();
+        }
 
         final newRequest = _cloneRequest(request);
-        newRequest.headers['Authorization'] = 'Bearer ${newLoginData.token}';
+        newRequest.headers['Authorization'] = 'Bearer $newToken';
 
         debugPrint('🔄 [HTTP RETRY] ${newRequest.method} ${newRequest.url}');
         return await _inner.send(newRequest);

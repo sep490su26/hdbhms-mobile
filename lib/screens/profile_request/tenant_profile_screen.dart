@@ -726,7 +726,7 @@ class _TenantProfileImageState extends State<_TenantProfileImage> {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(AuthService.accessTokenKey);
     final response = await http.get(
-      Uri.parse(widget.imageUrl),
+      Uri.parse(_resolveImageUrl(widget.imageUrl)),
       headers: {
         if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
       },
@@ -1151,11 +1151,10 @@ class _VehicleImage extends StatelessWidget {
           aspectRatio: 16 / 9,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(AppColors.radiusSm),
-            child: Image.network(
-              imageUrl,
+            child: _AuthenticatedImage(
+              imageUrl: imageUrl,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  const _EmptyImage(text: 'Không tải được ảnh phương tiện'),
+              error: const _EmptyImage(text: 'Không tải được ảnh phương tiện'),
             ),
           ),
         ),
@@ -1210,16 +1209,75 @@ class VehicleImagePreviewPage extends StatelessWidget {
         child: InteractiveViewer(
           minScale: 0.8,
           maxScale: 4,
-          child: Image.network(
-            imageUrl,
+          child: _AuthenticatedImage(
+            imageUrl: imageUrl,
             fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) => const Text(
+            error: const Text(
               'Không tải được ảnh',
               style: TextStyle(color: Colors.white),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _AuthenticatedImage extends StatefulWidget {
+  const _AuthenticatedImage({
+    required this.imageUrl,
+    required this.fit,
+    required this.error,
+  });
+
+  final String imageUrl;
+  final BoxFit fit;
+  final Widget error;
+
+  @override
+  State<_AuthenticatedImage> createState() => _AuthenticatedImageState();
+}
+
+class _AuthenticatedImageState extends State<_AuthenticatedImage> {
+  late Future<Uint8List> _imageFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _imageFuture = _loadImage();
+  }
+
+  Future<Uint8List> _loadImage() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(AuthService.accessTokenKey);
+    final response = await http.get(
+      Uri.parse(_resolveImageUrl(widget.imageUrl)),
+      headers: {
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode != 200) {
+      throw const FormatException('Cannot load image');
+    }
+    return response.bodyBytes;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Uint8List>(
+      future: _imageFuture,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) return widget.error;
+        if (!snapshot.hasData) {
+          return const Center(
+            child: CircularProgressIndicator(
+              color: AppColors.deepBlue,
+              strokeWidth: 2,
+            ),
+          );
+        }
+        return Image.memory(snapshot.data!, fit: widget.fit);
+      },
     );
   }
 }

@@ -25,6 +25,9 @@ class AuthService {
 
   final http.Client? _client;
 
+  // Share one refresh request across all clients so token rotation cannot race.
+  static Future<LoginResponse>? _refreshInFlight;
+
   static const _timeout = Duration(seconds: 20);
   static const accessTokenKey = 'access_token';
   static const sessionIdKey = 'session_id';
@@ -103,7 +106,22 @@ class AuthService {
     return _fetchOnboardingWithToken(token);
   }
 
-  Future<LoginResponse> refreshToken() async {
+  Future<LoginResponse> refreshToken() {
+    final inFlight = _refreshInFlight;
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    final refreshFuture = _refreshTokenInternal();
+    _refreshInFlight = refreshFuture;
+    return refreshFuture.whenComplete(() {
+      if (identical(_refreshInFlight, refreshFuture)) {
+        _refreshInFlight = null;
+      }
+    });
+  }
+
+  Future<LoginResponse> _refreshTokenInternal() async {
     final prefs = await SharedPreferences.getInstance();
     final sessionId = prefs.getString(sessionIdKey);
 
@@ -116,7 +134,7 @@ class AuthService {
       final response = await client
           .post(
             Uri.parse('${ApiConfig.baseUrl}/auth/refresh'),
-            headers: _headers,
+            headers: {..._headers, 'Cookie': 'JSESSIONID=$sessionId'},
             body: jsonEncode({'sessionId': sessionId}),
           )
           .timeout(_timeout);
@@ -130,7 +148,26 @@ class AuthService {
         if (apiResponse.data == null) {
           throw const AuthException('Dữ liệu refresh không hợp lệ');
         }
-        final loginResponse = apiResponse.data!;
+        final responseData = apiResponse.data!;
+        if (responseData.token.isEmpty) {
+          throw const AuthException('Invalid refresh response');
+        }
+
+        // Refresh responses may omit mobile context fields.
+        final loginResponse = LoginResponse(
+          token: responseData.token,
+          sessionId: responseData.sessionId.isNotEmpty
+              ? responseData.sessionId
+              : sessionId,
+          role: responseData.role.isNotEmpty
+              ? responseData.role
+              : (prefs.getString(roleKey) ?? ''),
+          authorized: responseData.authorized,
+          mustChangePassword: responseData.mustChangePassword,
+          tenantId: responseData.tenantId ?? prefs.getInt(tenantIdKey),
+          propertyId: responseData.propertyId ?? prefs.getInt(propertyIdKey),
+          onboarding: responseData.onboarding,
+        );
         await _saveLoginData(loginResponse);
         return loginResponse;
       }

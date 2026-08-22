@@ -80,7 +80,7 @@ class _DepositContractDetailScreenState
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: AppScreenShell(
-          header: const _DetailHeader(),
+          header: _DetailHeader(roomCode: _roomCode),
           child: FutureBuilder<DepositContract>(
             future: _depositFuture,
             builder: (context, snapshot) {
@@ -127,7 +127,9 @@ class _DepositContractDetailScreenState
 // ── Header ──
 
 class _DetailHeader extends StatelessWidget {
-  const _DetailHeader();
+  const _DetailHeader({this.roomCode = ''});
+
+  final String roomCode;
 
   @override
   Widget build(BuildContext context) {
@@ -159,14 +161,16 @@ class _DetailHeader extends StatelessWidget {
           IconButton(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => const NotificationListScreen(),
+                builder: (context) =>
+                    NotificationListScreen(roomCode: roomCode),
               ),
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const AppNotificationBell(
+            icon: AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: 24,
+              roomCode: roomCode,
             ),
             tooltip: 'Thông báo',
           ),

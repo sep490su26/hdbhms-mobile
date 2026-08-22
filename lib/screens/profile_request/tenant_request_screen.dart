@@ -786,14 +786,19 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
           IconButton(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => const NotificationListScreen(),
+                builder: (context) => NotificationListScreen(
+                  roomId: _activeRoomId,
+                  roomCode: _activeRoomCode,
+                ),
               ),
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: const AppNotificationBell(
+            icon: AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: 24,
+              roomId: _activeRoomId,
+              roomCode: _activeRoomCode,
             ),
             tooltip: 'Thông báo',
           ),
@@ -809,10 +814,16 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
       trailing: IconButton(
         onPressed: () => Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => const NotificationListScreen(),
+            builder: (context) => NotificationListScreen(
+              roomId: _activeRoomId,
+              roomCode: _activeRoomCode,
+            ),
           ),
         ),
-        icon: const AppNotificationBell(),
+        icon: AppNotificationBell(
+          roomId: _activeRoomId,
+          roomCode: _activeRoomCode,
+        ),
         tooltip: 'Thông báo',
       ),
     );

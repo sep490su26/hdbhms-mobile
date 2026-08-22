@@ -7,6 +7,7 @@ import 'package:hdbhms_mobile/config/api_config.dart';
 import 'package:hdbhms_mobile/models/contract/lease_contract_model.dart';
 import 'package:hdbhms_mobile/models/profile_request/tenant_request_model.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
+import 'package:hdbhms_mobile/services/notification/notification_service.dart';
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/utils/currency_formatter.dart';
@@ -53,18 +54,27 @@ DateTime _oneMonthBefore(DateTime date) {
   return DateTime(year, month, day);
 }
 
+bool _isOutstandingDebtReason(String? reason) {
+  final value = reason?.trim().toLowerCase() ?? '';
+  return value.contains('công nợ') ||
+      value.contains('chưa thanh toán') ||
+      value.contains('outstanding debt');
+}
+
 class LeaseContractScreen extends StatefulWidget {
   const LeaseContractScreen({
     super.key,
     this.contractId,
     this.contractService = const LeaseContractService(),
     this.notificationInitialUnreadCount,
+    this.notificationService = const NotificationService(),
     this.roomTransferService = const RoomTransferService(),
   });
 
   final int? contractId;
   final LeaseContractService contractService;
   final int? notificationInitialUnreadCount;
+  final NotificationService notificationService;
   final RoomTransferService roomTransferService;
 
   @override
@@ -83,11 +93,15 @@ class _LeaseContractScreenState extends State<LeaseContractScreen> {
     _contractFuture = _loadContract();
   }
 
-  Future<LeaseContract> _loadContract() async {
+  Future<LeaseContract> _loadLatestContract() async {
     final id = widget.contractId;
-    final contract = id != null
-        ? await widget.contractService.getContractById(id)
-        : await widget.contractService.getMyActiveContract();
+    return id != null
+        ? widget.contractService.getContractById(id)
+        : widget.contractService.getMyActiveContract();
+  }
+
+  Future<LeaseContract> _loadContract() async {
+    final contract = await _loadLatestContract();
     await _resolveRoomCapacity(contract);
     _syncRoomScope(contract);
     return contract;
@@ -170,8 +184,11 @@ class _LeaseContractScreenState extends State<LeaseContractScreen> {
             return AppScreenShell(
               header: _ContractHeader(
                 contractId: contractId,
+                roomId: _roomId,
+                roomCode: _roomCode,
                 notificationInitialUnreadCount:
                     widget.notificationInitialUnreadCount,
+                notificationService: widget.notificationService,
               ),
               child: Builder(
                 builder: (context) {
@@ -202,7 +219,9 @@ class _LeaseContractScreenState extends State<LeaseContractScreen> {
                       contractService: widget.contractService,
                       resolvedMaxOccupants: _resolvedMaxOccupants,
                       onChanged: _refresh,
-                      onReload: _refreshContract,
+                      // Fetch the latest state without replacing the current
+                      // page while an action is waiting for the response.
+                      onReload: _loadLatestContract,
                     ),
                   );
                 },
@@ -220,10 +239,19 @@ class _LeaseContractScreenState extends State<LeaseContractScreen> {
 }
 
 class _ContractHeader extends StatelessWidget {
-  const _ContractHeader({this.contractId, this.notificationInitialUnreadCount});
+  const _ContractHeader({
+    this.contractId,
+    this.roomId,
+    this.roomCode = '',
+    this.notificationInitialUnreadCount,
+    this.notificationService = const NotificationService(),
+  });
 
   final int? contractId;
+  final int? roomId;
+  final String roomCode;
   final int? notificationInitialUnreadCount;
+  final NotificationService notificationService;
 
   @override
   Widget build(BuildContext context) {
@@ -287,7 +315,8 @@ class _ContractHeader extends StatelessWidget {
           IconButton(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => const NotificationListScreen(),
+                builder: (context) =>
+                    NotificationListScreen(roomId: roomId, roomCode: roomCode),
               ),
             ),
             padding: EdgeInsets.zero,
@@ -296,6 +325,9 @@ class _ContractHeader extends StatelessWidget {
               color: AppColors.topBarIconColor,
               size: 24,
               initialUnreadCount: notificationInitialUnreadCount,
+              roomId: roomId,
+              roomCode: roomCode,
+              notificationService: notificationService,
             ),
             tooltip: 'Thông báo',
           ),
@@ -408,6 +440,13 @@ class _CreateRequestGrid extends StatelessWidget {
     fallback: 'Hợp đồng hiện không đủ điều kiện thanh lý.',
   );
 
+  bool get _canAttemptLiquidation =>
+      contract.canLiquidate ||
+      _isOutstandingDebtReason(_liquidationDisabledReason);
+
+  String? get _liquidationActionDisabledReason =>
+      _canAttemptLiquidation ? null : _liquidationDisabledReason;
+
   bool get _canAddRoommate => contract.canAddCoOccupant && !_isRoomFull;
 
   String? get _addRoommateDisabledReason {
@@ -482,6 +521,61 @@ class _CreateRequestGrid extends StatelessWidget {
     final contractId = contract.id;
     if (contractId == null) return;
 
+    if (type == TenantRequestType.terminateContract) {
+      LeaseContract latestContract;
+      try {
+        latestContract = await onReload();
+      } on LeaseContractException catch (error) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+        return;
+      } catch (_) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Không thể kiểm tra công nợ. Vui lòng thử lại.'),
+          ),
+        );
+        return;
+      }
+
+      final latestBlockedReason = _disabledReason(
+        enabled: latestContract.canLiquidate,
+        reason: latestContract.canLiquidateBlockedReason,
+        fallback: 'Hợp đồng hiện không đủ điều kiện thanh lý.',
+      );
+      if (latestBlockedReason != null) {
+        if (_isOutstandingDebtReason(latestBlockedReason)) {
+          if (!context.mounted) return;
+          await _showOutstandingDebtDialog(context, latestBlockedReason);
+        } else if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(latestBlockedReason)));
+        }
+        return;
+      }
+
+      if (!context.mounted) return;
+      final confirmed = await _confirmOpenTerminationForm(
+        context,
+        latestContract,
+      );
+      if (!context.mounted || !confirmed) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => TerminateContractScreen(
+            contract: latestContract,
+            contractService: contractService,
+          ),
+        ),
+      );
+      if (context.mounted) await onChanged();
+      return;
+    }
+
     final blockedReason = _blockedReasonFor(type);
     if (blockedReason != null) {
       ScaffoldMessenger.of(
@@ -501,21 +595,6 @@ class _CreateRequestGrid extends StatelessWidget {
           ),
         ),
       );
-      return;
-    }
-
-    if (type == TenantRequestType.terminateContract) {
-      final confirmed = await _confirmOpenTerminationForm(context);
-      if (!context.mounted || !confirmed) return;
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => TerminateContractScreen(
-            contract: contract,
-            contractService: contractService,
-          ),
-        ),
-      );
-      if (context.mounted) await onChanged();
       return;
     }
 
@@ -576,8 +655,15 @@ class _CreateRequestGrid extends StatelessWidget {
     }
   }
 
-  Future<bool> _confirmOpenTerminationForm(BuildContext context) async {
-    if (!_shouldWarnDepositForfeiture) return true;
+  Future<bool> _confirmOpenTerminationForm(
+    BuildContext context,
+    LeaseContract candidate,
+  ) async {
+    final shouldWarn = shouldWarnDepositForfeiture(
+      endDate: candidate.endDate,
+      tenantIntention: candidate.tenantIntention,
+    );
+    if (!shouldWarn) return true;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -665,10 +751,27 @@ class _CreateRequestGrid extends StatelessWidget {
     return confirmed == true;
   }
 
-  bool get _shouldWarnDepositForfeiture {
-    return shouldWarnDepositForfeiture(
-      endDate: contract.endDate,
-      tenantIntention: contract.tenantIntention,
+  Future<void> _showOutstandingDebtDialog(
+    BuildContext context,
+    String reason,
+  ) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        title: const Text('Còn nợ chưa thanh toán'),
+        content: Text(
+          '$reason\n\nVui lòng thanh toán hết công nợ trước khi gửi yêu cầu thanh lý.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Đã hiểu'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -838,9 +941,9 @@ class _CreateRequestGrid extends StatelessWidget {
                 icon: Icons.cancel_outlined,
                 label: 'Thanh lý hợp đồng',
                 accentColor: AppColors.actionRose,
-                enabled: contract.canLiquidate,
-                disabledReason: _liquidationDisabledReason,
-                onTap: contract.canLiquidate
+                enabled: _canAttemptLiquidation,
+                disabledReason: _liquidationActionDisabledReason,
+                onTap: _canAttemptLiquidation
                     ? () => _openCreateForm(
                         context,
                         TenantRequestType.terminateContract,

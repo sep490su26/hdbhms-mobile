@@ -71,6 +71,8 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
         child: AppScreenShell(
           header: _BillHeader(
             onOpenHistory: _openPaymentHistory,
+            roomId: _activeRoomId,
+            roomCode: _activeRoomCode,
             notificationInitialUnreadCount:
                 widget.notificationInitialUnreadCount,
           ),
@@ -525,10 +527,14 @@ class _BillFilterBar extends StatelessWidget {
 class _BillHeader extends StatelessWidget {
   const _BillHeader({
     required this.onOpenHistory,
+    this.roomId,
+    this.roomCode = '',
     this.notificationInitialUnreadCount,
   });
 
   final VoidCallback onOpenHistory;
+  final int? roomId;
+  final String roomCode;
   final int? notificationInitialUnreadCount;
 
   @override
@@ -554,11 +560,14 @@ class _BillHeader extends StatelessWidget {
           IconButton(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => const NotificationListScreen(),
+                builder: (context) =>
+                    NotificationListScreen(roomId: roomId, roomCode: roomCode),
               ),
             ),
             icon: AppNotificationBell(
               initialUnreadCount: notificationInitialUnreadCount,
+              roomId: roomId,
+              roomCode: roomCode,
             ),
             tooltip: 'Thông báo',
           ),

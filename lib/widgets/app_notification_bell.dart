@@ -13,6 +13,8 @@ class AppNotificationBell extends StatefulWidget {
     this.size = 24,
     this.initialUnreadCount,
     this.refreshInitialUnreadCount = false,
+    this.roomId,
+    this.roomCode = '',
     this.notificationService = const NotificationService(),
   });
 
@@ -20,6 +22,8 @@ class AppNotificationBell extends StatefulWidget {
   final double size;
   final int? initialUnreadCount;
   final bool refreshInitialUnreadCount;
+  final int? roomId;
+  final String roomCode;
   final NotificationService notificationService;
 
   @override
@@ -33,13 +37,16 @@ class _AppNotificationBellState extends State<AppNotificationBell> {
   @override
   void initState() {
     super.initState();
-    _unreadCount = widget.initialUnreadCount ?? 0;
-    if (widget.initialUnreadCount == null || widget.refreshInitialUnreadCount) {
+    _unreadCount = _hasRoomScope ? 0 : widget.initialUnreadCount ?? 0;
+    if (_hasRoomScope ||
+        widget.initialUnreadCount == null ||
+        widget.refreshInitialUnreadCount) {
       _loadUnreadCount();
     }
     _readSubscription = NotificationService.readEvents.listen((_) {
       if (mounted &&
-          (widget.initialUnreadCount == null ||
+          (_hasRoomScope ||
+              widget.initialUnreadCount == null ||
               widget.refreshInitialUnreadCount)) {
         _loadUnreadCount();
       }
@@ -49,6 +56,16 @@ class _AppNotificationBellState extends State<AppNotificationBell> {
   @override
   void didUpdateWidget(covariant AppNotificationBell oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final scopeChanged =
+        widget.roomId != oldWidget.roomId ||
+        widget.roomCode.trim() != oldWidget.roomCode.trim();
+    if (scopeChanged) {
+      setState(
+        () => _unreadCount = _hasRoomScope ? 0 : widget.initialUnreadCount ?? 0,
+      );
+      _loadUnreadCount();
+      return;
+    }
     if (widget.initialUnreadCount != null &&
         widget.initialUnreadCount != oldWidget.initialUnreadCount) {
       setState(() => _unreadCount = widget.initialUnreadCount!);
@@ -64,12 +81,19 @@ class _AppNotificationBellState extends State<AppNotificationBell> {
 
   Future<void> _loadUnreadCount() async {
     try {
-      final unreadCount = await widget.notificationService.getUnreadCount();
+      final unreadCount = await widget.notificationService.getUnreadCount(
+        roomId: widget.roomId,
+        roomCode: widget.roomCode,
+      );
       if (mounted) setState(() => _unreadCount = unreadCount);
     } catch (_) {
       // The bell stays usable when the count cannot be refreshed.
     }
   }
+
+  bool get _hasRoomScope =>
+      (widget.roomId != null && widget.roomId! > 0) ||
+      widget.roomCode.trim().isNotEmpty;
 
   @override
   Widget build(BuildContext context) {

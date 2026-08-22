@@ -454,13 +454,18 @@ class _MaintenanceTicketDetailScreenState
           IconButton(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => const NotificationListScreen(),
+                builder: (context) => NotificationListScreen(
+                  roomId: detail?.roomId,
+                  roomCode: detail?.roomCode ?? '',
+                ),
               ),
             ),
             icon: AppNotificationBell(
               color: AppColors.topBarIconColor,
               size: AppColors.topBarIconSize,
               initialUnreadCount: widget.notificationInitialUnreadCount,
+              roomId: detail?.roomId,
+              roomCode: detail?.roomCode ?? '',
             ),
             tooltip: 'Thông báo',
           ),

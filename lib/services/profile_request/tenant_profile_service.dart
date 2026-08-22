@@ -93,7 +93,7 @@ class TenantProfileService {
             Uri.parse('${ApiConfig.baseUrl}/tenants/profiles/me'),
             body: jsonEncode({
               'phone': phone,
-              'email': email,
+              'email': email.trim().isEmpty ? null : email.trim(),
               'emergencyContacts': emergencyContacts,
               'vehicles': vehicles,
             }),
@@ -106,6 +106,10 @@ class TenantProfileService {
       }
       if (response.statusCode == 401 || response.statusCode == 403) {
         throw const TenantProfileForbiddenException();
+      }
+
+      if (response.statusCode >= 400) {
+        throw TenantProfileException(_messageForError(response));
       }
 
       throw const TenantProfileException(
@@ -128,6 +132,27 @@ class TenantProfileService {
         client.close();
       }
     }
+  }
+
+  String _messageForError(http.Response response) {
+    final body = _decodeBody(response.body);
+    final data = body['data'];
+    if (data is Map) {
+      final fieldErrors = data['fieldErrors'];
+      if (fieldErrors is Map) {
+        final messages = fieldErrors.values
+            .map((value) => value.toString().trim())
+            .where((value) => value.isNotEmpty)
+            .toList();
+        if (messages.isNotEmpty) return messages.join('\n');
+      }
+    }
+
+    for (final value in [body['message'], body['details']]) {
+      final message = value?.toString().trim();
+      if (message != null && message.isNotEmpty) return message;
+    }
+    return 'Unable to update profile, please try again';
   }
 
   Future<int> uploadVehicleImage({

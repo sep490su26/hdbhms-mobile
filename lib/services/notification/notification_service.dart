@@ -39,14 +39,20 @@ class NotificationService {
 
   static const _timeout = Duration(seconds: 15);
 
-  Future<int> getUnreadCount() async {
+  Future<int> getUnreadCount({int? roomId, String? roomCode}) async {
     final client = _effectiveClient;
     try {
+      final queryParameters = <String, String>{
+        if (roomId != null && roomId > 0) 'roomId': roomId.toString(),
+        if (roomCode != null && roomCode.trim().isNotEmpty)
+          'roomCode': roomCode.trim(),
+      };
+      var uri = Uri.parse('${ApiConfig.baseUrl}/notifications/unread-count');
+      if (queryParameters.isNotEmpty) {
+        uri = uri.replace(queryParameters: queryParameters);
+      }
       final response = await client
-          .get(
-            Uri.parse('${ApiConfig.baseUrl}/notifications/unread-count'),
-            headers: {'X-Client-Type': 'mobile'},
-          )
+          .get(uri, headers: {'X-Client-Type': 'mobile'})
           .timeout(_timeout);
 
       if (_isSuccess(response)) {
@@ -76,16 +82,21 @@ class NotificationService {
   Future<NotificationScrollResponse> getNotifications({
     int limit = 20,
     int after = 0,
+    int? roomId,
+    String? roomCode,
   }) async {
     final client = _effectiveClient;
     try {
-      final uri = Uri.parse('${ApiConfig.baseUrl}/notifications/scroll')
-          .replace(
-            queryParameters: {
-              'limit': limit.toString(),
-              'after': after.toString(),
-            },
-          );
+      final queryParameters = <String, String>{
+        'limit': limit.toString(),
+        'after': after.toString(),
+        if (roomId != null && roomId > 0) 'roomId': roomId.toString(),
+        if (roomCode != null && roomCode.trim().isNotEmpty)
+          'roomCode': roomCode.trim(),
+      };
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}/notifications/scroll',
+      ).replace(queryParameters: queryParameters);
       final response = await client
           .get(uri, headers: {'X-Client-Type': 'mobile'})
           .timeout(_timeout);
@@ -154,14 +165,19 @@ class NotificationService {
     }
   }
 
-  Future<void> markAllAsRead() async {
+  Future<void> markAllAsRead({int? roomId, String? roomCode}) async {
     final client = _effectiveClient;
     try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/notifications/read-all')
+          .replace(
+            queryParameters: {
+              if (roomId != null && roomId > 0) 'roomId': roomId.toString(),
+              if (roomCode != null && roomCode.trim().isNotEmpty)
+                'roomCode': roomCode.trim(),
+            },
+          );
       final response = await client
-          .post(
-            Uri.parse('${ApiConfig.baseUrl}/notifications/read-all'),
-            headers: {'X-Client-Type': 'mobile'},
-          )
+          .post(uri, headers: {'X-Client-Type': 'mobile'})
           .timeout(_timeout);
 
       if (_isSuccess(response)) {

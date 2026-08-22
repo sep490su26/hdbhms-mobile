@@ -7,14 +7,27 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeAuthService extends AuthService {
-  _FakeAuthService({required this.token, this.refreshResponse});
+  _FakeAuthService({
+    required this.token,
+    this.refreshResponse,
+    this.tokenSequence,
+  });
 
   final String? token;
   final LoginResponse? refreshResponse;
+  final List<String?>? tokenSequence;
   int refreshCalls = 0;
+  int accessTokenReads = 0;
 
   @override
-  Future<String?> get accessToken async => token;
+  Future<String?> get accessToken async {
+    final sequence = tokenSequence;
+    if (sequence == null || sequence.isEmpty) {
+      return token;
+    }
+    final index = accessTokenReads++;
+    return sequence[index < sequence.length ? index : sequence.length - 1];
+  }
 
   @override
   Future<LoginResponse> refreshToken() async {
@@ -104,6 +117,46 @@ void main() {
     expect(response.statusCode, 200);
     expect(response.body, 'ok');
     expect(authService.refreshCalls, 1);
+    expect(requestCount, 2);
+  });
+
+  test('401 reuses a token refreshed by another request', () async {
+    SharedPreferences.setMockInitialValues({
+      AuthService.accessTokenKey: 'new-token',
+      AuthService.sessionIdKey: 'session-1',
+    });
+
+    final authService = _FakeAuthService(
+      token: 'old-token',
+      tokenSequence: ['old-token', 'new-token'],
+      refreshResponse: const LoginResponse(
+        token: 'refresh-token',
+        sessionId: 'session-1',
+        role: 'TENANT',
+        authorized: true,
+      ),
+    );
+    var requestCount = 0;
+    final client = AuthenticatedClient(
+      authService: authService,
+      inner: MockClient((request) async {
+        requestCount++;
+        if (requestCount == 1) {
+          expect(request.headers['Authorization'], 'Bearer old-token');
+          return http.Response('expired', 401);
+        }
+        expect(request.headers['Authorization'], 'Bearer new-token');
+        return http.Response('ok', 200);
+      }),
+    );
+
+    final response = await client.get(
+      Uri.parse('https://example.test/api/v1/protected'),
+    );
+    client.close();
+
+    expect(response.statusCode, 200);
+    expect(authService.refreshCalls, 0);
     expect(requestCount, 2);
   });
 }

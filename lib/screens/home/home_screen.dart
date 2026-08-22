@@ -509,7 +509,13 @@ class _HomeHeader extends StatelessWidget {
           IconButton(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => const NotificationListScreen(),
+                builder: (context) => NotificationListScreen(
+                  roomId: provider.selectedRoom?.roomId ?? summary.room?.id,
+                  roomCode:
+                      provider.selectedRoom?.roomCode ??
+                      summary.room?.roomCode ??
+                      '',
+                ),
               ),
             ),
             padding: EdgeInsets.zero,
@@ -519,6 +525,11 @@ class _HomeHeader extends StatelessWidget {
               child: AppNotificationBell(
                 initialUnreadCount: summary.notificationSummary.unreadCount,
                 refreshInitialUnreadCount: true,
+                roomId: provider.selectedRoom?.roomId ?? summary.room?.id,
+                roomCode:
+                    provider.selectedRoom?.roomCode ??
+                    summary.room?.roomCode ??
+                    '',
                 notificationService: notificationService,
               ),
             ),

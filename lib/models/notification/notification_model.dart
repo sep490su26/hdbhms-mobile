@@ -26,6 +26,10 @@ class NotificationItem {
   final bool isRead;
   final NotificationType type;
 
+  String get roomCode => (data['roomCode'] ?? data['room_code'] ?? '').trim();
+
+  String get roomLabel => roomCode.isEmpty ? '' : 'Ph\u00f2ng $roomCode';
+
   NotificationItem copyWith({bool? isRead}) {
     return NotificationItem(
       id: id,

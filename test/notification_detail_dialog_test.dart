@@ -14,6 +14,8 @@ class _FakeNotificationService extends NotificationService {
   Future<NotificationScrollResponse> getNotifications({
     int limit = 20,
     int after = 0,
+    int? roomId,
+    String? roomCode,
   }) async => NotificationScrollResponse(hasMore: false, items: [item]);
 
   @override
@@ -53,4 +55,27 @@ void main() {
       expect(find.text('Chi tiết thông báo'), findsNothing);
     },
   );
+
+  testWidgets('future notifications do not show negative relative time', (
+    tester,
+  ) async {
+    final item = NotificationItem(
+      id: '13',
+      title: 'Thông báo sắp gửi',
+      content: 'Nội dung',
+      createdAt: DateTime.now().add(const Duration(minutes: 101)),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NotificationListScreen(
+          notificationService: _FakeNotificationService(item),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Chưa đến lịch gửi'), findsOneWidget);
+    expect(find.text('-101 phút trước'), findsNothing);
+  });
 }

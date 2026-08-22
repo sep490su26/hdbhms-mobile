@@ -19,9 +19,13 @@ class NotificationListScreen extends StatefulWidget {
   const NotificationListScreen({
     super.key,
     this.notificationService = const NotificationService(),
+    this.roomId,
+    this.roomCode = '',
   });
 
   final NotificationService notificationService;
+  final int? roomId;
+  final String roomCode;
 
   @override
   State<NotificationListScreen> createState() => _NotificationListScreenState();
@@ -59,6 +63,8 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
       final response = await _notificationService.getNotifications(
         limit: 20,
         after: 0,
+        roomId: widget.roomId,
+        roomCode: widget.roomCode,
       );
       setState(() {
         _items = _sortNewestFirst(response.items);
@@ -89,6 +95,8 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
       final response = await _notificationService.getNotifications(
         limit: 20,
         after: int.tryParse(_nextCursor) ?? 0,
+        roomId: widget.roomId,
+        roomCode: widget.roomCode,
       );
       setState(() {
         _items = _sortNewestFirst([..._items, ...response.items]);
@@ -144,7 +152,10 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
     });
 
     try {
-      await _notificationService.markAllAsRead();
+      await _notificationService.markAllAsRead(
+        roomId: widget.roomId,
+        roomCode: widget.roomCode,
+      );
       _didChangeReadState = true;
     } catch (_) {
       if (!mounted) return;
@@ -556,6 +567,10 @@ class _NotificationCard extends StatelessWidget {
                         Row(
                           children: [
                             _TypeBadge(type: item.type),
+                            if (item.roomLabel.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              _RoomBadge(label: item.roomLabel),
+                            ],
                             const Spacer(),
                             _StatusBadge(isRead: item.isRead),
                           ],
@@ -634,6 +649,8 @@ class _NotificationCard extends StatelessWidget {
 
   String _formatTime(DateTime dt) {
     final now = DateTime.now();
+    if (dt.isAfter(now)) return 'Chưa đến lịch gửi';
+
     final diff = now.difference(dt);
     if (diff.inMinutes < 60) return '${diff.inMinutes} phút trước';
     if (diff.inHours < 24) return '${diff.inHours} giờ trước';
@@ -671,6 +688,35 @@ class _TypeBadge extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _RoomBadge extends StatelessWidget {
+  const _RoomBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Flexible(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        decoration: BoxDecoration(
+          color: AppColors.primarySurface,
+          borderRadius: BorderRadius.circular(AppColors.radiusPill),
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTypography.caption.copyWith(
+            color: AppColors.darkBlue,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
     );
   }
 }

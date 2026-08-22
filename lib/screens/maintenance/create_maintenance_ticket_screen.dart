@@ -385,7 +385,10 @@ class _CreateMaintenanceTicketScreenState
           IconButton(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => const NotificationListScreen(),
+                builder: (context) => NotificationListScreen(
+                  roomId: _activeRoomId,
+                  roomCode: _activeRoomCode,
+                ),
               ),
             ),
             padding: EdgeInsets.zero,
@@ -394,6 +397,8 @@ class _CreateMaintenanceTicketScreenState
               color: AppColors.topBarIconColor,
               size: AppColors.topBarIconSize,
               initialUnreadCount: widget.notificationInitialUnreadCount,
+              roomId: _activeRoomId,
+              roomCode: _activeRoomCode,
             ),
             tooltip: 'Thông báo',
           ),

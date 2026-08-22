@@ -146,6 +146,15 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     });
   }
 
+  String? _validateVietnamesePhone(String? value, {required String label}) {
+    final phone = value?.trim() ?? '';
+    if (phone.isEmpty) return 'Vui lòng nhập $label';
+    if (!RegExp(r'^(0\d{9}|\+84\d{9})$').hasMatch(phone)) {
+      return '$label không hợp lệ';
+    }
+    return null;
+  }
+
   bool get _hasUnsupportedMetadataChanges =>
       _permanentAddressController.text.trim() != _originalPermanentAddress ||
       _docNumberController.text.trim() != _originalDocNumber ||
@@ -385,9 +394,10 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
           label: 'SỐ ĐIỆN THOẠI',
           controller: _phoneController,
           keyboardType: TextInputType.phone,
-          validator: (value) => value?.trim().isEmpty ?? true
-              ? 'Vui lòng nhập số điện thoại'
-              : null,
+          validator: (value) => _validateVietnamesePhone(
+            value,
+            label: 'số điện thoại',
+          ),
         ),
         const SizedBox(height: 16),
         _EditableField(
@@ -471,12 +481,30 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
       icon: Icons.contact_emergency_outlined,
       title: 'Thông tin liên hệ người thân',
       children: [
-        _EditableField(label: 'TÊN NGƯỜI THÂN', controller: _relativeName),
+        _EditableField(
+          label: 'TÊN NGƯỜI THÂN',
+          controller: _relativeName,
+          validator: (value) {
+            final name = value?.trim() ?? '';
+            final phone = _relativePhone.text.trim();
+            if (name.isEmpty && phone.isEmpty) return null;
+            return name.isEmpty ? 'Vui lòng nhập tên người liên hệ' : null;
+          },
+        ),
         const SizedBox(height: 16),
         _EditableField(
           label: 'SỐ ĐIỆN THOẠI',
           controller: _relativePhone,
           keyboardType: TextInputType.phone,
+          validator: (value) {
+            final phone = value?.trim() ?? '';
+            final name = _relativeName.text.trim();
+            if (name.isEmpty && phone.isEmpty) return null;
+            return _validateVietnamesePhone(
+              value,
+              label: 'số điện thoại người liên hệ',
+            );
+          },
         ),
       ],
     );
@@ -857,6 +885,15 @@ class _VehicleCard extends StatelessWidget {
           _EditableField(
             label: 'Biển số xe',
             controller: data.licensePlateController,
+            validator: (value) {
+              final plate = value?.trim() ?? '';
+              final hasVehicleContent =
+                  plate.isNotEmpty ||
+                  data.localImage != null ||
+                  data.existingImageUrl.isNotEmpty;
+              if (!hasVehicleContent || plate.isNotEmpty) return null;
+              return 'Vui lòng nhập biển số xe';
+            },
           ),
           const SizedBox(height: 12),
 
@@ -1005,13 +1042,10 @@ class _NetworkVehicleThumbState extends State<_NetworkVehicleThumb> {
   }
 
   Future<Uint8List> _load() async {
-    final resolvedUrl = widget.url.startsWith('http')
-        ? widget.url
-        : '${ApiConfig.baseUrl}${widget.url}';
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(AuthService.accessTokenKey);
     final response = await http.get(
-      Uri.parse(resolvedUrl),
+      Uri.parse(_resolveImageUrl(widget.url)),
       headers: {
         if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
       },
@@ -1059,6 +1093,24 @@ class _NetworkVehicleThumbState extends State<_NetworkVehicleThumb> {
 // ═════════════════════════════════════════════════════════════════════════════
 //  Data & Utilities
 // ═════════════════════════════════════════════════════════════════════════════
+
+String _resolveImageUrl(String value) {
+  final url = value.trim();
+  if (url.isEmpty) return '';
+
+  final uri = Uri.tryParse(url);
+  if (uri != null && uri.hasScheme) return url;
+
+  final baseUri = Uri.parse(ApiConfig.baseUrl);
+  if (url.startsWith('/')) {
+    return baseUri.replace(path: url).toString();
+  }
+
+  final base = ApiConfig.baseUrl.endsWith('/')
+      ? ApiConfig.baseUrl.substring(0, ApiConfig.baseUrl.length - 1)
+      : ApiConfig.baseUrl;
+  return '$base/$url';
+}
 
 /// Mutable form data for a single vehicle entry
 class _VehicleFormData {

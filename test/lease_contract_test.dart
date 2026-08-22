@@ -13,6 +13,7 @@ import 'package:hdbhms_mobile/services/auth/auth_service.dart';
 import 'package:hdbhms_mobile/services/change_request/change_request_service.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
 import 'package:hdbhms_mobile/services/home/current_room_service.dart';
+import 'package:hdbhms_mobile/services/notification/notification_service.dart';
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -152,6 +153,13 @@ class _EmptyRoomTransferService extends RoomTransferService {
   Future<List<RoomTransferRequest>> fetchPendingHolderNominations() async {
     return const [];
   }
+}
+
+class _NoopNotificationService extends NotificationService {
+  const _NoopNotificationService();
+
+  @override
+  Future<int> getUnreadCount({int? roomId, String? roomCode}) async => 0;
 }
 
 class _FakeRoomTransferService extends RoomTransferService {
@@ -460,6 +468,7 @@ void main() {
         home: LeaseContractScreen(
           contractService: _FakeLeaseContractService(contract: contract),
           notificationInitialUnreadCount: 0,
+          notificationService: const _NoopNotificationService(),
         ),
       ),
     );
@@ -479,12 +488,15 @@ void main() {
   ) async {
     final contract = _contract(
       endDate: DateTime.now().add(const Duration(days: 20)),
+      canLiquidate: true,
     );
 
     await tester.pumpWidget(
       MaterialApp(
         home: LeaseContractScreen(
           contractService: _FakeLeaseContractService(contract: contract),
+          notificationInitialUnreadCount: 0,
+          notificationService: const _NoopNotificationService(),
         ),
       ),
     );
@@ -555,6 +567,36 @@ void main() {
       );
     },
   );
+
+  testWidgets('outstanding debt is shown before deposit forfeiture warning', (
+    tester,
+  ) async {
+    final contract = _contract(
+      endDate: DateTime.now().add(const Duration(days: 20)),
+      canLiquidate: false,
+      canLiquidateBlockedReason:
+          'Hợp đồng còn công nợ 125000 VNĐ. Vui lòng thanh toán hết công nợ trước khi thực hiện thao tác.',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LeaseContractScreen(
+          contractService: _FakeLeaseContractService(contract: contract),
+          notificationInitialUnreadCount: 0,
+          notificationService: const _NoopNotificationService(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Thanh lý hợp đồng'));
+    await tester.tap(find.text('Thanh lý hợp đồng'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Còn nợ chưa thanh toán'), findsOneWidget);
+    expect(find.text('Cảnh báo mất cọc'), findsNothing);
+    expect(find.text('Yêu cầu kết thúc hợp đồng'), findsNothing);
+  });
 
   testWidgets('liquidation progress waits at approval for pending request', (
     tester,
@@ -1328,6 +1370,8 @@ LeaseContract _contract({
   DateTime? endDate,
   bool isPrimary = false,
   bool coOccupantCanRecord = false,
+  bool canLiquidate = false,
+  String canLiquidateBlockedReason = '',
 }) {
   return LeaseContract(
     id: 9,
@@ -1357,5 +1401,7 @@ LeaseContract _contract({
         : '',
     isPrimary: isPrimary,
     canRecordOccupantIntention: coOccupantCanRecord,
+    canLiquidate: canLiquidate,
+    canLiquidateBlockedReason: canLiquidateBlockedReason,
   );
 }

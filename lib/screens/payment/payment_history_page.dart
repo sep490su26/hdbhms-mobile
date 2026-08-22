@@ -94,6 +94,8 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
       body: SafeArea(
         child: AppScreenShell(
           header: _HistoryHeader(
+            roomId: _activeRoomId,
+            roomCode: _activeRoomCode,
             notificationInitialUnreadCount:
                 widget.notificationInitialUnreadCount,
           ),
@@ -269,8 +271,14 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
 // ── Header ────────────────────────────────────────────────────────────────────
 
 class _HistoryHeader extends StatelessWidget {
-  const _HistoryHeader({this.notificationInitialUnreadCount});
+  const _HistoryHeader({
+    this.roomId,
+    this.roomCode = '',
+    this.notificationInitialUnreadCount,
+  });
 
+  final int? roomId;
+  final String roomCode;
   final int? notificationInitialUnreadCount;
 
   @override
@@ -281,11 +289,14 @@ class _HistoryHeader extends StatelessWidget {
       trailing: IconButton(
         onPressed: () => Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => const NotificationListScreen(),
+            builder: (context) =>
+                NotificationListScreen(roomId: roomId, roomCode: roomCode),
           ),
         ),
         icon: AppNotificationBell(
           initialUnreadCount: notificationInitialUnreadCount,
+          roomId: roomId,
+          roomCode: roomCode,
         ),
         tooltip: 'Thông báo',
       ),
