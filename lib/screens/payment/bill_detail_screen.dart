@@ -297,55 +297,6 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     return sections;
   }
 
-  // ── App bar ──────────────────────────────────────────────────
-
-  // Retained temporarily for source compatibility with legacy previews. The
-  // production screen now uses [AppTopBar] directly above.
-  // ignore: unused_element
-  Widget _buildAppBar(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 6, 16, 0),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-            style: IconButton.styleFrom(
-              backgroundColor: AppColors.surfaceMuted,
-              foregroundColor: AppColors.topBarIconColor,
-            ),
-            icon: const Icon(Icons.arrow_back_rounded),
-            tooltip: 'Quay lại',
-          ),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Chi tiết hóa đơn',
-                  style: TextStyle(
-                    color: AppColors.darkBlue,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    height: 1.2,
-                  ),
-                ),
-                Text(
-                  'Xem chi tiết và thanh toán',
-                  style: TextStyle(
-                    color: AppColors.bodyText,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   // ── Hero card ────────────────────────────────────────────────
 
   Widget _buildHeroCard() {

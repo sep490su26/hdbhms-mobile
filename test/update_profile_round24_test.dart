@@ -28,7 +28,7 @@ class _SilentNotificationService extends NotificationService {
   const _SilentNotificationService();
 
   @override
-  Future<int> getUnreadCount() async => 0;
+  Future<int> getUnreadCount({int? roomId, String? roomCode}) async => 0;
 }
 
 TenantProfileResponse _profile({bool withIdentityDocument = true}) {

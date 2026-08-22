@@ -7,6 +7,7 @@ import 'package:hdbhms_mobile/models/profile_request/tenant_request_model.dart';
 import 'package:hdbhms_mobile/models/room_transfer/room_transfer_model.dart';
 import 'package:hdbhms_mobile/services/change_request/change_request_service.dart';
 import 'package:hdbhms_mobile/services/home/current_room_service.dart';
+import 'package:hdbhms_mobile/services/notification/notification_service.dart';
 import 'package:hdbhms_mobile/services/room_transfer/room_transfer_service.dart';
 import 'package:hdbhms_mobile/theme/app_colors.dart';
 import 'package:hdbhms_mobile/theme/app_typography.dart';
@@ -36,38 +37,17 @@ class TenantRequestScreen extends StatefulWidget {
     this.changeRequestService = const ChangeRequestService(),
     this.roomTransferService = const RoomTransferService(),
     this.currentRoomService = const CurrentRoomService(),
+    this.notificationService = const NotificationService(),
     this.roomId,
     this.roomCode = '',
-    this.previewRequests,
-    this.previewChangeRequests,
-    this.previewRoomTransfers = const {},
-    this.previewTenantProfileId,
-    this.initialFilterType,
-  }) : assert(
-         previewRequests == null || previewChangeRequests == null,
-         'Only one local preview data source can be supplied.',
-       );
+  });
 
   final ChangeRequestService changeRequestService;
   final RoomTransferService roomTransferService;
   final CurrentRoomService currentRoomService;
+  final NotificationService notificationService;
   final int? roomId;
   final String roomCode;
-
-  /// Local-only data for the internal preview launcher. When supplied, no
-  /// request is made to the backend and the regular list/detail UI is reused.
-  final List<TenantRequest>? previewRequests;
-
-  /// Local API-shaped data for previews that need the production detail
-  /// component, such as the liquidation progress timeline.
-  final List<ChangeRequest>? previewChangeRequests;
-
-  /// Linked local transfer data for the internal preview launcher. This keeps
-  /// the room-transfer preview on the same dedicated detail screen as the
-  /// production flow without contacting the API.
-  final Map<int, RoomTransferRequest> previewRoomTransfers;
-  final int? previewTenantProfileId;
-  final TenantRequestType? initialFilterType;
 
   @override
   State<TenantRequestScreen> createState() => _TenantRequestScreenState();
@@ -92,19 +72,6 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    if (widget.previewRequests != null ||
-        widget.previewChangeRequests != null) {
-      _filterType = widget.initialFilterType;
-      if (widget.previewRequests != null) {
-        _requests.addAll(widget.previewRequests!);
-      }
-      for (final request
-          in widget.previewChangeRequests ?? const <ChangeRequest>[]) {
-        _changeRequestMap[request.id] = request;
-        _requests.add(_toTenantRequest(request));
-      }
-      return;
-    }
     _loadApiRequests();
   }
 
@@ -116,11 +83,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (widget.previewRequests == null &&
-        widget.previewChangeRequests == null &&
-        state == AppLifecycleState.resumed &&
-        mounted &&
-        !_loadingApi) {
+    if (state == AppLifecycleState.resumed && mounted && !_loadingApi) {
       _loadApiRequests();
     }
   }
@@ -128,10 +91,6 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
   /// Fetches change requests from the backend API and converts them to
   /// [TenantRequest] objects for display in the unified list.
   Future<void> _loadApiRequests() async {
-    if (widget.previewRequests != null ||
-        widget.previewChangeRequests != null) {
-      return;
-    }
     setState(() => _loadingApi = true);
     var apiRequests = const <ChangeRequest>[];
     var holderNominations = const <RoomTransferRequest>[];
@@ -595,12 +554,8 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
         Navigator.of(context)
             .push(
               MaterialPageRoute(
-                builder: (_) => RoomTransferDetailScreen(
-                  changeRequest: changeRequest,
-                  initialTransfer:
-                      widget.previewRoomTransfers[changeRequest.id],
-                  previewCurrentTenantProfileId: widget.previewTenantProfileId,
-                ),
+                builder: (_) =>
+                    RoomTransferDetailScreen(changeRequest: changeRequest),
               ),
             )
             .then((refreshed) {
@@ -676,11 +631,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
           header: _buildHeader(),
           child: RefreshIndicator(
             color: AppColors.deepBlue,
-            onRefresh:
-                widget.previewRequests == null &&
-                    widget.previewChangeRequests == null
-                ? _loadApiRequests
-                : () async {},
+            onRefresh: _loadApiRequests,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(14, 18, 14, 96),
@@ -799,6 +750,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
               size: 24,
               roomId: _activeRoomId,
               roomCode: _activeRoomCode,
+              notificationService: widget.notificationService,
             ),
             tooltip: 'Thông báo',
           ),
@@ -823,6 +775,7 @@ class _TenantRequestScreenState extends State<TenantRequestScreen>
         icon: AppNotificationBell(
           roomId: _activeRoomId,
           roomCode: _activeRoomCode,
+          notificationService: widget.notificationService,
         ),
         tooltip: 'Thông báo',
       ),
@@ -2167,6 +2120,9 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
     }
   }
 
+  // Reserved for the backend-supported dispute action until its UI entry point
+  // is enabled.
+  // ignore: unused_element
   Future<void> _disputeDepositRefund() async {
     final reason = await _askDisputeReason();
     if (reason == null || reason.trim().isEmpty) return;

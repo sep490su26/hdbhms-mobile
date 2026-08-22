@@ -6,7 +6,6 @@ import 'package:hdbhms_mobile/models/payment/tenant_invoice_model.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_detail_screen.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
 import 'package:hdbhms_mobile/screens/payment/payment_history_page.dart';
-import 'package:hdbhms_mobile/screens/payment/payment_preview_page.dart';
 import 'package:hdbhms_mobile/screens/payment/payment_success_page.dart';
 import 'package:hdbhms_mobile/screens/payment/qr_payment_page.dart';
 import 'package:hdbhms_mobile/screens/payment/qr_receipt_download_page.dart';
@@ -136,6 +135,9 @@ class _InvoiceService extends TenantInvoiceService {
 
 class _NoopNotificationService extends NotificationService {
   const _NoopNotificationService();
+
+  @override
+  Future<int> getUnreadCount({int? roomId, String? roomCode}) async => 0;
 
   @override
   Future<void> markTargetAsRead({
@@ -324,7 +326,13 @@ void main() {
         MaterialApp(
           home: BillSelectionPage(
             notificationInitialUnreadCount: 0,
-            previewInvoices: [_rentInvoice, _electricityInvoice, other],
+            notificationService: const _NoopNotificationService(),
+            roomCode: 'P.101',
+            invoiceService: _InvoiceService([
+              _rentInvoice,
+              _electricityInvoice,
+              other,
+            ]),
           ),
         ),
       );
@@ -366,6 +374,7 @@ void main() {
         MaterialApp(
           home: PaymentHistoryPage(
             invoiceService: _InvoiceService([paidRent, paidElectricity]),
+            notificationService: const _NoopNotificationService(),
             roomCode: 'P.101',
             notificationInitialUnreadCount: 0,
           ),
@@ -397,9 +406,7 @@ void main() {
       expect(find.text('Hóa đơn tiền điện tháng 06/2026'), findsNothing);
     });
 
-    testWidgets('QR, receipt, success, and preview use the new labels', (
-      tester,
-    ) async {
+    testWidgets('QR, receipt, and success use the new labels', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: QrPaymentPage(
@@ -433,25 +440,6 @@ void main() {
       expect(find.text('Tiền phòng & dịch vụ'), findsOneWidget);
       expect(find.text('Tiền phòng'), findsOneWidget);
       expect(find.text('Phí dịch vụ'), findsOneWidget);
-
-      tester.view.physicalSize = const Size(800, 3000);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(const MaterialApp(home: PaymentPreviewPage()));
-      await tester.pumpAndSettle();
-      expect(find.text('Chi tiết Tiền phòng & dịch vụ'), findsOneWidget);
-      expect(find.text('Chi tiết Tiền điện'), findsOneWidget);
-      expect(find.text('QR Tiền phòng & dịch vụ'), findsOneWidget);
-      expect(find.text('QR Tiền điện'), findsOneWidget);
-      expect(find.text('Mẫu QR Tiền phòng & dịch vụ'), findsOneWidget);
-      expect(find.text('Mẫu QR Tiền điện'), findsOneWidget);
-      expect(
-        find.text('Thanh toán thành công — Tiền phòng & dịch vụ'),
-        findsOneWidget,
-      );
-      expect(find.text('Thanh toán thành công — Tiền điện'), findsOneWidget);
     });
 
     for (final size in const [

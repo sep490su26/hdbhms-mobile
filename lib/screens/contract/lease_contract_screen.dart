@@ -714,7 +714,7 @@ class _CreateRequestGrid extends StatelessWidget {
             border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
           ),
           child: const Text(
-            'Nếu thực hiện thanh lý khi hợp đồng còn dưới 1 tháng trước ngày hết hạn, bạn sẽ mất toàn bộ tiền cọc. Vui lòng cân nhắc trước khi tiếp tục.',
+            'Nếu thực hiện thanh lý khi thời gian giữa ngày gửi yêu cầu thanh lý và ngày thanh lý hợp đồng dưới 1 tháng, bạn sẽ mất toàn bộ tiền cọc. Vui lòng cân nhắc trước khi tiếp tục.',
             style: TextStyle(
               color: AppColors.dangerText,
               fontSize: 14,

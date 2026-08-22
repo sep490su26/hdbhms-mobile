@@ -3,6 +3,7 @@ import 'package:hdbhms_mobile/theme/app_colors.dart';
 import '../../models/payment/invoice_payment_presentation.dart';
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/home/current_room_service.dart';
+import '../../services/notification/notification_service.dart';
 import '../../services/payment/tenant_invoice_service.dart';
 import '../../theme/app_typography.dart';
 import '../../utils/room_scope.dart';
@@ -27,25 +28,17 @@ class BillSelectionPage extends StatefulWidget {
     super.key,
     this.invoiceService = const TenantInvoiceService(),
     this.currentRoomService = const CurrentRoomService(),
+    this.notificationService = const NotificationService(),
     this.roomId,
     this.roomCode = '',
-    this.previewInvoices,
-    this.previewServicePaymentCycleMonths,
     this.notificationInitialUnreadCount,
   });
 
   final TenantInvoiceService invoiceService;
   final CurrentRoomService currentRoomService;
+  final NotificationService notificationService;
   final int? roomId;
   final String roomCode;
-
-  /// Local-only invoices used by the internal preview launcher.
-  final List<TenantInvoice>? previewInvoices;
-
-  /// Local-only contract cycle used to render a demonstrably correct service
-  /// fee breakdown in the internal preview flow. Production screens load the
-  /// cycle from the invoice contract instead.
-  final int? previewServicePaymentCycleMonths;
   final int? notificationInitialUnreadCount;
 
   @override
@@ -73,6 +66,7 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
             onOpenHistory: _openPaymentHistory,
             roomId: _activeRoomId,
             roomCode: _activeRoomCode,
+            notificationService: widget.notificationService,
             notificationInitialUnreadCount:
                 widget.notificationInitialUnreadCount,
           ),
@@ -162,8 +156,6 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
   }
 
   Future<List<TenantInvoice>> _loadInvoices() async {
-    final previewInvoices = widget.previewInvoices;
-    if (previewInvoices != null) return previewInvoices;
     final scope = await resolveRoomScope(
       roomId: widget.roomId,
       roomCode: widget.roomCode,
@@ -195,7 +187,7 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
   String get _activeRoomCode =>
       _roomScope.roomCode.isNotEmpty ? _roomScope.roomCode : widget.roomCode;
 
-  void _openInvoicePreviewFlow(BuildContext context, TenantInvoice invoice) {
+  void _openInvoiceFlow(BuildContext context, TenantInvoice invoice) {
     final isUtility = invoice.invoiceType.toUpperCase() == 'UTILITY';
     final canOpenQr =
         invoice.canPay &&
@@ -209,8 +201,6 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
               builder: (context) => BillDetailScreen(
                 invoice: invoice,
                 invoiceService: widget.invoiceService,
-                servicePaymentCycleMonths:
-                    widget.previewServicePaymentCycleMonths,
               ),
             ),
           )
@@ -295,7 +285,7 @@ class _BillSelectionPageState extends State<BillSelectionPage> {
           .map(
             (invoice) => _PendingBillCard(
               invoice: invoice,
-              onTap: () => _openInvoicePreviewFlow(context, invoice),
+              onTap: () => _openInvoiceFlow(context, invoice),
               onComplain: () => _openMeterReadingReview(context, invoice),
             ),
           )
@@ -529,12 +519,14 @@ class _BillHeader extends StatelessWidget {
     required this.onOpenHistory,
     this.roomId,
     this.roomCode = '',
+    this.notificationService = const NotificationService(),
     this.notificationInitialUnreadCount,
   });
 
   final VoidCallback onOpenHistory;
   final int? roomId;
   final String roomCode;
+  final NotificationService notificationService;
   final int? notificationInitialUnreadCount;
 
   @override
@@ -568,6 +560,7 @@ class _BillHeader extends StatelessWidget {
               initialUnreadCount: notificationInitialUnreadCount,
               roomId: roomId,
               roomCode: roomCode,
+              notificationService: notificationService,
             ),
             tooltip: 'Thông báo',
           ),

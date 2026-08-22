@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:hdbhms_mobile/models/payment/tenant_invoice_model.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
+import 'package:hdbhms_mobile/services/notification/notification_service.dart';
+import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
 
 TenantInvoice _invoice({
   required int id,
@@ -39,6 +41,25 @@ TenantInvoice _invoice({
   priceDifferenceSettlementType: null,
 );
 
+class _InvoiceService extends TenantInvoiceService {
+  const _InvoiceService(this.invoices);
+
+  final List<TenantInvoice> invoices;
+
+  @override
+  Future<List<TenantInvoice>> fetchMyInvoices({
+    int? roomId,
+    String? roomCode,
+  }) async => invoices;
+}
+
+class _NotificationService extends NotificationService {
+  const _NotificationService();
+
+  @override
+  Future<int> getUnreadCount({int? roomId, String? roomCode}) async => 0;
+}
+
 void main() {
   testWidgets('bill selection only shows unpaid invoices and type filters', (
     tester,
@@ -47,7 +68,9 @@ void main() {
       MaterialApp(
         home: BillSelectionPage(
           notificationInitialUnreadCount: 0,
-          previewInvoices: [
+          notificationService: const _NotificationService(),
+          roomCode: 'P.101',
+          invoiceService: _InvoiceService([
             _invoice(
               id: 1,
               status: 'ISSUED',
@@ -60,7 +83,7 @@ void main() {
               remainingAmount: 0,
               roomCode: 'P.202',
             ),
-          ],
+          ]),
         ),
       ),
     );
@@ -70,8 +93,8 @@ void main() {
     expect(find.text('Tất cả'), findsOneWidget);
     expect(find.byIcon(Icons.grid_view_rounded), findsOneWidget);
     expect(find.text('Chưa thanh toán'), findsNothing);
-    expect(find.text('Phòng P.101'), findsOneWidget);
-    expect(find.text('Phòng P.202'), findsNothing);
+    expect(find.text('P.101'), findsOneWidget);
+    expect(find.text('P.202'), findsNothing);
   });
 
   testWidgets('all-paid invoices use the required-payment empty state', (
@@ -81,14 +104,16 @@ void main() {
       MaterialApp(
         home: BillSelectionPage(
           notificationInitialUnreadCount: 0,
-          previewInvoices: [
+          notificationService: const _NotificationService(),
+          roomCode: 'P.202',
+          invoiceService: _InvoiceService([
             _invoice(
               id: 2,
               status: 'PAID',
               remainingAmount: 0,
               roomCode: 'P.202',
             ),
-          ],
+          ]),
         ),
       ),
     );

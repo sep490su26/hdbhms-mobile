@@ -42,7 +42,7 @@ class _QuietNotificationService extends NotificationService {
   const _QuietNotificationService();
 
   @override
-  Future<int> getUnreadCount() async => 0;
+  Future<int> getUnreadCount({int? roomId, String? roomCode}) async => 0;
 }
 
 const _profile = TenantProfileResponse(

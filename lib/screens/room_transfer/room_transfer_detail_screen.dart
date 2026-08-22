@@ -28,21 +28,11 @@ class RoomTransferDetailScreen extends StatefulWidget {
     required this.changeRequest,
     this.transferService = const RoomTransferService(),
     this.leaseContractService = const LeaseContractService(),
-    this.initialTransfer,
-    this.previewCurrentTenantProfileId,
   });
 
   final ChangeRequest changeRequest;
   final RoomTransferService transferService;
   final LeaseContractService leaseContractService;
-
-  /// Local data used only by the internal preview launcher. Production flows
-  /// leave this null and load the linked transfer request from the API.
-  final RoomTransferRequest? initialTransfer;
-
-  /// Lets the preview render the same tenant-visible sections as production
-  /// without making a profile request. Never supplied by production routes.
-  final int? previewCurrentTenantProfileId;
 
   @override
   State<RoomTransferDetailScreen> createState() =>
@@ -69,8 +59,7 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
 
   bool get _isResolvingScreenState =>
       _loadingTransfer ||
-      (_transfer != null &&
-          _checkingHolderNominationAccess);
+      (_transfer != null && _checkingHolderNominationAccess);
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -78,13 +67,6 @@ class _RoomTransferDetailScreenState extends State<RoomTransferDetailScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    final initialTransfer = widget.initialTransfer;
-    if (initialTransfer != null) {
-      _transfer = initialTransfer;
-      _transferLoadAttempted = true;
-      _currentTenantProfileId = widget.previewCurrentTenantProfileId;
-      return;
-    }
     _loadCurrentTenantProfile();
     _tryLoadTransfer();
   }
@@ -2468,9 +2450,7 @@ class _StatusTimeline extends StatelessWidget {
     ];
 
     if (_needsSourceHolderNomination) {
-      statuses.addAll([
-        TransferRequestStatus.waitingNewContract,
-      ]);
+      statuses.addAll([TransferRequestStatus.waitingNewContract]);
     }
 
     statuses.addAll([
@@ -2671,4 +2651,3 @@ class _TimelineStep {
   final String label;
   final IconData icon;
 }
-

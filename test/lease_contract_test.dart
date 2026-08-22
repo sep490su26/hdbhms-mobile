@@ -623,6 +623,7 @@ void main() {
         home: TenantRequestScreen(
           changeRequestService: _FakeChangeRequestService([request]),
           roomTransferService: const _EmptyRoomTransferService(),
+          notificationService: const _NoopNotificationService(),
           roomId: 201,
           roomCode: '201',
         ),
@@ -676,6 +677,7 @@ void main() {
         home: TenantRequestScreen(
           changeRequestService: _FakeChangeRequestService([request]),
           roomTransferService: const _EmptyRoomTransferService(),
+          notificationService: const _NoopNotificationService(),
           roomId: 201,
           roomCode: '201',
         ),
@@ -726,6 +728,7 @@ void main() {
           changeRequestService: _FakeChangeRequestService([request]),
           currentRoomService: const _NoCurrentRoomService(),
           roomTransferService: const _EmptyRoomTransferService(),
+          notificationService: const _NoopNotificationService(),
         ),
       ),
     );
@@ -761,6 +764,7 @@ void main() {
           home: TenantRequestScreen(
             changeRequestService: _FakeChangeRequestService([request]),
             roomTransferService: const _EmptyRoomTransferService(),
+            notificationService: const _NoopNotificationService(),
             roomId: 201,
             roomCode: '201',
           ),
@@ -829,6 +833,7 @@ void main() {
         home: TenantRequestScreen(
           changeRequestService: _FakeChangeRequestService(requests),
           roomTransferService: const _EmptyRoomTransferService(),
+          notificationService: const _NoopNotificationService(),
           roomId: 201,
           roomCode: '201',
         ),
@@ -1069,6 +1074,7 @@ void main() {
           home: TenantRequestScreen(
             changeRequestService: _FakeChangeRequestService([item.$1]),
             roomTransferService: const _EmptyRoomTransferService(),
+            notificationService: const _NoopNotificationService(),
             roomId: 201,
             roomCode: '201',
           ),
@@ -1103,6 +1109,7 @@ void main() {
             502: _transferRequest(id: 502, oldRoomId: 503, targetRoomId: 505),
             503: _transferRequest(id: 503, oldRoomId: 503, targetRoomId: 403),
           }),
+          notificationService: const _NoopNotificationService(),
           roomId: 403,
           roomCode: '403',
         ),

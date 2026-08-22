@@ -62,7 +62,7 @@ class _FakeNotificationService extends NotificationService {
   const _FakeNotificationService();
 
   @override
-  Future<int> getUnreadCount() async => 2;
+  Future<int> getUnreadCount({int? roomId, String? roomCode}) async => 2;
 }
 
 class _FakeProfileService extends TenantProfileService {

@@ -24,7 +24,6 @@ import 'package:hdbhms_mobile/widgets/app_top_bar.dart';
 import 'package:hdbhms_mobile/widgets/tenant_bottom_navigation.dart';
 import 'package:hdbhms_mobile/widgets/app_screen_shell.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_selection_page.dart';
-import 'package:hdbhms_mobile/screens/payment/payment_preview_page.dart';
 import 'package:hdbhms_mobile/screens/contract/contract_hub_screen.dart';
 import 'package:hdbhms_mobile/screens/auth/login_page.dart';
 import 'package:hdbhms_mobile/screens/maintenance/maintenance_ticket_list_screen.dart';
@@ -485,25 +484,6 @@ class _HomeHeader extends StatelessWidget {
               ),
             ),
             tooltip: 'Trang chủ',
-          ),
-          const SizedBox(width: 6),
-          IconButton(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const PaymentPreviewPage(),
-              ),
-            ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            icon: Semantics(
-              label: 'Xem tr\u01B0\u1EDBc c\u00E1c m\u00E0n thanh to\u00E1n',
-              child: Icon(
-                Icons.preview_rounded,
-                color: AppColors.topBarIconColor,
-                size: 22,
-              ),
-            ),
-            tooltip: 'Xem trước các màn thanh toán',
           ),
           const SizedBox(width: 6),
           IconButton(

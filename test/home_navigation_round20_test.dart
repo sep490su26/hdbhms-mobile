@@ -6,7 +6,6 @@ import 'package:hdbhms_mobile/models/home/home_summary_model.dart';
 import 'package:hdbhms_mobile/models/payment/tenant_invoice_model.dart';
 import 'package:hdbhms_mobile/models/profile_request/tenant_profile_model.dart';
 import 'package:hdbhms_mobile/screens/home/home_screen.dart';
-import 'package:hdbhms_mobile/screens/payment/payment_preview_page.dart';
 import 'package:hdbhms_mobile/screens/payment/payment_success_page.dart';
 import 'package:hdbhms_mobile/screens/tenant_overview/tenant_overview_screen.dart';
 import 'package:hdbhms_mobile/services/contract/lease_contract_service.dart';
@@ -91,7 +90,7 @@ class _NotificationFixtureService extends NotificationService {
   const _NotificationFixtureService();
 
   @override
-  Future<int> getUnreadCount() async => 0;
+  Future<int> getUnreadCount({int? roomId, String? roomCode}) async => 0;
 }
 
 class _MeterInvoiceService extends TenantInvoiceService {
@@ -590,28 +589,6 @@ void main() {
       final destination = route.builder(tester.element(find.byType(Navigator)));
       expect(destination, isA<HomeScreen>());
       expect((destination as HomeScreen).initialRoom?.contractId, 23);
-    },
-  );
-
-  testWidgets(
-    'payment preview opens the production success screen with new copy',
-    (tester) async {
-      tester.view.physicalSize = const Size(800, 3000);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      await tester.pumpWidget(const MaterialApp(home: PaymentPreviewPage()));
-      await tester.pumpAndSettle();
-
-      final tile = find.text('Thanh toán thành công — Tiền phòng & dịch vụ');
-      await tester.ensureVisible(tile);
-      await tester.tap(tile);
-      await tester.pumpAndSettle();
-
-      final overviewAction = find.text('Quay về Tổng quan');
-      await tester.ensureVisible(overviewAction);
-      expect(overviewAction, findsOneWidget);
-      expect(find.text('Quay lại trang chủ'), findsNothing);
     },
   );
 }

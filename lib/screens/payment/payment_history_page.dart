@@ -3,6 +3,7 @@ import 'package:hdbhms_mobile/theme/app_colors.dart';
 
 import '../../models/payment/tenant_invoice_model.dart';
 import '../../services/home/current_room_service.dart';
+import '../../services/notification/notification_service.dart';
 import '../../services/payment/tenant_invoice_service.dart';
 import '../../utils/room_scope.dart';
 import '../../widgets/app_notification_bell.dart';
@@ -24,6 +25,7 @@ class PaymentHistoryPage extends StatefulWidget {
     super.key,
     this.invoiceService = const TenantInvoiceService(),
     this.currentRoomService = const CurrentRoomService(),
+    this.notificationService = const NotificationService(),
     this.roomId,
     this.roomCode = '',
     this.notificationInitialUnreadCount,
@@ -31,6 +33,7 @@ class PaymentHistoryPage extends StatefulWidget {
 
   final TenantInvoiceService invoiceService;
   final CurrentRoomService currentRoomService;
+  final NotificationService notificationService;
   final int? roomId;
   final String roomCode;
   final int? notificationInitialUnreadCount;
@@ -96,6 +99,7 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
           header: _HistoryHeader(
             roomId: _activeRoomId,
             roomCode: _activeRoomCode,
+            notificationService: widget.notificationService,
             notificationInitialUnreadCount:
                 widget.notificationInitialUnreadCount,
           ),
@@ -274,11 +278,13 @@ class _HistoryHeader extends StatelessWidget {
   const _HistoryHeader({
     this.roomId,
     this.roomCode = '',
+    this.notificationService = const NotificationService(),
     this.notificationInitialUnreadCount,
   });
 
   final int? roomId;
   final String roomCode;
+  final NotificationService notificationService;
   final int? notificationInitialUnreadCount;
 
   @override
@@ -297,6 +303,7 @@ class _HistoryHeader extends StatelessWidget {
           initialUnreadCount: notificationInitialUnreadCount,
           roomId: roomId,
           roomCode: roomCode,
+          notificationService: notificationService,
         ),
         tooltip: 'Thông báo',
       ),

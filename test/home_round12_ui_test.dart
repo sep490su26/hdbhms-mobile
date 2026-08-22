@@ -62,7 +62,7 @@ class _NotificationService extends NotificationService {
   const _NotificationService();
 
   @override
-  Future<int> getUnreadCount() async => 2;
+  Future<int> getUnreadCount({int? roomId, String? roomCode}) async => 2;
 }
 
 class _LeaseService extends LeaseContractService {

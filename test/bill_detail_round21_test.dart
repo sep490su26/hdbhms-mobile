@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hdbhms_mobile/models/payment/tenant_invoice_model.dart';
 import 'package:hdbhms_mobile/screens/payment/bill_detail_screen.dart';
-import 'package:hdbhms_mobile/screens/payment/payment_preview_page.dart';
 import 'package:hdbhms_mobile/services/payment/tenant_invoice_service.dart';
 
 TenantInvoice _invoice({
@@ -340,35 +339,5 @@ void main() {
         }
       }
     });
-
-    testWidgets(
-      'payment preview routes to the production RENT, UTILITY and OTHER detail',
-      (tester) async {
-        tester.view.physicalSize = const Size(800, 3000);
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-        await tester.pumpWidget(const MaterialApp(home: PaymentPreviewPage()));
-        await tester.pumpAndSettle();
-
-        for (final item in const [
-          'Chi tiết Tiền phòng & dịch vụ',
-          'Chi tiết Tiền điện',
-          'Chi tiết Chi phí sửa chữa',
-        ]) {
-          final tile = find.text(item);
-          await tester.ensureVisible(tile);
-          await tester.tap(tile);
-          await tester.pumpAndSettle();
-          expect(find.byType(BillDetailScreen), findsOneWidget);
-          expect(
-            find.byKey(const ValueKey('bill-detail-hero')),
-            findsOneWidget,
-          );
-          await tester.tap(find.byIcon(Icons.arrow_back_rounded));
-          await tester.pumpAndSettle();
-        }
-      },
-    );
   });
 }

@@ -11,7 +11,7 @@ class _FakeNotificationService extends NotificationService {
   const _FakeNotificationService();
 
   @override
-  Future<int> getUnreadCount() async => 3;
+  Future<int> getUnreadCount({int? roomId, String? roomCode}) async => 3;
 }
 
 ElectricityConsumptionEntry _entry({
