@@ -38,7 +38,7 @@ String? validatePermanentAddress(String? value) {
 
 String? validateProfileEmail(String? value) {
   final email = value?.trim() ?? '';
-  if (email.isEmpty) return 'Vui lòng nhập email';
+  if (email.isEmpty) return null;
   if (email.length > 255) return 'Email không được vượt quá 255 ký tự';
   if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
     return 'Địa chỉ email không đúng định dạng';

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -111,7 +110,8 @@ class IdentityService {
   const IdentityService({http.Client? client}) : _client = client;
 
   final http.Client? _client;
-  static const _timeout = Duration(seconds: 30);
+  static const _ocrTimeout = Duration(seconds: 30);
+  static const _uploadTimeout = Duration(seconds: 120);
 
   Future<CccdOcrResult> extractCccd({
     required IdentityImageFile frontImage,
@@ -147,7 +147,7 @@ class IdentityService {
       request.files.add(await _multipartFile('frontImage', frontImage));
       request.files.add(await _multipartFile('backImage', backImage));
 
-      final streamedResponse = await client.send(request).timeout(_timeout);
+      final streamedResponse = await client.send(request).timeout(_ocrTimeout);
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -181,6 +181,11 @@ class IdentityService {
     required File portraitFile,
     required File idCardFrontFile,
     required File idCardBackFile,
+    required String docNumber,
+    required DateTime issuedDate,
+    required String issuedPlace,
+    required String permanentAddress,
+    String? email,
   }) async {
     return _sendMultipart(
       tenantId: tenantId,
@@ -196,6 +201,11 @@ class IdentityService {
         'idCardBackFile',
         idCardBackFile.path,
       ),
+      docNumber: docNumber,
+      issuedDate: issuedDate,
+      issuedPlace: issuedPlace,
+      permanentAddress: permanentAddress,
+      email: email,
     );
   }
 
@@ -203,6 +213,11 @@ class IdentityService {
     required IdentityImageFile portrait,
     required IdentityImageFile frontId,
     required IdentityImageFile backId,
+    required String docNumber,
+    required DateTime issuedDate,
+    required String issuedPlace,
+    required String permanentAddress,
+    String? email,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final tenantId = prefs.getInt(AuthService.tenantIdKey);
@@ -216,6 +231,11 @@ class IdentityService {
       portraitPart: await _multipartFile('portraitFile', portrait),
       frontIdPart: await _multipartFile('idCardFrontFile', frontId),
       backIdPart: await _multipartFile('idCardBackFile', backId),
+      docNumber: docNumber,
+      issuedDate: issuedDate,
+      issuedPlace: issuedPlace,
+      permanentAddress: permanentAddress,
+      email: email,
     );
   }
 
@@ -224,6 +244,11 @@ class IdentityService {
     required http.MultipartFile portraitPart,
     required http.MultipartFile frontIdPart,
     required http.MultipartFile backIdPart,
+    required String docNumber,
+    required DateTime issuedDate,
+    required String issuedPlace,
+    required String permanentAddress,
+    String? email,
   }) async {
     final client = _client ?? AuthenticatedClient();
     try {
@@ -234,11 +259,20 @@ class IdentityService {
         ),
       );
 
+      request.fields.addAll({
+        'docNumber': docNumber.trim(),
+        'issuedDate': _formatDate(issuedDate),
+        'issuedPlace': issuedPlace.trim(),
+        'permanentAddress': permanentAddress.trim(),
+        if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
+      });
       request.files.add(portraitPart);
       request.files.add(frontIdPart);
       request.files.add(backIdPart);
 
-      final streamedResponse = await client.send(request).timeout(_timeout);
+      final streamedResponse = await client
+          .send(request)
+          .timeout(_uploadTimeout);
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -253,14 +287,10 @@ class IdentityService {
           message: body['message']?.toString() ?? '',
           identityCompleted:
               body['identityCompleted'] == true ||
-              body['profileCompleted'] == true ||
-              body['identity_completed'] == true ||
-              body['profile_completed'] == true,
+              body['identity_completed'] == true,
           profileCompleted:
               body['profileCompleted'] == true ||
-              body['identityCompleted'] == true ||
-              body['profile_completed'] == true ||
-              body['identity_completed'] == true,
+              body['profile_completed'] == true,
           onboarding: onboarding,
           portraitFileId:
               _asInt(body['portraitFileId']) ??
@@ -276,7 +306,9 @@ class IdentityService {
 
       throw IdentityException(_messageForError(response));
     } on TimeoutException {
-      throw const IdentityException('Tải lên thất bại, vui lòng thử lại');
+      throw const IdentityException(
+        'Tải lên quá lâu, vui lòng kiểm tra kết nối và thử lại',
+      );
     } on http.ClientException {
       throw const IdentityException('Tải lên thất bại, vui lòng thử lại');
     } on FormatException {
@@ -292,11 +324,7 @@ class IdentityService {
     String fieldName,
     IdentityImageFile file,
   ) async {
-    final path = file.path;
-    if (_canUploadFromPath(path)) {
-      return _multipartFileFromPath(fieldName, path!, fallbackName: file.name);
-    }
-
+    // The picker bytes remain valid even when a native cache path is stale.
     return http.MultipartFile.fromBytes(
       fieldName,
       file.bytes,
@@ -319,18 +347,15 @@ class IdentityService {
     );
   }
 
-  bool _canUploadFromPath(String? path) {
-    if (kIsWeb || path == null || path.isEmpty) {
-      return false;
-    }
-    final normalized = path.toLowerCase();
-    return !normalized.startsWith('blob:') &&
-        !normalized.startsWith('http://') &&
-        !normalized.startsWith('https://');
-  }
-
   String _fileNameFromPath(String path) {
     return path.split(RegExp(r'[\\/]')).last;
+  }
+
+  String _formatDate(DateTime date) {
+    final year = date.year.toString().padLeft(4, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '$year-$month-$day';
   }
 
   MediaType _mediaTypeFor(String fileName, String? explicitMimeType) {
@@ -368,19 +393,20 @@ class IdentityService {
     if (response.statusCode == 401) {
       return 'Phiên đăng nhập không hợp lệ';
     }
+    final backendMessage = _readBackendMessage(response.body);
     if (response.statusCode == 403) {
-      final backendMessage = _readBackendMessage(response.body);
       return backendMessage.isNotEmpty
           ? backendMessage
           : 'Bạn không có quyền cập nhật hồ sơ này';
     }
     if (response.statusCode == 422) {
-      final backendMessage = _readBackendMessage(response.body);
       return backendMessage.isNotEmpty
           ? backendMessage
           : 'Vui lòng tải lên đủ ảnh chân dung và 2 mặt CCCD';
     }
-    return 'Tải lên thất bại, vui lòng thử lại';
+    return backendMessage.isNotEmpty
+        ? backendMessage
+        : 'Tải lên thất bại, vui lòng thử lại';
   }
 
   String _messageForOcrError(http.Response response) {
@@ -395,9 +421,15 @@ class IdentityService {
 
   String _readBackendMessage(String body) {
     try {
-      final data = _responsePayload(_decodeBody(body));
-      final message = data['message'] ?? data['error'];
-      return message?.toString() ?? '';
+      final root = _decodeBody(body);
+      final payload = _responsePayload(root);
+      for (final data in [root, payload]) {
+        final message = data['message'] ?? data['error'] ?? data['details'];
+        if (message != null && message.toString().trim().isNotEmpty) {
+          return message.toString().trim();
+        }
+      }
+      return '';
     } on FormatException {
       return '';
     }

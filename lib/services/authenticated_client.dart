@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:hdbhms_mobile/app.dart';
@@ -48,8 +50,8 @@ class AuthenticatedClient extends http.BaseClient {
     final responseBytes = await response.stream.toBytes();
     String bodyString = '';
     try {
-      bodyString = String.fromCharCodes(responseBytes);
-    } catch (e) {
+      bodyString = utf8.decode(responseBytes, allowMalformed: true);
+    } on FormatException {
       bodyString = '[Binary Data]';
     }
 

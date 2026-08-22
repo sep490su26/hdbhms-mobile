@@ -59,6 +59,13 @@ class _ImmediateIdentityFiles implements FileUploadService {
 }
 
 class _RecordingMultipartClient extends http.BaseClient {
+  _RecordingMultipartClient({
+    this.identityCompleted = false,
+    this.profileCompleted = false,
+  });
+
+  final bool identityCompleted;
+  final bool profileCompleted;
   http.BaseRequest? request;
 
   @override
@@ -69,12 +76,52 @@ class _RecordingMultipartClient extends http.BaseClient {
         utf8.encode(
           jsonEncode({
             'success': true,
-            'identityCompleted': false,
+            'identityCompleted': identityCompleted,
+            'profileCompleted': profileCompleted,
             'onboarding': <String, dynamic>{},
           }),
         ),
       ),
       201,
+    );
+  }
+}
+
+class _OcrMultipartClient extends http.BaseClient {
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    return http.StreamedResponse(
+      Stream<List<int>>.value(
+        utf8.encode(
+          jsonEncode({
+            'success': true,
+            'extractedIdentity': {
+              'idNumber': '079123456789',
+              'issuedDate': '2022-04-28',
+              'issuedPlace': 'Bộ Công an',
+              'address': '12 Nguyễn Trãi, Hà Nội',
+            },
+          }),
+        ),
+      ),
+      200,
+      headers: const {'content-type': 'application/json; charset=utf-8'},
+    );
+  }
+}
+
+class _ErrorMultipartClient extends http.BaseClient {
+  _ErrorMultipartClient(this.statusCode, this.body);
+
+  final int statusCode;
+  final String body;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    return http.StreamedResponse(
+      Stream<List<int>>.value(utf8.encode(body)),
+      statusCode,
+      headers: const {'content-type': 'application/json; charset=utf-8'},
     );
   }
 }
@@ -252,6 +299,7 @@ void main() {
       );
       expect(validateProfileEmail('abc'), 'Địa chỉ email không đúng định dạng');
       expect(validateProfileEmail('tenant@example.com'), isNull);
+      expect(validateProfileEmail(''), isNull);
       expect(
         validateProfileEmail('a' * 245 + '@example.com'),
         'Email không được vượt quá 255 ký tự',
@@ -280,7 +328,7 @@ void main() {
       expect(find.text('Vui lòng chọn ngày cấp'), findsOneWidget);
       expect(find.text('Vui lòng nhập nơi cấp'), findsOneWidget);
       expect(find.text('Vui lòng nhập địa chỉ thường trú'), findsOneWidget);
-      expect(find.text('Vui lòng nhập email'), findsOneWidget);
+      expect(find.text('Vui lòng nhập email'), findsNothing);
       expect(find.byKey(const ValueKey('identity-review-info')), findsNothing);
 
       final docNumberInput = _input('identity-doc-number-field');
@@ -302,7 +350,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Vui lòng nhập địa chỉ thường trú'), findsOneWidget);
-      expect(find.text('Vui lòng nhập email'), findsOneWidget);
+      expect(find.text('Vui lòng nhập email'), findsNothing);
 
       await tester.enterText(
         _input('identity-permanent-address-field'),
@@ -468,7 +516,7 @@ void main() {
     );
 
     test(
-      'identity upload multipart contract still contains only image files',
+      'identity upload multipart contract sends metadata and image files',
       () async {
         SharedPreferences.setMockInitialValues({AuthService.tenantIdKey: 9});
         final client = _RecordingMultipartClient();
@@ -478,15 +526,165 @@ void main() {
           portrait: _identityImage('portrait'),
           frontId: _identityImage('front'),
           backId: _identityImage('back'),
+          docNumber: '079123456789',
+          issuedDate: DateTime(2022, 3, 4),
+          issuedPlace: 'Bộ Công an',
+          permanentAddress: 'Hà Nội',
+          email: 'tenant@example.com',
         );
 
         final request = client.request! as http.MultipartRequest;
-        expect(request.fields, isEmpty);
+        expect(request.fields, {
+          'docNumber': '079123456789',
+          'issuedDate': '2022-03-04',
+          'issuedPlace': 'Bộ Công an',
+          'permanentAddress': 'Hà Nội',
+          'email': 'tenant@example.com',
+        });
         expect(request.files.map((file) => file.field).toList(), [
           'portraitFile',
           'idCardFrontFile',
           'idCardBackFile',
         ]);
+      },
+    );
+
+    test('identity upload omits an empty optional email', () async {
+      SharedPreferences.setMockInitialValues({AuthService.tenantIdKey: 9});
+      final client = _RecordingMultipartClient();
+      final service = IdentityService(client: client);
+
+      await service.uploadIdentity(
+        portrait: _identityImage('portrait'),
+        frontId: _identityImage('front'),
+        backId: _identityImage('back'),
+        docNumber: '079123456789',
+        issuedDate: DateTime(2022, 3, 4),
+        issuedPlace: 'Bo Cong an',
+        permanentAddress: 'Ha Noi',
+      );
+
+      final request = client.request! as http.MultipartRequest;
+      expect(request.fields, {
+        'docNumber': '079123456789',
+        'issuedDate': '2022-03-04',
+        'issuedPlace': 'Bo Cong an',
+        'permanentAddress': 'Ha Noi',
+      });
+    });
+
+    testWidgets('OCR fills the permanent address field', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: IdentityVerificationPage(
+            fileUploadService: const _ImmediateIdentityFiles(),
+            identityService: IdentityService(client: _OcrMultipartClient()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _reachIdentityInfo(tester);
+
+      expect(
+        tester
+            .widget<TextFormField>(_input('identity-permanent-address-field'))
+            .controller!
+            .text,
+        '12 Nguyễn Trãi, Hà Nội',
+      );
+    });
+
+    test('identity and profile completion flags remain independent', () async {
+      SharedPreferences.setMockInitialValues({AuthService.tenantIdKey: 9});
+      final service = IdentityService(
+        client: _RecordingMultipartClient(
+          identityCompleted: true,
+          profileCompleted: false,
+        ),
+      );
+
+      final result = await service.uploadIdentity(
+        portrait: _identityImage('portrait'),
+        frontId: _identityImage('front'),
+        backId: _identityImage('back'),
+        docNumber: '079123456789',
+        issuedDate: DateTime(2022, 3, 4),
+        issuedPlace: 'Bộ Công an',
+        permanentAddress: 'Hà Nội',
+        email: 'tenant@example.com',
+      );
+
+      expect(result.identityCompleted, isTrue);
+      expect(result.profileCompleted, isFalse);
+    });
+
+    test(
+      'identity upload surfaces backend errors for non-validation statuses',
+      () async {
+        SharedPreferences.setMockInitialValues({AuthService.tenantIdKey: 9});
+        final service = IdentityService(
+          client: _ErrorMultipartClient(
+            500,
+            jsonEncode({'message': 'Tải tệp lên thất bại'}),
+          ),
+        );
+
+        expect(
+          () => service.uploadIdentity(
+            portrait: _identityImage('portrait'),
+            frontId: _identityImage('front'),
+            backId: _identityImage('back'),
+            docNumber: '079123456789',
+            issuedDate: DateTime(2022, 3, 4),
+            issuedPlace: 'Bộ Công an',
+            permanentAddress: 'Hà Nội',
+          ),
+          throwsA(
+            isA<IdentityException>().having(
+              (error) => error.message,
+              'message',
+              'Tải tệp lên thất bại',
+            ),
+          ),
+        );
+      },
+    );
+
+    test(
+      'identity upload surfaces root error message when data is present',
+      () async {
+        SharedPreferences.setMockInitialValues({AuthService.tenantIdKey: 9});
+        final service = IdentityService(
+          client: _ErrorMultipartClient(
+            400,
+            jsonEncode({
+              'message': 'Dữ liệu không hợp lệ',
+              'data': {
+                'fieldErrors': {'files': 'Tệp không hợp lệ'},
+              },
+            }),
+          ),
+        );
+
+        expect(
+          () => service.uploadIdentity(
+            portrait: _identityImage('portrait'),
+            frontId: _identityImage('front'),
+            backId: _identityImage('back'),
+            docNumber: '079123456789',
+            issuedDate: DateTime(2022, 3, 4),
+            issuedPlace: 'Bộ Công an',
+            permanentAddress: 'Hà Nội',
+          ),
+          throwsA(
+            isA<IdentityException>().having(
+              (error) => error.message,
+              'message',
+              'Dữ liệu không hợp lệ',
+            ),
+          ),
+        );
       },
     );
   });

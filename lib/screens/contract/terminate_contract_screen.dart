@@ -40,11 +40,26 @@ class _TerminateContractScreenState extends State<TerminateContractScreen> {
 
   Future<void> _pickDate() async {
     final today = _dateOnly(DateTime.now());
+    final contractEndDate = _dateOnly(widget.contract.endDate ?? today);
+    final futureLimit = DateTime(today.year + 5, today.month, today.day);
+    final lastDate = widget.contract.endDate == null
+        ? futureLimit
+        : contractEndDate.isBefore(today)
+        ? today
+        : contractEndDate.isBefore(futureLimit)
+        ? contractEndDate
+        : futureLimit;
+    final currentDate = _liquidationDate ?? today;
+    final initialDate = currentDate.isBefore(today)
+        ? today
+        : currentDate.isAfter(lastDate)
+        ? lastDate
+        : currentDate;
     final selected = await AppDatePicker.show(
       context: context,
-      initialDate: _liquidationDate ?? today,
+      initialDate: initialDate,
       firstDate: today,
-      lastDate: DateTime(today.year + 5),
+      lastDate: lastDate,
     );
     if (selected != null && mounted) {
       setState(() => _liquidationDate = selected);

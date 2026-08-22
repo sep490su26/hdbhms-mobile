@@ -470,12 +470,15 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
     });
 
     try {
-      // TODO: Send CCCD metadata when identity-verification supports
-      // docNumber, issuedDate, and issuedPlace multipart fields.
       final result = await _identityService.uploadIdentity(
         portrait: _portraitImage!,
         frontId: _frontIdImage!,
         backId: _backIdImage!,
+        docNumber: _docNumberController.text.trim(),
+        issuedDate: _issuedDate!,
+        issuedPlace: _issuedPlaceController.text.trim(),
+        permanentAddress: _permanentAddressController.text.trim(),
+        email: _emailController.text.trim(),
       );
 
       if (!mounted) {
@@ -588,6 +591,10 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
 
     if (identity.issuedPlace != null) {
       _issuedPlaceController.text = identity.issuedPlace!;
+    }
+
+    if (identity.address != null) {
+      _permanentAddressController.text = identity.address!;
     }
   }
 
@@ -1415,7 +1422,7 @@ class _IdentityInfoStepCard extends StatelessWidget {
                       maxLengthEnforcement: MaxLengthEnforcement.none,
                       validator: validateProfileEmail,
                       decoration: const InputDecoration(
-                        labelText: 'Email',
+                        labelText: 'Email (kh\u00F4ng b\u1EAFt bu\u1ED9c)',
                         hintText: 'tenant@example.com',
                       ),
                     ),
